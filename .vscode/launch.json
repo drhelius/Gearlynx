@@ -1,0 +1,68 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Build and debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "linux": {
+                "program": "${workspaceFolder}/platforms/linux/gearlynx",
+                "cwd": "${workspaceFolder}/platforms/linux",
+                "MIMode": "gdb",
+                "externalConsole": false,
+            },
+            "osx": {
+                "program": "${workspaceFolder}/platforms/macos/gearlynx",
+                "cwd": "${workspaceFolder}/platforms/macos",
+                "MIMode": "lldb",
+                "externalConsole": true
+            },
+            "args": [],
+            "stopAtEntry": false,
+            "environment": [],
+            "preLaunchTask": "Build (DEBUG)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Build and debug TESTS",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/tests/gearlynx-tests",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/tests",
+            "environment": [],
+            "externalConsole": false,
+            "linux": {
+                "MIMode": "gdb"
+            },
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "preLaunchTask": "Build (TESTS)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}
