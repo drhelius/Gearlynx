@@ -45,7 +45,8 @@ desktop.ini
 # Misc files
 *.ini
 *.cfg
-*.pce
+*.lyx
+*.lnx
 *.zip
 *.gearlynx
 *.so
