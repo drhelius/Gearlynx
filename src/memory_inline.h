@@ -37,6 +37,7 @@ inline u8 Memory::Read(u16 address, bool block_transfer)
 //TODO:
     //m_m6502->CheckMemoryBreakpoints(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, address, true);
 #endif
+    return 0;
 }
 
 inline void Memory::Write(u16 address, u8 value)
