@@ -31,10 +31,12 @@ Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio)
     m_audio = audio;
     InitPointer(m_disassembler);
     InitPointer(m_test_memory);
+    InitPointer(m_bios);
 }
 
 Memory::~Memory()
 {
+    SafeDeleteArray(m_bios);
     SafeDeleteArray(m_test_memory);
     if (IsValidPointer(m_disassembler))
     {
