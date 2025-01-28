@@ -52,6 +52,8 @@ public:
     ~Memory();
     void Init();
     void Reset();
+    void LoadBios(const char* file_path);
+    bool IsBiosLoaded();
     u8 Read(u16 address, bool block_transfer = false);
     void Write(u16 address, u8 value);
     GLYNX_Disassembler_Record* GetDisassemblerRecord(u16 address);
@@ -67,6 +69,8 @@ private:
     Audio* m_audio;
     GLYNX_Disassembler_Record** m_disassembler;
     u8* m_test_memory;
+    u8* m_bios;
+    bool m_bios_loaded;
 };
 
 #include "memory_inline.h"

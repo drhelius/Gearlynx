@@ -76,6 +76,12 @@ bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample
     if (m_paused || !m_cartridge->IsReady())
         return false;
 
+    if (!m_memory->IsBiosLoaded())
+    {
+        //RenderFrameBuffer(pFrameBuffer);
+        return false;
+    }
+
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     GLYNX_Debug_State debug_state;
     bool get_debug_state = true;

@@ -167,6 +167,16 @@ bool emu_is_empty(void)
     return !core->GetCartridge()->IsReady();
 }
 
+bool emu_is_bios_loaded(void)
+{
+    return core->GetMemory()->IsBiosLoaded();
+}
+
+void emu_load_bios(const char* file_path)
+{
+    core->GetMemory()->LoadBios(file_path);
+}
+
 void emu_reset(void)
 {
     emu_debug_command = Debug_Command_None;

@@ -244,6 +244,32 @@ void gui_popup_modal_about(void)
     }
 }
 
+void gui_popup_modal_bios(void)
+{
+    if (ImGui::BeginPopupModal("BIOS", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("IMPORTANT! Lynx BIOS is required to run ROMs.");
+        ImGui::Text("Please use:");
+        ImGui::Text("  File: lynxboot.img");
+        ImGui::Text("  MD5: fcd403db69f54290b51035d82f835e7b");
+        ImGui::Text("  CRC32: 0D973C9D");
+        ImGui::Text(" ");
+        ImGui::Text("Load a BIOS file using the \"Emulator -> BIOS -> Load BIOS...\" menu option.");
+        ImGui::Text(" ");
+
+        ImGui::Separator();
+
+        if (ImGui::Button("OK", ImVec2(120, 0)))
+        {
+            ImGui::CloseCurrentPopup();
+            gui_dialog_in_use = false;
+        }
+        ImGui::SetItemDefaultFocus();
+
+        ImGui::EndPopup();
+    }
+}
+
 void gui_show_info(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);

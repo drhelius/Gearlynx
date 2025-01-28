@@ -22,6 +22,7 @@
 #include "cartridge.h"
 #include "input.h"
 #include "audio.h"
+#include "game_db.h"
 
 Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio)
 {
@@ -47,6 +48,11 @@ Memory::~Memory()
 
 void Memory::Init()
 {
+    m_bios_loaded = false;
+    m_bios = new u8[0x200];
+    for (int i = 0; i < 0x200; i++)
+        m_bios[i] = 0;
+
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_disassembler = new GLYNX_Disassembler_Record*[0x200000];
     for (int i = 0; i < 0x200000; i++)
@@ -68,6 +74,50 @@ void Memory::Reset()
     for (int i = 0; i < 0x10000; i++)
         m_test_memory[i] = rand() & 0xFF;
 #endif
+}
+
+void Memory::LoadBios(const char* file_path)
+{
+    using namespace std;
+
+    m_bios_loaded = false;
+
+    ifstream file(file_path, ios::in | ios::binary | ios::ate);
+
+    if (file.is_open())
+    {
+        int size = static_cast<int> (file.tellg());
+
+        if (size != 0x200)
+        {
+            Log("Incorrect BIOS size %d: %s", size, file_path);
+            return;
+        }
+
+        file.seekg(0, ios::beg);
+        file.read(reinterpret_cast<char*>(m_bios), size);
+        file.close();
+
+        u32 crc = CalculateCRC32(0, m_bios, size);
+
+        if (crc != GLYNX_DB_BIOS_CRC)
+        {
+            Log("Incorrect BIOS CRC %08X: %s", crc, file_path);
+        }
+
+        m_bios_loaded = true;
+
+        Log("BIOS %s loaded (%d bytes)", file_path, size);
+    }
+    else
+    {
+        Log("ERROR: There was a problem opening the file %s", file_path);
+    }
+}
+
+bool Memory::IsBiosLoaded()
+{
+    return m_bios_loaded;
 }
 
 Memory::GLYNX_Disassembler_Record* Memory::GetDisassemblerRecord(u16 address)

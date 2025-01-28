@@ -26,11 +26,11 @@
 #include "libretro.h"
 #include "../../src/gearlynx.h"
 
-// #ifdef _WIN32
-// static const char slash = '\\';
-// #else
-// static const char slash = '/';
-// #endif
+#ifdef _WIN32
+static const char slash = '\\';
+#else
+static const char slash = '/';
+#endif
 
 #define RETRO_DEVICE_LYNX_PAD    RETRO_DEVICE_SUBCLASS(RETRO_DEVICE_JOYPAD, 0)
 
@@ -99,6 +99,12 @@ static int IsButtonPressed(int joypad_bits, int button)
     return (joypad_bits & (1 << button)) ? 1 : 0;
 }
 
+static void load_bootroms(void)
+{
+    char bios_path[4113];
+    sprintf(bios_path, "%s%lynxboot.img", retro_system_directory, slash);
+    core->GetMemory()->LoadBios(bios_path);
+}
 
 unsigned retro_api_version(void)
 {
@@ -183,6 +189,7 @@ void retro_reset(void)
     log_cb(RETRO_LOG_DEBUG, "Resetting...\n");
 
     check_variables();
+    load_bootroms();
     core->ResetROM(true);
 }
 
@@ -278,6 +285,7 @@ void retro_run(void)
 bool retro_load_game(const struct retro_game_info *info)
 {
     check_variables();
+    load_bootroms();
 
     snprintf(retro_game_path, sizeof(retro_game_path), "%s", info->path);
     log_cb(RETRO_LOG_INFO, "Loading game: %s\n", retro_game_path);

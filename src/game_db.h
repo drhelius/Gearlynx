@@ -205,7 +205,7 @@ const uint32_t k_crc32_tab[] =
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
 
-u32 CalculateCRC32(u32 crc, const u8 *buf, int size)
+static u32 CalculateCRC32(u32 crc, const u8 *buf, int size)
 {
     const u8 *p;
     p = buf;

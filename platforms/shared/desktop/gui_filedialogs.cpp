@@ -24,6 +24,7 @@
 #include "gui_debug_memory.h"
 #include "gui_debug_disassembler.h"
 #include "gui_debug_trace_logger.h"
+#include "gui_menus.h"
 #include "application.h"
 #include "config.h"
 #include "emu.h"
@@ -163,7 +164,9 @@ void gui_file_dialog_choose_savestate_path(void)
     nfdresult_t result = NFD_PickFolderU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
+        strcpy(gui_savestates_path, outPath);
         config_emulator.savestates_path.assign(outPath);
+        update_savestates_data();
         NFD_FreePath(outPath);
     }
     else if (result != NFD_CANCEL)
@@ -182,13 +185,37 @@ void gui_file_dialog_choose_screenshot_path(void)
     nfdresult_t result = NFD_PickFolderU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
+        strcpy(gui_screenshots_path, outPath);
         config_emulator.screenshots_path.assign(outPath);
-        update_savestates_data();
         NFD_FreePath(outPath);
     }
     else if (result != NFD_CANCEL)
     {
         Log("Screenshot Path Error: %s", NFD_GetError());
+    }
+}
+
+void gui_file_dialog_load_bios(void)
+{
+    nfdchar_t *outPath;
+    nfdfilteritem_t filterItem[1] = { { "BIOS Files", "img" } };
+    nfdopendialogu8args_t args = { };
+    args.filterList = filterItem;
+    args.filterCount = 1;
+    args.defaultPath = config_emulator.last_open_path.c_str();
+    file_dialog_set_native_window(application_sdl_window, &args.parentWindow);
+
+    nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
+    if (result == NFD_OKAY)
+    {
+        strcpy(gui_bios_path, outPath);
+        config_emulator.bios_path.assign(outPath);
+        emu_load_bios(outPath);
+        NFD_FreePath(outPath);
+    }
+    else if (result != NFD_CANCEL)
+    {
+        Log("Load Bios Error: %s", NFD_GetError());
     }
 }
 

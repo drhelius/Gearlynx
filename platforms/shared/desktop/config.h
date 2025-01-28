@@ -46,6 +46,7 @@ struct config_Emulator
     int ffwd_speed = 1;
     bool show_info = false;
     std::string recent_roms[config_max_recent_roms];
+    std::string bios_path;
     int savefiles_dir_option = 0;
     std::string savefiles_path;
     int savestates_dir_option = 0;
