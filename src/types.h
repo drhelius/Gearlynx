@@ -67,6 +67,20 @@ enum GLYNX_Keys
     GLYNX_KEY_LEFT
 };
 
+struct GLYNX_Cartridge_Header
+{
+    u8  magic[4];
+    u16 size_bank0;
+    u16 size_bank1;
+    u16 version;
+    u8  name[32];
+    u8  manufacturer[16];
+    u8  rotation;
+    u8  audin;
+    u8  eeprom;
+    u8  spare[3];
+};
+
 struct GLYNX_SaveState_Header
 {
     u32 magic;

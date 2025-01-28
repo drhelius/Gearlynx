@@ -25,9 +25,23 @@
 class Cartridge
 {
 public:
-    enum CartridgeMapper
+    enum GLYNX_Cartridge_Rotation
     {
-        STANDARD_MAPPER
+        NO_ROTATION = 0,
+        ROTATE_LEFT = 1,
+        ROTATE_RIGHT = 2
+    };
+
+    enum GLYNX_Cartridge_EEPROM
+    {
+        NO_EEPROM = 0,
+        EEPROM_93C46 = 1,
+        EEPROM_93C56 = 2,
+        EEPROM_93C66 = 3,
+        EEPROM_93C76 = 4,
+        EEPROM_93C86 = 5,
+        EEPROM_SD = 0x40,
+        EEPROM_8BIT = 0x80
     };
 
 public:
@@ -35,38 +49,51 @@ public:
     ~Cartridge();
     void Init();
     void Reset();
-    u32 GetCRC();
+    u8* GetROM();
     bool IsReady();
-    CartridgeMapper GetMapper();
     int GetROMSize();
-    int GetROMBankCount();
+    u32 GetCRC();
+    u16 GetBank0Size();
+    u16 GetBank1Size();
+    u8 GetVersion();
+    const char* GetName();
+    const char* GetManufacturer();
+    GLYNX_Cartridge_Rotation GetRotation();
+    bool GetAUDIN();
+    GLYNX_Cartridge_EEPROM GetEEPROM();
     const char* GetFilePath();
     const char* GetFileDirectory();
     const char* GetFileName();
     const char* GetFileExtension();
-    u8* GetROM();
-    u8** GetROMMap();
     bool LoadFromFile(const char* path);
     bool LoadFromBuffer(const u8* buffer, int size);
 
 private:
     bool LoadFromZipFile(const u8* buffer, int size);
-    void GatherROMInfo();
     void GatherInfoFromDB();
-    void InitRomMAP();
+    bool GatherHeader(const u8* buffer);
+    bool CheckMissingInfo();
+    GLYNX_Cartridge_Rotation ReadHeaderRotation(u8 rotation);
+    GLYNX_Cartridge_EEPROM ReadHeaderEEPROM(u8 eeprom);
 
 private:
     u8* m_rom;
-    u8** m_rom_map;
-    int m_rom_size;
-    int m_rom_bank_count;
+    u32 m_rom_size;
     bool m_ready;
     char m_file_path[512];
     char m_file_directory[512];
     char m_file_name[512];
     char m_file_extension[512];
+    u16 m_bank0_size;
+    u16 m_bank1_size;
+    u8 m_version;
+    char m_name[128];
+    char m_manufacturer[32];
+    GLYNX_Cartridge_Rotation m_rotation;
+    bool m_audin;
+    GLYNX_Cartridge_EEPROM m_eeprom;
     u32 m_crc;
-    CartridgeMapper m_mapper;
+
 };
 
 #endif /* CARTRIDGE_H */

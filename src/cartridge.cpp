@@ -33,19 +33,20 @@ Cartridge::Cartridge()
     m_file_path[0] = 0;
     m_file_name[0] = 0;
     m_file_extension[0] = 0;
-    m_rom_bank_count = 0;
+    m_bank0_size = 0;
+    m_bank1_size = 0;
+    m_version = 0;
+    m_name[0] = 0;
+    m_manufacturer[0] = 0;
+    m_rotation = NO_ROTATION;
+    m_audin = false;
+    m_eeprom = NO_EEPROM;
     m_crc = 0;
-    m_mapper = STANDARD_MAPPER;
-
-    m_rom_map = new u8*[128];
-    for (int i = 0; i < 128; i++)
-        InitPointer(m_rom_map[i]);
 }
 
 Cartridge::~Cartridge()
 {
     SafeDeleteArray(m_rom);
-    SafeDeleteArray(m_rom_map);
 }
 
 void Cartridge::Init()
@@ -61,12 +62,15 @@ void Cartridge::Reset()
     m_file_path[0] = 0;
     m_file_name[0] = 0;
     m_file_extension[0] = 0;
-    m_rom_bank_count = 0;
+    m_bank0_size = 0;
+    m_bank1_size = 0;
+    m_version = 0;
+    m_name[0] = 0;
+    m_manufacturer[0] = 0;
+    m_rotation = NO_ROTATION;
+    m_audin = false;
+    m_eeprom = NO_EEPROM;
     m_crc = 0;
-    m_mapper = STANDARD_MAPPER;
-
-    for (int i = 0; i < 128; i++)
-        InitPointer(m_rom_map[i]);
 }
 
 u32 Cartridge::GetCRC()
@@ -79,19 +83,9 @@ bool Cartridge::IsReady()
     return m_ready;
 }
 
-Cartridge::CartridgeMapper Cartridge::GetMapper()
-{
-    return m_mapper;
-}
-
 int Cartridge::GetROMSize()
 {
     return m_rom_size;
-}
-
-int Cartridge::GetROMBankCount()
-{
-    return m_rom_bank_count;
 }
 
 const char* Cartridge::GetFilePath()
@@ -119,9 +113,44 @@ u8* Cartridge::GetROM()
     return m_rom;
 }
 
-u8** Cartridge::GetROMMap()
+u16 Cartridge::GetBank0Size()
 {
-    return m_rom_map;
+    return m_bank0_size;
+}
+
+u16 Cartridge::GetBank1Size()
+{
+    return m_bank1_size;
+}
+
+u8 Cartridge::GetVersion()
+{
+    return m_version;
+}
+
+const char* Cartridge::GetName()
+{
+    return m_name;
+}
+
+const char* Cartridge::GetManufacturer()
+{
+    return m_manufacturer;
+}
+
+Cartridge::GLYNX_Cartridge_Rotation Cartridge::GetRotation()
+{
+    return m_rotation;
+}
+
+bool Cartridge::GetAUDIN()
+{
+    return m_audin;
+}
+
+Cartridge::GLYNX_Cartridge_EEPROM Cartridge::GetEEPROM()
+{
+    return m_eeprom;
 }
 
 bool Cartridge::LoadFromFile(const char* path)
@@ -188,48 +217,49 @@ bool Cartridge::LoadFromFile(const char* path)
 
 bool Cartridge::LoadFromBuffer(const u8* buffer, int size)
 {
-    if (IsValidPointer(buffer))
+    if (IsValidPointer(buffer) && size > 0x40)
     {
         Log("Loading ROM from buffer... Size: %d", size);
 
-        if(size & 512)
+        if (size & 0x40)
         {
-            Debug("Removing 512 bytes header...");
-            size &= ~512;
-            buffer += 512;
+            Debug("Header expected");
         }
 
-        if(!memcmp(buffer + 0x1FD0, "MCGENJIN", 8))
+        if (GatherHeader(buffer))
         {
-            Debug("MCGENJIN mapper detected.");
+            size -= 0x40;
+            buffer += 0x40;
         }
-
-        assert((size % 0x2000) == 0);
-
-        if ((size % 0x2000) != 0)
+        else
         {
-            Log("ERROR: Invalid size found: %d (0x%X) bytes", size, size);
+            Debug("WARNING: Unable to gather ROM header");
         }
 
         m_rom_size = size;
+        Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
+
         m_rom = new u8[m_rom_size];
         memcpy(m_rom, buffer, m_rom_size);
 
-        GatherROMInfo();
+        m_crc = CalculateCRC32(0, m_rom, m_rom_size);
+        Log("ROM CRC32: %08X", m_crc);
 
-        InitRomMAP();
-
-        m_ready = true;
+        GatherInfoFromDB();
+        m_ready = CheckMissingInfo();
 
         Debug("ROM loaded from buffer. Size: %d bytes", m_rom_size);
-
-        return true;
     }
     else
     {
         Log("ERROR: Unable to load ROM from buffer: Buffer invalid %p. Size: %d", buffer, size);
-        return false;
+        m_ready = false;
     }
+
+    if (!m_ready)
+        Reset();
+
+    return m_ready;
 }
 
 bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
@@ -289,18 +319,6 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
     return false;
 }
 
-void Cartridge::GatherROMInfo()
-{
-    m_rom_bank_count = (m_rom_size / 0x2000) + (m_rom_size % 0x2000 ? 1 : 0);
-    m_crc = CalculateCRC32(0, m_rom, m_rom_size);
-
-    Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
-    Log("ROM Bank Count: %d (0x%0X)", m_rom_bank_count, m_rom_bank_count);
-    Log("ROM CRC32: %08X", m_crc);
-
-    GatherInfoFromDB();
-}
-
 void Cartridge::GatherInfoFromDB()
 {
     int i = 0;
@@ -315,8 +333,53 @@ void Cartridge::GatherInfoFromDB()
             found = true;
             Log("ROM found in database: %s. CRC: %08X", k_game_database[i].title, m_crc);
 
-            m_mapper = STANDARD_MAPPER;
-            Log("ROM uses standard mapper.");
+            strncpy(m_name, k_game_database[i].title, 128);
+
+            if (m_rom_size == k_game_database[i].file_size)
+            {
+                Debug("ROM size matches database: %d bytes", m_rom_size);
+            }
+            else
+            {
+                Debug("WARNING: ROM size mismatch. Database: %d bytes, ROM: %d bytes", k_game_database[i].file_size, m_rom_size);
+                Debug("Forcing ROM size to database value");
+                m_rom_size = k_game_database[i].file_size;
+            }
+
+            if (k_game_database[i].bank0_size != 0)
+            {
+                Debug("Forcing bank0 size to database value: %d", k_game_database[i].bank0_size);
+                m_bank0_size = k_game_database[i].bank0_size;
+            }
+
+            if (k_game_database[i].bank1_size != 0)
+            {
+                Debug("Forcing bank1 size to database value: %d", k_game_database[i].bank1_size);
+                m_bank1_size = k_game_database[i].bank1_size;
+            }
+
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
+            {
+                Debug("Forcing rotation to database value: Rotate left");
+                m_rotation = ROTATE_LEFT;
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT)
+            {
+                Debug("Forcing rotation to database value: Rotate right");
+                m_rotation = ROTATE_RIGHT;
+            }
+
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN)
+            {
+                Debug("Forcing AUDIN to database value: true");
+                m_audin = true;
+            }
+
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46)
+            {
+                Debug("Forcing EEPROM to database value: 93C46");
+                m_eeprom = EEPROM_93C46;
+            }
         }
         else
             i++;
@@ -328,71 +391,125 @@ void Cartridge::GatherInfoFromDB()
     }
 }
 
-void Cartridge::InitRomMAP()
+bool Cartridge::GatherHeader(const u8* buffer)
 {
-    if (m_rom_bank_count == 0x30)
+    GLYNX_Cartridge_Header header;
+    memcpy(&header, buffer, sizeof(header));
+
+    if (header.magic[0] == 'L' && header.magic[1] == 'Y' && header.magic[2] == 'N' && header.magic[3] == 'X')
     {
-        Debug("Mapping 384KB ROM");
+        Debug("Header magic: %c%c%c%c", header.magic[0], header.magic[1], header.magic[2], header.magic[3]);
 
-        for(int x = 0; x < 64; x++)
+        m_bank0_size = header.size_bank0;
+        m_bank1_size = header.size_bank1;
+        m_version = header.version;
+
+        if (m_version != 1)
         {
-            int bank = x & 0x1F;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
+            Log("ERROR: Invalid header version: %d", m_version);
         }
 
-        for(int x = 64; x < 128; x++)
-        {
-            int bank = (x & 0x0F) + 0x20;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
-        }
-    }
-    else if (m_rom_bank_count == 0x40)
-    {
-        Debug("Mapping 512KB ROM");
+        strncpy(m_name, (const char*)header.name, 32);
+        m_name[32] = 0;
+        strncpy(m_manufacturer, (const char*)header.manufacturer, 16);
+        m_manufacturer[16] = 0;
+        m_audin = header.audin & 0x01;
 
-        for(int x = 0; x < 64; x++)
-        {
-            int bank = x & 0x3F;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
-        }
+        Debug("Header bank0 size: %d", m_bank0_size);
+        Debug("Header bank1 size: %d", m_bank1_size);
+        Debug("Header version: %d", m_version);
+        Debug("Header name: %s", m_name);
+        Debug("Header manufacturer: %s", m_manufacturer);
+        Debug("Header audin: %d", header.audin);
 
-        for(int x = 64; x < 128; x++)
-        {
-            int bank = (x & 0x1F) + 0x20;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
-        }
-    }
-    else if (m_rom_bank_count == 0x60)
-    {
-        Debug("Mapping 768KB ROM");
+        m_rotation = ReadHeaderRotation(header.rotation);
+        m_eeprom = ReadHeaderEEPROM(header.eeprom);
 
-        for(int x = 0; x < 64; x++)
-        {
-            int bank = x & 0x3F;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
-        }
-
-        for(int x = 64; x < 128; x++)
-        {
-            int bank = (x & 0x1F) + 0x40;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
-        }
+        return true;
     }
     else
     {
-        Debug("Default mapping ROM");
+        Log("ERROR: Invalid header magic: %c%c%c%c", header.magic[0], header.magic[1], header.magic[2], header.magic[3]);
+        return false;
+    }
+}
 
-        for(int x = 0; x < 128; x++)
-        {
-            int bank = x % m_rom_bank_count;
-            int bank_address = bank * 0x2000;
-            m_rom_map[x] = &m_rom[bank_address];
-        }
+bool Cartridge::CheckMissingInfo()
+{
+    if (m_rom_size == 0)
+    {
+        Log("ERROR: ROM size not found in header or database");
+        return false;
+    }
+
+    if (m_file_name[0] == 0)
+    {
+        strncpy(m_name, "Unknown", sizeof(m_name));
+    }
+
+    if (m_manufacturer[0] == 0)
+    {
+        strncpy(m_manufacturer, "Unknown", sizeof(m_manufacturer));
+    }
+
+    if (m_bank0_size == 0)
+    {
+        Debug("Bank0 size not found in both header and database. Using ROM size / 256");
+        m_bank0_size = m_rom_size >> 8;
+    }
+
+    return true;
+}
+
+Cartridge::GLYNX_Cartridge_Rotation Cartridge::ReadHeaderRotation(u8 rotation)
+{
+    switch (rotation)
+    {
+        case 0:
+            Debug("Header rotation: No rotation");
+            return NO_ROTATION;
+        case 1:
+            Debug("Header rotation: Rotate left");
+            return ROTATE_LEFT;
+        case 2:
+            Debug("Header rotation: Rotate right");
+            return ROTATE_RIGHT;
+        default:
+            Debug("Invalid rotation value in header: %d", rotation);
+            return NO_ROTATION;
+    }
+}
+
+Cartridge::GLYNX_Cartridge_EEPROM Cartridge::ReadHeaderEEPROM(u8 eeprom)
+{
+    switch (eeprom)
+    {
+        case 0:
+            Debug("Header EEPROM: No EEPROM");
+            return NO_EEPROM;
+        case 1:
+            Debug("Header EEPROM: 93C46");
+            return EEPROM_93C46;
+        case 2:
+            Debug("Header EEPROM: 93C56");
+            return EEPROM_93C56;
+        case 3:
+            Debug("Header EEPROM: 93C66");
+            return EEPROM_93C66;
+        case 4:
+            Debug("Header EEPROM: 93C76");
+            return EEPROM_93C76;
+        case 5:
+            Debug("Header EEPROM: 93C86");
+            return EEPROM_93C86;
+        case 0x40:
+            Debug("Header EEPROM: SD");
+            return EEPROM_SD;
+        case 0x80:
+            Debug("Header EEPROM: 8-bit");
+            return EEPROM_8BIT;
+        default:
+            Debug("Invalid EEPROM value in header: %d", eeprom);
+            return NO_EEPROM;
     }
 }

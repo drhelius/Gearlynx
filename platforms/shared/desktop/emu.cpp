@@ -346,7 +346,7 @@ void emu_get_info(char* info, int buffer_size)
         const char* filename = cart->GetFileName();
         u32 crc = cart->GetCRC();
         int rom_size = cart->GetROMSize();
-        int rom_banks = cart->GetROMBankCount();
+        int rom_banks = 0;//cart->GetROMBankCount();
 
         snprintf(info, buffer_size, "File Name: %s\nCRC: %08X\nROM Size: %d bytes, %d KB\nROM Banks: %d\nScreen Resolution: %dx%d", filename, crc, rom_size, rom_size / 1024, rom_banks, runtime.screen_width, runtime.screen_height);
     }
