@@ -225,8 +225,11 @@ void gui_popup_modal_about(void)
         else
             ImGui::Text("> No gamepad detected");
 
-        if (application_gamepad_mappings > 0)
-            ImGui::Text("%d game controller mappings loaded from gamecontrollerdb.txt", application_gamepad_mappings);
+        if (application_added_gamepad_mappings || application_updated_gamepad_mappings)
+        {
+            ImGui::Text("%d game controller mappings added from gamecontrollerdb.txt", application_added_gamepad_mappings);
+            ImGui::Text("%d game controller mappings updated from gamecontrollerdb.txt", application_updated_gamepad_mappings);
+        }
         else
             ImGui::Text("ERROR: Game controller database not found (gamecontrollerdb.txt)!!");
 
