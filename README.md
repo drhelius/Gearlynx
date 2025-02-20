@@ -8,7 +8,7 @@
 [![GitHub](https://img.shields.io/github/license/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/drhelius)](https://twitter.com/drhelius)
 
-> IN DEVELOPMENT: Not intended to be used now!
+> IN DEVELOPMENT: I develop publicly from start to finish. Not intended to be used now, it does not work!
 
 This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please, consider [sponsoring](https://github.com/sponsors/drhelius).
 
