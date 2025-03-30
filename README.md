@@ -1,16 +1,20 @@
 # Gearlynx
 
-[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/drhelius/Gearlynx/gearlynx.yml)](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
-[![GitHub tag (with filter)](https://img.shields.io/github/v/tag/drhelius/Gearlynx?label=version)](https://github.com/drhelius/Gearlynx/releases)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/drhelius/Gearlynx/gearlynx.yml)](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
+[![GitHub Releases)](https://img.shields.io/github/v/tag/drhelius/Gearlynx?label=version)](https://github.com/drhelius/Gearlynx/releases)
 [![commits)](https://img.shields.io/github/commit-activity/t/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/commits/main)
 [![GitHub contributors](https://img.shields.io/github/contributors/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/graphs/contributors)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/drhelius)](https://github.com/sponsors/drhelius)
-[![GitHub](https://img.shields.io/github/license/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/blob/main/LICENSE)
-[![Twitter Follow](https://img.shields.io/twitter/follow/drhelius)](https://twitter.com/drhelius)
+[![License](https://img.shields.io/github/license/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/blob/main/LICENSE)
+[![Twitter Follow](https://img.shields.io/twitter/follow/drhelius)](https://x.com/drhelius)
 
 > IN DEVELOPMENT: I develop publicly from start to finish. Not intended to be used now, it does not work!
 
-This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please, consider [sponsoring](https://github.com/sponsors/drhelius).
+Gearlynx is a cross-platform Atari Lynx emulator written in C++ that runs on Windows, macOS, Linux, BSD and RetroArch.
+
+This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please consider [sponsoring](https://github.com/sponsors/drhelius).
+
+Don't hesitate to report bugs or ask for new features by [opening an issue](https://github.com/drhelius/Gearlynx/issues).
 
 ## Downloads
 
@@ -52,6 +56,14 @@ cd platforms/linux
 make
 ```
 
+- Arch Linux:
+
+``` shell
+sudo pacman -S base-devel sdl2 glew gtk3
+cd platforms/linux
+make
+```
+
 ### BSD
 
 - FreeBSD:
@@ -87,6 +99,12 @@ sudo dnf install @development-tools gcc-c++
 cd platforms/libretro
 make
 ```
+
+## Contributors
+
+Thank you to all the people who have already contributed to Gearlynx!
+
+[![Contributors](https://contrib.rocks/image?repo=drhelius/gearlynx)](https://github.com/drhelius/gearlynx/graphs/contributors)
 
 ## License
 
