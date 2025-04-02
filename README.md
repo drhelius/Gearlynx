@@ -18,7 +18,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 
 ## Downloads
 
-- **Latest Builds**: [here](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
+- **Dev Builds**: [GitHub Actions](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
   
 ## Build Instructions
 
