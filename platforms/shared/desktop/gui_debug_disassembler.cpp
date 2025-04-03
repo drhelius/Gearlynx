@@ -25,6 +25,7 @@
 #include "../../../src/gearlynx.h"
 #include "gui_debug_constants.h"
 #include "gui_debug_text.h"
+#include "gui_debug_memory.h"
 #include "gui.h"
 #include "gui_filedialogs.h"
 #include "config.h"
@@ -63,6 +64,7 @@ static char new_breakpoint_buffer[10] = "";
 static bool new_breakpoint_read = false;
 static bool new_breakpoint_write = false;
 static bool new_breakpoint_execute = true;
+static char runto_address[5] = "";
 static char goto_address[5] = "";
 static bool goto_address_requested = false;
 static u16 goto_address_target = 0;
@@ -70,7 +72,8 @@ static bool goto_back_requested = false;
 static int goto_back = 0;
 static int pc_pos = 0;
 static int goto_address_pos = 0;
-static bool add_bookmark = false;
+static bool add_bookmark_open = false;
+static bool add_symbol_open = false;
 
 static void draw_controls(void);
 static void draw_breakpoints(void);
@@ -87,6 +90,9 @@ static void replace_labels(DisassemblerLine* line, const char* color, const char
 static void draw_instruction_name(DisassemblerLine* line, bool is_pc);
 static void disassembler_menu(void);
 static void add_bookmark_popup(void);
+static void add_symbol_popup(void);
+static void save_full_disassembler(FILE* file);
+static void save_current_disassembler(FILE* file);
 
 void gui_debug_disassembler_init(void)
 {
@@ -127,10 +133,8 @@ void gui_debug_disassembler_destroy(void)
     SafeDeleteArray(dynamic_symbols);
 }
 
-void gui_debug_reset(void)
+void gui_debug_disassembler_reset(void)
 {
-    gui_debug_reset_breakpoints();
-    gui_debug_reset_symbols();
     selected_address = -1;
 }
 
@@ -188,6 +192,30 @@ void gui_debug_load_symbols_file(const char* file_path)
                 continue;
             }
 
+            if (line.find("Sections:") != std::string::npos)
+            {
+                valid_section = false;
+                continue;
+            }
+
+            if (line.find("Source:") != std::string::npos)
+            {
+                valid_section = false;
+                continue;
+            }
+
+            if (line.find("Symbols by name:") != std::string::npos)
+            {
+                valid_section = false;
+                continue;
+            }
+
+            if (line.find("Symbols by value:") != std::string::npos)
+            {
+                valid_section = true;
+                continue;
+            }
+
             if (valid_section)
                 add_symbol(line.c_str());
         }
@@ -202,7 +230,7 @@ void gui_debug_load_symbols_file(const char* file_path)
 
 void gui_debug_toggle_breakpoint(void)
 {
-    if (selected_address > 0)
+    if (selected_address >= 0)
     {
         if (emu_get_core()->GetM6502()->IsBreakpoint(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, selected_address))
             emu_get_core()->GetM6502()->RemoveBreakpoint(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, selected_address);
@@ -213,16 +241,25 @@ void gui_debug_toggle_breakpoint(void)
 
 void gui_debug_add_bookmark(void)
 {
-    add_bookmark = true;
+    add_bookmark_open = true;
+}
+
+void gui_debug_add_symbol(void)
+{
+    add_symbol_open = true;
 }
 
 void gui_debug_runtocursor(void)
 {
-    if (selected_address > 0)
+    if (selected_address >= 0)
     {
-        emu_get_core()->GetM6502()->AddRunToBreakpoint(selected_address);
+        gui_debug_runto_address(selected_address);
     }
+}
 
+void gui_debug_runto_address(u16 address)
+{
+    emu_get_core()->GetM6502()->AddRunToBreakpoint(address);
     emu_debug_continue();
 }
 
@@ -248,45 +285,22 @@ void gui_debug_window_disassembler(void)
     draw_disassembly();
 
     add_bookmark_popup();
+    add_symbol_popup();
 
     ImGui::End();
     ImGui::PopStyleVar();
 }
 
-void gui_debug_save_disassembler(const char* file_path)
+void gui_debug_save_disassembler(const char* file_path, bool full)
 {
     FILE* file = fopen(file_path, "w");
 
-    Memory* memory = emu_get_core()->GetMemory();
-    Memory::GLYNX_Disassembler_Record** records = memory->GetAllDisassemblerRecords();
-
-    for (int i = 0; i < 0x200000; i++)
+    if (IsValidPointer(file))
     {
-        Memory::GLYNX_Disassembler_Record* record = records[i];
-
-        if (IsValidPointer(record) && (record->name[0] != 0))
-        {
-            if (record->subroutine || record->irq)
-                fprintf(file, "\n");
-
-            char name[64];
-            strcpy(name, record->name);
-            RemoveColorFromString(name);
-
-            int len = (int)strlen(name);
-            char spaces[32];
-            int offset = 28 - len;
-            if (offset < 0)
-                offset = 0;
-            for (int i = 0; i < offset; i++)
-                spaces[i] = ' ';
-            spaces[offset] = 0;
-
-            fprintf(file, "%06X-%02X:    %s%s;%s\n", i, record->bank, name, spaces, record->bytes);
-
-            if (is_return_instruction(record->opcodes[0]))
-                fprintf(file, "\n");
-        }
+        if (full)
+            save_full_disassembler(file);
+        else
+            save_current_disassembler(file);
     }
 
     fclose(file);
@@ -349,6 +363,7 @@ static void draw_controls(void)
     if (ImGui::Button(ICON_MD_INPUT))
     {
         emu_debug_step_frame();
+        gui_debug_memory_step_frame();
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -440,6 +455,12 @@ static void draw_breakpoints(void)
                ImGui::PopID();
                continue;
             }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("Remove breakpoint");
+                ImGui::EndTooltip();
+            }
 
             ImGui::PopID();
 
@@ -451,6 +472,12 @@ static void draw_breakpoints(void)
                 brk->enabled = !brk->enabled;
             }
             ImGui::PopID();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text(brk->enabled ? "Disable breakpoint" : "Enable breakpoint");
+                ImGui::EndTooltip();
+            }
 
             ImGui::SameLine(); ImGui::TextColored(brk->enabled ? red : gray, "%s", k_breakpoint_types[brk->type]); ImGui::SameLine();
 
@@ -770,6 +797,11 @@ static void draw_context_menu(DisassemblerLine* line)
             gui_debug_add_bookmark();
         }
 
+        if (ImGui::Selectable("Add Symbol..."))
+        {
+            gui_debug_add_symbol();
+        }
+
         if (ImGui::Selectable("Toggle Breakpoint"))
         {
             gui_debug_toggle_breakpoint();
@@ -1051,9 +1083,14 @@ static void disassembler_menu(void)
 
     if (ImGui::BeginMenu("File"))
     {
-        if (ImGui::MenuItem("Save Code As..."))
+        if (ImGui::MenuItem("Save All Disassembled Code As..."))
         {
-            gui_file_dialog_save_disassembler();
+            gui_file_dialog_save_disassembler(true);
+        }
+
+        if (ImGui::MenuItem("Save Current View As..."))
+        {
+            gui_file_dialog_save_disassembler(false);
         }
 
         ImGui::EndMenu();
@@ -1078,21 +1115,17 @@ static void disassembler_menu(void)
 
         if (ImGui::BeginMenu("Go To Address..."))
         {
+            bool go = false;
             ImGui::PushItemWidth(45);
             if (ImGui::InputTextWithHint("##goto_address", "XXXX", goto_address, IM_ARRAYSIZE(goto_address), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
-            {
-                try
-                {
-                    request_goto_address((u16)std::stoul(goto_address, 0, 16));
-                }
-                catch(const std::invalid_argument&)
-                {
-                }
-                goto_address[0] = 0;
-            }
+                go = true;
+
             ImGui::PopItemWidth();
             ImGui::SameLine();
             if (ImGui::Button("Go!", ImVec2(40, 0)))
+                go = true;
+
+            if (go)
             {
                 try
                 {
@@ -1141,6 +1174,7 @@ static void disassembler_menu(void)
         if (ImGui::MenuItem("Step Frame", "F6"))
         {
             emu_debug_step_frame();
+            gui_debug_memory_step_frame();
         }
 
         if (ImGui::MenuItem("Run to Cursor", "F8"))
@@ -1151,6 +1185,35 @@ static void disassembler_menu(void)
         if (ImGui::MenuItem("Reset", "CTRL+R"))
         {
             emu_reset();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Run To Address..."))
+        {
+            bool go = false;
+            ImGui::PushItemWidth(45);
+            if (ImGui::InputTextWithHint("##runto_address", "XXXX", runto_address, IM_ARRAYSIZE(runto_address), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
+                go = true;
+
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            if (ImGui::Button("Run!", ImVec2(50, 0)))
+                go = true;
+
+            if (go)
+            {
+                try
+                {
+                    gui_debug_runto_address((u16)std::stoul(runto_address, 0, 16));
+                }
+                catch(const std::invalid_argument&)
+                {
+                }
+                runto_address[0] = 0;
+            }
+
+            ImGui::EndMenu();
         }
 
         ImGui::EndMenu();
@@ -1215,6 +1278,11 @@ static void disassembler_menu(void)
 
         ImGui::Separator();
 
+        if (ImGui::MenuItem("Add Symbol..."))
+        {
+            gui_debug_add_symbol();
+        }
+
         if (ImGui::MenuItem("Load Symbols..."))
         {
             open_symbols = true;
@@ -1236,28 +1304,32 @@ static void disassembler_menu(void)
 
 static void add_bookmark_popup(void)
 {
-    if (add_bookmark)
+    if (add_bookmark_open)
     {
         ImGui::OpenPopup("Add Bookmark");
-        add_bookmark = false;
+        add_bookmark_open = false;
     }
 
     if (ImGui::BeginPopupModal("Add Bookmark", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        static char address[5] = "";
-        static char name[32] = "";
+        static char address_bookmark[5] = "";
+        static char name_bookmark[32] = "";
+        static bool bookmark_modified = false;
         u16 bookmark_address = (u16)selected_address;
 
-        if (bookmark_address > 0)
-            snprintf(address, 5, "%04X", bookmark_address);
+        if (!bookmark_modified && selected_address >= 0)
+            snprintf(address_bookmark, 5, "%04X", bookmark_address);
 
         ImGui::Text("Name:");
         ImGui::PushItemWidth(200);ImGui::SetItemDefaultFocus();
-        ImGui::InputText("##name", name, IM_ARRAYSIZE(name));
+        ImGui::InputText("##name", name_bookmark, IM_ARRAYSIZE(name_bookmark));
 
         ImGui::Text("Address:");
         ImGui::PushItemWidth(50);
-        ImGui::InputTextWithHint("##bookaddr", "XXXX", address, IM_ARRAYSIZE(address), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+        if (ImGui::InputTextWithHint("##bookaddr", "XXXX", address_bookmark, IM_ARRAYSIZE(address_bookmark), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
+        {
+            bookmark_modified = true;
+        }
 
         ImGui::Separator();
 
@@ -1265,9 +1337,9 @@ static void add_bookmark_popup(void)
         {
             try
             {
-                bookmark_address = (int)std::stoul(address, 0, 16);
+                bookmark_address = (int)std::stoul(address_bookmark, 0, 16);
 
-                if (strlen(name) == 0)
+                if (strlen(name_bookmark) == 0)
                 {
                     Memory* memory = emu_get_core()->GetMemory();
                     Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(bookmark_address);
@@ -1278,22 +1350,23 @@ static void add_bookmark_popup(void)
                         size_t pos = instr.find("{}");
                         if (pos != std::string::npos)
                             instr.replace(pos, 2, "");
-                        snprintf(name, 32, "%s", instr.c_str());
+                        snprintf(name_bookmark, 32, "%s", instr.c_str());
                     }
                     else
                     {
-                        snprintf(name, 32, "Bookmark_%04X", bookmark_address);
+                        snprintf(name_bookmark, 32, "Bookmark_%04X", bookmark_address);
                     }
                 }
 
                 DisassemblerBookmark bookmark;
                 bookmark.address = bookmark_address;
-                snprintf(bookmark.name, 32, "%s", name);
+                snprintf(bookmark.name, 32, "%s", name_bookmark);
                 bookmarks.push_back(bookmark);
                 ImGui::CloseCurrentPopup();
 
-                address[0] = 0;
-                name[0] = 0;
+                address_bookmark[0] = 0;
+                name_bookmark[0] = 0;
+                bookmark_modified = false;
             }
             catch(const std::invalid_argument&)
             {
@@ -1301,7 +1374,77 @@ static void add_bookmark_popup(void)
         }
 
         ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(90, 0))) { ImGui::CloseCurrentPopup(); }
+        if (ImGui::Button("Cancel", ImVec2(90, 0)))
+        {
+            address_bookmark[0] = 0;
+            name_bookmark[0] = 0;
+            bookmark_modified = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+static void add_symbol_popup(void)
+{
+    if (add_symbol_open)
+    {
+        ImGui::OpenPopup("Add Symbol");
+        add_symbol_open = false;
+    }
+
+    if (ImGui::BeginPopupModal("Add Symbol", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        static char address[8] = "";
+        static char name[32] = "";
+        static bool symbol_modified = false;
+
+        if (!symbol_modified && selected_address >= 0)
+            snprintf(address, 8, "%04X", selected_address);
+
+        ImGui::Text("Name:");
+        ImGui::PushItemWidth(200);ImGui::SetItemDefaultFocus();
+        ImGui::InputText("##symname", name, IM_ARRAYSIZE(name));
+
+        ImGui::Text("Address:");
+        ImGui::PushItemWidth(70);
+        if (ImGui::InputTextWithHint("##symaddr", "XX:XXXX", address, IM_ARRAYSIZE(address), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsUppercase))
+        {
+            symbol_modified = true;
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::Button("OK", ImVec2(90, 0)))
+        {
+            try
+            {
+                if (strlen(name) != 0)
+                {
+                    char symbol[128] = { };
+                    snprintf(symbol, 128, "%s %s", address, name);
+                    add_symbol(symbol);
+
+                    ImGui::CloseCurrentPopup();
+                    address[0] = 0;
+                    name[0] = 0;
+                    symbol_modified = false;
+                }
+            }
+            catch(const std::invalid_argument&)
+            {
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(90, 0)))
+        {
+            ImGui::CloseCurrentPopup();
+            address[0] = 0;
+            name[0] = 0;
+            symbol_modified = false;
+        }
 
         ImGui::EndPopup();
     }
@@ -1387,4 +1530,102 @@ void gui_debug_window_call_stack(void)
 
     ImGui::End();
     ImGui::PopStyleVar();
+}
+
+static void save_full_disassembler(FILE* file)
+{
+    Memory* memory = emu_get_core()->GetMemory();
+    Memory::GLYNX_Disassembler_Record** records = memory->GetAllDisassemblerRecords();
+
+    for (int i = 0; i < 0x200000; i++)
+    {
+        Memory::GLYNX_Disassembler_Record* record = records[i];
+
+        if (IsValidPointer(record) && (record->name[0] != 0))
+        {
+            if (record->subroutine || record->irq)
+                fprintf(file, "\n");
+
+            char name[64];
+            strcpy(name, record->name);
+            RemoveColorFromString(name);
+
+            int len = (int)strlen(name);
+            char spaces[32];
+            int offset = 28 - len;
+            if (offset < 0)
+                offset = 0;
+            for (int i = 0; i < offset; i++)
+                spaces[i] = ' ';
+            spaces[offset] = 0;
+
+            fprintf(file, "%06X-%02X:    %s%s;%s\n", i, record->bank, name, spaces, record->bytes);
+
+            if (is_return_instruction(record->opcodes[0]))
+                fprintf(file, "\n");
+        }
+    }
+}
+
+static void save_current_disassembler(FILE* file)
+{
+    int total_lines = (int)disassembler_lines.size();
+
+    for (int i = 0; i < total_lines; i++)
+    {
+        DisassemblerLine line = disassembler_lines[i];
+
+        if (line.symbol)
+        {
+            fprintf(file, "%s:\n", line.symbol->text);
+            continue;
+        }
+
+        fprintf(file, "  ");
+
+        if (config_debug.dis_show_segment)
+            fprintf(file, "%s ", line.record->segment);
+        if (config_debug.dis_show_bank)
+            fprintf(file, "%02X ", line.record->bank);
+
+        fprintf(file, " %04X ", line.address);
+
+        if (config_debug.dis_replace_symbols && line.record->jump)
+        {
+            replace_symbols(&line, "");
+        }
+
+        if (config_debug.dis_replace_labels)
+        {
+            replace_labels(&line, "", "");
+        }
+
+        std::string instr = line.name_enhanced;
+        size_t pos = instr.find("{}");
+        if (pos != std::string::npos)
+            instr.replace(pos, 2, "");
+
+        fprintf(file, "   %s ", instr.c_str());
+
+        if (config_debug.dis_show_mem)
+        {
+            int len = (int)instr.length();
+            char spaces[39];
+            int offset = 38 - len;
+            if (offset < 0)
+                offset = 0;
+            for (int i = 0; (i < offset) && (i < 38); i++)
+                spaces[i] = ' ';
+            spaces[offset] = 0;
+
+            fprintf(file, "%s;%s", spaces, line.record->bytes);
+        }
+
+        fprintf(file, "\n");
+
+        if (is_return_instruction(line.record->opcodes[0]))
+        {
+            fprintf(file, "\n\n");
+        }
+    }
 }

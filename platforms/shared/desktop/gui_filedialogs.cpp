@@ -164,7 +164,7 @@ void gui_file_dialog_choose_savestate_path(void)
     nfdresult_t result = NFD_PickFolderU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
-        strcpy(gui_savestates_path, outPath);
+        strncpy(gui_savestates_path, outPath, sizeof(gui_savestates_path));
         config_emulator.savestates_path.assign(outPath);
         update_savestates_data();
         NFD_FreePath(outPath);
@@ -185,7 +185,7 @@ void gui_file_dialog_choose_screenshot_path(void)
     nfdresult_t result = NFD_PickFolderU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
-        strcpy(gui_screenshots_path, outPath);
+        strncpy(gui_screenshots_path, outPath, sizeof(gui_screenshots_path));
         config_emulator.screenshots_path.assign(outPath);
         NFD_FreePath(outPath);
     }
@@ -208,7 +208,7 @@ void gui_file_dialog_load_bios(void)
     nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
-        strcpy(gui_bios_path, outPath);
+        strncpy(gui_bios_path, outPath, sizeof(gui_bios_path));
         config_emulator.bios_path.assign(outPath);
         emu_load_bios(outPath);
         NFD_FreePath(outPath);
@@ -265,10 +265,10 @@ void gui_file_dialog_save_screenshot(void)
     }
 }
 
-void gui_file_dialog_save_memory_dump(void)
+void gui_file_dialog_save_memory_dump(bool binary)
 {
     nfdchar_t *outPath;
-    nfdfilteritem_t filterItem[1] = { { "Memory Dump Files", "txt" } };
+    nfdfilteritem_t filterItem[1] = { { "Memory Dump Files", binary ? "bin" : "txt" } };
     nfdsavedialogu8args_t args = { };
     args.filterList = filterItem;
     args.filterCount = 1;
@@ -279,7 +279,7 @@ void gui_file_dialog_save_memory_dump(void)
     nfdresult_t result = NFD_SaveDialogU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
-        gui_debug_save_memory_dump(outPath);
+        gui_debug_memory_save_dump(outPath, binary);
         NFD_FreePath(outPath);
     }
     else if (result != NFD_CANCEL)
@@ -288,7 +288,7 @@ void gui_file_dialog_save_memory_dump(void)
     }
 }
 
-void gui_file_dialog_save_disassembler(void)
+void gui_file_dialog_save_disassembler(bool full)
 {
     nfdchar_t *outPath;
     nfdfilteritem_t filterItem[1] = { { "Disassembler Files", "txt" } };
@@ -302,7 +302,7 @@ void gui_file_dialog_save_disassembler(void)
     nfdresult_t result = NFD_SaveDialogU8_With(&outPath, &args);
     if (result == NFD_OKAY)
     {
-        gui_debug_save_disassembler(outPath);
+        gui_debug_save_disassembler(outPath, full);
         NFD_FreePath(outPath);
     }
     else if (result != NFD_CANCEL)
