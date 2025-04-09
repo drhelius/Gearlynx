@@ -46,8 +46,11 @@ static int sdl_init(void);
 static void sdl_destroy(void);
 static void sdl_load_gamepad_mappings(void);
 static void sdl_events(void);
+static void sdl_events_app(const SDL_Event* event);
 static void sdl_events_emu(const SDL_Event* event);
 static void sdl_shortcuts_gui(const SDL_Event* event);
+static void sdl_add_gamepads(void);
+static void sdl_remove_gamepad(SDL_JoystickID instance_id);
 static void handle_mouse_cursor(void);
 static void run_emulator(void);
 static void render(void);
@@ -145,6 +148,8 @@ static int sdl_init(void)
 {
     Debug("Initializing SDL...");
 
+    InitPointer(application_gamepad);
+
 #if defined(_WIN32)
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
 #endif
@@ -179,28 +184,7 @@ static int sdl_init(void)
     SDL_SetWindowMinimumSize(application_sdl_window, 500, 300);
 
     sdl_load_gamepad_mappings();
-
-    int gamepads_found = 0;
-
-    for (int i = 0; i < SDL_NumJoysticks(); ++i)
-    {
-        if (SDL_IsGameController(i))
-        {
-            application_gamepad = SDL_GameControllerOpen(i);
-            if(!application_gamepad)
-            {
-                Log("ERROR: Unable to open game controller %d! SDL Error: %s\n", gamepads_found, SDL_GetError());
-            }
-            else
-            {
-                Debug("Game controller %d correctly detected", i);
-                gamepads_found++;
-
-                if (gamepads_found > 1)
-                    break;
-            }
-        }
-    }
+    sdl_add_gamepads();
 
     int w, h;
     int display_w, display_h;
@@ -228,6 +212,69 @@ static void sdl_destroy(void)
     SDL_Quit();
 }
 
+static void sdl_load_gamepad_mappings(void)
+{
+    std::ifstream file("gamecontrollerdb.txt");
+
+    int added_mappings = 0;
+    int updated_mappings = 0;
+    int line_number = 0;
+    char platform_field[64] = { };
+    snprintf(platform_field, 64, "platform:%s", SDL_GetPlatform());
+
+    if (file.is_open())
+    {
+        Debug("Loading gamecontrollerdb.txt file");
+
+        std::string line;
+
+        while (std::getline(file, line))
+        {
+            size_t comment = line.find_first_of('#');
+            if (comment != std::string::npos)
+                line = line.substr(0, comment);
+
+            line = line.erase(0, line.find_first_not_of(" \t\r\n"));
+            line = line.erase(line.find_last_not_of(" \t\r\n") + 1);
+
+            while (line[0] == ' ')
+                line = line.substr(1);
+
+            if (line.empty())
+                continue;
+
+            if ((line.find("platform:") != std::string::npos) && (line.find(platform_field) == std::string::npos))
+                continue;
+
+            int result = SDL_GameControllerAddMapping(line.c_str());
+            if (result == 1)
+                added_mappings++;
+            else if (result == 0)
+                updated_mappings++;
+            else if (result == -1)
+            {
+                Log("ERROR: Unable to load game controller mapping in line %d from gamecontrollerdb.txt", line_number);
+                Log("SDL: %s", SDL_GetError());
+            }
+
+            line_number++;
+        }
+
+        file.close();
+    }
+    else
+    {
+        Log("ERROR: Game controller database not found (gamecontrollerdb.txt)!!");
+        return;
+    }
+
+    Log("Added %d new game controller mappings from gamecontrollerdb.txt", added_mappings);
+    Log("Updated %d game controller mappings from gamecontrollerdb.txt", updated_mappings);
+
+    application_added_gamepad_mappings = added_mappings;
+    application_updated_gamepad_mappings = updated_mappings;
+}
+
 static void handle_mouse_cursor(void)
 {
     bool hide_cursor = false;
@@ -244,80 +291,52 @@ static void handle_mouse_cursor(void)
         ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
 }
 
-static void sdl_load_gamepad_mappings(void)
-{
-    std::ifstream file("gamecontrollerdb.txt");
-    int added_mappings = 0;
-    int updated_mappings = 0;
-    int line_number = 0;
-    char platform_field[64] = { };
-    snprintf(platform_field, 64, "platform:%s", SDL_GetPlatform());
-    if (file.is_open())
-    {
-        Debug("Loading gamecontrollerdb.txt file");
-        std::string line;
-        while (std::getline(file, line))
-        {
-            size_t comment = line.find_first_of('#');
-            if (comment != std::string::npos)
-                line = line.substr(0, comment);
-            line = line.erase(0, line.find_first_not_of(" \t\r\n"));
-            line = line.erase(line.find_last_not_of(" \t\r\n") + 1);
-            while (line[0] == ' ')
-                line = line.substr(1);
-            if (line.empty())
-                continue;
-            if ((line.find("platform:") != std::string::npos) && (line.find(platform_field) == std::string::npos))
-                continue;
-            int result = SDL_GameControllerAddMapping(line.c_str());
-            if (result == 1)
-                added_mappings++;
-            else if (result == 0)
-                updated_mappings++;
-            else if (result == -1)
-            {
-                Log("ERROR: Unable to load game controller mapping in line %d from gamecontrollerdb.txt", line_number);
-                Log("SDL: %s", SDL_GetError());
-            }
-            line_number++;
-        }
-        file.close();
-    }
-    else
-    {
-        Log("ERROR: Game controller database not found (gamecontrollerdb.txt)!!");
-        return;
-    }
-    Log("Added %d new game controller mappings from gamecontrollerdb.txt", added_mappings);
-    Log("Updated %d game controller mappings from gamecontrollerdb.txt", updated_mappings);
-    application_added_gamepad_mappings = added_mappings;
-    application_updated_gamepad_mappings = updated_mappings;
-}
-
 static void sdl_events(void)
 {
     SDL_Event event;
         
     while (SDL_PollEvent(&event))
     {
-        if (event.type == SDL_QUIT)
+        sdl_events_app(&event);
+
+        if (running)
         {
-            running = false;
+            ImGui_ImplSDL2_ProcessEvent(&event);
+
+            if (!gui_in_use)
+            {
+                sdl_events_emu(&event);
+                sdl_shortcuts_gui(&event);
+            }
+        }
+    }
+}
+
+static void sdl_events_app(const SDL_Event* event)
+{
+    if (event->type == SDL_QUIT)
+    {
+        running = false;
+        return;
+    }
+
+    if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_CLOSE && event->window.windowID == SDL_GetWindowID(application_sdl_window))
+    {
+        running = false;
+        return;
+    }
+
+    switch (event->type)
+    {
+        case SDL_CONTROLLERDEVICEADDED:
+        {
+            sdl_add_gamepads();
             break;
         }
-
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(application_sdl_window))
+        case SDL_CONTROLLERDEVICEREMOVED:
         {
-            running = false;
+            sdl_remove_gamepad(event->cdevice.which);
             break;
-        }
-
-        ImGui_ImplSDL2_ProcessEvent(&event);
-
-        if (!gui_in_use)
-        {
-            sdl_events_emu(&event);
-            sdl_shortcuts_gui(&event);
         }
     }
 }
@@ -356,119 +375,130 @@ static void sdl_events_emu(const SDL_Event* event)
         }
         break;
 
-        // case SDL_CONTROLLERBUTTONDOWN:
-        // {
-        //     for (int i = 0; i < 2; i++)
-        //     {
-        //         GC_Controllers controller = (i == 0) ? Controller_1 : Controller_2;
-        //         SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad[i]));
+        case SDL_CONTROLLERBUTTONDOWN:
+        {
+            if (!IsValidPointer(application_gamepad))
+                break;
 
-        //         if (!config_input[i].gamepad)
-        //             continue;
+            SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad));
 
-        //         if (event->cbutton.which != id)
-        //             continue;
-                
-        //         if (event->cbutton.button == config_input[i].gamepad_left_button)
-        //             emu_key_pressed(controller, Key_Left_Button);
-        //         else if (event->cbutton.button == config_input[i].gamepad_right_button)
-        //             emu_key_pressed(controller, Key_Right_Button);
-        //         else if (event->jbutton.button == config_input[i].gamepad_0)
-        //             emu_key_pressed(controller, Keypad_0);
-        //         else if (event->jbutton.button == config_input[i].gamepad_1)
-        //             emu_key_pressed(controller, Keypad_1);
-        //         else if (event->jbutton.button == config_input[i].gamepad_2)
-        //             emu_key_pressed(controller, Keypad_2);
-        //         else if (event->jbutton.button == config_input[i].gamepad_3)
-        //             emu_key_pressed(controller, Keypad_3);
-        //         else if (event->jbutton.button == config_input[i].gamepad_4)
-        //             emu_key_pressed(controller, Keypad_4);
-        //         else if (event->jbutton.button == config_input[i].gamepad_5)
-        //             emu_key_pressed(controller, Keypad_5);
-        //         else if (event->jbutton.button == config_input[i].gamepad_6)
-        //             emu_key_pressed(controller, Keypad_6);
-        //         else if (event->jbutton.button == config_input[i].gamepad_7)
-        //             emu_key_pressed(controller, Keypad_7);
-        //         else if (event->jbutton.button == config_input[i].gamepad_8)
-        //             emu_key_pressed(controller, Keypad_8);
-        //         else if (event->jbutton.button == config_input[i].gamepad_9)
-        //             emu_key_pressed(controller, Keypad_9);
-        //         else if (event->jbutton.button == config_input[i].gamepad_asterisk)
-        //             emu_key_pressed(controller, Keypad_Asterisk);
-        //         else if (event->jbutton.button == config_input[i].gamepad_hash)
-        //             emu_key_pressed(controller, Keypad_Hash);
+            if (!config_input.gamepad)
+                break;
 
-        //         if (config_input[i].gamepad_directional == 1)
-        //             continue;
-                
-        //         if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
-        //             emu_key_pressed(controller, Key_Up);
-        //         else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
-        //             emu_key_pressed(controller, Key_Down);
-        //         else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
-        //             emu_key_pressed(controller, Key_Left);
-        //         else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
-        //             emu_key_pressed(controller, Key_Right);
-        //     }
-        // }
-        // break;
+            if (event->cbutton.which != id)
+                break;
 
-        // case SDL_CONTROLLERBUTTONUP:
-        // {
-        //     for (int i = 0; i < 2; i++)
-        //     {
-        //         GC_Controllers controller = (i == 0) ? Controller_1 : Controller_2;
-        //         SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad[i]));
+            if (event->cbutton.button == config_input.gamepad_A)
+                emu_key_pressed(GLYNX_KEY_A);
+            else if (event->cbutton.button == config_input.gamepad_B)
+                emu_key_pressed(GLYNX_KEY_B);
+            else if (event->cbutton.button == config_input.gamepad_start)
+                emu_key_pressed(GLYNX_KEY_START);
+            else if (event->cbutton.button == config_input.gamepad_option1)
+                emu_key_pressed(GLYNX_KEY_OPTION1);
+            else if (event->cbutton.button == config_input.gamepad_option2)
+                emu_key_pressed(GLYNX_KEY_OPTION2);
 
-        //         if (!config_input[i].gamepad)
-        //             continue;
+            if (config_input.gamepad_directional == 1)
+                break;
 
-        //         if (event->jbutton.which != id)
-        //             continue;
+            if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
+                emu_key_pressed(GLYNX_KEY_UP);
+            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+                emu_key_pressed(GLYNX_KEY_DOWN);
+            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+                emu_key_pressed(GLYNX_KEY_LEFT);
+            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
+                emu_key_pressed(GLYNX_KEY_RIGHT);
+        }
+        break;
 
-        //         if (event->jbutton.button == config_input[i].gamepad_left_button)
-        //             emu_key_released(controller, Key_Left_Button);
-        //         else if (event->jbutton.button == config_input[i].gamepad_right_button)
-        //             emu_key_released(controller, Key_Right_Button);
-        //         else if (event->jbutton.button == config_input[i].gamepad_0)
-        //             emu_key_released(controller, Keypad_0);
-        //         else if (event->jbutton.button == config_input[i].gamepad_1)
-        //             emu_key_released(controller, Keypad_1);
-        //         else if (event->jbutton.button == config_input[i].gamepad_2)
-        //             emu_key_released(controller, Keypad_2);
-        //         else if (event->jbutton.button == config_input[i].gamepad_3)
-        //             emu_key_released(controller, Keypad_3);
-        //         else if (event->jbutton.button == config_input[i].gamepad_4)
-        //             emu_key_released(controller, Keypad_4);
-        //         else if (event->jbutton.button == config_input[i].gamepad_5)
-        //             emu_key_released(controller, Keypad_5);
-        //         else if (event->jbutton.button == config_input[i].gamepad_6)
-        //             emu_key_released(controller, Keypad_6);
-        //         else if (event->jbutton.button == config_input[i].gamepad_7)
-        //             emu_key_released(controller, Keypad_7);
-        //         else if (event->jbutton.button == config_input[i].gamepad_8)
-        //             emu_key_released(controller, Keypad_8);
-        //         else if (event->jbutton.button == config_input[i].gamepad_9)
-        //             emu_key_released(controller, Keypad_9);
-        //         else if (event->jbutton.button == config_input[i].gamepad_asterisk)
-        //             emu_key_released(controller, Keypad_Asterisk);
-        //         else if (event->jbutton.button == config_input[i].gamepad_hash)
-        //             emu_key_released(controller, Keypad_Hash);
+        case SDL_CONTROLLERBUTTONUP:
+        {
+            if (!IsValidPointer(application_gamepad))
+                break;
 
-        //         if (config_input[i].gamepad_directional == 1)
-        //             continue;
-                
-        //         if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
-        //             emu_key_released(controller, Key_Up);
-        //         else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
-        //             emu_key_released(controller, Key_Down);
-        //         else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
-        //             emu_key_released(controller, Key_Left);
-        //         else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
-        //             emu_key_released(controller, Key_Right);
-        //     }
-        // }
-        // break;
+            SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad));
+
+            if (!config_input.gamepad)
+                break;
+
+            if (event->cbutton.which != id)
+                break;
+
+            if (event->cbutton.button == config_input.gamepad_A)
+                emu_key_released(GLYNX_KEY_A);
+            else if (event->cbutton.button == config_input.gamepad_B)
+                emu_key_released(GLYNX_KEY_B);
+            else if (event->cbutton.button == config_input.gamepad_start)
+                emu_key_released(GLYNX_KEY_START);
+            else if (event->cbutton.button == config_input.gamepad_option1)
+                emu_key_released(GLYNX_KEY_OPTION1);
+            else if (event->cbutton.button == config_input.gamepad_option2)
+                emu_key_released(GLYNX_KEY_OPTION2);
+
+            if (config_input.gamepad_directional == 1)
+                break;
+
+            if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
+                emu_key_released(GLYNX_KEY_UP);
+            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+                emu_key_released(GLYNX_KEY_DOWN);
+            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+                emu_key_released(GLYNX_KEY_LEFT);
+            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
+                emu_key_released(GLYNX_KEY_RIGHT);
+        }
+        break;
+
+        case SDL_CONTROLLERAXISMOTION:
+        {
+            if (!IsValidPointer(application_gamepad))
+                break;
+
+            SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad));
+
+            if (!config_input.gamepad)
+                break;
+
+            if (config_input.gamepad_directional == 0)
+                break;
+
+            if (event->caxis.which != id)
+                break;
+
+            const int STICK_DEAD_ZONE = 8000;
+
+            if(event->caxis.axis == config_input.gamepad_x_axis)
+            {
+                int x_motion = event->caxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
+
+                if (x_motion < -STICK_DEAD_ZONE)
+                    emu_key_pressed(GLYNX_KEY_LEFT);
+                else if (x_motion > STICK_DEAD_ZONE)
+                    emu_key_pressed(GLYNX_KEY_RIGHT);
+                else
+                {
+                    emu_key_released(GLYNX_KEY_LEFT);
+                    emu_key_released(GLYNX_KEY_RIGHT);
+                }
+            }
+            else if(event->caxis.axis == config_input.gamepad_y_axis)
+            {
+                int y_motion = event->caxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
+
+                if (y_motion < -STICK_DEAD_ZONE)
+                    emu_key_pressed(GLYNX_KEY_UP);
+                else if (y_motion > STICK_DEAD_ZONE)
+                    emu_key_pressed(GLYNX_KEY_DOWN);
+                else
+                {
+                    emu_key_released(GLYNX_KEY_UP);
+                    emu_key_released(GLYNX_KEY_DOWN);
+                }
+            }
+        }
+        break;
 
         case SDL_KEYDOWN:
         {
@@ -620,6 +650,56 @@ static void sdl_shortcuts_gui(const SDL_Event* event)
                 if (event->key.keysym.mod & KMOD_CTRL)
                     gui_shortcut(gui_ShortcutDebugGoBack);
                 break;
+        }
+    }
+}
+
+static void sdl_add_gamepads(void)
+{
+    bool connected = IsValidPointer(application_gamepad);
+
+    if (connected)
+        return;
+
+    for (int i = 0; i < SDL_NumJoysticks(); i++)
+    {
+        if (!SDL_IsGameController(i))
+            continue;
+
+        SDL_GameController* controller = SDL_GameControllerOpen(i);
+        if (!IsValidPointer(controller))
+        {
+            Log("Warning: Unable to open game controller %d! SDL Error: %s\n", i, SDL_GetError());
+            continue;
+        }
+
+        if (!connected)
+        {
+            application_gamepad = controller;
+            connected = true;
+            Debug("Game controller %d assigned to Player 1", i);
+        }
+        else
+        {
+            SDL_GameControllerClose(controller);
+            Debug("Game controller %d detected but all player slots are full", i);
+        }
+
+        if (connected)
+            break;
+    }
+}
+
+static void sdl_remove_gamepad(SDL_JoystickID instance_id)
+{
+    if (application_gamepad != NULL)
+    {
+        SDL_JoystickID current_id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad));
+        if (current_id == instance_id)
+        {
+            SDL_GameControllerClose(application_gamepad);
+            application_gamepad = NULL;
+            Debug("Game controller %d disconnected", instance_id);
         }
     }
 }
