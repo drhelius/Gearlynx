@@ -146,7 +146,7 @@ static void draw_tabs(void)
 
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
-        if (i == MEMORY_EDITOR_ROM && !IsValidPointer(cart->GetROM()))
+        if (!IsValidPointer(cart->GetROM()))
             continue;
 
         if (ImGui::BeginTabItem(mem_edit[i].GetTitle(), NULL, mem_edit_select == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
