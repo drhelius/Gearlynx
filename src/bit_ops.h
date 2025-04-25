@@ -22,33 +22,21 @@
 
 #include "types.h"
 
-inline u8 SetBit(const u8 value, const u8 bit)
-{
-    return value | (0x01 << bit);
-}
+#define BIT(n) (1U << (n))
+#define BIT_MASK(n) (BIT(n) - 1)
+#define SET_BIT(value, bit) ((value) | (1U << (bit)))
+#define UNSET_BIT(value, bit) ((value) & (~(1U << (bit))))
+#define IS_SET_BIT(value, bit) (((value) & (1U << (bit))) != 0)
+#define FLIP_BIT(value, bit) ((value) ^ (1U << (bit)))
 
-inline u8 UnsetBit(const u8 value, const u8 bit)
-{
-    return value & (~(0x01 << bit));
-}
+static const u8 k_bitops_reverse_lut[16] = {
+    0x0, 0x8, 0x4, 0xC, 0x2, 0xA, 0x6, 0xE,
+    0x1, 0x9, 0x5, 0xD, 0x3, 0xB, 0x7, 0xF
+};
 
-inline bool IsSetBit(const u8 value, const u8 bit)
+INLINE u8 ReverseBits(const u8 value)
 {
-    return (value & (0x01 << bit)) != 0;
-}
-
-inline u8 FlipBit(const u8 value, const u8 bit)
-{
-    return value ^ (0x01 << bit);
-}
-
-inline u8 ReverseBits(const u8 value)
-{
-    u8 ret = value;
-    ret = (ret & 0xF0) >> 4 | (ret & 0x0F) << 4;
-    ret = (ret & 0xCC) >> 2 | (ret & 0x33) << 2;
-    ret = (ret & 0xAA) >> 1 | (ret & 0x55) << 1;
-    return ret;
+    return (k_bitops_reverse_lut[value & 0xF] << 4) | k_bitops_reverse_lut[value >> 4];
 }
 
 #endif /* BIT_OPS_H */

@@ -671,7 +671,7 @@
 #define ICON_MD_EDIT_ROAD "\xee\xbd\x8d"	// U+ef4d
 #define ICON_MD_EDIT_SQUARE "\xef\xa2\x8d"	// U+f88d
 #define ICON_MD_EGG "\xee\xab\x8c"	// U+eacc
-#define ICON_MD_EGL_ALT "\xee\xab\x88"	// U+eac8
+#define ICON_MD_EGG_ALT "\xee\xab\x88"	// U+eac8
 #define ICON_MD_EJECT "\xee\xa3\xbb"	// U+e8fb
 #define ICON_MD_ELDERLY "\xef\x88\x9a"	// U+f21a
 #define ICON_MD_ELDERLY_WOMAN "\xee\xad\xa9"	// U+eb69

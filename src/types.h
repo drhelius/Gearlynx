@@ -102,4 +102,19 @@ struct GLYNX_SaveState_Screenshot
     u8* data;
 };
 
+struct GLYNX_Disassembler_Record
+{
+    u32 address;
+    char name[64];
+    char bytes[25];
+    char segment[5];
+    u8 opcodes[7];
+    int size;
+    bool jump;
+    u16 jump_address;
+    u8 jump_bank;
+    bool subroutine;
+    int irq;
+};
+
 #endif /* TYPES_H */

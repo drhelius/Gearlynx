@@ -71,9 +71,6 @@ void M6502::OPCode0x07()
 void M6502::OPCode0x08()
 {
     // PHP
-#if !defined(GLYNX_TESTING)
-    ClearFlag(FLAG_TRANSFER);
-#endif
     StackPush8(m_P.GetValue() | FLAG_BREAK);
 }
 
@@ -115,7 +112,7 @@ void M6502::OPCode0x0E()
 void M6502::OPCode0x0F()
 {
     // BBR0 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 0));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 0));
 }
 
 void M6502::OPCode0x10()
@@ -210,7 +207,7 @@ void M6502::OPCode0x1E()
 void M6502::OPCode0x1F()
 {
     // BBR1 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 1));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 1));
 }
 
 void M6502::OPCode0x20()
@@ -271,10 +268,7 @@ void M6502::OPCode0x28()
 {
     // PLP
     m_P.SetValue(StackPop8());
-    m_skip_flag_transfer_clear = true;
-#if defined(GLYNX_TESTING)
     ClearFlag(FLAG_BREAK);
-#endif
 }
 
 void M6502::OPCode0x29()
@@ -315,7 +309,7 @@ void M6502::OPCode0x2E()
 void M6502::OPCode0x2F()
 {
     // BBR2 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 2));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 2));
 }
 
 void M6502::OPCode0x30()
@@ -409,7 +403,7 @@ void M6502::OPCode0x3E()
 void M6502::OPCode0x3F()
 {
     // BBR3 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 3));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 3));
 }
 
 void M6502::OPCode0x40()
@@ -417,10 +411,7 @@ void M6502::OPCode0x40()
     // RTI
     m_P.SetValue(StackPop8());
     m_PC.SetValue(StackPop16());
-    m_skip_flag_transfer_clear = true;
-#if defined(GLYNX_TESTING)
     ClearFlag(FLAG_BREAK);
-#endif
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     PopCallStack();
 #endif
@@ -512,7 +503,7 @@ void M6502::OPCode0x4E()
 void M6502::OPCode0x4F()
 {
     // BBR4 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 4));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 4));
 }
 
 void M6502::OPCode0x50()
@@ -606,7 +597,7 @@ void M6502::OPCode0x5E()
 void M6502::OPCode0x5F()
 {
     // BBR5 ZP,r
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 5));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 5));
 }
 
 void M6502::OPCode0x60()
@@ -705,7 +696,7 @@ void M6502::OPCode0x6E()
 void M6502::OPCode0x6F()
 {
     // BBR6 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 6));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 6));
 }
 
 void M6502::OPCode0x70()
@@ -729,7 +720,7 @@ void M6502::OPCode0x72()
 void M6502::OPCode0x73()
 {
     // TII
-    OPCodes_TII();
+
 }
 
 void M6502::OPCode0x74()
@@ -802,7 +793,7 @@ void M6502::OPCode0x7E()
 void M6502::OPCode0x7F()
 {
     // BBR7 ZP,rr
-    OPcodes_Branch(!IsSetBit(MemoryRead(ZeroPageAddressing()), 7));
+    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 7));
 }
 
 void M6502::OPCode0x80()
@@ -899,7 +890,7 @@ void M6502::OPCode0x8E()
 void M6502::OPCode0x8F()
 {
     // BBS0 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 0));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 0));
 }
 
 void M6502::OPCode0x90()
@@ -995,7 +986,7 @@ void M6502::OPCode0x9E()
 void M6502::OPCode0x9F()
 {
     // BBS1 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 1));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 1));
 }
 
 void M6502::OPCode0xA0()
@@ -1091,7 +1082,7 @@ void M6502::OPCode0xAE()
 void M6502::OPCode0xAF()
 {
     // BBS2 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 2));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 2));
 }
 
 void M6502::OPCode0xB0()
@@ -1187,7 +1178,7 @@ void M6502::OPCode0xBE()
 void M6502::OPCode0xBF()
 {
     // BBS3 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 3));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 3));
 }
 
 void M6502::OPCode0xC0()
@@ -1211,7 +1202,6 @@ void M6502::OPCode0xC2()
 void M6502::OPCode0xC3()
 {
     // TDD
-    OPCodes_TDD();
 }
 
 void M6502::OPCode0xC4()
@@ -1282,7 +1272,7 @@ void M6502::OPCode0xCE()
 void M6502::OPCode0xCF()
 {
     // BBS4 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 4));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 4));
 }
 
 void M6502::OPCode0xD0()
@@ -1306,7 +1296,7 @@ void M6502::OPCode0xD2()
 void M6502::OPCode0xD3()
 {
     // TIN
-    OPCodes_TIN();
+
 }
 
 void M6502::OPCode0xD4()
@@ -1376,7 +1366,7 @@ void M6502::OPCode0xDE()
 void M6502::OPCode0xDF()
 {
     // BBS5 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 5));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 5));
 }
 
 void M6502::OPCode0xE0()
@@ -1399,7 +1389,7 @@ void M6502::OPCode0xE2()
 void M6502::OPCode0xE3()
 {
     // TIA
-    OPCodes_TIA();
+
 }
 
 void M6502::OPCode0xE4()
@@ -1469,7 +1459,7 @@ void M6502::OPCode0xEE()
 void M6502::OPCode0xEF()
 {
     // BBS6 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 6));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 6));
 }
 
 void M6502::OPCode0xF0()
@@ -1493,14 +1483,12 @@ void M6502::OPCode0xF2()
 void M6502::OPCode0xF3()
 {
     // TAI
-    OPCodes_TAI();
+
 }
 
 void M6502::OPCode0xF4()
 {
     // SET
-    SetFlag(FLAG_TRANSFER);
-    m_skip_flag_transfer_clear = true;
 }
 
 void M6502::OPCode0xF5()
@@ -1566,5 +1554,5 @@ void M6502::OPCode0xFE()
 void M6502::OPCode0xFF()
 {
     // BBS7 ZP,rr
-    OPcodes_Branch(IsSetBit(MemoryRead(ZeroPageAddressing()), 7));
+    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 7));
 }

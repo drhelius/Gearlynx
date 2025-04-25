@@ -24,6 +24,11 @@
 #include <stdarg.h>
 #include "defines.h"
 
+#if defined(__LIBRETRO__)
+#include "libretro.h"
+extern retro_log_printf_t log_cb;
+#endif
+
 #if defined(GLYNX_DEBUG)
     #if defined(__ANDROID__)
         #include <android/log.h>
@@ -43,6 +48,14 @@ inline void Log_func(const char* const msg, ...)
     va_start(args, msg);
     vsnprintf(buffer, 512, msg, args);
     va_end(args);
+
+#if defined(__LIBRETRO__)
+    if (log_cb)
+    {
+        log_cb(RETRO_LOG_INFO, "%s\n", buffer);
+        return;
+    }
+#endif
 
 #if defined(GLYNX_DEBUG)
     static int count = 1;

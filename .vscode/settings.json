@@ -3,6 +3,7 @@
         "**/*.o": true,
         "**/*.so": true,
         "**/*.dylib": true,
+        "**/*.tmp": true,
         "**/gearlynx": true,
         "**/gearlynx-tests": true,
         "**/binary_to_compressed_c": true,

@@ -122,12 +122,12 @@ bool Memory::IsBiosLoaded()
     return m_bios_loaded;
 }
 
-Memory::GLYNX_Disassembler_Record* Memory::GetDisassemblerRecord(u16 address)
+GLYNX_Disassembler_Record* Memory::GetDisassemblerRecord(u16 address)
 {
     return m_disassembler[address];
 }
 
-Memory::GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 address)
+GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 address)
 {
     //TODO: implement disassembler
     GLYNX_Disassembler_Record* record = m_disassembler[address];
@@ -136,7 +136,6 @@ Memory::GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 add
     {
         record = new GLYNX_Disassembler_Record();
         record->address = address;
-        record->bank = 0;
         record->segment[0] = 0;
         record->name[0] = 0;
         record->bytes[0] = 0;
@@ -164,7 +163,7 @@ void Memory::ResetDisassemblerRecords()
 #endif
 }
 
-Memory::GLYNX_Disassembler_Record** Memory::GetAllDisassemblerRecords()
+GLYNX_Disassembler_Record** Memory::GetAllDisassemblerRecords()
 {
     return m_disassembler;
 }

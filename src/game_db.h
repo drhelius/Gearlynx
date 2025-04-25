@@ -50,7 +50,7 @@ const GLYNX_Game_DB_Entry k_game_database[] =
 {
     { 0x9D09BC4C, "8-Bit Slicks (World) (Aftermarket) (Unl)", 524288, 0, 0, GLYNX_DB_FLAG_EEPROM_93C46 },
     { 0x427D0E97, "A Bug's Trip Redux (World) (Aftermarket) (Unl)", 524288, 0, 0, GLYNX_DB_FLAG_EEPROM_93C46 },
-    { 0x540E9BB7, "Alien vs Predator (USA) (Proto) (1993-12-17)", 262144, 0, 0 },
+    { 0x540E9BB7, "Alien vs Predator (USA) (Proto) (1993-12-17)", 262144, 0, 0, 0 },
     { 0x95A1EA09, "Alpine Games (World) (Aftermarket) (Unl)", 524288, GLYNX_DB_SIZE_C256K, 0, GLYNX_DB_FLAG_AUDIN | GLYNX_DB_FLAG_EEPROM_93C46 },
     { 0xF6FB48FB, "A.P.B. (USA, Europe)", 262144, 0, 0, 0 },
     { 0x0483CD2A, "Awesome Golf (USA, Europe)", 262144, 0, 0, 0 },

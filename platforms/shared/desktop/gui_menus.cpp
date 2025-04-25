@@ -28,6 +28,7 @@
 #include "application.h"
 #include "emu.h"
 #include "renderer.h"
+#include "utils.h"
 #include "../../../src/gearlynx.h"
 
 static bool open_rom = false;
@@ -56,14 +57,6 @@ static void draw_savestate_slot_info(int slot);
 
 void gui_init_menus(void)
 {
-    strcpy(gui_savefiles_path, config_emulator.savefiles_path.c_str());
-    strcpy(gui_savestates_path, config_emulator.savestates_path.c_str());
-    strcpy(gui_screenshots_path, config_emulator.screenshots_path.c_str());
-    strcpy(gui_bios_path, config_emulator.bios_path.c_str());
-
-    if (strlen(gui_bios_path) > 0)
-        emu_load_bios(gui_bios_path);
-
     gui_shortcut_open_rom = false;
 }
 
@@ -164,6 +157,18 @@ static void menu_gearlynx(void)
             ImGui::Combo("##fwd", &config_emulator.ffwd_speed, "X 1.5\0X 2\0X 2.5\0X 3\0Unlimited\0\0");
             ImGui::PopItemWidth();
             ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Save RAM As..."))
+        {
+            save_ram = true;
+        }
+
+        if (ImGui::MenuItem("Load RAM From..."))
+        {
+            open_ram = true;
         }
 
         ImGui::Separator();
@@ -280,7 +285,7 @@ static void menu_emulator(void)
                 }
                 case Directory_Location_ROM:
                 {
-                    if (emu_get_core()->GetCartridge()->IsReady())
+                    if (!emu_is_empty())
                         ImGui::Text("%s", emu_get_core()->GetCartridge()->GetFileDirectory());
                     break;
                 }
@@ -304,12 +309,46 @@ static void menu_emulator(void)
 
             ImGui::EndMenu();
         }
+/*
 
-        // if (ImGui::BeginMenu("RAM Saves Dir"))
-        // {
-        //     ImGui::EndMenu();
-        // }
+        if (ImGui::BeginMenu("Backup RAM Dir"))
+        {
+            ImGui::PushItemWidth(220.0f);
+            ImGui::Combo("##backup_ram_option", &config_emulator.backup_ram_dir_option, "Default Location\0Same as ROM\0Custom Location\0\0");
 
+            switch ((Directory_Location)config_emulator.backup_ram_dir_option)
+            {
+                case Directory_Location_Default:
+                {
+                    ImGui::Text("%s", config_root_path);
+                    break;
+                }
+                case Directory_Location_ROM:
+                {
+                    if (!emu_is_empty())
+                        ImGui::Text("%s", emu_get_core()->GetCartridge()->GetFileDirectory());
+                    break;
+                }
+                case Directory_Location_Custom:
+                {
+                    if (ImGui::MenuItem("Choose..."))
+                    {
+                        choose_backup_ram_path = true;
+                    }
+
+                    ImGui::PushItemWidth(450);
+                    if (ImGui::InputText("##backup_ram_path", gui_backup_ram_path, IM_ARRAYSIZE(gui_backup_ram_path), ImGuiInputTextFlags_AutoSelectAll))
+                    {
+                        config_emulator.backup_ram_path.assign(gui_backup_ram_path);
+                    }
+                    ImGui::PopItemWidth();
+                    break;
+                }
+            }
+
+            ImGui::EndMenu();
+        }
+*/
         if (ImGui::BeginMenu("Screenshots Dir"))
         {
             ImGui::PushItemWidth(220.0f);
@@ -324,7 +363,7 @@ static void menu_emulator(void)
                 }
                 case Directory_Location_ROM:
                 {
-                    if (emu_get_core()->GetCartridge()->IsReady())
+                    if (!emu_is_empty())
                         ImGui::Text("%s", emu_get_core()->GetCartridge()->GetFileDirectory());
                     break;
                 }
@@ -523,6 +562,7 @@ static void menu_audio(void)
 
 static void menu_debug(void)
 {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (ImGui::BeginMenu("Debug"))
     {
         gui_in_use = true;
@@ -559,6 +599,7 @@ static void menu_debug(void)
 
         ImGui::EndMenu();
     }
+#endif
 }
 
 static void menu_about(void)

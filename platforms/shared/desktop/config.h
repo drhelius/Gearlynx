@@ -115,7 +115,6 @@ struct config_Debug
     bool show_psg = false;
     bool show_trace_logger = false;
     bool trace_counter = true;
-    bool trace_bank = true;
     bool trace_registers = true;
     bool trace_flags = true;
     bool trace_cycles = true;
@@ -123,7 +122,6 @@ struct config_Debug
     bool dis_show_mem = true;
     bool dis_show_symbols = true;
     bool dis_show_segment = true;
-    bool dis_show_bank = true;
     bool dis_show_auto_symbols = true;
     bool dis_replace_symbols = true;
     bool dis_replace_labels = true;

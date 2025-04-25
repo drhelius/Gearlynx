@@ -108,13 +108,10 @@ void gui_debug_trace_logger_update(GearlynxCore::GLYNX_Debug_State* state)
         }
 
         Memory* memory = emu_get_core()->GetMemory();
-        Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(state->PC);
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(state->PC);
 
         if (!IsValidPointer(record))
             return;
-
-        char bank[8];
-        snprintf(bank, sizeof(bank), "%02X:", record->bank);
 
         char registers[40];
         snprintf(registers, sizeof(registers), "A: %02X  X: %02X  Y: %02X  S: %02X   ",
@@ -124,7 +121,7 @@ void gui_debug_trace_logger_update(GearlynxCore::GLYNX_Debug_State* state)
         snprintf(flags, sizeof(flags), "P: %c%c%c%c%c%c%c%c   ",
             (state->P & FLAG_NEGATIVE) ? 'N' : 'n',
             (state->P & FLAG_OVERFLOW) ? 'V' : 'v',
-            (state->P & FLAG_TRANSFER) ? 'T' : 't',
+            '-',
             (state->P & FLAG_BREAK) ? 'B' : 'b',
             (state->P & FLAG_DECIMAL) ? 'D' : 'd',
             (state->P & FLAG_INTERRUPT) ? 'I' : 'i',
@@ -142,9 +139,8 @@ void gui_debug_trace_logger_update(GearlynxCore::GLYNX_Debug_State* state)
         instr.erase(std::remove(instr.begin(), instr.end(), '}'), instr.end());
 
         char line[256];
-        snprintf(line, sizeof(line), "%s%s%04X   %s%s%s%s   %s",
+        snprintf(line, sizeof(line), "%s%04X   %s%s%s%s   %s",
             config_debug.trace_counter ? counter : "",
-            config_debug.trace_bank ? bank : "", 
             state->PC, 
             config_debug.trace_registers ? registers : "", 
             config_debug.trace_flags ? flags : "",
@@ -195,7 +191,6 @@ static void trace_logger_menu(void)
     if (ImGui::BeginMenu("Log"))
     {
         ImGui::MenuItem("Instruction Counter", "", &config_debug.trace_counter);
-        ImGui::MenuItem("Bank Number", "", &config_debug.trace_bank);
         ImGui::MenuItem("Registers", "", &config_debug.trace_registers);
         ImGui::MenuItem("Flags", "", &config_debug.trace_flags);
         ImGui::MenuItem("Cycles", "", &config_debug.trace_cycles);

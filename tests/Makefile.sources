@@ -1,0 +1,16 @@
+SRC_DIR = ../src
+TEST_SRC_DIR=.
+
+SOURCES_C := \
+    $(SRC_DIR)/miniz/miniz.c \
+
+SOURCES_CXX := \
+    $(TEST_SRC_DIR)/main.cpp \
+    $(SRC_DIR)/audio.cpp \
+    $(SRC_DIR)/cartridge.cpp \
+    $(SRC_DIR)/gearlynx_core.cpp \
+    $(SRC_DIR)/input.cpp \
+    $(SRC_DIR)/m6502.cpp \
+    $(SRC_DIR)/m6502_functors.cpp \
+    $(SRC_DIR)/m6502_opcodes.cpp \
+    $(SRC_DIR)/memory.cpp \

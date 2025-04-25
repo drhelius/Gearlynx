@@ -72,7 +72,7 @@ MemEditor::~MemEditor()
 
 void MemEditor::Reset(const char* title, uint8_t* mem_data, int mem_size, int base_display_addr, int word)
 {
-    if (!IsValidPointer(mem_data))
+    if (!IsValidPointer(mem_data) || (mem_size <= 0))
         return;
 
     snprintf(m_title, sizeof(m_title), "%s", title);
@@ -1483,7 +1483,7 @@ void MemEditor::Paste()
 
         int selection_size = (m_selection_end - m_selection_start + 1) * m_mem_word;
         int start = m_selection_start * m_mem_word;
-        int end = start + std::min(buffer_size, selection_size);
+        int end = start + MIN(buffer_size, selection_size);
 
         for (int i = start; i < end; i++)
         {

@@ -37,6 +37,7 @@ static bool audio_enabled;
 static void save_ram(void);
 static void load_ram(void);
 static void reset_buffers(void);
+static const char* get_configurated_dir(int option, const char* path);
 static void init_debug(void);
 static void destroy_debug(void);
 static void update_debug(void);
@@ -120,6 +121,8 @@ void emu_update(void)
 
         if (emu_debug_command != Debug_Command_Continue)
             emu_debug_command = Debug_Command_None;
+
+        update_debug();
     }
     else
         core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
@@ -128,8 +131,6 @@ void emu_update(void)
     {
         sound_queue->Write(audio_buffer, sampleCount, emu_audio_sync);
     }
-
-    update_debug();
 }
 
 void emu_key_pressed(GLYNX_Keys key)
@@ -233,26 +234,8 @@ void emu_save_state_slot(int index)
 {
     if (!emu_is_empty())
     {
-        switch ((Directory_Location)config_emulator.savestates_dir_option)
-        {
-            default:
-            case Directory_Location_Default:
-            {
-                core->SaveState(config_root_path, index, true);
-                break;
-            }
-            case Directory_Location_ROM:
-            {
-                core->SaveState(NULL, index, true);
-                break;
-            }
-            case Directory_Location_Custom:
-            {
-                core->SaveState(config_emulator.savestates_path.c_str(), index, true);
-                break;
-            }
-        }
-
+        const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
+        core->SaveState(dir, index, true);
         update_savestates_data();
     }
 }
@@ -261,25 +244,8 @@ void emu_load_state_slot(int index)
 {
     if (!emu_is_empty())
     {
-        switch ((Directory_Location)config_emulator.savestates_dir_option)
-        {
-            default:
-            case Directory_Location_Default:
-            {
-                core->LoadState(config_root_path, index);
-                break;
-            }
-            case Directory_Location_ROM:
-            {
-                core->LoadState(NULL, index);
-                break;
-            }
-            case Directory_Location_Custom:
-            {
-                core->LoadState(config_emulator.savestates_path.c_str(), index);
-                break;
-            }
-        }
+        const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
+        core->LoadState(dir, index);
     }
 }
 
@@ -306,26 +272,6 @@ void update_savestates_data(void)
         SafeDeleteArray(emu_savestates_screenshots[i].data);
 
         const char* dir = NULL;
-
-        switch ((Directory_Location)config_emulator.savestates_dir_option)
-        {
-            default:
-            case Directory_Location_Default:
-            {
-                dir = config_root_path;
-                break;
-            }
-            case Directory_Location_ROM:
-            {
-                dir = NULL;
-                break;
-            }
-            case Directory_Location_Custom:
-            {
-                dir = config_emulator.savestates_path.c_str();
-                break;
-            }
-        }
 
         if (!core->GetSaveStateHeader(i + 1, dir, &emu_savestates[i]))
             continue;
@@ -356,7 +302,7 @@ void emu_get_info(char* info, int buffer_size)
         const char* filename = cart->GetFileName();
         u32 crc = cart->GetCRC();
         int rom_size = cart->GetROMSize();
-        int rom_banks = 0;//cart->GetROMBankCount();
+        int rom_banks = 0;// TODO: cart->GetROMBankCount();
 
         snprintf(info, buffer_size, "File Name: %s\nCRC: %08X\nROM Size: %d bytes, %d KB\nROM Banks: %d\nScreen Resolution: %dx%d", filename, crc, rom_size, rom_size / 1024, rom_banks, runtime.screen_width, runtime.screen_height);
     }
@@ -454,6 +400,7 @@ void emu_save_screenshot(const char* file_path)
 
 static void save_ram(void)
 {
+    // TOOD
     // if ((emu_savefiles_dir_option == 0) && (strcmp(emu_savefiles_path, "")))
     //     core->SaveRam(emu_savefiles_path);
     // else
@@ -462,6 +409,7 @@ static void save_ram(void)
 
 static void load_ram(void)
 {
+    // TODO
     // if ((emu_savefiles_dir_option == 0) && (strcmp(emu_savefiles_path, "")))
     //     core->LoadRam(emu_savefiles_path);
     // else
@@ -490,6 +438,20 @@ static void reset_buffers(void)
     //     emu_debug_sprite_widths[i] = 16;
     //     emu_debug_sprite_heights[i] = 16;
     // }
+}
+
+static const char* get_configurated_dir(int location, const char* path)
+{
+    switch ((Directory_Location)location)
+    {
+        default:
+        case Directory_Location_Default:
+            return config_root_path;
+        case Directory_Location_ROM:
+            return NULL;
+        case Directory_Location_Custom:
+            return path;
+    }
 }
 
 static void init_debug(void)

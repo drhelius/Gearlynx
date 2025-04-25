@@ -103,6 +103,11 @@ void gui_init(void)
     emu_audio_mute(!config_audio.enable);
     emu_debug_set_callback(gui_debug_callback);
 
+    strcpy(gui_savefiles_path, config_emulator.savefiles_path.c_str());
+    strcpy(gui_savestates_path, config_emulator.savestates_path.c_str());
+    strcpy(gui_screenshots_path, config_emulator.screenshots_path.c_str());
+    //strcpy(gui_backup_ram_path, config_emulator.backup_ram_path.c_str());
+
     gui_debug_init();
     gui_init_menus();
 }
@@ -411,7 +416,7 @@ static void push_recent_rom(std::string path)
         }
     }
 
-    slot = std::min(slot, config_max_recent_roms - 1);
+    slot = MIN(slot, config_max_recent_roms - 1);
 
     for (int i = slot; i > 0; i--)
     {
@@ -490,7 +495,6 @@ static void set_style(void)
     style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
 
     style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-    style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.5921568870544434f, 0.5921568870544434f, 0.5921568870544434f, 1.0f);
     style.Colors[ImGuiCol_WindowBg] = ImVec4(0.060085229575634f, 0.060085229575634f, 0.06008583307266235f, 1.0f);
     style.Colors[ImGuiCol_ChildBg] = ImVec4(0.05882352963089943f, 0.05882352963089943f, 0.05882352963089943f, 1.0f);
@@ -552,7 +556,7 @@ static void set_style(void)
     style.Colors[ImGuiCol_TabSelectedOverline] = style.Colors[ImGuiCol_HeaderActive];
     style.Colors[ImGuiCol_TabDimmed] = lerp(style.Colors[ImGuiCol_Tab], style.Colors[ImGuiCol_TitleBg], 0.80f);
     style.Colors[ImGuiCol_TabDimmedSelected] = lerp(style.Colors[ImGuiCol_TabSelected], style.Colors[ImGuiCol_TitleBg], 0.40f);
-    style.Colors[ImGuiCol_TabDimmedSelectedOverline] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+    style.Colors[ImGuiCol_TabDimmedSelectedOverline] = lerp(style.Colors[ImGuiCol_TabSelected], style.Colors[ImGuiCol_TitleBg], 0.20f);
 }
 
 static ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t)

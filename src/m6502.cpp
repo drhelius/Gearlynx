@@ -23,8 +23,6 @@
 #include <string.h>
 #include <assert.h>
 #include "m6502.h"
-#include "m6502_timing.h"
-#include "m6502_names.h"
 #include "memory.h"
 
 M6502::M6502()
@@ -32,6 +30,7 @@ M6502::M6502()
     InitOPCodeFunctors();
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = false;
+    m_reset_value = -1;
     m_processor_state.A = &m_A;
     m_processor_state.X = &m_X;
     m_processor_state.Y = &m_Y;
@@ -63,12 +62,25 @@ void M6502::Reset()
     m_PC.SetHigh(m_memory->Read(0xFFFF));
     m_debug_next_irq = 1;
     DisassembleNextOPCode();
-    m_A.SetValue(rand() & 0xFF);
-    m_X.SetValue(rand() & 0xFF);
-    m_Y.SetValue(rand() & 0xFF);
-    m_S.SetValue(rand() & 0xFF);
-    m_P.SetValue(rand() & 0xFF);
-    ClearFlag(FLAG_TRANSFER);
+
+    if (m_reset_value < 0)
+    {
+        m_A.SetValue(rand() & 0xFF);
+        m_X.SetValue(rand() & 0xFF);
+        m_Y.SetValue(rand() & 0xFF);
+        m_S.SetValue(rand() & 0xFF);
+        m_P.SetValue(rand() & 0xFF);
+    }
+    else
+    {
+        m_A.SetValue(m_reset_value & 0xFF);
+        m_X.SetValue(m_reset_value & 0xFF);
+        m_Y.SetValue(m_reset_value & 0xFF);
+        m_S.SetValue(m_reset_value & 0xFF);
+        m_P.SetValue(m_reset_value & 0xFF);
+    }
+
+    SetFlag(FLAG_UNUSED);
     ClearFlag(FLAG_DECIMAL);
     SetFlag(FLAG_INTERRUPT);
     ClearFlag(FLAG_BREAK);
@@ -78,14 +90,12 @@ void M6502::Reset()
     m_last_instruction_cycles = 0;
     m_irq_pending = 0;
     m_speed = 0;
-    m_transfer = false;
     m_timer_cycles = 0;
     m_timer_enabled = false;
     m_timer_counter = 0;
     m_timer_reload = 0;
     m_interrupt_disable_register = 0;
     m_interrupt_request_register = 0;
-    m_skip_flag_transfer_clear = false;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
@@ -98,166 +108,9 @@ M6502::M6502_State* M6502::GetState()
     return &m_processor_state;
 }
 
-void M6502::DisassembleNextOPCode()
+void M6502::SetResetValue(int value)
 {
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-
-    CheckBreakpoints();
-
-    u16 address = m_PC.GetValue();
-    Memory::GLYNX_Disassembler_Record* record = m_memory->GetOrCreateDisassemblerRecord(address);
-
-    if (!IsValidPointer(record))
-    {
-        return;
-    }
-
-    u8 opcode = m_memory->Read(address);
-    u8 opcode_size = k_m6502_opcode_sizes[opcode];
-
-    bool changed = false;
-
-    for (int i = 0; i < opcode_size; i++)
-    {
-        u8 mem_byte = m_memory->Read(address + i);
-
-        if (record->opcodes[i] != mem_byte)
-        {
-            changed = true;
-            record->opcodes[i] = mem_byte;
-        }
-    }
-
-    if (!changed && record->size != 0)
-    {
-        if (m_debug_next_irq > 0)
-        {
-            record->irq = m_debug_next_irq;
-            m_debug_next_irq = 0;
-        }
-        return;
-    }
-
-    record->size = opcode_size;
-    // TODO: implement disassembler
-    record->address = address;//m_memory->GetPhysicalAddress(address);
-    record->bank = 0;//m_memory->GetBank(address);
-    record->name[0] = 0;
-    record->bytes[0] = 0;
-    record->jump = false;
-    record->jump_address = 0;
-    record->jump_bank = 0;
-    record->subroutine = false;
-    record->irq = 0;
-
-    if (m_debug_next_irq > 0)
-    {
-        record->irq = m_debug_next_irq;
-        m_debug_next_irq = 0;
-    }
-
-    for (int i = 0; i < opcode_size; i++)
-    {
-        char value[4];
-        snprintf(value, 4, "%02X", record->opcodes[i]);
-        strncat(record->bytes, value, 24);
-        strncat(record->bytes, " ", 24);
-    }
-
-    switch (k_m6502_opcode_names[opcode].type)
-    {
-        case GLYNX_OPCode_Type_Implied:
-        {
-            snprintf(record->name, 64, "%s", k_m6502_opcode_names[opcode].name);
-            break;
-        }
-        case GLYNX_OPCode_Type_1b:
-        {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1));
-            break;
-        }
-        case GLYNX_OPCode_Type_1b_1b:
-        {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1), m_memory->Read(address + 2));
-            break;
-        }
-        case GLYNX_OPCode_Type_1b_2b:
-        {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1), m_memory->Read(address + 2) | (m_memory->Read(address + 3) << 8));
-            break;
-        }
-        case GLYNX_OPCode_Type_2b:
-        {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1) | (m_memory->Read(address + 2) << 8));
-            break;
-        }
-        case GLYNX_OPCode_Type_2b_2b_2b:
-        {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1) | (m_memory->Read(address + 2) << 8), m_memory->Read(address + 3) | (m_memory->Read(address + 4) << 8), m_memory->Read(address + 5) | (m_memory->Read(address + 6) << 8));
-            break;
-        }
-        case GLYNX_OPCode_Type_1b_Relative:
-        {
-            s8 rel = m_memory->Read(address + 1);
-            u16 jump_address = address + 2 + rel;
-            record->jump = true;
-            record->jump_address = jump_address;
-            //TODO: implement disassembler
-            record->jump_bank = 0;//m_memory->GetBank(jump_address);
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, jump_address, rel);
-            break;
-        }
-        case GLYNX_OPCode_Type_1b_1b_Relative:
-        {
-            u8 zero_page = m_memory->Read(address + 1);
-            s8 rel = m_memory->Read(address + 2);
-            u16 jump_address = address + 3 + rel;
-            record->jump = true;
-            record->jump_address = jump_address;
-            //TODO: implement disassembler
-            record->jump_bank = 0;//m_memory->GetBank(jump_address);
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, zero_page, jump_address, rel);
-            break;
-        }
-        default:
-        {
-            break;
-        }
-    }
-
-    // JMP hhll, JSR hhll
-    if (opcode == 0x4C || opcode == 0x20)
-    {
-        u16 jump_address = Address16(m_memory->Read(address + 2), m_memory->Read(address + 1));
-        record->jump = true;
-        record->jump_address = jump_address;
-        //TODO: implement disassembler
-        record->jump_bank = 0;//m_memory->GetBank(jump_address);
-    }
-
-    // BSR rr, JSR hhll
-    if (opcode == 0x44 || opcode == 0x20)
-    {
-        record->subroutine = true;
-    }
-
-    if (record->bank < 0xF7)
-    {
-        strncpy(record->segment, "ROM", 5);
-    }
-    else if (record->bank == 0xF7)
-    {
-        strncpy(record->segment, "BAT", 5);
-    }
-    else if (record->bank >= 0xF8 && record->bank < 0xFC)
-    {
-        strncpy(record->segment, "RAM", 5);
-    }
-    else
-    {
-        strncpy(record->segment, "???", 5);
-    }
-#endif
+    m_reset_value = value;
 }
 
 void M6502::EnableBreakpoints(bool enable, bool irqs)
@@ -269,11 +122,6 @@ void M6502::EnableBreakpoints(bool enable, bool irqs)
 bool M6502::BreakpointHit()
 {
     return (m_cpu_breakpoint_hit || m_memory_breakpoint_hit) && (m_clock_cycles == 0);
-}
-
-bool M6502::RunToBreakpointHit()
-{
-    return m_run_to_breakpoint_hit && (m_clock_cycles == 0);
 }
 
 void M6502::ResetBreakpoints()
@@ -407,20 +255,10 @@ bool M6502::IsBreakpoint(int type, u16 address)
     return false;
 }
 
-std::vector<M6502::GLYNX_Breakpoint>* M6502::GetBreakpoints()
-{
-    return &m_breakpoints;
-}
-
 void M6502::ClearDisassemblerCallStack()
 {
     while(!m_disassembler_call_stack.empty())
         m_disassembler_call_stack.pop();
-}
-
-std::stack<M6502::GLYNX_CallStackEntry>* M6502::GetDisassemblerCallStack()
-{
-    return &m_disassembler_call_stack;
 }
 
 void M6502::CheckMemoryBreakpoints(int type, u16 address, bool read)
@@ -463,86 +301,9 @@ void M6502::CheckMemoryBreakpoints(int type, u16 address, bool read)
         }
     }
 #else
+    UNUSED(type);
     UNUSED(address);
     UNUSED(read);
-#endif
-}
-
-void M6502::CheckBreakpoints()
-{
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-
-    m_cpu_breakpoint_hit = false;
-    m_run_to_breakpoint_hit = false;
-
-    if (m_run_to_breakpoint_requested)
-    {
-        if (m_PC.GetValue() == m_run_to_breakpoint.address1)
-        {
-            m_run_to_breakpoint_hit = true;
-            m_run_to_breakpoint_requested = false;
-            return;
-        }
-    }
-
-    if (!m_breakpoints_enabled)
-        return;
-
-    for (int i = 0; i < (int)m_breakpoints.size(); i++)
-    {
-        GLYNX_Breakpoint* brk = &m_breakpoints[i];
-
-        if (!brk->enabled)
-            continue;
-        if (!brk->execute)
-            continue;
-        if (brk->type != M6502_BREAKPOINT_TYPE_ROMRAM)
-            continue;
-
-        if (brk->range)
-        {
-            if (m_PC.GetValue() >= brk->address1 && m_PC.GetValue() <= brk->address2)
-            {
-                m_cpu_breakpoint_hit = true;
-                m_run_to_breakpoint_requested = false;
-                return;
-            }
-        }
-        else
-        {
-            if (m_PC.GetValue() == brk->address1)
-            {
-                m_cpu_breakpoint_hit = true;
-                m_run_to_breakpoint_requested = false;
-                return;
-            }
-        }
-    }
-
-#endif
-}
-
-void M6502::PushCallStack(u16 src, u16 dest, u16 back)
-{
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    GLYNX_CallStackEntry entry;
-    entry.src = src;
-    entry.dest = dest;
-    entry.back = back;
-    if (m_disassembler_call_stack.size() < 256)
-        m_disassembler_call_stack.push(entry);
-    // else
-    // {
-    //     //Debug("** M6502 --> Disassembler Call Stack Overflow");
-    // }
-#endif
-}
-
-void M6502::PopCallStack()
-{
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (!m_disassembler_call_stack.empty())
-        m_disassembler_call_stack.pop();
 #endif
 }
 
@@ -574,14 +335,12 @@ void M6502::SaveState(std::ostream& stream)
     stream.write(reinterpret_cast<const char*> (&m_last_instruction_cycles), sizeof(m_last_instruction_cycles));
     stream.write(reinterpret_cast<const char*> (&m_irq_pending), sizeof(m_irq_pending));
     stream.write(reinterpret_cast<const char*> (&m_speed), sizeof(m_speed));
-    stream.write(reinterpret_cast<const char*> (&m_transfer), sizeof(m_transfer));
     stream.write(reinterpret_cast<const char*> (&m_timer_enabled), sizeof(m_timer_enabled));
     stream.write(reinterpret_cast<const char*> (&m_timer_cycles), sizeof(m_timer_cycles));
     stream.write(reinterpret_cast<const char*> (&m_timer_counter), sizeof(m_timer_counter));
     stream.write(reinterpret_cast<const char*> (&m_timer_reload), sizeof(m_timer_reload));
     stream.write(reinterpret_cast<const char*> (&m_interrupt_disable_register), sizeof(m_interrupt_disable_register));
     stream.write(reinterpret_cast<const char*> (&m_interrupt_request_register), sizeof(m_interrupt_request_register));
-    stream.write(reinterpret_cast<const char*> (&m_skip_flag_transfer_clear), sizeof(m_skip_flag_transfer_clear));
     stream.write(reinterpret_cast<const char*> (&m_debug_next_irq), sizeof(m_debug_next_irq));
 }
 
@@ -600,13 +359,11 @@ void M6502::LoadState(std::istream& stream)
     stream.read(reinterpret_cast<char*> (&m_last_instruction_cycles), sizeof(m_last_instruction_cycles));
     stream.read(reinterpret_cast<char*> (&m_irq_pending), sizeof(m_irq_pending));
     stream.read(reinterpret_cast<char*> (&m_speed), sizeof(m_speed));
-    stream.read(reinterpret_cast<char*> (&m_transfer), sizeof(m_transfer));
     stream.read(reinterpret_cast<char*> (&m_timer_enabled), sizeof(m_timer_enabled));
     stream.read(reinterpret_cast<char*> (&m_timer_cycles), sizeof(m_timer_cycles));
     stream.read(reinterpret_cast<char*> (&m_timer_counter), sizeof(m_timer_counter));
     stream.read(reinterpret_cast<char*> (&m_timer_reload), sizeof(m_timer_reload));
     stream.read(reinterpret_cast<char*> (&m_interrupt_disable_register), sizeof(m_interrupt_disable_register));
     stream.read(reinterpret_cast<char*> (&m_interrupt_request_register), sizeof(m_interrupt_request_register));
-    stream.read(reinterpret_cast<char*> (&m_skip_flag_transfer_clear), sizeof(m_skip_flag_transfer_clear));
     stream.read(reinterpret_cast<char*> (&m_debug_next_irq), sizeof(m_debug_next_irq));
 }

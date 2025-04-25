@@ -32,7 +32,7 @@
 "  / ___| ___  __ _ _ __| |_   _ _ __ __  __\n" \
 " | |  _ / _ \\/ _` | '__| | | | | '_ \\\\ \\/ /\n" \
 " | |_| |  __/ (_| | |  | | |_| | | | |>  < \n" \
-"  \\____|\\___|\\__,_|_|  |_|\\__, |_| |_/_/\\_\n" \
+"  \\____|\\___|\\__,_|_|  |_|\\__, |_| |_/_/\\_\\\n" \
 "                          |___/            \n"
 
 #if defined(DEBUG)
@@ -56,6 +56,10 @@
 #define IsValidPointer(pointer) ((pointer) != NULL)
 
 #define UNUSED(expr) (void)(expr)
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define CLAMP(value, min, max) MIN(MAX(value, min), max)
 
 #if defined(MSB_FIRST) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
     #define GLYNX_BIG_ENDIAN

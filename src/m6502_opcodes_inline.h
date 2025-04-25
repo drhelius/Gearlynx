@@ -24,92 +24,58 @@
 #include "memory.h"
 #include "m6502_names.h"
 
-inline void M6502::OPCodes_ADC(u8 value)
+INLINE void M6502::OPCodes_ADC(u8 value)
 {
-    u8 a;
-    u8 final_result;
+    u8 a = m_A.GetValue();
 
-#if !defined(GLYNX_TESTING)
-    u16 address = 0;
-    if (IsSetFlag(FLAG_TRANSFER))
-    {
-        address = ZeroPageX();
-        a = MemoryRead(address);
-        m_cycles += 3;
-    }
-    else
-#endif
-
-    a = m_A.GetValue();
-
+    u16 result = 0;
     if (IsSetFlag(FLAG_DECIMAL))
     {
         m_cycles++;
 
-        int c = IsSetFlag(FLAG_CARRY) ? 1 : 0;
-        int lo =  (a & 0x0f) + (value & 0x0f) + c;
-        int hi = (a & 0xf0) + (value & 0xf0);
+        result = (u16)(a & 0x0F) + (u16)(value & 0x0F) + (IsSetFlag(FLAG_CARRY) ? 1 : 0);
+        if(result > 0x09)
+            result += 0x06;
+        result = (u16)(a & 0xF0) + (u16)(value & 0xF0) + (result > 0x0F ? 0x10 : 0) + (result & 0x0F);
 
-        if (lo > 0x09)
-        {
-            hi += 0x10;
-            lo += 0x06;
-        }
-        if (hi > 0x90)
-            hi += 0x60;
-        if (hi & 0xff00)
-            SetFlag(FLAG_CARRY);
+        if(~(a ^ value) & ((result & 0xFF) ^ a) & 0x80)
+            SetFlag(FLAG_OVERFLOW);
         else
-            ClearFlag(FLAG_CARRY);
+            ClearFlag(FLAG_OVERFLOW);
 
-        final_result = static_cast<u8>((lo & 0x0f) + (hi & 0xf0));
-        SetOrClearZNFlags(final_result);
+        if(result > 0x9F)
+            result += 0x60;
     }
     else
     {
-        int result = a + value + (IsSetFlag(FLAG_CARRY) ? 1 : 0);
-        final_result = static_cast<u8>(result & 0xFF);
+        result = a + value + (IsSetFlag(FLAG_CARRY) ? 1 : 0);
 
-        ClearFlag(FLAG_ZERO | FLAG_CARRY | FLAG_OVERFLOW | FLAG_NEGATIVE);
-
-        u8 flags = m_P.GetValue();
-        flags |= ((((a ^ value) & 0x80) ^ 0x80) & ((a ^ result) & 0x80)) >> 1;
-        flags |= (result >> 8) & FLAG_CARRY;
-        m_P.SetValue(flags);
-
-        SetZNFlags(final_result);
+        if(~(a ^ value) & (a ^ result) & 0x80)
+            SetFlag(FLAG_OVERFLOW);
+        else
+            ClearFlag(FLAG_OVERFLOW);
     }
 
-#if !defined(GLYNX_TESTING)
-    if (IsSetFlag(FLAG_TRANSFER))
-        MemoryWrite(address, final_result);
-    else
-#endif
-        m_A.SetValue(final_result);
+    u8 final_result = static_cast<u8>(result & 0xFF);
+
+    ClearFlag(FLAG_ZERO | FLAG_CARRY | FLAG_NEGATIVE);
+    SetZNFlags(final_result);
+
+    if(result > 0xFF) {
+        SetFlag(FLAG_CARRY);
+    }
+
+    m_A.SetValue(final_result);
 }
 
-inline void M6502::OPCodes_AND(u8 value)
+INLINE void M6502::OPCodes_AND(u8 value)
 {
-    u8 result;
-#if !defined(GLYNX_TESTING)
-    if (IsSetFlag(FLAG_TRANSFER))
-    {
-        u16 address = ZeroPageX();
-        u8 a = MemoryRead(address);
-        result = a & value;
-        MemoryWrite(address, result);
-        m_cycles += 3;
-    }
-    else
-#endif
-    {
-        result = m_A.GetValue() & value;
-        m_A.SetValue(result);
-    }
+    u8 result = m_A.GetValue() & value;
+    m_A.SetValue(result);
     SetOrClearZNFlags(result);
 }
 
-inline void M6502::OPCodes_ASL_Accumulator()
+INLINE void M6502::OPCodes_ASL_Accumulator()
 {
     u8 value = m_A.GetValue();
     u8 result = static_cast<u8>(value << 1);
@@ -121,7 +87,7 @@ inline void M6502::OPCodes_ASL_Accumulator()
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_ASL_Memory(u16 address)
+INLINE void M6502::OPCodes_ASL_Memory(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = static_cast<u8>(value << 1);
@@ -133,7 +99,7 @@ inline void M6502::OPCodes_ASL_Memory(u16 address)
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPcodes_Branch(bool condition)
+INLINE void M6502::OPcodes_Branch(bool condition)
 {
     if (condition)
     {
@@ -147,7 +113,7 @@ inline void M6502::OPcodes_Branch(bool condition)
         m_PC.Increment();
 }
 
-inline void M6502::OPCodes_BIT(u16 address)
+INLINE void M6502::OPCodes_BIT(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = m_A.GetValue() & value;
@@ -158,7 +124,7 @@ inline void M6502::OPCodes_BIT(u16 address)
     m_P.SetValue(flags);
 }
 
-inline void M6502::OPCodes_BIT_Immediate(u16 address)
+INLINE void M6502::OPCodes_BIT_Immediate(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = m_A.GetValue() & value;
@@ -168,14 +134,10 @@ inline void M6502::OPCodes_BIT_Immediate(u16 address)
     m_P.SetValue(flags);
 }
 
-inline void M6502::OPCodes_BRK()
+INLINE void M6502::OPCodes_BRK()
 {
     u16 pc = m_PC.GetValue();
     StackPush16(pc + 1);
-
-#if !defined(GLYNX_TESTING)
-    ClearFlag(FLAG_TRANSFER);
-#endif
 
     StackPush8(m_P.GetValue() | FLAG_BREAK);
     ClearFlag(FLAG_DECIMAL);
@@ -195,7 +157,7 @@ inline void M6502::OPCodes_BRK()
 #endif
 }
 
-inline void M6502::OPCodes_Subroutine()
+INLINE void M6502::OPCodes_Subroutine()
 {
     u16 pc = m_PC.GetValue();
     s8 displacement = RelativeAddressing();
@@ -210,7 +172,7 @@ inline void M6502::OPCodes_Subroutine()
 
 }
 
-inline void M6502::OPCodes_CMP(EightBitRegister* reg, u8 value)
+INLINE void M6502::OPCodes_CMP(EightBitRegister* reg, u8 value)
 {
     u8 reg_value = reg->GetValue();
     u8 result = reg_value - value;
@@ -221,7 +183,7 @@ inline void M6502::OPCodes_CMP(EightBitRegister* reg, u8 value)
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_DEC_Mem(u16 address)
+INLINE void M6502::OPCodes_DEC_Mem(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = value - 1;
@@ -229,34 +191,20 @@ inline void M6502::OPCodes_DEC_Mem(u16 address)
     SetOrClearZNFlags(result);
 }
 
-inline void M6502::OPCodes_DEC_Reg(EightBitRegister* reg)
+INLINE void M6502::OPCodes_DEC_Reg(EightBitRegister* reg)
 {
     reg->Decrement();
     SetOrClearZNFlags(reg->GetValue());
 }
 
-inline void M6502::OPCodes_EOR(u8 value)
+INLINE void M6502::OPCodes_EOR(u8 value)
 {
-    u8 result;
-#if !defined(GLYNX_TESTING)
-    if (IsSetFlag(FLAG_TRANSFER))
-    {
-        u16 address = ZeroPageX();
-        u8 a = MemoryRead(address);
-        result = a ^ value;
-        MemoryWrite(address, result);
-        m_cycles += 3;
-    }
-    else
-#endif
-    {
-        result = m_A.GetValue() ^ value;
-        m_A.SetValue(result);
-    }
+    u8 result = m_A.GetValue() ^ value;
+    m_A.SetValue(result);
     SetOrClearZNFlags(result);
 }
 
-inline void M6502::OPCodes_INC_Mem(u16 address)
+INLINE void M6502::OPCodes_INC_Mem(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = value + 1;
@@ -264,19 +212,19 @@ inline void M6502::OPCodes_INC_Mem(u16 address)
     SetOrClearZNFlags(result);
 }
 
-inline void M6502::OPCodes_INC_Reg(EightBitRegister* reg)
+INLINE void M6502::OPCodes_INC_Reg(EightBitRegister* reg)
 {
     reg->Increment();
     SetOrClearZNFlags(reg->GetValue());
 }
 
-inline void M6502::OPCodes_LD(EightBitRegister* reg, u8 value)
+INLINE void M6502::OPCodes_LD(EightBitRegister* reg, u8 value)
 {
     reg->SetValue(value);
     SetOrClearZNFlags(value);
 }
 
-inline void M6502::OPCodes_LSR_Accumulator()
+INLINE void M6502::OPCodes_LSR_Accumulator()
 {
     u8 value = m_A.GetValue();
     u8 result = value >> 1;
@@ -288,7 +236,7 @@ inline void M6502::OPCodes_LSR_Accumulator()
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_LSR_Memory(u16 address)
+INLINE void M6502::OPCodes_LSR_Memory(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = value >> 1;
@@ -300,35 +248,20 @@ inline void M6502::OPCodes_LSR_Memory(u16 address)
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_ORA(u8 value)
+INLINE void M6502::OPCodes_ORA(u8 value)
 {
-    u8 result;
-
-#if !defined(GLYNX_TESTING)
-    if (IsSetFlag(FLAG_TRANSFER))
-    {
-        u16 address = ZeroPageX();
-        u8 a = MemoryRead(address);
-        result = a | value;
-        MemoryWrite(address, result);
-        m_cycles += 3;
-    }
-    else
-#endif
-    {
-        result = m_A.GetValue() | value;
-        m_A.SetValue(result);
-    }
+    u8 result = m_A.GetValue() | value;
+    m_A.SetValue(result);
     SetOrClearZNFlags(result);
 }
 
-inline void M6502::OPCodes_RMB(u8 bit, u16 address)
+INLINE void M6502::OPCodes_RMB(u8 bit, u16 address)
 {
-    u8 result = UnsetBit(MemoryRead(address), bit);
+    u8 result = UNSET_BIT(MemoryRead(address), bit);
     MemoryWrite(address, result);
 }
 
-inline void M6502::OPCodes_ROL_Accumulator()
+INLINE void M6502::OPCodes_ROL_Accumulator()
 {
     u8 value = m_A.GetValue();
     u8 result = static_cast<u8>(value << 1);
@@ -341,7 +274,7 @@ inline void M6502::OPCodes_ROL_Accumulator()
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_ROL_Memory(u16 address)
+INLINE void M6502::OPCodes_ROL_Memory(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = static_cast<u8>(value << 1);
@@ -354,7 +287,7 @@ inline void M6502::OPCodes_ROL_Memory(u16 address)
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_ROR_Accumulator()
+INLINE void M6502::OPCodes_ROR_Accumulator()
 {
     u8 value = m_A.GetValue();
     u8 result = value >> 1;
@@ -367,7 +300,7 @@ inline void M6502::OPCodes_ROR_Accumulator()
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_ROR_Memory(u16 address)
+INLINE void M6502::OPCodes_ROR_Memory(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = value >> 1;
@@ -380,112 +313,109 @@ inline void M6502::OPCodes_ROR_Memory(u16 address)
         ClearFlag(FLAG_CARRY);
 }
 
-inline void M6502::OPCodes_SBC(u8 value)
+INLINE void M6502::OPCodes_SBC(u8 value)
 {
+    u16 result = 0;
+
     if (IsSetFlag(FLAG_DECIMAL))
     {
         m_cycles++;
 
-        int carry = IsSetFlag(FLAG_CARRY) ? 0 : 1;
-        u8 m = (m_A.GetValue() & 0xF) - (value & 0xF) - carry;
-        u8 n = (m_A.GetValue() >> 4) - (value >> 4) - ((m >> 4) & 1);
-        u8 res = (n << 4) | (m & 0xF);
-        if(m & 0x10)
-            res -= 0x06;
-        if(n & 0x10)
-            res -= 0x60;
-        m_A.SetValue(res);
-        ClearFlag(FLAG_ZERO | FLAG_CARRY | FLAG_NEGATIVE);
-        u8 flags = m_P.GetValue();
-        flags |= ((n >> 4) & 0x1) ^ 1;
-        m_P.SetValue(flags);
-        SetZNFlags(res);
-    }
-    else
-    {
-        int result = m_A.GetValue() - value - (IsSetFlag(FLAG_CARRY) ? 0x00 : 0x01);
-        u8 final_result = static_cast<u8>(result & 0xFF);
-        SetOrClearZNFlags(final_result);
-        if ((result & 0x100) == 0)
-            SetFlag(FLAG_CARRY);
-        else
-            ClearFlag(FLAG_CARRY);
-        if ((((m_A.GetValue() ^ value) & 0x80) != 0) && (((m_A.GetValue() ^ result) & 0x80) != 0))
+        u16 tmp = (m_A.GetValue() & 0x0f) - (value & 0x0f) - (IsSetFlag(FLAG_CARRY) ? 0 : 1);
+        result = m_A.GetValue() - value - (IsSetFlag(FLAG_CARRY) ? 0 : 1);
+
+        if (result & 0x8000)
+            result -= 0x60;
+
+        if (tmp & 0x8000)
+            result -= 0x06;
+
+        u16 bin_result = m_A.GetValue() + ~value + (IsSetFlag(FLAG_CARRY) ? 1 : 0);
+        if ((m_A.GetValue() ^ bin_result) & (~value ^ bin_result) & 0x80)
             SetFlag(FLAG_OVERFLOW);
         else
             ClearFlag(FLAG_OVERFLOW);
-        m_A.SetValue(final_result);
+
+        if ((u16)result <= (u16)m_A.GetValue() || (result & 0xff0) == 0xff0)
+            SetFlag(FLAG_CARRY);
+        else
+            ClearFlag(FLAG_CARRY);
     }
+    else
+    {
+        value = ~value;
+        result = (u16)m_A.GetValue() + (u16)value + (IsSetFlag(FLAG_CARRY) ? 1 : 0);
+
+        if(~(m_A.GetValue() ^ value) & (m_A.GetValue() ^ result) & 0x80)
+            SetFlag(FLAG_OVERFLOW);
+        else
+            ClearFlag(FLAG_OVERFLOW);
+
+        if(result > 0xFF)
+            SetFlag(FLAG_CARRY);
+        else
+            ClearFlag(FLAG_CARRY);
+    }
+
+    SetOrClearZNFlags((u8)result);
+    m_A.SetValue((u8)result);
 }
 
-inline void M6502::OPCodes_SMB(u8 bit, u16 address)
+INLINE void M6502::OPCodes_SMB(u8 bit, u16 address)
 {
-    u8 result = SetBit(MemoryRead(address), bit);
+    u8 result = SET_BIT(MemoryRead(address), bit);
     MemoryWrite(address, result);
 }
 
-inline void M6502::OPCodes_Store(EightBitRegister* reg, u16 address)
+INLINE void M6502::OPCodes_Store(EightBitRegister* reg, u16 address)
 {
     u8 value = reg->GetValue();
     MemoryWrite(address, value);
 }
 
-inline void M6502::OPCodes_STZ(u16 address)
+INLINE void M6502::OPCodes_STZ(u16 address)
 {
     MemoryWrite(address, 0x00);
 }
 
-inline void M6502::OPCodes_Swap(EightBitRegister* reg1, EightBitRegister* reg2)
+INLINE void M6502::OPCodes_Swap(EightBitRegister* reg1, EightBitRegister* reg2)
 {
     u8 temp = reg1->GetValue();
     reg1->SetValue(reg2->GetValue());
     reg2->SetValue(temp);
 }
 
-inline void M6502::OPCodes_Transfer(EightBitRegister* source, EightBitRegister* dest)
+
+INLINE void M6502::OPCodes_Transfer(EightBitRegister* source, EightBitRegister* dest)
 {
     u8 value = source->GetValue();
     dest->SetValue(value);
     SetOrClearZNFlags(value);
 }
 
-inline void M6502::OPCodes_TRB(u16 address)
+INLINE void M6502::OPCodes_TRB(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = ~m_A.GetValue() & value;
     MemoryWrite(address, result);
-#if defined(GLYNX_TESTING)
     ClearFlag(FLAG_ZERO);
-#else
-    ClearFlag(FLAG_ZERO | FLAG_OVERFLOW | FLAG_NEGATIVE);
-#endif
     u8 flags = m_P.GetValue();
     flags |= (m_zn_flags_lut[m_A.GetValue() & value] & FLAG_ZERO);
-#if !defined(GLYNX_TESTING)
-    flags |= (value & (FLAG_OVERFLOW | FLAG_NEGATIVE));
-#endif
     m_P.SetValue(flags);
 }
 
-inline void M6502::OPCodes_TSB(u16 address)
+INLINE void M6502::OPCodes_TSB(u16 address)
 {
     u8 value = MemoryRead(address);
     u8 result = m_A.GetValue() | value;
     MemoryWrite(address, result);
-#if defined(GLYNX_TESTING)
     ClearFlag(FLAG_ZERO);
-#else
-    ClearFlag(FLAG_ZERO | FLAG_OVERFLOW | FLAG_NEGATIVE);
-#endif
     u8 flags = m_P.GetValue();
     flags |= (m_zn_flags_lut[m_A.GetValue() & value] & FLAG_ZERO);
-#if !defined(GLYNX_TESTING)
-    flags |= (value & (FLAG_OVERFLOW | FLAG_NEGATIVE));
-#endif
     m_P.SetValue(flags);
 }
 
-inline void M6502::OPCodes_TST(u8 value, u16 address)
+INLINE void M6502::OPCodes_TST(u8 value, u16 address)
 {
     u8 mem = MemoryRead(address);
     ClearFlag(FLAG_ZERO | FLAG_OVERFLOW | FLAG_NEGATIVE);
@@ -493,129 +423,6 @@ inline void M6502::OPCodes_TST(u8 value, u16 address)
     flags |= (value & mem) ? 0 : FLAG_ZERO;
     flags |= (value & (FLAG_OVERFLOW | FLAG_NEGATIVE));
     m_P.SetValue(flags);
-}
-
-inline void M6502::OPCodes_TAI()
-{
-    OPCodes_TransferStart();
-
-    u16 source = Fetch16();
-    u16 dest = Fetch16();
-    u16 length = Fetch16();
-    int count = 0;
-
-    do
-    {
-        MemoryWrite(dest, MemoryRead(source, true));
-        source += (count & 1) ? -1 : 1;
-        dest++;
-        count++;
-        length--;
-        m_cycles += 6;
-    }
-    while (length);
-
-    OPCodes_TransferEnd();
-}
-
-inline void M6502::OPCodes_TDD()
-{
-    OPCodes_TransferStart();
-
-    u16 source = Fetch16();
-    u16 dest = Fetch16();
-    u16 length = Fetch16();
-
-    do
-    {
-        MemoryWrite(dest, MemoryRead(source, true));
-        source--;
-        dest--;
-        length--;
-        m_cycles += 6;
-    }
-    while (length);
-
-    OPCodes_TransferEnd();
-}
-
-inline void M6502::OPCodes_TIA()
-{
-    OPCodes_TransferStart();
-
-    u16 source = Fetch16();
-    u16 dest = Fetch16();
-    u16 length = Fetch16();
-    int count = 0;
-
-    do
-    {
-        MemoryWrite(dest, MemoryRead(source, true));
-        source++;
-        dest += (count & 1) ? -1 : 1;
-        count++;
-        length--;
-        m_cycles += 6;
-    }
-    while (length);
-
-    OPCodes_TransferEnd();
-}
-
-inline void M6502::OPCodes_TII()
-{
-    OPCodes_TransferStart();
-
-    u16 source = Fetch16();
-    u16 dest = Fetch16();
-    u16 length = Fetch16();
-
-    do
-    {
-        MemoryWrite(dest, MemoryRead(source, true));
-        source++;
-        dest++;
-        length--;
-        m_cycles += 6;
-    }
-    while (length);
-
-    OPCodes_TransferEnd();
-}
-
-inline void M6502::OPCodes_TIN()
-{
-    OPCodes_TransferStart();
-
-    u16 source = Fetch16();
-    u16 dest = Fetch16();
-    u16 length = Fetch16();
-
-    do
-    {
-        MemoryWrite(dest, MemoryRead(source, true));
-        source++;
-        length--;
-        m_cycles += 6;
-    }
-    while (length);
-
-    OPCodes_TransferEnd();
-}
-
-inline void M6502::OPCodes_TransferStart()
-{
-    m_transfer = true;
-    StackPush8(m_Y.GetValue());
-    StackPush8(m_X.GetValue());
-    StackPush8(m_A.GetValue());
-}
-
-inline void M6502::OPCodes_TransferEnd()
-{
-    m_A.SetValue(StackPop8());
-    m_X.SetValue(StackPop8());
-    m_Y.SetValue(StackPop8());
 }
 
 inline void M6502::UnofficialOPCode()

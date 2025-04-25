@@ -45,7 +45,7 @@ static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 
 static struct retro_log_callback logging;
-static retro_log_printf_t log_cb;
+retro_log_printf_t log_cb;
 
 static char retro_system_directory[4096];
 static char retro_game_path[4096];
@@ -102,7 +102,7 @@ static int IsButtonPressed(int joypad_bits, int button)
 static void load_bootroms(void)
 {
     char bios_path[4113];
-    sprintf(bios_path, "%s%lynxboot.img", retro_system_directory, slash);
+    snprintf(bios_path, 4113, "%s%lynxboot.img", retro_system_directory, slash);
     core->GetMemory()->LoadBios(bios_path);
 }
 
@@ -159,9 +159,14 @@ void retro_init(void)
     log_cb(RETRO_LOG_INFO, "%s (%s) libretro\n", GLYNX_TITLE, GLYNX_VERSION);
 
     core = new GearlynxCore();
-    core->Init(GLYNX_PIXEL_RGB565);
 
-//   frame_buffer = new u8[HUC6270_MAX_RESOLUTION_WIDTH * HUC6270_MAX_RESOLUTION_HEIGHT * 2];
+#ifdef PS2
+    core->Init(GLYNX_PIXEL_RGB565);
+#else
+    core->Init(GLYNX_PIXEL_RGB565);
+#endif
+
+// TODO:   frame_buffer = new u8[HUC6270_MAX_RESOLUTION_WIDTH * HUC6270_MAX_RESOLUTION_HEIGHT * 2];
 
     for (int i = 0; i < MAX_PADS; i++)
     {
@@ -237,8 +242,8 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
     info->geometry.base_width   = runtime_info.screen_width;
     info->geometry.base_height  = runtime_info.screen_height;
-    info->geometry.max_width    = 1024;//HUC6270_MAX_RESOLUTION_WIDTH;
-    info->geometry.max_height   = 512;//HUC6270_MAX_RESOLUTION_HEIGHT;
+    info->geometry.max_width    = 1024;// TODO
+    info->geometry.max_height   = 512;// TODO
     info->geometry.aspect_ratio = aspect_ratio;
     info->timing.fps            = 59.82;
     info->timing.sample_rate    = 44100.0;
@@ -253,7 +258,7 @@ void retro_run(void)
     update_input();
 
     audio_sample_count = 0;
-//    core->RunToVBlank(frame_buffer, audio_buf, &audio_sample_count);
+// TODO:   core->RunToVBlank(frame_buffer, audio_buf, &audio_sample_count);
 
     GLYNX_Runtime_Info runtime_info;
     core->GetRuntimeInfo(runtime_info);
@@ -303,8 +308,8 @@ bool retro_load_game(const struct retro_game_info *info)
         return false;
     }
 
-    Cartridge* cart = core->GetCartridge();
-    log_cb(RETRO_LOG_INFO, "CRC: %08X\n", cart->GetCRC());
+    bool achievements = true;
+    environ_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &achievements);
 
     return true;
 }
@@ -346,14 +351,13 @@ bool retro_unserialize(const void *data, size_t size)
 
 void *retro_get_memory_data(unsigned id)
 {
+    // TODO [libretro] Implement memory access for cheevos
     switch (id)
     {
         case RETRO_MEMORY_SAVE_RAM:
             return NULL;
         case RETRO_MEMORY_SYSTEM_RAM:
             return NULL;
-            // TODO [libretro] Implement memory access for cheevos
-            //return core->GetMemory()->GetRam();
     }
 
     return NULL;
@@ -361,6 +365,7 @@ void *retro_get_memory_data(unsigned id)
 
 size_t retro_get_memory_size(unsigned id)
 {
+    // TODO [libretro] Implement memory access for cheevos
     switch (id)
     {
         case RETRO_MEMORY_SAVE_RAM:

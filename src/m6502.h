@@ -32,7 +32,7 @@
 #define FLAG_INTERRUPT  0x04
 #define FLAG_DECIMAL    0x08
 #define FLAG_BREAK      0x10
-#define FLAG_TRANSFER   0x20
+#define FLAG_UNUSED     0x20
 #define FLAG_OVERFLOW   0x40
 #define FLAG_NEGATIVE   0x80
 
@@ -97,6 +97,7 @@ public:
     void Init(Memory* memory);
     void Reset();
     bool Clock();
+    u32 TickOPCode();
     void AssertIRQ1(bool asserted);
     void AssertIRQ2(bool asserted);
     void InjectCycles(unsigned int cycles);
@@ -106,6 +107,7 @@ public:
     void WriteTimerRegister(u16 address, u8 value);
     M6502_State* GetState();
     void DisassembleNextOPCode();
+    void SetResetValue(int value);
     void EnableBreakpoints(bool enable, bool irqs);
     bool BreakpointHit();
     bool RunToBreakpointHit();
@@ -138,7 +140,6 @@ private:
     u32 m_last_instruction_cycles;
     s32 m_irq_pending;
     s32 m_speed;
-    bool m_transfer;
     Memory* m_memory;
     M6502_State m_processor_state;
     bool m_timer_enabled;
@@ -147,7 +148,6 @@ private:
     u8 m_timer_reload;
     u8 m_interrupt_disable_register;
     u8 m_interrupt_request_register;
-    bool m_skip_flag_transfer_clear;
     s32 m_debug_next_irq;
     bool m_breakpoints_enabled;
     bool m_breakpoints_irq_enabled;
@@ -158,9 +158,9 @@ private:
     GLYNX_Breakpoint m_run_to_breakpoint;
     bool m_run_to_breakpoint_requested;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
+    int m_reset_value;
 
 private:
-    u32 TickOPCode();
     u32 TickIRQ();
     void CheckIRQs();
 
@@ -205,6 +205,8 @@ private:
     u16 AbsoluteIndirectAddressing();
     u16 AbsoluteIndexedIndirectAddressing();
 
+    void PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record, u8 opcode, u16 address);
+
     void UnofficialOPCode();
     void OPCodes_ADC(u8 value);
     void OPCodes_AND(u8 value);
@@ -239,13 +241,6 @@ private:
     void OPCodes_TRB(u16 address);
     void OPCodes_TSB(u16 address);
     void OPCodes_TST(u8 value, u16 address);
-    void OPCodes_TAI();
-    void OPCodes_TDD();
-    void OPCodes_TIA();
-    void OPCodes_TII();
-    void OPCodes_TIN();
-    void OPCodes_TransferStart();
-    void OPCodes_TransferEnd();
 
     void InitOPCodeFunctors();
 

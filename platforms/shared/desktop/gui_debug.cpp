@@ -23,6 +23,7 @@
 #include "../../../src/gearlynx.h"
 #include "imgui/imgui.h"
 #include "gui_debug_disassembler.h"
+#include "gui_debug_m6502.h"
 #include "gui_debug_memory.h"
 #include "gui_debug_psg.h"
 #include "gui_debug_trace_logger.h"
@@ -53,6 +54,8 @@ void gui_debug_windows(void)
 {
     if (config_debug.debug)
     {
+        if (config_debug.show_processor)
+            gui_debug_window_m6502();
         if (config_debug.show_memory)
             gui_debug_window_memory();
         if (config_debug.show_disassembler)

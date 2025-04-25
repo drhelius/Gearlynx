@@ -18,6 +18,7 @@
  */
 
 #include <SDL.h>
+#include <iomanip>
 #include "../../../src/gearlynx.h"
 
 #define MINI_CASE_SENSITIVE
@@ -88,6 +89,11 @@ void config_read(void)
 
     Log("Loading settings from %s", config_emu_file_path);
 
+#if defined(GLYNX_DISABLE_DISASSEMBLER)
+        config_debug.debug = false;
+#else
+        config_debug.debug = read_bool("Debug", "Debug", false);
+#endif
     config_debug.debug = read_bool("Debug", "Debug", false);
     config_debug.show_disassembler = read_bool("Debug", "Disassembler", true);
     config_debug.show_screen = read_bool("Debug", "Screen", true);
@@ -97,7 +103,6 @@ void config_read(void)
     config_debug.show_psg = read_bool("Debug", "PSG", false);
     config_debug.show_trace_logger = read_bool("Debug", "TraceLogger", false);
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
-    config_debug.trace_bank = read_bool("Debug", "TraceBank", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
     config_debug.trace_cycles = read_bool("Debug", "TraceCycles", true);
@@ -105,7 +110,6 @@ void config_read(void)
     config_debug.dis_show_mem = read_bool("Debug", "DisMem", true);
     config_debug.dis_show_symbols = read_bool("Debug", "DisSymbols", true);
     config_debug.dis_show_segment = read_bool("Debug", "DisSegment", true);
-    config_debug.dis_show_bank = read_bool("Debug", "DisBank", true);
     config_debug.dis_show_auto_symbols = read_bool("Debug", "DisAutoSymbols", true);
     config_debug.dis_replace_symbols = read_bool("Debug", "DisReplaceSymbols", true);
     config_debug.dis_replace_labels = read_bool("Debug", "DisReplaceLabels", true);
@@ -196,6 +200,9 @@ void config_write(void)
 {
     Log("Saving settings to %s", config_emu_file_path);
 
+    if (config_emulator.ffwd)
+        config_audio.sync = true;
+
     write_bool("Debug", "Debug", config_debug.debug);
     write_bool("Debug", "Disassembler", config_debug.show_disassembler);
     write_bool("Debug", "Screen", config_debug.show_screen);
@@ -205,7 +212,6 @@ void config_write(void)
     write_bool("Debug", "PSG", config_debug.show_psg);
     write_bool("Debug", "TraceLogger", config_debug.show_trace_logger);
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
-    write_bool("Debug", "TraceBank", config_debug.trace_bank);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);
     write_bool("Debug", "TraceFlags", config_debug.trace_flags);
     write_bool("Debug", "TraceCycles", config_debug.trace_cycles);
@@ -213,7 +219,6 @@ void config_write(void)
     write_bool("Debug", "DisMem", config_debug.dis_show_mem);
     write_bool("Debug", "DisSymbols", config_debug.dis_show_symbols);
     write_bool("Debug", "DisSegment", config_debug.dis_show_segment);
-    write_bool("Debug", "DisBank", config_debug.dis_show_bank);
     write_bool("Debug", "DisAutoSymbols", config_debug.dis_show_auto_symbols);
     write_bool("Debug", "DisReplaceSymbols", config_debug.dis_replace_symbols);
     write_bool("Debug", "DisReplaceLabels", config_debug.dis_replace_labels);
@@ -347,8 +352,11 @@ static float read_float(const char* group, const char* key, float default_value)
 
 static void write_float(const char* group, const char* key, float value)
 {
-    std::string value_str = std::to_string(value);
-    config_ini_data[group][key] = value_str;
+    std::ostringstream oss;
+    oss.imbue(std::locale::classic());
+    oss << std::fixed << std::setprecision(2) << value;
+    std::string value_str = oss.str();
+    config_ini_data[group][key] = oss.str();
     Debug("Save float setting: [%s][%s]=%s", group, key, value_str.c_str());
 }
 

@@ -42,7 +42,7 @@ struct DisassemblerLine
 {
     u16 address;
     bool is_breakpoint;
-    Memory::GLYNX_Disassembler_Record* record;
+    GLYNX_Disassembler_Record* record;
     char name_enhanced[64];
     int name_real_length;
     DebugSymbol* symbol;
@@ -54,8 +54,8 @@ struct DisassemblerBookmark
     char name[32];
 };
 
-static DebugSymbol*** fixed_symbols = NULL;
-static DebugSymbol*** dynamic_symbols = NULL;
+static DebugSymbol** fixed_symbols = NULL;
+static DebugSymbol** dynamic_symbols = NULL;
 static std::vector<DisassemblerLine> disassembler_lines(0x10000);
 static std::vector<DisassemblerBookmark> bookmarks;
 static int selected_address = -1;
@@ -81,7 +81,7 @@ static void prepare_drawable_lines(void);
 static void draw_disassembly(void);
 static void draw_context_menu(DisassemblerLine* line);
 static void add_symbol(const char* line);
-static void add_auto_symbol(Memory::GLYNX_Disassembler_Record* record, u16 address);
+static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address);
 static void add_breakpoint(int type);
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
@@ -96,37 +96,22 @@ static void save_current_disassembler(FILE* file);
 
 void gui_debug_disassembler_init(void)
 {
-    fixed_symbols = new DebugSymbol**[0x100];
-    dynamic_symbols = new DebugSymbol**[0x100];
+    fixed_symbols = new DebugSymbol*[0x10000];
+    dynamic_symbols = new DebugSymbol*[0x10000];
 
-    for (int i = 0; i < 0x100; i++)
+    for (int i = 0; i < 0x10000; i++)
     {
-        fixed_symbols[i] = new DebugSymbol*[0x10000];
-        dynamic_symbols[i] = new DebugSymbol*[0x10000];
-    }
-
-    for (int i = 0; i < 0x100; i++)
-    {
-        for (int j = 0; j < 0x10000; j++)
-        {
-            InitPointer(fixed_symbols[i][j]);
-            InitPointer(dynamic_symbols[i][j]);
-        }
+        InitPointer(fixed_symbols[i]);
+        InitPointer(dynamic_symbols[i]);
     }
 }
 
 void gui_debug_disassembler_destroy(void)
 {
-    for (int i = 0; i < 0x100; i++)
+    for (int i = 0; i < 0x10000; i++)
     {
-        for (int j = 0; j < 0x10000; j++)
-        {
-            SafeDelete(fixed_symbols[i][j]);
-            SafeDelete(dynamic_symbols[i][j]);
-        }
-
-        SafeDeleteArray(fixed_symbols[i]);
-        SafeDeleteArray(dynamic_symbols[i]);
+        SafeDelete(fixed_symbols[i]);
+        SafeDelete(dynamic_symbols[i]);
     }
 
     SafeDeleteArray(fixed_symbols);
@@ -140,13 +125,10 @@ void gui_debug_disassembler_reset(void)
 
 void gui_debug_reset_symbols(void)
 {
-    for (int i = 0; i < 0x100; i++)
+    for (int i = 0; i < 0x10000; i++)
     {
-        for (int j = 0; j < 0x10000; j++)
-        {
-            SafeDelete(fixed_symbols[i][j]);
-            SafeDelete(dynamic_symbols[i][j]);
-        }
+        SafeDelete(fixed_symbols[i]);
+        SafeDelete(dynamic_symbols[i]);
     }
 }
 
@@ -494,7 +476,7 @@ static void draw_breakpoints(void)
                 ImGui::SameLine(0, 2); ImGui::TextColored(brk->enabled && brk->execute ? orange : gray, "X");
             }
 
-            Memory::GLYNX_Disassembler_Record* record = emu_get_core()->GetMemory()->GetDisassemblerRecord(brk->address1);
+            GLYNX_Disassembler_Record* record = emu_get_core()->GetMemory()->GetDisassemblerRecord(brk->address1);
 
             if (brk->execute && IsValidPointer(record))
             {
@@ -537,7 +519,7 @@ static void prepare_drawable_lines(void)
 
     for (int i = 0; i < 0x10000; i++)
     {
-        Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(i);
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(i);
 
         if (IsValidPointer(record) && (record->name[0] != 0))
             add_auto_symbol(record, i);
@@ -545,14 +527,14 @@ static void prepare_drawable_lines(void)
 
     for (int i = 0; i < 0x10000; i++)
     {
-        Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(i);
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(i);
 
         if (IsValidPointer(record) && (record->name[0] != 0))
         {
             bool fixed_symbol_found = false;
             if (config_debug.dis_show_symbols)
             {
-                DebugSymbol* symbol = fixed_symbols[record->bank][i];
+                DebugSymbol* symbol = fixed_symbols[i];
 
                 if (IsValidPointer(symbol))
                 {
@@ -566,7 +548,7 @@ static void prepare_drawable_lines(void)
 
             if (config_debug.dis_show_symbols && config_debug.dis_show_auto_symbols && !fixed_symbol_found)
             {
-                DebugSymbol* symbol = dynamic_symbols[record->bank][i];
+                DebugSymbol* symbol = dynamic_symbols[i];
 
                 if (IsValidPointer(symbol))
                 {
@@ -715,7 +697,6 @@ static void draw_disassembly(void)
                 draw_context_menu(&line);
 
                 ImVec4 color_segment = line.is_breakpoint ? red : magenta;
-                ImVec4 color_bank = line.is_breakpoint ? red : violet;
                 ImVec4 color_addr = line.is_breakpoint ? red : cyan;
                 ImVec4 color_mem = line.is_breakpoint ? red : mid_gray;
 
@@ -723,12 +704,6 @@ static void draw_disassembly(void)
                 {
                     ImGui::SameLine();
                     ImGui::TextColored(color_segment, "%s", line.record->segment);
-                }
-
-                if (config_debug.dis_show_bank)
-                {
-                    ImGui::SameLine();
-                    ImGui::TextColored(color_bank, "%02X", line.record->bank);
                 }
 
                 ImGui::SameLine();
@@ -855,20 +830,17 @@ static void add_symbol(const char* line)
             if (separator != std::string::npos)
             {
                 s.address = (u16)std::stoul(str.substr(separator + 1 , std::string::npos), 0, 16);
-                s.bank = std::stoul(str.substr(0, separator), 0 , 16);
             }
             else
             {
                 s.address = (u16)std::stoul(str, 0, 16);
-                s.bank = 0;
             }
 
             DebugSymbol* new_symbol = new DebugSymbol;
             new_symbol->address = s.address;
-            new_symbol->bank = s.bank;
             snprintf(new_symbol->text, 64, "%s", s.text);
 
-            fixed_symbols[s.bank][s.address] = new_symbol;
+            fixed_symbols[s.address] = new_symbol;
         }
         catch(const std::invalid_argument&)
         {
@@ -885,46 +857,43 @@ static const char* k_irq_symbol_format[6] = {
     "IRQ2_BRK_%02X_%04X"
 };
 
-static void add_auto_symbol(Memory::GLYNX_Disassembler_Record* record, u16 address)
+static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
 {
     DebugSymbol s;
-    s.bank = record->bank;
     s.address = address;
     bool insert = false;
 
     if (record->jump)
     {
-        s.address = record->jump_address;
-        s.bank = record->jump_bank;
+        s.address = record->jump_address;        
         if (record->subroutine)
-            snprintf(s.text, 64, "SUB_%02X_%04X", record->jump_bank, record->jump_address);
+            snprintf(s.text, 64, "SUB_%04X", record->jump_address);
         else
-            snprintf(s.text, 64, "TAG_%02X_%04X", record->jump_bank, record->jump_address);
+            snprintf(s.text, 64, "TAG_%04X", record->jump_address);
         insert = true;
     }
     else if (record->irq > 0)
     {
-        snprintf(s.text, 64, k_irq_symbol_format[record->irq], record->bank, address);
+        snprintf(s.text, 64, k_irq_symbol_format[record->irq], address);
         insert = true;
     }
 
     if (insert)
     {
-        DebugSymbol* new_symbol = dynamic_symbols[s.bank][s.address];
+        DebugSymbol* new_symbol = dynamic_symbols[s.address];
 
         if (IsValidPointer(new_symbol))
         {
            if (record->subroutine)
-               snprintf(dynamic_symbols[s.bank][s.address]->text, 64, "SUB_%02X_%04X", record->jump_bank, record->jump_address);
+               snprintf(dynamic_symbols[s.address]->text, 64, "SUB_%04X", record->jump_address);
         }
         else
         {
             new_symbol = new DebugSymbol;
             new_symbol->address = s.address;
-            new_symbol->bank = s.bank;
             snprintf(new_symbol->text, 64, "%s", s.text);
 
-            dynamic_symbols[s.bank][s.address] = new_symbol;
+            dynamic_symbols[s.address] = new_symbol;
         }
     }
 }
@@ -968,7 +937,7 @@ static void replace_symbols(DisassemblerLine* line, const char* color)
 {
     bool symbol_found = false;
 
-    DebugSymbol* fixed_symbol = fixed_symbols[line->record->jump_bank][line->record->jump_address];
+    DebugSymbol* fixed_symbol = fixed_symbols[line->record->jump_address];
 
     if (IsValidPointer(fixed_symbol))
     {
@@ -988,7 +957,7 @@ static void replace_symbols(DisassemblerLine* line, const char* color)
     if (symbol_found)
         return;
 
-    DebugSymbol* dynamic_symbol = dynamic_symbols[line->record->jump_bank][line->record->jump_address];
+    DebugSymbol* dynamic_symbol = dynamic_symbols[line->record->jump_address];
 
     if (IsValidPointer(dynamic_symbol))
     {
@@ -1023,37 +992,34 @@ static void replace_labels(DisassemblerLine* line, const char* color, const char
     }
 }
 
-static const char* const c_yellow = "{FFE60C}";
-static const char* const c_white = "{FFFFFF}";
-static const char* const c_red = "{FA2573}";
-static const char* const c_green = "{1AE51A}";
-static const char* const c_blue = "{3466FF}";
-static const char* const c_orange = "{FD9820}";
-
 static void draw_instruction_name(DisassemblerLine* line, bool is_pc)
 {
-    const char* color;
+    const char* name_color;
+    const char* operands_color;
     const char* symbol_color;
     const char* label_color;
     const char* extra_color;
 
     if (is_pc)
     {
-        color = c_yellow;
+        name_color = c_yellow;
+        operands_color = c_yellow;
         symbol_color = c_yellow;
         label_color = c_yellow;
         extra_color = c_yellow;
     }
     else if (line->is_breakpoint)
     {
-        color = c_red;
+        name_color = c_red;
+        operands_color = c_red;
         symbol_color = c_red;
         label_color = c_red;
         extra_color = c_red;
     }
     else
     {
-        color = c_white;
+        name_color = c_white;
+        operands_color = c_brown;
         symbol_color = c_green;
         label_color = c_orange;
         extra_color = c_blue;
@@ -1066,15 +1032,21 @@ static void draw_instruction_name(DisassemblerLine* line, bool is_pc)
 
     if (config_debug.dis_replace_labels)
     {
-        replace_labels(line, label_color, color);
+        replace_labels(line, label_color, operands_color);
     }
 
     std::string instr = line->name_enhanced;
-    size_t pos = instr.find("{}");
+    size_t pos = instr.find("{n}");
     if (pos != std::string::npos)
-        instr.replace(pos, 2, extra_color);
+        instr.replace(pos, 3, name_color);
+    pos = instr.find("{e}");
+    if (pos != std::string::npos)
+        instr.replace(pos, 3, extra_color);
+    pos = instr.find("{o}");
+    if (pos != std::string::npos)
+        instr.replace(pos, 3, operands_color);
 
-    line->name_real_length = TextColoredEx("%s%s", color, instr.c_str());
+    line->name_real_length = TextColoredEx("%s%s", name_color, instr.c_str());
 }
 
 static void disassembler_menu(void)
@@ -1101,8 +1073,6 @@ static void disassembler_menu(void)
         ImGui::MenuItem("Opcodes", NULL, &config_debug.dis_show_mem);
         ImGui::MenuItem("Symbols", NULL, &config_debug.dis_show_symbols);
         ImGui::MenuItem("Segment", NULL, &config_debug.dis_show_segment);
-        ImGui::MenuItem("Bank", NULL, &config_debug.dis_show_bank);
-
         ImGui::EndMenu();
     }
 
@@ -1342,7 +1312,7 @@ static void add_bookmark_popup(void)
                 if (strlen(name_bookmark) == 0)
                 {
                     Memory* memory = emu_get_core()->GetMemory();
-                    Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(bookmark_address);
+                    GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(bookmark_address);
 
                     if (IsValidPointer(record) && (record->name[0] != 0))
                     {
@@ -1484,17 +1454,17 @@ void gui_debug_window_call_stack(void)
             M6502::GLYNX_CallStackEntry entry = temp_stack.top();
             temp_stack.pop();
 
-            Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(entry.dest);
+            GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(entry.dest);
 
             if (IsValidPointer(record) && (record->name[0] != 0))
             {
-                DebugSymbol* symbol = fixed_symbols[record->bank][entry.dest];
+                DebugSymbol* symbol = fixed_symbols[entry.dest];
 
                 if (IsValidPointer(symbol))
                     snprintf(symbol_text, sizeof(symbol_text), "%s", symbol->text);
                 else 
                 {
-                    DebugSymbol* symbol = dynamic_symbols[record->bank][entry.dest];
+                    DebugSymbol* symbol = dynamic_symbols[entry.dest];
 
                     if (IsValidPointer(symbol))
                         snprintf(symbol_text, sizeof(symbol_text), "%s", symbol->text);
@@ -1535,11 +1505,11 @@ void gui_debug_window_call_stack(void)
 static void save_full_disassembler(FILE* file)
 {
     Memory* memory = emu_get_core()->GetMemory();
-    Memory::GLYNX_Disassembler_Record** records = memory->GetAllDisassemblerRecords();
+    GLYNX_Disassembler_Record** records = memory->GetAllDisassemblerRecords();
 
     for (int i = 0; i < 0x200000; i++)
     {
-        Memory::GLYNX_Disassembler_Record* record = records[i];
+        GLYNX_Disassembler_Record* record = records[i];
 
         if (IsValidPointer(record) && (record->name[0] != 0))
         {
@@ -1559,7 +1529,7 @@ static void save_full_disassembler(FILE* file)
                 spaces[i] = ' ';
             spaces[offset] = 0;
 
-            fprintf(file, "%06X-%02X:    %s%s;%s\n", i, record->bank, name, spaces, record->bytes);
+            fprintf(file, "%06X:    %s%s;%s\n", i, name, spaces, record->bytes);
 
             if (is_return_instruction(record->opcodes[0]))
                 fprintf(file, "\n");
@@ -1585,8 +1555,6 @@ static void save_current_disassembler(FILE* file)
 
         if (config_debug.dis_show_segment)
             fprintf(file, "%s ", line.record->segment);
-        if (config_debug.dis_show_bank)
-            fprintf(file, "%02X ", line.record->bank);
 
         fprintf(file, " %04X ", line.address);
 
