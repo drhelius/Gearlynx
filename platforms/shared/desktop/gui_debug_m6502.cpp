@@ -49,7 +49,7 @@ void gui_debug_window_m6502(void)
     {
         ImGui::TableNextColumn();
         ImGui::TextColored(cyan, "      STATUS");
-        ImGui::TextColored(magenta, "  N V - B D I Z C");
+        ImGui::TextColored(orange, "  N V - B D I Z C");
         ImGui::Text("  " BYTE_TO_BINARY_PATTERN_ALL_SPACED, BYTE_TO_BINARY(proc_state->P->GetValue()));
 
         ImGui::TableNextColumn();

@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef HUC6280_H
-#define HUC6280_H
+#ifndef M6502_H
+#define M6502_H
 
 #include <vector>
 #include <stack>
@@ -316,4 +316,4 @@ static const int k_m6502_timer_divisor = (1024 * 3);
 #include "m6502_inline.h"
 #include "m6502_opcodes_inline.h"
 
-#endif /* HUC6280_H */
+#endif /* M6502_H */

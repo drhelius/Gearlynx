@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef HUC6280_OPCODES_INLINE_H
-#define HUC6280_OPCODES_INLINE_H
+#ifndef M6502_OPCODES_INLINE_H
+#define M6502_OPCODES_INLINE_H
 
 #include "m6502.h"
 #include "memory.h"
@@ -434,4 +434,4 @@ inline void M6502::UnofficialOPCode()
 #endif
 }
 
-#endif /* HUC6280_OPCODES_INLINE_H */
+#endif /* M6502_OPCODES_INLINE_H */

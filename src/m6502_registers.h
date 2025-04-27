@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef HUC6280_REGISTERS_H
-#define HUC6280_REGISTERS_H
+#ifndef M6502_REGISTERS_H
+#define M6502_REGISTERS_H
 
 #include "common.h"
 
@@ -188,4 +188,4 @@ INLINE void SixteenBitRegister::LoadState(std::istream& stream)
     stream.read(reinterpret_cast<char*> (&m_value.v), sizeof(m_value.v));
 }
 
-#endif /* HUC6280_REGISTERS_H */
+#endif /* M6502_REGISTERS_H */

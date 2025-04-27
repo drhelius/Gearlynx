@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef HUC6280_INLINE_H
-#define HUC6280_INLINE_H
+#ifndef M6502_INLINE_H
+#define M6502_INLINE_H
 
 #include <string.h>
 #include "m6502.h"
@@ -655,4 +655,4 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
 #endif
 }
 
-#endif /* HUC6280_INLINE_H */
+#endif /* M6502_INLINE_H */

@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef HUC6280_TIMING_H
-#define HUC6280_TIMING_H
+#ifndef M6502_TIMING_H
+#define M6502_TIMING_H
 
 #include "common.h"
 
@@ -64,4 +64,4 @@ const u8 k_m6502_opcode_sizes[256] =
 /* 0xF0 */  2, 2, 2, 7, 1, 2, 2, 2, 1, 3, 1, 1, 1, 3, 3, 3
 };
 
-#endif /* HUC6280_TIMING_H */
+#endif /* M6502_TIMING_H */

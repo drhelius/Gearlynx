@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef HUC6280_NAME_H
-#define HUC6280_NAME_H
+#ifndef M6502_NAME_H
+#define M6502_NAME_H
 
 enum GLYNX_OPCode_Type
 {
@@ -312,4 +312,4 @@ static const GLYNX_OPCode_Info k_m6502_opcode_names[256] = {
     { "{n}BBS {o}7,$%02X,$%04X  {e}[%+d]", GLYNX_OPCode_Type_1b_1b_Relative }
 };
 
-#endif /* HUC6280_NAME_H */
+#endif /* M6502_NAME_H */
