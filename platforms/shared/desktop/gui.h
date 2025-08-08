@@ -18,11 +18,11 @@
  */
 
 #ifndef GUI_H
-#define	GUI_H
+#define GUI_H
 
 #include <SDL.h>
-#include "../../../src/gearlynx.h"
-#include "imgui/imgui.h"
+#include "gearlynx.h"
+#include "imgui.h"
 
 #ifdef GUI_IMPORT
     #define EXTERN
@@ -69,13 +69,14 @@ EXTERN int* gui_configured_button;
 EXTERN bool gui_dialog_in_use;
 EXTERN bool gui_shortcut_open_rom;
 
-EXTERN void gui_init(void);
+EXTERN bool gui_init(void);
 EXTERN void gui_destroy(void);
 EXTERN void gui_render(void);
 EXTERN void gui_shortcut(gui_ShortCutEvent event);
 EXTERN void gui_load_rom(const char* path);
 EXTERN void gui_set_status_message(const char* message, u32 milliseconds);
+EXTERN void gui_set_error_message(const char* message);
 
 #undef GUI_IMPORT
 #undef EXTERN
-#endif	/* GUI_H */
+#endif /* GUI_H */

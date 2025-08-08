@@ -20,10 +20,10 @@
 #define GUI_DEBUG_PSG_IMPORT
 #include "gui_debug_psg.h"
 
-#include "imgui/imgui.h"
-#include "imgui/implot.h"
-#include "imgui/fonts/IconsMaterialDesign.h"
-#include "../../../src/gearlynx.h"
+#include "imgui.h"
+#include "implot.h"
+#include "fonts/IconsMaterialDesign.h"
+#include "gearlynx.h"
 #include "gui.h"
 #include "gui_debug_constants.h"
 #include "gui_debug_memeditor.h"

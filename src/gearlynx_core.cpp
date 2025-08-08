@@ -83,8 +83,6 @@ bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample
     }
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    GLYNX_Debug_State debug_state;
-    bool get_debug_state = true;
     bool debug_enable = false;
     bool instruction_completed = false;
     if (IsValidPointer(debug))
@@ -103,17 +101,6 @@ bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample
     do
     {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (get_debug_state)
-        {
-            get_debug_state = false;
-            debug_state.PC = m_m6502->GetState()->PC->GetValue();
-            debug_state.P = m_m6502->GetState()->P->GetValue();
-            debug_state.A = m_m6502->GetState()->A->GetValue();
-            debug_state.X = m_m6502->GetState()->X->GetValue();
-            debug_state.Y = m_m6502->GetState()->Y->GetValue();
-            debug_state.S = m_m6502->GetState()->S->GetValue();
-        }
-
         instruction_completed = m_m6502->Clock();
 #else
         m_m6502->Clock();
@@ -138,9 +125,7 @@ bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample
 
         if (debug_enable && instruction_completed && IsValidPointer(m_debug_callback))
         {
-            debug_state.cycles = *m_m6502->GetState()->CYCLES;
-            m_debug_callback(&debug_state);
-            get_debug_state = true;
+            m_debug_callback();
         }
 #endif
 

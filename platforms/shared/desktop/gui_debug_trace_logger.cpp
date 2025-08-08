@@ -21,7 +21,7 @@
 #include "gui_debug_trace_logger.h"
 
 #include <deque>
-#include "imgui/imgui.h"
+#include "imgui.h"
 #include "gui.h"
 #include "gui_filedialogs.h"
 #include "config.h"
@@ -98,7 +98,7 @@ void gui_debug_window_trace_logger(void)
     ImGui::PopStyleVar();
 }
 
-void gui_debug_trace_logger_update(GearlynxCore::GLYNX_Debug_State* state)
+void gui_debug_trace_logger_update(void)
 {
     if (trace_logger_enabled)
     {
@@ -108,43 +108,50 @@ void gui_debug_trace_logger_update(GearlynxCore::GLYNX_Debug_State* state)
         }
 
         Memory* memory = emu_get_core()->GetMemory();
-        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(state->PC);
+        M6502* m6502 = emu_get_core()->GetM6502();
+        M6502::M6502_State* state = m6502->GetState();
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(state->PC->GetValue());
 
         if (!IsValidPointer(record))
             return;
 
         char registers[40];
         snprintf(registers, sizeof(registers), "A: %02X  X: %02X  Y: %02X  S: %02X   ",
-            state->A, state->X, state->Y, state->S);
+            state->A->GetValue(), state->X->GetValue(), state->Y->GetValue(), state->S->GetValue());
 
         char flags[32];
+        u8 p = state->P->GetValue();
         snprintf(flags, sizeof(flags), "P: %c%c%c%c%c%c%c%c   ",
-            (state->P & FLAG_NEGATIVE) ? 'N' : 'n',
-            (state->P & FLAG_OVERFLOW) ? 'V' : 'v',
+            (p & FLAG_NEGATIVE) ? 'N' : 'n',
+            (p & FLAG_OVERFLOW) ? 'V' : 'v',
             '-',
-            (state->P & FLAG_BREAK) ? 'B' : 'b',
-            (state->P & FLAG_DECIMAL) ? 'D' : 'd',
-            (state->P & FLAG_INTERRUPT) ? 'I' : 'i',
-            (state->P & FLAG_ZERO) ? 'Z' : 'z',
-            (state->P & FLAG_CARRY) ? 'C' : 'c');
-
-        char cycles[16];
-        snprintf(cycles, sizeof(cycles), "(%02d) ", state->cycles);
+            (p & FLAG_BREAK) ? 'B' : 'b',
+            (p & FLAG_DECIMAL) ? 'D' : 'd',
+            (p & FLAG_INTERRUPT) ? 'I' : 'i',
+            (p & FLAG_ZERO) ? 'Z' : 'z',
+            (p & FLAG_CARRY) ? 'C' : 'c');
 
         char counter[16];
         snprintf(counter, sizeof(counter), "%d  ", trace_logger_instruction_count);
 
         std::string instr = record->name;
-        instr.erase(std::remove(instr.begin(), instr.end(), '{'), instr.end());
-        instr.erase(std::remove(instr.begin(), instr.end(), '}'), instr.end());
+        
+        size_t pos = 0;
+        while ((pos = instr.find('{', pos)) != std::string::npos)
+        {
+            size_t end_pos = instr.find('}', pos);
+            if (end_pos != std::string::npos)
+                instr.erase(pos, end_pos - pos + 1);
+            else 
+                pos++;
+        }
 
         char line[256];
-        snprintf(line, sizeof(line), "%s%04X   %s%s%s%s   %s",
+        snprintf(line, sizeof(line), "%s%04X   %s%s%s   %s",
             config_debug.trace_counter ? counter : "",
             state->PC, 
             config_debug.trace_registers ? registers : "", 
             config_debug.trace_flags ? flags : "",
-            config_debug.trace_cycles ? cycles : "",
             instr.c_str(),
             config_debug.trace_bytes ? record->bytes : "");
 
@@ -193,7 +200,6 @@ static void trace_logger_menu(void)
         ImGui::MenuItem("Instruction Counter", "", &config_debug.trace_counter);
         ImGui::MenuItem("Registers", "", &config_debug.trace_registers);
         ImGui::MenuItem("Flags", "", &config_debug.trace_flags);
-        ImGui::MenuItem("Cycles", "", &config_debug.trace_cycles);
         ImGui::MenuItem("Bytes", "", &config_debug.trace_bytes);
 
         ImGui::EndMenu();

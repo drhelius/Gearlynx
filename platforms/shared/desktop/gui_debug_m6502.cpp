@@ -20,8 +20,8 @@
 #define GUI_DEBUG_M6502_IMPORT
 #include "gui_debug_m6502.h"
 
-#include "imgui/imgui.h"
-#include "../../../src/gearlynx.h"
+#include "imgui.h"
+#include "gearlynx.h"
 #include "gui_debug_constants.h"
 #include "gui_debug_memory.h"
 #include "gui.h"

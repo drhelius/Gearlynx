@@ -18,11 +18,11 @@
  */
 
 #ifndef GUI_DEBUG_TEXT_H
-#define	GUI_DEBUG_TEXT_H
+#define GUI_DEBUG_TEXT_H
 
 #include <stdio.h>
 #include <stdarg.h>
-#include "imgui/imgui.h"
+#include "imgui.h"
 
 const char k_color_marker_start = '{';
 const char k_color_marker_end = '}';
@@ -64,7 +64,7 @@ static bool ProcessInlineHexColor(const char* start, const char* end, ImVec4& co
     if(digits == 6 || digits == 8)
     {
         char hex[9];
-        strncpy(hex, start, digits);
+        memcpy(hex, start, digits);
         hex[digits] = 0;
 
         unsigned int hex_color = 0;

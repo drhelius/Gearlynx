@@ -20,9 +20,9 @@
 #define GUI_DEBUG_DISASSEMBLER_IMPORT
 #include "gui_debug_disassembler.h"
 
-#include "imgui/imgui.h"
-#include "imgui/fonts/IconsMaterialDesign.h"
-#include "../../../src/gearlynx.h"
+#include "imgui.h"
+#include "fonts/IconsMaterialDesign.h"
+#include "gearlynx.h"
 #include "gui_debug_constants.h"
 #include "gui_debug_text.h"
 #include "gui_debug_memory.h"
@@ -33,7 +33,6 @@
 
 struct DebugSymbol
 {
-    int bank;
     u16 address;
     char text[64];
 };
@@ -170,7 +169,12 @@ void gui_debug_load_symbols_file(const char* file_path)
 
             if (line.find("[") != std::string::npos)
             {
-                valid_section = (line.find("[labels]") != std::string::npos);
+                valid_section = false;
+                if (line.find("[symbols]") != std::string::npos)
+                    valid_section = true;
+                else if (line.find("[labels]") != std::string::npos)
+                    valid_section = true;
+
                 continue;
             }
 
@@ -298,7 +302,7 @@ static void draw_controls(void)
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
     {
-        ImGui::SetTooltip("Start (F5)");
+        ImGui::SetTooltip("Start / Continue (F5)");
     }
 
     ImGui::SameLine();
@@ -794,56 +798,96 @@ static void add_symbol(const char* line)
     DebugSymbol s;
     std::string str(line);
 
+    // Clean up the string
     str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
     str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
     std::replace(str.begin(), str.end(), '\t', ' ');
 
+    // Trim leading/trailing whitespace
     size_t first = str.find_first_not_of(' ');
     if (std::string::npos == first)
-    {
         str = "";
-    }
     else
     {
         size_t last = str.find_last_not_of(' ');
         str = str.substr(first, (last - first + 1));
     }
 
+    // Remove comments
     std::size_t comment = str.find(";");
-
     if (comment != std::string::npos)
-        str = str.substr(0 , comment);
+        str = str.substr(0, comment);
 
-    std::size_t space = str.find_last_of(" ");
+    // Tokenize the string
+    std::vector<std::string> tokens;
+    std::istringstream iss(str);
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
 
-    if (space != std::string::npos)
+    // Need at least 2 tokens (bank/address and symbol) for valid format
+    if (tokens.size() >= 2)
     {
-        snprintf(s.text, 64, "%s", str.substr(space + 1 , std::string::npos).c_str());
-        str = str.substr(0, space);
+        std::string bank_str = "0";
+        std::string addr_str;
+        std::string symbol;
 
-        std::replace(str.begin(), str.end(), ' ', ':');
+        // Handle different formats
+        if (tokens.size() >= 4 && tokens[2].find(':') != std::string::npos) {
+            // PCEAS new format: <bank:address> <size> <filenumber:linenumber:columnnumber> <symbolname>
+            std::string addr_part = tokens[0];
+            symbol = tokens[3];
 
-        std::size_t separator = str.find(":");
-
-        try
-        {
-            if (separator != std::string::npos)
-            {
-                s.address = (u16)std::stoul(str.substr(separator + 1 , std::string::npos), 0, 16);
+            std::size_t separator = addr_part.find(":");
+            if (separator != std::string::npos) {
+                bank_str = addr_part.substr(0, separator);
+                addr_str = addr_part.substr(separator + 1);
+            } else {
+                addr_str = addr_part;
             }
-            else
-            {
-                s.address = (u16)std::stoul(str, 0, 16);
-            }
-
-            DebugSymbol* new_symbol = new DebugSymbol;
-            new_symbol->address = s.address;
-            snprintf(new_symbol->text, 64, "%s", s.text);
-
-            fixed_symbols[s.address] = new_symbol;
         }
-        catch(const std::invalid_argument&)
+        else if (tokens[0].find(':') != std::string::npos) {
+            // WLA format: <bank:address> <symbolname>
+            std::string addr_part = tokens[0];
+            std::size_t separator = addr_part.find(":");
+
+            bank_str = addr_part.substr(0, separator);
+            addr_str = addr_part.substr(separator + 1);
+            symbol = tokens[1];
+        }
+        else if (tokens.size() >= 3 && tokens[0].length() <= 2) {
+            // PCEAS old format: <bank> <address> <symbolname>
+            bank_str = tokens[0];
+            addr_str = tokens[1];
+            symbol = tokens[2];
+        }
+        else
         {
+            // VASM format: <address> <symbolname>
+            addr_str = tokens[0];
+            symbol = tokens[1];
+        }
+
+        // Parse the bank and address values
+        u16 bank_value = 0;
+        if (parseHexString(bank_str.c_str(), bank_str.length(), &bank_value))
+        {
+            u16 address_value = 0;
+            if (parseHexString(addr_str.c_str(), addr_str.length(), &address_value))
+            {
+                //s.bank = bank_value;
+                s.address = address_value;
+                snprintf(s.text, 64, "%s", symbol.c_str());
+
+                // Store the symbol
+                DebugSymbol* new_symbol = new DebugSymbol;
+                new_symbol->address = s.address;
+                //new_symbol->bank = s.bank;
+                snprintf(new_symbol->text, 64, "%s", s.text);
+
+                fixed_symbols[s.address] = new_symbol;
+            }
         }
     }
 }
@@ -865,7 +909,7 @@ static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
 
     if (record->jump)
     {
-        s.address = record->jump_address;        
+        s.address = record->jump_address;
         if (record->subroutine)
             snprintf(s.text, 64, "SUB_%04X", record->jump_address);
         else
@@ -1097,12 +1141,10 @@ static void disassembler_menu(void)
 
             if (go)
             {
-                try
+                u16 address_value = 0;
+                if (parseHexString(goto_address, strlen(goto_address), &address_value))
                 {
-                    request_goto_address((u16)std::stoul(goto_address, 0, 16));
-                }
-                catch(const std::invalid_argument&)
-                {
+                    request_goto_address(address_value);
                 }
                 goto_address[0] = 0;
             }
@@ -1173,12 +1215,10 @@ static void disassembler_menu(void)
 
             if (go)
             {
-                try
+                u16 address_value = 0;
+                if (parseHexString(runto_address, strlen(runto_address), &address_value))
                 {
-                    gui_debug_runto_address((u16)std::stoul(runto_address, 0, 16));
-                }
-                catch(const std::invalid_argument&)
-                {
+                    gui_debug_runto_address(address_value);
                 }
                 runto_address[0] = 0;
             }
@@ -1305,10 +1345,9 @@ static void add_bookmark_popup(void)
 
         if (ImGui::Button("OK", ImVec2(90, 0)))
         {
-            try
+            u16 bookmark_address = 0;
+            if (parseHexString(address_bookmark, strlen(address_bookmark), &bookmark_address))
             {
-                bookmark_address = (int)std::stoul(address_bookmark, 0, 16);
-
                 if (strlen(name_bookmark) == 0)
                 {
                     Memory* memory = emu_get_core()->GetMemory();
@@ -1337,9 +1376,6 @@ static void add_bookmark_popup(void)
                 address_bookmark[0] = 0;
                 name_bookmark[0] = 0;
                 bookmark_modified = false;
-            }
-            catch(const std::invalid_argument&)
-            {
             }
         }
 
@@ -1388,22 +1424,16 @@ static void add_symbol_popup(void)
 
         if (ImGui::Button("OK", ImVec2(90, 0)))
         {
-            try
+            if (strlen(name) != 0 && strlen(address) != 0)
             {
-                if (strlen(name) != 0)
-                {
-                    char symbol[128] = { };
-                    snprintf(symbol, 128, "%s %s", address, name);
-                    add_symbol(symbol);
+                char symbol[128] = { };
+                snprintf(symbol, 128, "%s %s", address, name);
+                add_symbol(symbol);
 
-                    ImGui::CloseCurrentPopup();
-                    address[0] = 0;
-                    name[0] = 0;
-                    symbol_modified = false;
-                }
-            }
-            catch(const std::invalid_argument&)
-            {
+                ImGui::CloseCurrentPopup();
+                address[0] = 0;
+                name[0] = 0;
+                symbol_modified = false;
             }
         }
 

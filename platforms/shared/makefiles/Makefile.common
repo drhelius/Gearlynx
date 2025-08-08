@@ -20,6 +20,15 @@ PLATFORM = "undefined"
 
 OBJECTS += $(SOURCES_C:.c=.o) $(SOURCES_CXX:.cpp=.o)
 
+INCLUDES += -I$(SRC_DIR) -I$(DESKTOP_SRC_DIR)
+
+INCLUDES += -I$(DEPS_DIR)/glad
+INCLUDES += -I$(DEPS_DIR)/imgui
+INCLUDES += -I$(DEPS_DIR)/mINI
+INCLUDES += -I$(DEPS_DIR)/miniz
+INCLUDES += -I$(DEPS_DIR)/nfd
+INCLUDES += -I$(DEPS_DIR)/stb
+
 USE_CLANG ?= 0
 ifeq ($(USE_CLANG), 1)
     CXX = clang++
@@ -29,8 +38,11 @@ else
     CC = gcc
 endif
 
-CPPFLAGS += -I../ -I../../
-CPPFLAGS += -Wall -Wextra -Wformat  -DEMULATOR_BUILD=\"$(GIT_VERSION)\"
+CPPFLAGS += $(INCLUDES)
+CPPFLAGS += -Wall -Wextra -Wformat -fno-exceptions -DEMULATOR_BUILD=\"$(GIT_VERSION)\" -DZ7_ST -DZSTD_DISABLE_ASM
+
+$(DEPS_DIR)/%.o: CPPFLAGS += -w
+
 CXXFLAGS += -std=c++11
 CFLAGS += -std=c99
 
@@ -52,7 +64,7 @@ endif
 
 ifeq ($(UNAME_S), Linux)
     PLATFORM = "Linux"
-    LDFLAGS += -lGL -lGLEW -ldl `sdl2-config --libs`
+    LDFLAGS += -lGL -ldl `sdl2-config --static-libs`
     CPPFLAGS += `sdl2-config --cflags`
     TARGET := $(TARGET_NAME)
 else ifeq ($(UNAME_S), Darwin)
@@ -63,11 +75,9 @@ else ifeq ($(UNAME_S), Darwin)
     TARGET := $(TARGET_NAME)
 else
     PLATFORM = "Generic Unix-like/BSD"
-    LDFLAGS += `sdl2-config --libs` -lSDL2
-    LDFLAGS += `pkg-config --libs glew` -lGLEW
+    LDFLAGS += -lGL `sdl2-config --libs`
     CXXFLAGS += -std=gnu++11
     CPPFLAGS += `sdl2-config --cflags`
-    CPPFLAGS += `pkg-config --cflags glew`
     TARGET := $(TARGET_NAME)
 endif
 

@@ -18,10 +18,12 @@
  */
 
 #ifndef BACKERS_H
-#define	BACKERS_H
+#define BACKERS_H
 
 static const char * BACKERS_STR = 
-" · Michael Mellor (dinglyburrow)"
+" · Dave Shadoff (dshadoff)"
+"\n · Romain Tisserand (rtissera)"
+"\n · Michael Mellor (dinglyburrow)"
 "\n · Francisco Javier Trujillo (fjtrujy)"
 "\n · Libretro / RetroArch team"
 "\n · Rupert Carmichael (carmiker)"
@@ -30,4 +32,4 @@ static const char * BACKERS_STR =
 "\n · KPreston2900050"
 "\n · Nicholas Piegdon";
 
-#endif	/* BACKERS_H */
+#endif /* BACKERS_H */

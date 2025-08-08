@@ -21,10 +21,10 @@
 #define	CONFIG_H
 
 #include <SDL.h>
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 #define MINI_CASE_SENSITIVE
-#include "mINI/ini.h"
-#include "imgui/imgui.h"
+#include "ini.h"
+#include "imgui.h"
 
 #ifdef CONFIG_IMPORT
     #define EXTERN
@@ -38,7 +38,7 @@ struct config_Emulator
 {
     bool maximized = false;
     bool fullscreen = false;
-    bool show_menu = true;
+    bool always_show_menu = false;
     bool paused = false;
     int save_slot = 0;
     bool start_paused = false;
@@ -117,7 +117,6 @@ struct config_Debug
     bool trace_counter = true;
     bool trace_registers = true;
     bool trace_flags = true;
-    bool trace_cycles = true;
     bool trace_bytes = true;
     bool dis_show_mem = true;
     bool dis_show_symbols = true;

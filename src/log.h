@@ -40,6 +40,7 @@ extern retro_log_printf_t log_cb;
 #endif
 
 #define Log(msg, ...) (Log_func(msg, ##__VA_ARGS__))
+#define Error(msg, ...) (Log_func("ERROR [%s:%d] " msg, __FILE__, __LINE__, ##__VA_ARGS__))
 
 inline void Log_func(const char* const msg, ...)
 {
@@ -57,7 +58,8 @@ inline void Log_func(const char* const msg, ...)
     }
 #endif
 
-#if defined(GLYNX_DEBUG)
+//#if defined(GLYNX_DEBUG)
+#if 0
     static int count = 1;
     printf("%d: %s\n", count, buffer);
     count++;

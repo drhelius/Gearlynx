@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <assert.h>
 #include "cartridge.h"
-#include "miniz/miniz.h"
+#include "miniz.h"
 #include "game_db.h"
 
 Cartridge::Cartridge()

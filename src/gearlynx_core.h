@@ -42,18 +42,7 @@ public:
         bool stop_on_irq;
     };
 
-    struct GLYNX_Debug_State
-    {
-        u16 PC;
-        u8 P;
-        u8 A;
-        u8 X;
-        u8 Y;
-        u8 S;
-        int cycles;
-    };
-
-    typedef void (*GLYNX_Debug_Callback)(GLYNX_Debug_State* state);
+    typedef void (*GLYNX_Debug_Callback)();
 
 public:
     GearlynxCore();

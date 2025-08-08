@@ -18,17 +18,18 @@
  */
 
 #include <math.h>
-#include "imgui/imgui.h"
-#include "imgui/implot.h"
-#include "imgui/fonts/RobotoMedium.h"
-#include "imgui/fonts/MaterialIcons.h"
-#include "imgui/fonts/IconsMaterialDesign.h"
-#include "nfd/nfd.h"
+#include "imgui.h"
+#include "implot.h"
+#include "fonts/RobotoMedium.h"
+#include "fonts/MaterialIcons.h"
+#include "fonts/IconsMaterialDesign.h"
+#include "nfd.h"
 #include "config.h"
 #include "application.h"
 #include "emu.h"
 #include "renderer.h"
-#include "../../../src/gearlynx.h"
+#include "utils.h"
+#include "gearlynx.h"
 
 #define GUI_IMPORT
 #include "gui.h"
@@ -45,20 +46,24 @@ static bool status_message_active = false;
 static char status_message[4096] = "";
 static u32 status_message_start_time = 0;
 static u32 status_message_duration = 0;
+static bool error_window_active = false;
+static char error_message[4096] = "";
 static void main_window(void);
 static void push_recent_rom(std::string path);
 static void show_status_message(void);
+static void show_error_window(void);
 static void set_style(void);
 static ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t);
 
-void gui_init(void)
+bool gui_init(void)
 {
     gui_main_window_width = 0;
     gui_main_window_height = 0;
 
     if (NFD_Init() != NFD_OKAY)
     {
-        Log("NFD Error: %s", NFD_GetError());
+        Error("NFD Error: %s", NFD_GetError());
+        return false;
     }
 
     IMGUI_CHECKVERSION();
@@ -110,12 +115,13 @@ void gui_init(void)
 
     gui_debug_init();
     gui_init_menus();
+
+    return true;
 }
 
 void gui_destroy(void)
 {
-    gui_debug_disassembler_destroy();
-    gui_debug_psg_destroy();
+    gui_debug_destroy();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     NFD_Quit();
@@ -143,6 +149,7 @@ void gui_render(void)
         gui_show_info();
 
     show_status_message();
+    show_error_window();
 
     ImGui::Render();
 }
@@ -232,7 +239,7 @@ void gui_shortcut(gui_ShortCutEvent event)
         gui_debug_memory_select_all();
         break;
     case gui_ShortcutShowMainMenu:
-        config_emulator.show_menu = !config_emulator.show_menu;
+        config_emulator.always_show_menu = !config_emulator.always_show_menu;
         break;
     default:
         break;
@@ -241,13 +248,25 @@ void gui_shortcut(gui_ShortCutEvent event)
 
 void gui_load_rom(const char* path)
 {
-    std::string message("Loading ROM ");
+    using namespace std;
+
+    string message("Loading ROM ");
     message += path;
     gui_set_status_message(message.c_str(), 3000);
 
     push_recent_rom(path);
     emu_resume();
-    emu_load_rom(path);
+
+    if (!emu_load_rom(path))
+    {
+        string message("Error loading ROM:\n");
+        message += path;
+        gui_set_error_message(message.c_str());
+
+        emu_get_core()->GetCartridge()->Reset();
+        gui_action_reset();
+        return;
+    }
 
     gui_debug_reset();
 
@@ -282,13 +301,19 @@ void gui_set_status_message(const char* message, u32 milliseconds)
     }
 }
 
+void gui_set_error_message(const char* message)
+{
+    strcpy(error_message, message);
+    error_window_active = true;
+}
+
 static void main_window(void)
 {
     GLYNX_Runtime_Info runtime;
     emu_get_runtime(runtime);
 
     int w = (int)ImGui::GetIO().DisplaySize.x;
-    int h = (int)ImGui::GetIO().DisplaySize.y - (config_emulator.show_menu ? gui_main_menu_height : 0);
+    int h = (int)ImGui::GetIO().DisplaySize.y - (application_show_menu ? gui_main_menu_height : 0);
 
     int selected_ratio = config_debug.debug ? 0 : config_video.ratio;
     float ratio = 0;
@@ -313,8 +338,10 @@ static void main_window(void)
         ratio = (float)w / (float)h;
     }
 
-    int w_corrected = (int)(runtime.screen_height * ratio);
-    int h_corrected = (int)(runtime.screen_height);
+    int base_width = (int)(runtime.screen_width);
+    int base_height = (int)(runtime.screen_height);
+
+    int w_corrected, h_corrected;
     int scale_multiplier = 0;
 
     if (config_debug.debug)
@@ -323,9 +350,23 @@ static void main_window(void)
             scale_multiplier = config_video.scale_manual;
         else
             scale_multiplier = 1;
+
+        w_corrected = base_width;
+        h_corrected = base_height;
     }
     else
     {
+        if (selected_ratio == 0)
+        {
+            w_corrected = base_width;
+            h_corrected = base_height;
+        }
+        else
+        {
+            w_corrected = (int)round(base_height * ratio);
+            h_corrected = base_height;
+        }
+
         switch (config_video.scale)
         {
         case 0:
@@ -341,7 +382,7 @@ static void main_window(void)
         case 2:
             scale_multiplier = 1;
             h_corrected = h;
-            w_corrected = (int)(h * ratio);
+            w_corrected = (int)round(h * ratio);
             break;
         case 3:
             scale_multiplier = 1;
@@ -374,7 +415,7 @@ static void main_window(void)
     else
     {
         int window_x = (w - (w_corrected * scale_multiplier)) / 2;
-        int window_y = ((h - (h_corrected * scale_multiplier)) / 2) + (config_emulator.show_menu ? gui_main_menu_height : 0);
+        int window_y = ((h - (h_corrected * scale_multiplier)) / 2) + (application_show_menu ? gui_main_menu_height : 0);
 
         ImGui::SetNextWindowSize(ImVec2((float)gui_main_window_width, (float)gui_main_window_height));
         ImGui::SetNextWindowPos(ImGui::GetMainViewport()->Pos + ImVec2((float)window_x, (float)window_y));
@@ -439,7 +480,7 @@ static void show_status_message(void)
 
     if (status_message_active)
     {
-        ImGui::SetNextWindowPos(ImVec2(0.0f, config_emulator.show_menu ? gui_main_menu_height : 0.0f));
+        ImGui::SetNextWindowPos(ImVec2(0.0f, application_show_menu ? gui_main_menu_height : 0.0f));
         ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f));
         ImGui::SetNextWindowBgAlpha(0.9f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -456,6 +497,28 @@ static void show_status_message(void)
         }
 
         ImGui::PopStyleVar();
+    }
+}
+
+static void show_error_window(void)
+{
+    if (error_window_active)
+    {
+        error_window_active = false;
+        ImGui::OpenPopup("Error");
+    }
+
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("%s\n\n", error_message);
+        ImGui::Separator();
+        if (ImGui::Button("OK"))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
 

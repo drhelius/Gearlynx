@@ -17,7 +17,7 @@
  *
  */
 
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 #include "application.h"
 
 int main(int argc, char* argv[])
@@ -86,8 +86,9 @@ int main(int argc, char* argv[])
 
     if (show_usage)
     {
-        printf("Usage: %s [options] [rom_file] [symbol_file]\n", argv[0]);
-        printf("Options:\n");
+        printf("Usage: %s [options] [game_file] [symbol_file]\n", argv[0]);
+        printf("  [game_file]         Game file: accepts ROMs (.lyx, .lnx) or ZIP (.zip)\n");
+        printf("\nOptions:\n");
         printf("  -f, --fullscreen    Start in fullscreen mode\n");
         printf("  -w, --windowed      Start in windowed mode with menu visible\n");
         printf("  -v, --version       Display version information\n");

@@ -18,9 +18,9 @@
  */
 
 #ifndef EMU_H
-#define	EMU_H
+#define EMU_H
 
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 #ifdef EMU_IMPORT
     #define EXTERN
@@ -59,10 +59,10 @@ EXTERN bool emu_audio_sync;
 EXTERN bool emu_debug_disable_breakpoints;
 EXTERN bool emu_debug_irq_breakpoints;
 
-EXTERN void emu_init(void);
+EXTERN bool emu_init(void);
 EXTERN void emu_destroy(void);
 EXTERN void emu_update(void);
-EXTERN void emu_load_rom(const char* file_path);
+EXTERN bool emu_load_rom(const char* file_path);
 EXTERN void emu_key_pressed(GLYNX_Keys key);
 EXTERN void emu_key_released(GLYNX_Keys key);
 EXTERN void emu_pause(void);
@@ -71,7 +71,6 @@ EXTERN bool emu_is_paused(void);
 EXTERN bool emu_is_debug_idle(void);
 EXTERN bool emu_is_empty(void);
 EXTERN bool emu_is_bios_loaded(void);
-EXTERN void emu_load_bios(const char* file_path);
 EXTERN void emu_load_bios(const char* file_path);
 EXTERN void emu_reset(void);
 EXTERN void emu_audio_mute(bool mute);
@@ -99,4 +98,4 @@ EXTERN void emu_save_screenshot(const char* file_path);
 
 #undef EMU_IMPORT
 #undef EXTERN
-#endif	/* EMU_H */
+#endif /* EMU_H */

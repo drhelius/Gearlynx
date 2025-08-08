@@ -19,7 +19,7 @@
 
 #include <vector>
 #include <algorithm>
-#include "../src/gearlynx.h"
+#include "gearlynx.h"
 #include "RSJparser.tcc"
 
 int excluded_tests[] = { };

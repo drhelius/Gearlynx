@@ -20,21 +20,27 @@
 #define GUI_DEBUG_IMPORT
 #include "gui_debug.h"
 
-#include "../../../src/gearlynx.h"
-#include "imgui/imgui.h"
+#include "gearlynx.h"
+#include "imgui.h"
 #include "gui_debug_disassembler.h"
 #include "gui_debug_m6502.h"
 #include "gui_debug_memory.h"
 #include "gui_debug_psg.h"
 #include "gui_debug_trace_logger.h"
+#include "emu.h"
 #include "config.h"
-
 
 void gui_debug_init(void)
 {
     gui_debug_disassembler_init();
-    gui_debug_memory_init();
     gui_debug_psg_init();
+    gui_debug_memory_init();
+}
+
+void gui_debug_destroy(void)
+{
+    gui_debug_disassembler_destroy();
+    gui_debug_psg_destroy();
 }
 
 void gui_debug_reset(void)
@@ -45,9 +51,9 @@ void gui_debug_reset(void)
     gui_debug_reset_symbols();
 }
 
-void gui_debug_callback(GearlynxCore::GLYNX_Debug_State* state)
+void gui_debug_callback(void)
 {
-    gui_debug_trace_logger_update(state);
+    gui_debug_trace_logger_update();
 }
 
 void gui_debug_windows(void)

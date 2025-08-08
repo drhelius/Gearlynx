@@ -18,10 +18,10 @@
  */
 
 #ifndef GUI_DEBUG_CONSTANTS_H
-#define	GUI_DEBUG_CONSTANTS_H
+#define GUI_DEBUG_CONSTANTS_H
 
-#include "imgui/imgui.h"
-#include "../../../src/gearlynx.h"
+#include "imgui.h"
+#include "gearlynx.h"
 
 static const ImVec4 cyan =          ImVec4(0.10f, 0.90f, 0.90f, 1.0f);
 static const ImVec4 dark_cyan =     ImVec4(0.00f, 0.30f, 0.30f, 1.0f);
@@ -105,4 +105,4 @@ static const stDebugLabel k_debug_labels[k_debug_label_count] =
     { 0x1403, "IRQ_STATUS_" }
 };
 
-#endif	/* GUI_DEBUG_CONSTANTS_H */
+#endif /* GUI_DEBUG_CONSTANTS_H */

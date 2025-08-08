@@ -23,7 +23,7 @@
 #include "gui_debug_trace_logger.h"
 #include "config.h"
 #include "emu.h"
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 void gui_action_reset(void)
 {

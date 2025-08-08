@@ -19,10 +19,10 @@
 
 #include <SDL.h>
 #include <iomanip>
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 #define MINI_CASE_SENSITIVE
-#include "mINI/ini.h"
+#include "ini.h"
 
 #define CONFIG_IMPORT
 #include "config.h"
@@ -44,11 +44,11 @@ void config_init(void)
     else
         config_root_path = SDL_GetPrefPath("Geardome", GLYNX_TITLE);
 
-    strcpy(config_emu_file_path, config_root_path);
-    strcat(config_emu_file_path, "config.ini");
+    strncpy_fit(config_emu_file_path, config_root_path, sizeof(config_emu_file_path));
+    strncat_fit(config_emu_file_path, "config.ini", sizeof(config_emu_file_path));
 
-    strcpy(config_imgui_file_path, config_root_path);
-    strcat(config_imgui_file_path, "imgui.ini");
+    strncpy_fit(config_imgui_file_path, config_root_path, sizeof(config_imgui_file_path));
+    strncat_fit(config_imgui_file_path, "imgui.ini", sizeof(config_imgui_file_path));
 
     config_input.key_left = SDL_SCANCODE_LEFT;
     config_input.key_right = SDL_SCANCODE_RIGHT;
@@ -94,7 +94,6 @@ void config_read(void)
 #else
         config_debug.debug = read_bool("Debug", "Debug", false);
 #endif
-    config_debug.debug = read_bool("Debug", "Debug", false);
     config_debug.show_disassembler = read_bool("Debug", "Disassembler", true);
     config_debug.show_screen = read_bool("Debug", "Screen", true);
     config_debug.show_memory = read_bool("Debug", "Memory", false);
@@ -105,7 +104,6 @@ void config_read(void)
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
-    config_debug.trace_cycles = read_bool("Debug", "TraceCycles", true);
     config_debug.trace_bytes = read_bool("Debug", "TraceBytes", true);
     config_debug.dis_show_mem = read_bool("Debug", "DisMem", true);
     config_debug.dis_show_symbols = read_bool("Debug", "DisSymbols", true);
@@ -118,7 +116,7 @@ void config_read(void)
 
     config_emulator.maximized = read_bool("Emulator", "Maximized", false);
     config_emulator.fullscreen = read_bool("Emulator", "FullScreen", false);
-    config_emulator.show_menu = read_bool("Emulator", "ShowMenu", true);
+    config_emulator.always_show_menu = read_bool("Emulator", "AlwaysShowMenu", false);
     config_emulator.ffwd_speed = read_int("Emulator", "FFWD", 1);
     config_emulator.save_slot = read_int("Emulator", "SaveSlot", 0);
     config_emulator.start_paused = read_bool("Emulator", "StartPaused", false);
@@ -214,7 +212,6 @@ void config_write(void)
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);
     write_bool("Debug", "TraceFlags", config_debug.trace_flags);
-    write_bool("Debug", "TraceCycles", config_debug.trace_cycles);
     write_bool("Debug", "TraceBytes", config_debug.trace_bytes);
     write_bool("Debug", "DisMem", config_debug.dis_show_mem);
     write_bool("Debug", "DisSymbols", config_debug.dis_show_symbols);
@@ -227,7 +224,7 @@ void config_write(void)
 
     write_bool("Emulator", "Maximized", config_emulator.maximized);
     write_bool("Emulator", "FullScreen", config_emulator.fullscreen);
-    write_bool("Emulator", "ShowMenu", config_emulator.show_menu);
+    write_bool("Emulator", "AlwaysShowMenu", config_emulator.always_show_menu);
     write_int("Emulator", "FFWD", config_emulator.ffwd_speed);
     write_int("Emulator", "SaveSlot", config_emulator.save_slot);
     write_bool("Emulator", "StartPaused", config_emulator.start_paused);

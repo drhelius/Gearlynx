@@ -18,9 +18,9 @@
  */
 
 #ifndef GUI_DEBUG_DISASSEMBLER_H
-#define	GUI_DEBUG_DISASSEMBLER_H
+#define GUI_DEBUG_DISASSEMBLER_H
 
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 #ifdef GUI_DEBUG_DISASSEMBLER_IMPORT
     #define EXTERN

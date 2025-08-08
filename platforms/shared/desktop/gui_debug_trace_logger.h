@@ -18,9 +18,9 @@
  */
 
 #ifndef GUI_DEBUG_TRACE_LOGGER_H
-#define	GUI_DEBUG_TRACE_LOGGER_H
+#define GUI_DEBUG_TRACE_LOGGER_H
 
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 #ifdef GUI_DEBUG_TRACE_LOGGER_IMPORT
     #define EXTERN
@@ -29,7 +29,7 @@
 #endif
 
 EXTERN void gui_debug_window_trace_logger(void);
-EXTERN void gui_debug_trace_logger_update(GearlynxCore::GLYNX_Debug_State* state);
+EXTERN void gui_debug_trace_logger_update(void);
 EXTERN void gui_debug_trace_logger_clear(void);
 EXTERN void gui_debug_save_log(const char* file_path);
 

@@ -18,9 +18,9 @@
  */
 
 #ifndef GUI_DEBUG_H
-#define	GUI_DEBUG_H
+#define GUI_DEBUG_H
 
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 #ifdef GUI_DEBUG_IMPORT
     #define EXTERN
@@ -29,8 +29,9 @@
 #endif
 
 EXTERN void gui_debug_init(void);
+EXTERN void gui_debug_destroy(void);
 EXTERN void gui_debug_reset(void);
-EXTERN void gui_debug_callback(GearlynxCore::GLYNX_Debug_State* state);
+EXTERN void gui_debug_callback(void);
 EXTERN void gui_debug_windows(void);
 
 #undef GUI_DEBUG_IMPORT

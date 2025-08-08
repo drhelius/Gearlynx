@@ -45,6 +45,8 @@
 #define GLYNX_SCREEN_WIDTH 160
 #define GLYNX_SCREEN_HEIGHT 102
 
+#define GLYNX_MAX_GAMEPADS 1
+
 #if !defined(NULL)
     #define NULL 0
 #endif

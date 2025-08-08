@@ -19,7 +19,7 @@
 #define EMU_IMPORT
 #include "emu.h"
 
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 #include "sound_queue.h"
 #include "config.h"
 
@@ -27,7 +27,7 @@
 #if defined(_WIN32)
 #define STBIW_WINDOWS_UTF8
 #endif
-#include "stb/stb_image_write.h"
+#include "stb_image_write.h"
 
 static GearlynxCore* core;
 static SoundQueue* sound_queue;
@@ -44,7 +44,7 @@ static void update_debug(void);
 static void update_debug_background(void);
 static void update_debug_sprites(void);
 
-void emu_init(void)
+bool emu_init(void)
 {
     emu_frame_buffer = new u8[1024 * 512 * 4];
     audio_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
@@ -56,7 +56,8 @@ void emu_init(void)
     core->Init();
 
     sound_queue = new SoundQueue();
-    sound_queue->Start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_BUFFER_SIZE, GLYNX_AUDIO_BUFFER_COUNT);
+    if (!sound_queue->Start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_BUFFER_SIZE, GLYNX_AUDIO_BUFFER_COUNT))
+        return false;
 
     for (int i = 0; i < 5; i++)
         InitPointer(emu_savestates_screenshots[i].data);
@@ -67,6 +68,8 @@ void emu_init(void)
     emu_debug_irq_breakpoints = false;
     emu_debug_command = Debug_Command_None;
     emu_debug_pc_changed = false;
+
+    return true;
 }
 
 void emu_destroy(void)
@@ -82,16 +85,20 @@ void emu_destroy(void)
         SafeDeleteArray(emu_savestates_screenshots[i].data);
 }
 
-void emu_load_rom(const char* file_path)
+bool emu_load_rom(const char* file_path)
 {
     emu_debug_command = Debug_Command_None;
     reset_buffers();
 
     save_ram();
-    core->LoadROM(file_path);
+    if (!core->LoadROM(file_path))
+        return false;
+
     load_ram();
 
     update_savestates_data();
+
+    return true;
 }
 
 void emu_update(void)
@@ -271,7 +278,7 @@ void update_savestates_data(void)
         emu_savestates[i].rom_name[0] = 0;
         SafeDeleteArray(emu_savestates_screenshots[i].data);
 
-        const char* dir = NULL;
+        const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
 
         if (!core->GetSaveStateHeader(i + 1, dir, &emu_savestates[i]))
             continue;

@@ -29,7 +29,7 @@
 #include "emu.h"
 #include "renderer.h"
 #include "utils.h"
-#include "../../../src/gearlynx.h"
+#include "gearlynx.h"
 
 static bool open_rom = false;
 static bool open_ram = false;
@@ -53,6 +53,7 @@ static void menu_about(void);
 static void file_dialogs(void);
 static void keyboard_configuration_item(const char* text, SDL_Scancode* key);
 static void gamepad_configuration_item(const char* text, int* button);
+static void gamepad_device_selector(void);
 static void draw_savestate_slot_info(int slot);
 
 void gui_init_menus(void)
@@ -75,7 +76,7 @@ void gui_main_menu(void)
     open_bios_warning = false;
     gui_main_menu_hovered = false;
 
-    if (config_emulator.show_menu && ImGui::BeginMainMenuBar())
+    if (application_show_menu && ImGui::BeginMainMenuBar())
     {
         gui_main_menu_hovered = ImGui::IsWindowHovered();
 
@@ -235,7 +236,7 @@ static void menu_gearlynx(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Quit", "ESC"))
+        if (ImGui::MenuItem("Quit", "Ctrl+Q"))
         {
             application_trigger_quit();
         }
@@ -411,7 +412,14 @@ static void menu_video(void)
             application_trigger_fullscreen(config_emulator.fullscreen);
         }
 
-        ImGui::MenuItem("Show Menu", "CTRL+M", &config_emulator.show_menu);
+        ImGui::MenuItem("Always Show Menu", "CTRL+M", &config_emulator.always_show_menu);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("This option will enable menu even in fullscreen.");
+            ImGui::Text("Menu always shows in debug mode.");
+            ImGui::EndTooltip();
+        }
 
         if (ImGui::MenuItem("Resize Window to Content"))
         {
@@ -504,7 +512,13 @@ static void menu_input(void)
 
         if (ImGui::BeginMenu("Gamepads"))
         {
-            ImGui::MenuItem("Enable Gamepad P1", "", &config_input.gamepad);
+            ImGui::MenuItem("Enable Gamepad", "", &config_input.gamepad);
+
+            if (ImGui::BeginMenu("Device"))
+            {
+                gamepad_device_selector();
+                ImGui::EndMenu();
+            }
 
             if (ImGui::BeginMenu("Directional Controls"))
             {
@@ -704,6 +718,65 @@ static void gamepad_configuration_item(const char* text, int* button)
     if (ImGui::Button(remove_label))
     {
         *button = SDL_CONTROLLER_BUTTON_INVALID;
+    }
+}
+
+static void gamepad_device_selector(void)
+{
+    const int max_detected_gamepads = 32;
+    int index_map[max_detected_gamepads];
+    index_map[0] = -1;
+    int count = 1;
+
+    std::string items;
+    items.reserve(4096);
+    items.append("<None>");
+    items.push_back('\0');
+
+    int num = SDL_NumJoysticks();
+
+    SDL_JoystickID current_id = -1;
+    if (IsValidPointer(application_gamepad))
+        current_id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad));
+
+    int selected = 0;
+
+    for (int i = 0; i < num && count < max_detected_gamepads; i++)
+    {
+        if (!SDL_IsGameController(i))
+            continue;
+
+        const char* name = SDL_GameControllerNameForIndex(i);
+        if (!IsValidPointer(name))
+            name = "Unknown Gamepad";
+
+        index_map[count] = i;
+
+        SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(i);
+
+        if (current_id == id)
+            selected = count;
+
+        char id_str[64];
+        SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(i);
+        SDL_JoystickGetGUIDString(guid, id_str, sizeof(id_str));
+        size_t len = strlen(id_str);
+        const char* id_8 = id_str + (len > 8 ? len - 8 : 0);
+
+        char label[192];
+        snprintf(label, sizeof(label), "%s (ID: %s)", name, id_8);
+
+        items.append(label);
+        items.push_back('\0');
+        count++;
+    }
+
+    items.push_back('\0');
+
+    if (ImGui::Combo("##device_player", &selected, items.c_str()))
+    {
+        int device_index = index_map[selected];
+        application_assign_gamepad(device_index);
     }
 }
 
