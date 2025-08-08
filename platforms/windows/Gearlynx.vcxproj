@@ -39,7 +39,7 @@
     <ClInclude Include="..\..\src\m6502_timing.h" />
     <ClInclude Include="..\..\src\memory.h" />
     <ClInclude Include="..\..\src\memory_inline.h" />
-    <ClInclude Include="..\..\src\miniz\miniz.h" />
+    <ClInclude Include="..\shared\dependencies\miniz\miniz.h" />
     <ClInclude Include="..\..\src\types.h" />
     <ClInclude Include="..\shared\desktop\application.h" />
     <ClInclude Include="..\shared\desktop\backers.h" />
@@ -91,7 +91,7 @@
     <ClCompile Include="..\..\src\m6502_functors.cpp" />
     <ClCompile Include="..\..\src\m6502_opcodes.cpp" />
     <ClCompile Include="..\..\src\memory.cpp" />
-    <ClCompile Include="..\..\src\miniz\miniz.c" />
+    <ClCompile Include="..\shared\dependencies\miniz\miniz.c" />
     <ClCompile Include="..\shared\desktop\application.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />
     <ClCompile Include="..\shared\desktop\emu.cpp" />
