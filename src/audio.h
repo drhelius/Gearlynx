@@ -36,7 +36,7 @@ public:
     void Init();
     void Reset();
     void Mute(bool mute);
-    void Clock();
+    void Clock(u32 cycles);
     void WritePSG(u32 address, u8 value);
     void EndFrame(s16* sample_buffer, int* sample_count);
     void SaveState(std::ostream& stream);

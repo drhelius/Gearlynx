@@ -21,7 +21,7 @@
 
 #include "audio.h"
 
-inline void Audio::Clock()
+inline void Audio::Clock(u32 cycles)
 {
 
 }

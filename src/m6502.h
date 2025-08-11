@@ -96,8 +96,7 @@ public:
     ~M6502();
     void Init(Memory* memory);
     void Reset();
-    bool Clock();
-    u32 TickOPCode();
+    u32 RunInstruction(bool* completed = NULL);
     void AssertIRQ1(bool asserted);
     void AssertIRQ2(bool asserted);
     void InjectCycles(unsigned int cycles);
@@ -161,7 +160,7 @@ private:
     int m_reset_value;
 
 private:
-    u32 TickIRQ();
+    void HandleIRQ();
     void CheckIRQs();
 
     void ClockTimer();

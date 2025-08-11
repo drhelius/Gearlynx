@@ -26,99 +26,68 @@
 #include "m6502_names.h"
 #include "memory.h"
 
-inline bool M6502::Clock()
+INLINE u32 M6502::RunInstruction(bool* instruction_completed)
 {
-    if (m_clock % 3 == 0)
-        ClockTimer();
-
-    bool instruction_completed = false;
-
-    if (m_clock % k_m6502_speed_divisor[m_speed] == 0)
-    {
-        if (m_clock_cycles <= 0)
-        {
-            if (m_irq_pending != 0)
-            {
-                m_clock_cycles += TickIRQ();
-                if (m_clock_cycles == 0)
-                    m_clock_cycles += TickOPCode();
-            }
-            else
-                m_clock_cycles += TickOPCode();
-        }
-
-        m_clock_cycles--;
-        instruction_completed = ((m_clock_cycles == 0) && (m_irq_pending == 0));
-    }
-
-    m_clock = (m_clock + 1) % 12;
-
-    return instruction_completed;
-}
-
-inline u32 M6502::TickOPCode()
-{
+#if !defined(GG_DISABLE_DISASSEMBLER)
     m_memory_breakpoint_hit = false;
+#endif
+
     m_cycles = 0;
 
     u8 opcode = Fetch8();
+    CheckIRQs();
     (this->*m_opcodes[opcode])();
+
+#if !defined(GG_DISABLE_DISASSEMBLER)
+    *instruction_completed = true;
+#else
+    UNUSED(instruction_completed);
+#endif
+
+    if((m_irq_pending || IS_SET_BIT(m_interrupt_request_register, 2)))
+        HandleIRQ();
 
     DisassembleNextOPCode();
 
     m_cycles += k_m6502_opcode_cycles[opcode];
 
-    m_last_instruction_cycles = m_cycles;
-
     return m_cycles;
 }
 
-inline u32 M6502::TickIRQ()
+inline void M6502::HandleIRQ()
 {
-    assert(m_irq_pending != 0);
-
-    m_cycles = 0;
     u16 vector = 0;
 
     // TIQ
     if (IS_SET_BIT(m_irq_pending, 2) && IS_SET_BIT(m_interrupt_request_register, 2))
-    {
         vector = 0xFFFA;
-        m_debug_next_irq = 3;
-    }
     // IRQ1
     else if (IS_SET_BIT(m_irq_pending, 1))
-    {
         vector = 0xFFF8;
-        m_debug_next_irq = 4;
-    }
     // IRQ2
     else if (IS_SET_BIT(m_irq_pending, 0))
-    {
         vector = 0xFFF6;
-        m_debug_next_irq = 5;
-    }
     else
-        return 0;
+        return;
 
     u16 pc = m_PC.GetValue();
     StackPush16(pc);
     StackPush8(m_P.GetValue() & ~FLAG_BREAK);
     SetFlag(FLAG_INTERRUPT);
     ClearFlag(FLAG_DECIMAL);
-    m_PC.SetLow(MemoryRead(vector));
-    m_PC.SetHigh(MemoryRead(vector + 1));
+
+    m_PC.SetLow(m_memory->Read(vector));
+    m_PC.SetHigh(m_memory->Read(vector + 1));
+
     m_cycles += 8;
 
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    DisassembleNextOPCode();
+#if !defined(GG_DISABLE_DISASSEMBLER)
+    m_debug_next_irq =((0xFFFA - vector) >> 1) + 3;
     if (m_breakpoints_irq_enabled)
         m_cpu_breakpoint_hit = true;
     u16 dest = m_PC.GetValue();
     PushCallStack(pc, dest, pc);
 #endif
-
-    return m_cycles;
 }
 
 INLINE void M6502::CheckIRQs()

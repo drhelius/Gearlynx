@@ -7,6 +7,9 @@ PLATFORM = "undefined"
 
 OBJECTS += $(SOURCES_C:.c=.o) $(SOURCES_CXX:.cpp=.o)
 
+INCLUDES += -I$(SRC_DIR)
+INCLUDES += -I$(DEPS_DIR)/miniz
+
 USE_CLANG ?= 0
 ifeq ($(USE_CLANG), 1)
     CXX = clang++
@@ -16,10 +19,12 @@ else
     CC = gcc
 endif
 
-CPPFLAGS += -I../ -I../../
-CPPFLAGS += -Wall -Wextra -Wformat -DGLYNX_TESTING=1 -DGLYNX_DISABLE_DISASSEMBLER=1 -DEMULATOR_BUILD=\"$(GIT_VERSION)\"
+CPPFLAGS += $(INCLUDES)
+CPPFLAGS += -Wall -Wextra -Wformat -fno-exceptions -DGLYNX_TESTING=1 -DGLYNX_DISABLE_DISASSEMBLER=1 -DEMULATOR_BUILD=\"$(GIT_VERSION)\"
 CXXFLAGS += -std=c++11
 CFLAGS += -std=c99
+
+$(DEPS_DIR)/%.o: CPPFLAGS += -w
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)

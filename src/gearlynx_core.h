@@ -22,7 +22,7 @@
 
 #include <iostream>
 #include <fstream>
-#include "types.h"
+#include "common.h"
 
 class Audio;
 class Input;
@@ -50,7 +50,8 @@ public:
     void Init(GLYNX_Pixel_Format pixel_format = GLYNX_PIXEL_RGBA8888);
     bool RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug = NULL);
     bool LoadROM(const char* file_path);
-    bool LoadROMFromBuffer(const u8* buffer, int size);
+    bool LoadROMFromBuffer(const u8* buffer, int size, const char* file_path = NULL);
+    bool LoadBios(const char* file_path);
     void ResetROM(bool preserve_ram);
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);
@@ -77,6 +78,8 @@ public:
 
 private:
     void Reset();
+    template<bool debugger>
+    bool RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug);
     bool SaveState(std::ostream& stream, size_t& size, bool screenshot);
     bool LoadState(std::istream& stream);
     std::string GetSaveStatePath(const char* path, int index);
@@ -91,5 +94,7 @@ private:
     u64 m_clock;
     GLYNX_Debug_Callback m_debug_callback;
 };
+
+#include "gearlynx_core_inline.h"
 
 #endif /* GEARLYNX_CORE_H */

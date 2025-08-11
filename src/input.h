@@ -35,6 +35,7 @@ public:
     u8 ReadK();
     void WriteO(u8 value);
     u8 GetIORegister();
+    void EndFrame();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

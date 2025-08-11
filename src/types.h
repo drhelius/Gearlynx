@@ -47,11 +47,7 @@ struct GLYNX_Color
 enum GLYNX_Pixel_Format
 {
     GLYNX_PIXEL_RGB565,
-    GLYNX_PIXEL_RGB555,
     GLYNX_PIXEL_RGBA8888,
-    GLYNX_PIXEL_BGR565,
-    GLYNX_PIXEL_BGR555,
-    GLYNX_PIXEL_BGRA8888
 };
 
 enum GLYNX_Keys
@@ -92,6 +88,13 @@ struct GLYNX_SaveState_Header
     u32 screenshot_size;
     u16 screenshot_width;
     u16 screenshot_height;
+    char emu_build[32];
+};
+
+struct GG_SaveState_Header_Libretro
+{
+    u32 magic;
+    u32 version;
 };
 
 struct GLYNX_SaveState_Screenshot

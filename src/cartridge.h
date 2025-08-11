@@ -51,6 +51,8 @@ public:
     void Reset();
     u8* GetROM();
     bool IsReady();
+    bool IsBiosLoaded();
+    bool IsBiosValid();
     int GetROMSize();
     u32 GetCRC();
     u16 GetBank0Size();
@@ -66,19 +68,26 @@ public:
     const char* GetFileName();
     const char* GetFileExtension();
     bool LoadFromFile(const char* path);
-    bool LoadFromBuffer(const u8* buffer, int size);
+    bool LoadFromBuffer(const u8* buffer, int size, const char* path);
+    bool LoadBios(const char* path);
 
 private:
-    bool LoadFromZipFile(const u8* buffer, int size);
-    void GatherInfoFromDB();
+    bool LoadFromZipFile(const u8* buffer, int size, const char* path);
+    void GatherCartridgeInfoFromDB();
+    void GatherBIOSInfoFromDB();
     bool GatherHeader(const u8* buffer);
+    void GatherDataFromPath(const char* path);
     bool CheckMissingInfo();
     GLYNX_Cartridge_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_Cartridge_EEPROM ReadHeaderEEPROM(u8 eeprom);
+    bool IsValidFile(const char* path);
 
 private:
     u8* m_rom;
     u32 m_rom_size;
+    u8 m_bios[GLYNX_BIOS_SIZE] = {};
+    bool m_is_bios_loaded;
+    bool m_is_bios_valid;
     bool m_ready;
     char m_file_path[512];
     char m_file_directory[512];
@@ -93,7 +102,6 @@ private:
     bool m_audin;
     GLYNX_Cartridge_EEPROM m_eeprom;
     u32 m_crc;
-
 };
 
 #endif /* CARTRIDGE_H */

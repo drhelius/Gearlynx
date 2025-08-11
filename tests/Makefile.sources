@@ -1,8 +1,9 @@
 SRC_DIR = ../src
+DEPS_DIR = ../platforms/shared/dependencies
 TEST_SRC_DIR=.
 
 SOURCES_C := \
-    $(SRC_DIR)/miniz/miniz.c \
+    $(DEPS_DIR)/miniz/miniz.c \
 
 SOURCES_CXX := \
     $(TEST_SRC_DIR)/main.cpp \

@@ -23,6 +23,7 @@
 #include <assert.h>
 #include "cartridge.h"
 #include "miniz.h"
+#include "crc.h"
 #include "game_db.h"
 
 Cartridge::Cartridge()
@@ -81,6 +82,16 @@ u32 Cartridge::GetCRC()
 bool Cartridge::IsReady()
 {
     return m_ready;
+}
+
+bool Cartridge::IsBiosLoaded()
+{
+    return m_is_bios_loaded;
+}
+
+bool Cartridge::IsBiosValid()
+{
+    return m_is_bios_valid;
 }
 
 int Cartridge::GetROMSize()
@@ -159,112 +170,154 @@ bool Cartridge::LoadFromFile(const char* path)
 
     Log("Loading %s...", path);
 
+    if (!IsValidFile(path))
+        return false;
+
     Reset();
 
-    string fullpath(path);
-    string directory;
-    string filename;
-    string extension;
+    GatherDataFromPath(path);
 
-    size_t pos = fullpath.find_last_of("/\\");
-    if (pos != string::npos)
+    ifstream file(path, ios::in | ios::binary | ios::ate);
+    int size = (int)(file.tellg());
+
+    if (file.is_open())
     {
-        filename = fullpath.substr(pos + 1);
-        directory = fullpath.substr(0, pos);
+        char* buffer = new char[size];
+        file.seekg(0, ios::beg);
+        file.read(buffer, size);
+        file.close();
+
+        bool is_empty = false;
+
+        for (int i = 0; i < size; i++)
+        {
+            if (buffer[i] != 0)
+                break;
+
+            if (i == size - 1)
+            {
+                Error("File %s is empty!", path);
+                is_empty = true;
+                m_ready = false;
+            }
+        }
+
+        if (!is_empty)
+        {
+            if (strcmp(m_file_extension, "zip") == 0)
+                m_ready = LoadFromZipFile((u8*)(buffer), size, path);
+            else
+                m_ready = LoadFromBuffer((u8*)(buffer), size, path);
+        }
+
+        SafeDeleteArray(buffer);
     }
     else
     {
-        filename = fullpath;
-        directory = "";
+        Error("There was a problem loading the file %s...", path);
+        m_ready = false;
     }
 
-    extension = fullpath.substr(fullpath.find_last_of(".") + 1);
-    transform(extension.begin(), extension.end(), extension.begin(), (int(*)(int)) tolower);
+    if (!m_ready)
+        Reset();
 
-    snprintf(m_file_path, sizeof(m_file_path), "%s", path);
-    snprintf(m_file_directory, sizeof(m_file_directory), "%s", directory.c_str());
-    snprintf(m_file_name, sizeof(m_file_name), "%s", filename.c_str());
-    snprintf(m_file_extension, sizeof(m_file_extension), "%s", extension.c_str());
+    return m_ready;
+}
+
+bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
+{
+    Log("Loading ROM from buffer... Size: %d", size);
+
+    if (!IsValidPointer(buffer) || size <= 0)
+    {
+        Error("Unable to load ROM from buffer: Buffer invalid %p. Size: %d", buffer, size);
+        return false;
+    }
+
+    Reset();
+
+    GatherDataFromPath(path);
+
+    if (size & 0x40)
+    {
+        Debug("Header expected");
+    }
+
+    if (GatherHeader(buffer))
+    {
+        size -= 0x40;
+        buffer += 0x40;
+    }
+    else
+    {
+        Debug("WARNING: Unable to gather ROM header");
+    }
+
+    m_rom_size = size;
+    Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
+
+    m_rom = new u8[m_rom_size];
+    memcpy(m_rom, buffer, m_rom_size);
+
+    m_crc = CalculateCRC32(0, m_rom, m_rom_size);
+    Log("ROM CRC32: %08X", m_crc);
+
+    GatherCartridgeInfoFromDB();
+    m_ready = CheckMissingInfo();
+
+    Debug("ROM loaded from buffer. Size: %d bytes", m_rom_size);
+
+    if (!m_ready)
+        Reset();
+
+    return m_ready;
+}
+
+bool Cartridge::LoadBios(const char* path)
+{
+    using namespace std;
+
+    m_is_bios_loaded = false;
 
     ifstream file(path, ios::in | ios::binary | ios::ate);
 
     if (file.is_open())
     {
         int size = static_cast<int> (file.tellg());
-        char* memblock = new char[size];
+
+        if (size != 0x200)
+        {
+            Error("Incorrect BIOS size %d: %s", size, path);
+            return false;
+        }
+
         file.seekg(0, ios::beg);
-        file.read(memblock, size);
+        file.read(reinterpret_cast<char*>(m_bios), size);
         file.close();
 
-        if (extension == "zip")
-            m_ready = LoadFromZipFile(reinterpret_cast<u8*> (memblock), size);
-        else
-            m_ready = LoadFromBuffer(reinterpret_cast<u8*> (memblock), size);
+        u32 crc = CalculateCRC32(0, m_bios, size);
 
-        SafeDeleteArray(memblock);
+        if (crc != GLYNX_DB_BIOS_CRC)
+        {
+            Log("Incorrect BIOS CRC %08X: %s", crc, path);
+        }
+
+        m_is_bios_loaded = true;
+
+        Log("BIOS %s loaded (%d bytes)", path, size);
     }
     else
     {
-        Log("ERROR: There was a problem loading the file %s...", path);
-        m_ready = false;
+        Error("There was a problem opening the file %s", path);
+        return false;
     }
 
-    if (!m_ready)
-        Reset();
-
-    return m_ready;
+    return true;
 }
 
-bool Cartridge::LoadFromBuffer(const u8* buffer, int size)
+bool Cartridge::LoadFromZipFile(const u8* buffer, int size, const char* path)
 {
-    if (IsValidPointer(buffer) && size > 0x40)
-    {
-        Log("Loading ROM from buffer... Size: %d", size);
-
-        if (size & 0x40)
-        {
-            Debug("Header expected");
-        }
-
-        if (GatherHeader(buffer))
-        {
-            size -= 0x40;
-            buffer += 0x40;
-        }
-        else
-        {
-            Debug("WARNING: Unable to gather ROM header");
-        }
-
-        m_rom_size = size;
-        Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
-
-        m_rom = new u8[m_rom_size];
-        memcpy(m_rom, buffer, m_rom_size);
-
-        m_crc = CalculateCRC32(0, m_rom, m_rom_size);
-        Log("ROM CRC32: %08X", m_crc);
-
-        GatherInfoFromDB();
-        m_ready = CheckMissingInfo();
-
-        Debug("ROM loaded from buffer. Size: %d bytes", m_rom_size);
-    }
-    else
-    {
-        Log("ERROR: Unable to load ROM from buffer: Buffer invalid %p. Size: %d", buffer, size);
-        m_ready = false;
-    }
-
-    if (!m_ready)
-        Reset();
-
-    return m_ready;
-}
-
-bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
-{
-    Debug("Loading from ZIP file... Size: %d", size);
+    Debug("Loading from ZIP file... Size: %d, File: %s", size, path);
 
     using namespace std;
 
@@ -275,7 +328,7 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
     status = mz_zip_reader_init_mem(&zip_archive, (void*) buffer, size, 0);
     if (!status)
     {
-        Log("ERROR: mz_zip_reader_init_mem() failed!");
+        Error("mz_zip_reader_init_mem() failed!");
         return false;
     }
 
@@ -284,7 +337,7 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
         mz_zip_archive_file_stat file_stat;
         if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
         {
-            Log("ERROR: mz_zip_reader_file_stat() failed!");
+            Error("mz_zip_reader_file_stat() failed!");
             mz_zip_reader_end(&zip_archive);
             return false;
         }
@@ -295,7 +348,7 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
         string extension = fn.substr(fn.find_last_of(".") + 1);
         transform(extension.begin(), extension.end(), extension.begin(), (int(*)(int)) tolower);
 
-        if ((extension == "lnx") || (extension == "lyx") || (extension == "rom") || (extension == "bin"))
+        if ((extension == "lnx") || (extension == "lyx"))
         {
             void *p;
             size_t uncomp_size;
@@ -303,12 +356,12 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
             p = mz_zip_reader_extract_file_to_heap(&zip_archive, file_stat.m_filename, &uncomp_size, 0);
             if (!p)
             {
-                Log("ERROR: mz_zip_reader_extract_file_to_heap() failed!");
+                Error("mz_zip_reader_extract_file_to_heap() failed!");
                 mz_zip_reader_end(&zip_archive);
                 return false;
             }
 
-            bool ok = LoadFromBuffer((const u8*) p, (int)uncomp_size);
+            bool ok = LoadFromBuffer((const u8*) p, (int)uncomp_size, fn.c_str());
 
             free(p);
             mz_zip_reader_end(&zip_archive);
@@ -316,10 +369,11 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
             return ok;
         }
     }
+
     return false;
 }
 
-void Cartridge::GatherInfoFromDB()
+void Cartridge::GatherCartridgeInfoFromDB()
 {
     int i = 0;
     bool found = false;
@@ -406,7 +460,7 @@ bool Cartridge::GatherHeader(const u8* buffer)
 
         if (m_version != 1)
         {
-            Log("ERROR: Invalid header version: %d", m_version);
+            Error("Invalid header version: %d", m_version);
         }
 
         strncpy(m_name, (const char*)header.name, 32);
@@ -429,16 +483,55 @@ bool Cartridge::GatherHeader(const u8* buffer)
     }
     else
     {
-        Log("ERROR: Invalid header magic: %c%c%c%c", header.magic[0], header.magic[1], header.magic[2], header.magic[3]);
+        Error("Invalid header magic: %c%c%c%c", header.magic[0], header.magic[1], header.magic[2], header.magic[3]);
         return false;
     }
+}
+
+void Cartridge::GatherDataFromPath(const char* path)
+{
+    if (!IsValidPointer(path))
+    {
+        m_file_path[0] = 0;
+        m_file_directory[0] = 0;
+        m_file_name[0] = 0;
+        m_file_extension[0] = 0;
+        return;
+    }
+
+    using namespace std;
+
+    string fullpath(path);
+    string directory;
+    string filename;
+    string extension;
+
+    size_t pos = fullpath.find_last_of("/\\");
+    if (pos != string::npos)
+    {
+        filename = fullpath.substr(pos + 1);
+        directory = fullpath.substr(0, pos);
+    }
+    else
+    {
+        filename = fullpath;
+        directory = "";
+    }
+
+    extension = fullpath.substr(fullpath.find_last_of(".") + 1);
+    transform(extension.begin(), extension.end(), extension.begin(), (int(*)(int)) tolower);
+
+    snprintf(m_file_path, sizeof(m_file_path), "%s", path);
+    snprintf(m_file_directory, sizeof(m_file_directory), "%s", directory.c_str());
+    snprintf(m_file_name, sizeof(m_file_name), "%s", filename.c_str());
+    snprintf(m_file_extension, sizeof(m_file_extension), "%s", extension.c_str());
 }
 
 bool Cartridge::CheckMissingInfo()
 {
     if (m_rom_size == 0)
     {
-        Log("ERROR: ROM size not found in header or database");
+        Error("ROM size not found in header or database");
         return false;
     }
 
@@ -511,5 +604,45 @@ Cartridge::GLYNX_Cartridge_EEPROM Cartridge::ReadHeaderEEPROM(u8 eeprom)
         default:
             Debug("Invalid EEPROM value in header: %d", eeprom);
             return NO_EEPROM;
+    }
+}
+
+bool Cartridge::IsValidFile(const char* path)
+{
+    using namespace std;
+
+    if (!IsValidPointer(path))
+    {
+        Error("Invalid path %s", path);
+        return false;
+    }
+
+    ifstream file(path, ios::in | ios::binary | ios::ate);
+
+    if (file.is_open())
+    {
+        int size = static_cast<int> (file.tellg());
+
+        if (size <= 0)
+        {
+            Error("Unable to open file %s. Size: %d", path, size);
+            file.close();
+            return false;
+        }
+
+        if (file.bad() || file.fail() || !file.good() || file.eof())
+        {
+            Error("Unable to open file %s. Bad file!", path);
+            file.close();
+            return false;
+        }
+
+        file.close();
+        return true;
+    }
+    else
+    {
+        Error("Unable to open file %s", path);
+        return false;
     }
 }

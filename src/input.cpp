@@ -45,6 +45,11 @@ void Input::KeyReleased(GLYNX_Keys key)
     m_joypad |= key;
 }
 
+void Input::EndFrame()
+{
+    
+}
+
 void Input::SaveState(std::ostream& stream)
 {
     UNUSED(stream);
