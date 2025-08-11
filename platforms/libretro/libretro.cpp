@@ -103,7 +103,7 @@ static void load_bootroms(void)
 {
     char bios_path[4113];
     snprintf(bios_path, 4113, "%s%lynxboot.img", retro_system_directory, slash);
-    core->GetMemory()->LoadBios(bios_path);
+    core->LoadBios(bios_path);
 }
 
 unsigned retro_api_version(void)
