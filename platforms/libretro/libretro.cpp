@@ -102,7 +102,7 @@ static int IsButtonPressed(int joypad_bits, int button)
 static void load_bootroms(void)
 {
     char bios_path[4113];
-    snprintf(bios_path, 4113, "%s%lynxboot.img", retro_system_directory, slash);
+    snprintf(bios_path, 4113, "%s%clynxboot.img", retro_system_directory, slash);
     core->LoadBios(bios_path);
 }
 
