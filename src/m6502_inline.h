@@ -44,7 +44,7 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
     UNUSED(instruction_completed);
 #endif
 
-    if((m_irq_pending || IS_SET_BIT(m_interrupt_request_register, 2)))
+    if(m_irq_pending)
         HandleIRQ();
 
     DisassembleNextOPCode();
@@ -56,19 +56,19 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
 
 inline void M6502::HandleIRQ()
 {
-    u16 vector = 0;
+    u16 vector = 0xFFFE;
 
-    // TIQ
-    if (IS_SET_BIT(m_irq_pending, 2) && IS_SET_BIT(m_interrupt_request_register, 2))
-        vector = 0xFFFA;
-    // IRQ1
-    else if (IS_SET_BIT(m_irq_pending, 1))
-        vector = 0xFFF8;
-    // IRQ2
-    else if (IS_SET_BIT(m_irq_pending, 0))
-        vector = 0xFFF6;
-    else
-        return;
+    // // TIQ
+    // if (IS_SET_BIT(m_irq_pending, 2) && IS_SET_BIT(m_interrupt_request_register, 2))
+    //     vector = 0xFFFA;
+    // // IRQ1
+    // else if (IS_SET_BIT(m_irq_pending, 1))
+    //     vector = 0xFFF8;
+    // // IRQ2
+    // else if (IS_SET_BIT(m_irq_pending, 0))
+    //     vector = 0xFFF6;
+    // else
+    //     return;
 
     u16 pc = m_PC.GetValue();
     StackPush16(pc);
@@ -82,7 +82,7 @@ inline void M6502::HandleIRQ()
     m_cycles += 8;
 
 #if !defined(GG_DISABLE_DISASSEMBLER)
-    m_debug_next_irq =((0xFFFA - vector) >> 1) + 3;
+    m_debug_next_irq = ((0xFFFA - vector) >> 1) + 3;
     if (m_breakpoints_irq_enabled)
         m_cpu_breakpoint_hit = true;
     u16 dest = m_PC.GetValue();
@@ -92,110 +92,22 @@ inline void M6502::HandleIRQ()
 
 INLINE void M6502::CheckIRQs()
 {
-    m_irq_pending = IsSetFlag(FLAG_INTERRUPT) ? 0 : m_interrupt_request_register & ~m_interrupt_disable_register;
+    //m_irq_pending = IsSetFlag(FLAG_INTERRUPT) ? 0 : m_interrupt_request_register & ~m_interrupt_disable_register;
+    m_irq_pending = 0;
 }
 
-INLINE void M6502::AssertIRQ1(bool asserted)
+INLINE void M6502::AssertIRQ(bool asserted)
 {
-    if (asserted)
-        m_interrupt_request_register = SET_BIT(m_interrupt_request_register, 1);
-    else
-        m_interrupt_request_register = UNSET_BIT(m_interrupt_request_register, 1);
-}
-
-INLINE void M6502::AssertIRQ2(bool asserted)
-{
-    if (asserted)
-        m_interrupt_request_register = SET_BIT(m_interrupt_request_register, 0);
-    else
-        m_interrupt_request_register = UNSET_BIT(m_interrupt_request_register, 0);
 }
 
 INLINE void M6502::InjectCycles(unsigned int cycles)
 {
     m_cycles += cycles;
-    CheckIRQs();
-}
-
-INLINE u8 M6502::MemoryRead(u16 address, bool block_transfer)
-{
-    CheckIRQs();
-    return m_memory->Read(address, block_transfer);
-}
-
-INLINE void M6502::MemoryWrite(u16 address, u8 value)
-{
-    CheckIRQs();
-    m_memory->Write(address, value);
-}
-
-INLINE u8 M6502:: ReadInterruptRegister(u16 address)
-{
-    if ((address & 1) == 0)
-        return m_interrupt_disable_register;
-    else
-        return m_interrupt_request_register;
-}
-
-INLINE void M6502::WriteInterruptRegister(u16 address, u8 value)
-{
-    if ((address & 1) == 0)
-        m_interrupt_disable_register = value & 0x07;
-    else
-    {
-        // Acknowledge TIQ
-        m_interrupt_request_register = UNSET_BIT(m_interrupt_request_register, 2);
-    }
-}
-
-INLINE void M6502::ClockTimer()
-{
-    if (!m_timer_enabled)
-        return;
-
-    m_timer_cycles -= 3;
-
-    if (m_timer_cycles == 0)
-    {
-        m_timer_cycles = k_m6502_timer_divisor;
-
-        if (m_timer_counter == 0)
-        {
-            m_timer_counter = m_timer_reload;
-            m_interrupt_request_register = SET_BIT(m_interrupt_request_register, 2);
-        }
-        else
-            m_timer_counter--;
-    }
-}
-
-INLINE u8 M6502::ReadTimerRegister()
-{
-    if(m_timer_counter == 0 && m_timer_cycles <= 5 * 3)
-        return 0x7F;
-    else
-        return m_timer_counter;
-}
-
-INLINE void M6502::WriteTimerRegister(u16 address, u8 value)
-{
-    if (address & 0x01)
-    {
-        bool enabled = (value & 0x01);
-        if (m_timer_enabled != enabled)
-        {
-            m_timer_enabled = enabled;
-            m_timer_counter = m_timer_reload;
-            m_timer_cycles = k_m6502_timer_divisor;
-        }
-    }
-    else
-        m_timer_reload = value & 0x7F;
 }
 
 INLINE u8 M6502::Fetch8()
 {
-    u8 value = MemoryRead(m_PC.GetValue());
+    u8 value = m_memory->Read(m_PC.GetValue());
     m_PC.Increment();
     return value;
 }
@@ -203,15 +115,15 @@ INLINE u8 M6502::Fetch8()
 INLINE u16 M6502::Fetch16()
 {
     u16 pc = m_PC.GetValue();
-    u8 l = MemoryRead(pc);
-    u8 h = MemoryRead(pc + 1);
+    u8 l = m_memory->Read(pc);
+    u8 h = m_memory->Read(pc + 1);
     m_PC.SetValue(pc + 2);
-    return Address16(h , l);
+    return Address16(h, l);
 }
 
 INLINE u16 M6502::Address16(u8 high, u8 low)
 {
-    return static_cast<u16>(high << 8 ) | low;
+    return static_cast<u16>(high << 8) | low;
 }
 
 INLINE bool M6502::PageCrossed(u16 old_address, u16 new_address)
@@ -255,33 +167,38 @@ INLINE bool M6502::IsSetFlag(u8 flag)
     return (m_P.GetValue() & flag) != 0;
 }
 
+INLINE bool M6502::IsNotSetFlag(u8 flag)
+{
+    return (m_P.GetValue() & flag) == 0;
+}
+
 INLINE void M6502::StackPush16(u16 value)
 {
-    MemoryWrite(STACK_ADDR | m_S.GetValue(), static_cast<u8>(value >> 8));
+    m_memory->Write(STACK_ADDR | m_S.GetValue(), static_cast<u8>(value >> 8));
     m_S.Decrement();
-    MemoryWrite(STACK_ADDR | m_S.GetValue(), static_cast<u8>(value & 0x00FF));
+    m_memory->Write(STACK_ADDR | m_S.GetValue(), static_cast<u8>(value & 0x00FF));
     m_S.Decrement();
 }
 
 INLINE void M6502::StackPush8(u8 value)
 {
-    MemoryWrite(STACK_ADDR | m_S.GetValue(), value);
+    m_memory->Write(STACK_ADDR | m_S.GetValue(), value);
     m_S.Decrement();
 }
 
 INLINE u16 M6502::StackPop16()
 {
     m_S.Increment();
-    u8 l = MemoryRead(STACK_ADDR | m_S.GetValue());
+    u8 l = m_memory->Read(STACK_ADDR | m_S.GetValue());
     m_S.Increment();
-    u8 h = MemoryRead(STACK_ADDR | m_S.GetValue());
-    return Address16(h , l);
+    u8 h = m_memory->Read(STACK_ADDR | m_S.GetValue());
+    return Address16(h, l);
 }
 
 INLINE u8 M6502::StackPop8()
 {
     m_S.Increment();
-    return MemoryRead(STACK_ADDR | m_S.GetValue());
+    return m_memory->Read(STACK_ADDR | m_S.GetValue());
 }
 
 INLINE u8 M6502::ImmediateAddressing()
@@ -309,24 +226,24 @@ INLINE u16 M6502::ZeroPageRelativeAddressing()
 INLINE u16 M6502::ZeroPageIndirectAddressing()
 {
     u16 address = ZeroPageAddressing();
-    u8 l = MemoryRead(address);
-    u8 h = MemoryRead((address + 1) & 0x20FF);
+    u8 l = m_memory->Read(address);
+    u8 h = m_memory->Read((address + 1) & 0x20FF);
     return Address16(h, l);
 }
 
 INLINE u16 M6502::ZeroPageIndexedIndirectAddressing()
 {
     u16 address = (ZeroPageAddressing() + m_X.GetValue()) & 0x20FF;
-    u8 l = MemoryRead(address);
-    u8 h = MemoryRead((address + 1) & 0x20FF);
+    u8 l = m_memory->Read(address);
+    u8 h = m_memory->Read((address + 1) & 0x20FF);
     return Address16(h, l);
 }
 
 INLINE u16 M6502::ZeroPageIndirectIndexedAddressing()
 {
     u16 address = ZeroPageAddressing();
-    u8 l = MemoryRead(address);
-    u8 h = MemoryRead((address + 1) & 0x20FF);
+    u8 l = m_memory->Read(address);
+    u8 h = m_memory->Read((address + 1) & 0x20FF);
     return Address16(h, l) + m_Y.GetValue();
 }
 
@@ -350,22 +267,22 @@ INLINE u16 M6502::AbsoluteAddressing(EightBitRegister* reg)
 INLINE u16 M6502::AbsoluteIndirectAddressing()
 {
     u16 address = Fetch16();
-    u8 l = MemoryRead(address);
-    u8 h = MemoryRead(address + 1);
+    u8 l = m_memory->Read(address);
+    u8 h = m_memory->Read(address + 1);
     return Address16(h, l);
 }
 
 INLINE u16 M6502::AbsoluteIndexedIndirectAddressing()
 {
     u16 address = Fetch16() + m_X.GetValue();
-    u8 l = MemoryRead(address);
-    u8 h = MemoryRead(address + 1);
+    u8 l = m_memory->Read(address);
+    u8 h = m_memory->Read(address + 1);
     return Address16(h, l);
 }
 
 INLINE bool M6502::RunToBreakpointHit()
 {
-    return m_run_to_breakpoint_hit && (m_clock_cycles == 0);
+    return m_run_to_breakpoint_hit;
 }
 
 INLINE std::vector<M6502::GLYNX_Breakpoint>* M6502::GetBreakpoints()
@@ -503,10 +420,11 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     u8 opcode_size = k_m6502_opcode_sizes[opcode];
 
-    record->size = opcode_size;
     record->address = address;
     record->name[0] = 0;
     record->bytes[0] = 0;
+    record->segment[0] = 0;
+    record->size = opcode_size;
     record->jump = false;
     record->jump_address = 0;
     record->jump_bank = 0;
@@ -592,7 +510,6 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         u16 jump_address = Address16(m_memory->Read(address + 2), m_memory->Read(address + 1));
         record->jump = true;
         record->jump_address = jump_address;
-        //record->jump_bank = m_memory->GetBank(jump_address);
     }
 
     // BSR rr, JSR hhll

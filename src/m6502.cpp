@@ -37,13 +37,6 @@ M6502::M6502()
     m_processor_state.S = &m_S;
     m_processor_state.P = &m_P;
     m_processor_state.PC = &m_PC;
-    m_processor_state.SPEED = &m_speed;
-    m_processor_state.TIMER = &m_timer_enabled;
-    m_processor_state.TIMER_COUNTER = &m_timer_counter;
-    m_processor_state.TIMER_RELOAD = &m_timer_reload;
-    m_processor_state.IDR = &m_interrupt_disable_register;
-    m_processor_state.IRR = &m_interrupt_request_register;
-    m_processor_state.CYCLES = &m_last_instruction_cycles;
 }
 
 M6502::~M6502()
@@ -58,8 +51,8 @@ void M6502::Init(Memory* memory)
 
 void M6502::Reset()
 {
-    m_PC.SetLow(m_memory->Read(0xFFFE));
-    m_PC.SetHigh(m_memory->Read(0xFFFF));
+    m_PC.SetLow(m_memory->Read(0xFFFC));
+    m_PC.SetHigh(m_memory->Read(0xFFFD));
     m_debug_next_irq = 1;
     DisassembleNextOPCode();
 
@@ -85,17 +78,7 @@ void M6502::Reset()
     SetFlag(FLAG_INTERRUPT);
     ClearFlag(FLAG_BREAK);
     m_cycles = 0;
-    m_clock = 0;
-    m_clock_cycles = 0;
-    m_last_instruction_cycles = 0;
     m_irq_pending = 0;
-    m_speed = 0;
-    m_timer_cycles = 0;
-    m_timer_enabled = false;
-    m_timer_counter = 0;
-    m_timer_reload = 0;
-    m_interrupt_disable_register = 0;
-    m_interrupt_request_register = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
@@ -121,7 +104,7 @@ void M6502::EnableBreakpoints(bool enable, bool irqs)
 
 bool M6502::BreakpointHit()
 {
-    return (m_cpu_breakpoint_hit || m_memory_breakpoint_hit) && (m_clock_cycles == 0);
+    return (m_cpu_breakpoint_hit || m_memory_breakpoint_hit);
 }
 
 void M6502::ResetBreakpoints()
@@ -328,17 +311,7 @@ void M6502::SaveState(std::ostream& stream)
     m_P.SaveState(stream);
 
     stream.write(reinterpret_cast<const char*> (&m_cycles), sizeof(m_cycles));
-    stream.write(reinterpret_cast<const char*> (&m_clock), sizeof(m_clock));
-    stream.write(reinterpret_cast<const char*> (&m_clock_cycles), sizeof(m_clock_cycles));
-    stream.write(reinterpret_cast<const char*> (&m_last_instruction_cycles), sizeof(m_last_instruction_cycles));
     stream.write(reinterpret_cast<const char*> (&m_irq_pending), sizeof(m_irq_pending));
-    stream.write(reinterpret_cast<const char*> (&m_speed), sizeof(m_speed));
-    stream.write(reinterpret_cast<const char*> (&m_timer_enabled), sizeof(m_timer_enabled));
-    stream.write(reinterpret_cast<const char*> (&m_timer_cycles), sizeof(m_timer_cycles));
-    stream.write(reinterpret_cast<const char*> (&m_timer_counter), sizeof(m_timer_counter));
-    stream.write(reinterpret_cast<const char*> (&m_timer_reload), sizeof(m_timer_reload));
-    stream.write(reinterpret_cast<const char*> (&m_interrupt_disable_register), sizeof(m_interrupt_disable_register));
-    stream.write(reinterpret_cast<const char*> (&m_interrupt_request_register), sizeof(m_interrupt_request_register));
     stream.write(reinterpret_cast<const char*> (&m_debug_next_irq), sizeof(m_debug_next_irq));
 }
 
@@ -352,16 +325,6 @@ void M6502::LoadState(std::istream& stream)
     m_P.LoadState(stream);
 
     stream.read(reinterpret_cast<char*> (&m_cycles), sizeof(m_cycles));
-    stream.read(reinterpret_cast<char*> (&m_clock), sizeof(m_clock));
-    stream.read(reinterpret_cast<char*> (&m_clock_cycles), sizeof(m_clock_cycles));
-    stream.read(reinterpret_cast<char*> (&m_last_instruction_cycles), sizeof(m_last_instruction_cycles));
     stream.read(reinterpret_cast<char*> (&m_irq_pending), sizeof(m_irq_pending));
-    stream.read(reinterpret_cast<char*> (&m_speed), sizeof(m_speed));
-    stream.read(reinterpret_cast<char*> (&m_timer_enabled), sizeof(m_timer_enabled));
-    stream.read(reinterpret_cast<char*> (&m_timer_cycles), sizeof(m_timer_cycles));
-    stream.read(reinterpret_cast<char*> (&m_timer_counter), sizeof(m_timer_counter));
-    stream.read(reinterpret_cast<char*> (&m_timer_reload), sizeof(m_timer_reload));
-    stream.read(reinterpret_cast<char*> (&m_interrupt_disable_register), sizeof(m_interrupt_disable_register));
-    stream.read(reinterpret_cast<char*> (&m_interrupt_request_register), sizeof(m_interrupt_request_register));
     stream.read(reinterpret_cast<char*> (&m_debug_next_irq), sizeof(m_debug_next_irq));
 }

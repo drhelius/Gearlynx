@@ -101,17 +101,17 @@ void gui_debug_window_m6502(void)
 
         ImGui::TableNextColumn();
 
-        ImGui::TextColored(magenta, "IRQ1:"); ImGui::SameLine();
-        ImGui::TextColored(*proc_state->IDR & 0x02 ? gray : green, *proc_state->IDR & 0x02 ? "OFF" : "ON "); ImGui::SameLine();
-        ImGui::TextColored(*proc_state->IRR & 0x02 ? green : gray, "ASSERTED");
+        // ImGui::TextColored(magenta, "IRQ1:"); ImGui::SameLine();
+        // ImGui::TextColored(*proc_state->IDR & 0x02 ? gray : green, *proc_state->IDR & 0x02 ? "OFF" : "ON "); ImGui::SameLine();
+        // ImGui::TextColored(*proc_state->IRR & 0x02 ? green : gray, "ASSERTED");
 
-        ImGui::TextColored(magenta, "IRQ2:"); ImGui::SameLine();
-        ImGui::TextColored(*proc_state->IDR & 0x01 ? gray : green, *proc_state->IDR & 0x01 ? "OFF" : "ON "); ImGui::SameLine();
-        ImGui::TextColored(*proc_state->IRR & 0x01 ? green : gray, "ASSERTED");
+        // ImGui::TextColored(magenta, "IRQ2:"); ImGui::SameLine();
+        // ImGui::TextColored(*proc_state->IDR & 0x01 ? gray : green, *proc_state->IDR & 0x01 ? "OFF" : "ON "); ImGui::SameLine();
+        // ImGui::TextColored(*proc_state->IRR & 0x01 ? green : gray, "ASSERTED");
 
-        ImGui::TextColored(magenta, "TIQ: "); ImGui::SameLine();
-        ImGui::TextColored(*proc_state->IDR & 0x04 ? gray : green, *proc_state->IDR & 0x04 ? "OFF" : "ON "); ImGui::SameLine();
-        ImGui::TextColored(*proc_state->IRR & 0x04 ? green : gray, "ASSERTED");
+        // ImGui::TextColored(magenta, "TIQ: "); ImGui::SameLine();
+        // ImGui::TextColored(*proc_state->IDR & 0x04 ? gray : green, *proc_state->IDR & 0x04 ? "OFF" : "ON "); ImGui::SameLine();
+        // ImGui::TextColored(*proc_state->IRR & 0x04 ? green : gray, "ASSERTED");
 
         ImGui::EndTable();
     }

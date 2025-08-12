@@ -29,7 +29,7 @@ void M6502::OPCode0x00()
 void M6502::OPCode0x01()
 {
     // ORA (ZP,X)
-    OPCodes_ORA(MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_ORA(m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0x02()
@@ -53,7 +53,7 @@ void M6502::OPCode0x04()
 void M6502::OPCode0x05()
 {
     // ORA ZP
-    OPCodes_ORA(MemoryRead(ZeroPageAddressing()));
+    OPCodes_ORA(m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0x06()
@@ -100,7 +100,7 @@ void M6502::OPCode0x0C()
 void M6502::OPCode0x0D()
 {
     // ORA hhll
-    OPCodes_ORA(MemoryRead(AbsoluteAddressing()));
+    OPCodes_ORA(m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0x0E()
@@ -112,25 +112,25 @@ void M6502::OPCode0x0E()
 void M6502::OPCode0x0F()
 {
     // BBR0 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 0));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 0));
 }
 
 void M6502::OPCode0x10()
 {
     // BPL rr
-    OPcodes_Branch(!IsSetFlag(FLAG_NEGATIVE));
+    OPcodes_Branch(IsNotSetFlag(FLAG_NEGATIVE));
 }
 
 void M6502::OPCode0x11()
 {
     // ORA (ZP),Y
-    OPCodes_ORA(MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_ORA(m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0x12()
 {
     // ORA (ZP)
-    OPCodes_ORA(MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_ORA(m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0x13()
@@ -148,7 +148,7 @@ void M6502::OPCode0x14()
 void M6502::OPCode0x15()
 {
     // ORA ZP,X
-    OPCodes_ORA(MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_ORA(m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0x16()
@@ -172,7 +172,7 @@ void M6502::OPCode0x18()
 void M6502::OPCode0x19()
 {
     // ORA hhll,Y
-    OPCodes_ORA(MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_ORA(m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0x1A()
@@ -195,7 +195,7 @@ void M6502::OPCode0x1C()
 void M6502::OPCode0x1D()
 {
     // ORA hhll,X
-    OPCodes_ORA(MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_ORA(m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0x1E()
@@ -207,7 +207,7 @@ void M6502::OPCode0x1E()
 void M6502::OPCode0x1F()
 {
     // BBR1 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 1));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 1));
 }
 
 void M6502::OPCode0x20()
@@ -226,7 +226,7 @@ void M6502::OPCode0x20()
 void M6502::OPCode0x21()
 {
     // AND (ZP,X)
-    OPCodes_AND(MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_AND(m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0x22()
@@ -249,7 +249,7 @@ void M6502::OPCode0x24()
 void M6502::OPCode0x25()
 {
     // AND ZP
-    OPCodes_AND(MemoryRead(ZeroPageAddressing()));
+    OPCodes_AND(m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0x26()
@@ -297,7 +297,7 @@ void M6502::OPCode0x2C()
 void M6502::OPCode0x2D()
 {
     // AND hhll
-    OPCodes_AND(MemoryRead(AbsoluteAddressing()));
+    OPCodes_AND(m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0x2E()
@@ -309,7 +309,7 @@ void M6502::OPCode0x2E()
 void M6502::OPCode0x2F()
 {
     // BBR2 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 2));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 2));
 }
 
 void M6502::OPCode0x30()
@@ -321,13 +321,13 @@ void M6502::OPCode0x30()
 void M6502::OPCode0x31()
 {
     // AND (ZP),Y
-    OPCodes_AND(MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_AND(m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0x32()
 {
     // AND (ZP)
-    OPCodes_AND(MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_AND(m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0x33()
@@ -344,7 +344,7 @@ void M6502::OPCode0x34()
 void M6502::OPCode0x35()
 {
     // AND ZP,X
-    OPCodes_AND(MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_AND(m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0x36()
@@ -368,7 +368,7 @@ void M6502::OPCode0x38()
 void M6502::OPCode0x39()
 {
     // AND hhll,Y
-    OPCodes_AND(MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_AND(m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0x3A()
@@ -391,7 +391,7 @@ void M6502::OPCode0x3C()
 void M6502::OPCode0x3D()
 {
     // AND hhll,X
-    OPCodes_AND(MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_AND(m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0x3E()
@@ -403,7 +403,7 @@ void M6502::OPCode0x3E()
 void M6502::OPCode0x3F()
 {
     // BBR3 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 3));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 3));
 }
 
 void M6502::OPCode0x40()
@@ -420,7 +420,7 @@ void M6502::OPCode0x40()
 void M6502::OPCode0x41()
 {
     // EOR (ZP,X)
-    OPCodes_EOR(MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_EOR(m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0x42()
@@ -444,7 +444,7 @@ void M6502::OPCode0x44()
 void M6502::OPCode0x45()
 {
     // EOR ZP
-    OPCodes_EOR(MemoryRead(ZeroPageAddressing()));
+    OPCodes_EOR(m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0x46()
@@ -491,7 +491,7 @@ void M6502::OPCode0x4C()
 void M6502::OPCode0x4D()
 {
     // EOR hhll
-    OPCodes_EOR(MemoryRead(AbsoluteAddressing()));
+    OPCodes_EOR(m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0x4E()
@@ -503,25 +503,25 @@ void M6502::OPCode0x4E()
 void M6502::OPCode0x4F()
 {
     // BBR4 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 4));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 4));
 }
 
 void M6502::OPCode0x50()
 {
     // BVC rr
-    OPcodes_Branch(!IsSetFlag(FLAG_OVERFLOW));
+    OPcodes_Branch(IsNotSetFlag(FLAG_OVERFLOW));
 }
 
 void M6502::OPCode0x51()
 {
     // EOR (ZP),Y
-    OPCodes_EOR(MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_EOR(m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0x52()
 {
     // EOR (ZP)
-    OPCodes_EOR(MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_EOR(m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0x53()
@@ -533,13 +533,13 @@ void M6502::OPCode0x53()
 void M6502::OPCode0x54()
 {
     // CSL
-    m_speed = 0;
+
 }
 
 void M6502::OPCode0x55()
 {
     // EOR ZP,X
-    OPCodes_EOR(MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_EOR(m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0x56()
@@ -563,7 +563,7 @@ void M6502::OPCode0x58()
 void M6502::OPCode0x59()
 {
     // EOR hhll,Y
-    OPCodes_EOR(MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_EOR(m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0x5A()
@@ -585,7 +585,7 @@ void M6502::OPCode0x5C()
 void M6502::OPCode0x5D()
 {
     // EOR hhll,X
-    OPCodes_EOR(MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_EOR(m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0x5E()
@@ -597,7 +597,7 @@ void M6502::OPCode0x5E()
 void M6502::OPCode0x5F()
 {
     // BBR5 ZP,r
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 5));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 5));
 }
 
 void M6502::OPCode0x60()
@@ -612,7 +612,7 @@ void M6502::OPCode0x60()
 void M6502::OPCode0x61()
 {
     // ADC (ZP,X)
-    OPCodes_ADC(MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_ADC(m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0x62()
@@ -635,7 +635,7 @@ void M6502::OPCode0x64()
 void M6502::OPCode0x65()
 {
     // ADC ZP
-    OPCodes_ADC(MemoryRead(ZeroPageAddressing()));
+    OPCodes_ADC(m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0x66()
@@ -684,7 +684,7 @@ void M6502::OPCode0x6C()
 void M6502::OPCode0x6D()
 {
     // ADC (hhll)
-    OPCodes_ADC(MemoryRead(AbsoluteAddressing()));
+    OPCodes_ADC(m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0x6E()
@@ -696,7 +696,7 @@ void M6502::OPCode0x6E()
 void M6502::OPCode0x6F()
 {
     // BBR6 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 6));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 6));
 }
 
 void M6502::OPCode0x70()
@@ -708,13 +708,13 @@ void M6502::OPCode0x70()
 void M6502::OPCode0x71()
 {
     // ADC (ZP),Y
-    OPCodes_ADC(MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_ADC(m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0x72()
 {
     // ADC (ZP)
-    OPCodes_ADC(MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_ADC(m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0x73()
@@ -732,7 +732,7 @@ void M6502::OPCode0x74()
 void M6502::OPCode0x75()
 {
     // ADC ZP,X
-    OPCodes_ADC(MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_ADC(m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0x76()
@@ -756,7 +756,7 @@ void M6502::OPCode0x78()
 void M6502::OPCode0x79()
 {
     // ADC hhll,Y
-    OPCodes_ADC(MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_ADC(m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0x7A()
@@ -781,7 +781,7 @@ void M6502::OPCode0x7C()
 void M6502::OPCode0x7D()
 {
     // ADC hhll,X
-    OPCodes_ADC(MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_ADC(m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0x7E()
@@ -793,7 +793,7 @@ void M6502::OPCode0x7E()
 void M6502::OPCode0x7F()
 {
     // BBR7 ZP,rr
-    OPcodes_Branch(!IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 7));
+    OPcodes_Branch(IS_NOT_SET_BIT(m_memory->Read(ZeroPageAddressing()), 7));
 }
 
 void M6502::OPCode0x80()
@@ -890,13 +890,13 @@ void M6502::OPCode0x8E()
 void M6502::OPCode0x8F()
 {
     // BBS0 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 0));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 0));
 }
 
 void M6502::OPCode0x90()
 {
     // BCC rr
-    OPcodes_Branch(!IsSetFlag(FLAG_CARRY));
+    OPcodes_Branch(IsNotSetFlag(FLAG_CARRY));
 }
 
 void M6502::OPCode0x91()
@@ -986,7 +986,7 @@ void M6502::OPCode0x9E()
 void M6502::OPCode0x9F()
 {
     // BBS1 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 1));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 1));
 }
 
 void M6502::OPCode0xA0()
@@ -998,7 +998,7 @@ void M6502::OPCode0xA0()
 void M6502::OPCode0xA1()
 {
     // LDA $(ZP,X)
-    OPCodes_LD(&m_A, MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_LD(&m_A, m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0xA2()
@@ -1017,19 +1017,19 @@ void M6502::OPCode0xA3()
 void M6502::OPCode0xA4()
 {
     // LDY ZP
-    OPCodes_LD(&m_Y, MemoryRead(ZeroPageAddressing()));
+    OPCodes_LD(&m_Y, m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xA5()
 {
     // LDA ZP
-    OPCodes_LD(&m_A, MemoryRead(ZeroPageAddressing()));
+    OPCodes_LD(&m_A, m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xA6()
 {
     // LDX ZP
-    OPCodes_LD(&m_X, MemoryRead(ZeroPageAddressing()));
+    OPCodes_LD(&m_X, m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xA7()
@@ -1064,25 +1064,25 @@ void M6502::OPCode0xAB()
 void M6502::OPCode0xAC()
 {
     // LDY hhll
-    OPCodes_LD(&m_Y, MemoryRead(AbsoluteAddressing()));
+    OPCodes_LD(&m_Y, m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xAD()
 {
     // LDA hhll
-    OPCodes_LD(&m_A, MemoryRead(AbsoluteAddressing()));
+    OPCodes_LD(&m_A, m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xAE()
 {
     // LDX hhll
-    OPCodes_LD(&m_X, MemoryRead(AbsoluteAddressing()));
+    OPCodes_LD(&m_X, m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xAF()
 {
     // BBS2 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 2));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 2));
 }
 
 void M6502::OPCode0xB0()
@@ -1094,13 +1094,13 @@ void M6502::OPCode0xB0()
 void M6502::OPCode0xB1()
 {
     // LDA ($n),Y
-    OPCodes_LD(&m_A, MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_LD(&m_A, m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0xB2()
 {
     // LDA (ZP)
-    OPCodes_LD(&m_A, MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_LD(&m_A, m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0xB3()
@@ -1113,19 +1113,19 @@ void M6502::OPCode0xB3()
 void M6502::OPCode0xB4()
 {
     // LDY ZP,X
-    OPCodes_LD(&m_Y, MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_LD(&m_Y, m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0xB5()
 {
     // LDA ZP,X
-    OPCodes_LD(&m_A, MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_LD(&m_A, m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0xB6()
 {
     // LDX ZP,Y
-    OPCodes_LD(&m_X, MemoryRead(ZeroPageAddressing(&m_Y)));
+    OPCodes_LD(&m_X, m_memory->Read(ZeroPageAddressing(&m_Y)));
 }
 
 void M6502::OPCode0xB7()
@@ -1143,7 +1143,7 @@ void M6502::OPCode0xB8()
 void M6502::OPCode0xB9()
 {
     // LDA hhll,Y
-    OPCodes_LD(&m_A, MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_LD(&m_A, m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0xBA()
@@ -1160,25 +1160,25 @@ void M6502::OPCode0xBB()
 void M6502::OPCode0xBC()
 {
     // LDY hhll,X
-    OPCodes_LD(&m_Y, MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_LD(&m_Y, m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0xBD()
 {
     // LDA hhll,X
-    OPCodes_LD(&m_A, MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_LD(&m_A, m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0xBE()
 {
     // LDX hhll,Y
-    OPCodes_LD(&m_X, MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_LD(&m_X, m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0xBF()
 {
     // BBS3 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 3));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 3));
 }
 
 void M6502::OPCode0xC0()
@@ -1190,7 +1190,7 @@ void M6502::OPCode0xC0()
 void M6502::OPCode0xC1()
 {
     // CMP (ZP,X)
-    OPCodes_CMP(&m_A, MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_CMP(&m_A, m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0xC2()
@@ -1207,13 +1207,13 @@ void M6502::OPCode0xC3()
 void M6502::OPCode0xC4()
 {
     // CPY ZP
-    OPCodes_CMP(&m_Y, MemoryRead(ZeroPageAddressing()));
+    OPCodes_CMP(&m_Y, m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xC5()
 {
     // CMP ZP
-    OPCodes_CMP(&m_A, MemoryRead(ZeroPageAddressing()));
+    OPCodes_CMP(&m_A, m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xC6()
@@ -1254,13 +1254,13 @@ void M6502::OPCode0xCB()
 void M6502::OPCode0xCC()
 {
     // CPY hhll
-    OPCodes_CMP(&m_Y, MemoryRead(AbsoluteAddressing()));
+    OPCodes_CMP(&m_Y, m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xCD()
 {
     // CMP hhll
-    OPCodes_CMP(&m_A, MemoryRead(AbsoluteAddressing()));
+    OPCodes_CMP(&m_A, m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xCE()
@@ -1272,25 +1272,25 @@ void M6502::OPCode0xCE()
 void M6502::OPCode0xCF()
 {
     // BBS4 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 4));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 4));
 }
 
 void M6502::OPCode0xD0()
 {
     // BNE rr
-    OPcodes_Branch(!IsSetFlag(FLAG_ZERO));
+    OPcodes_Branch(IsNotSetFlag(FLAG_ZERO));
 }
 
 void M6502::OPCode0xD1()
 {
     // CMP (ZP),Y
-    OPCodes_CMP(&m_A, MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_CMP(&m_A, m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0xD2()
 {
     // CMP (ZP)
-    OPCodes_CMP(&m_A, MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_CMP(&m_A, m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0xD3()
@@ -1302,13 +1302,13 @@ void M6502::OPCode0xD3()
 void M6502::OPCode0xD4()
 {
     // CSH
-    m_speed = 1;
+
 }
 
 void M6502::OPCode0xD5()
 {
     // CMP ZP,X
-    OPCodes_CMP(&m_A, MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_CMP(&m_A, m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0xD6()
@@ -1332,7 +1332,7 @@ void M6502::OPCode0xD8()
 void M6502::OPCode0xD9()
 {
     // CMP $nn,Y
-    OPCodes_CMP(&m_A, MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_CMP(&m_A, m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0xDA()
@@ -1354,7 +1354,7 @@ void M6502::OPCode0xDC()
 void M6502::OPCode0xDD()
 {
     // CMP hhll,X
-    OPCodes_CMP(&m_A, MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_CMP(&m_A, m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0xDE()
@@ -1366,7 +1366,7 @@ void M6502::OPCode0xDE()
 void M6502::OPCode0xDF()
 {
     // BBS5 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 5));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 5));
 }
 
 void M6502::OPCode0xE0()
@@ -1378,7 +1378,7 @@ void M6502::OPCode0xE0()
 void M6502::OPCode0xE1()
 {
     // SBC $(ZP,X)
-    OPCodes_SBC(MemoryRead(ZeroPageIndexedIndirectAddressing()));
+    OPCodes_SBC(m_memory->Read(ZeroPageIndexedIndirectAddressing()));
 }
 
 void M6502::OPCode0xE2()
@@ -1395,13 +1395,13 @@ void M6502::OPCode0xE3()
 void M6502::OPCode0xE4()
 {
     // CPX ZP
-    OPCodes_CMP(&m_X, MemoryRead(ZeroPageAddressing()));
+    OPCodes_CMP(&m_X, m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xE5()
 {
     // SBC ZP
-    OPCodes_SBC(MemoryRead(ZeroPageAddressing()));
+    OPCodes_SBC(m_memory->Read(ZeroPageAddressing()));
 }
 
 void M6502::OPCode0xE6()
@@ -1441,13 +1441,13 @@ void M6502::OPCode0xEB()
 void M6502::OPCode0xEC()
 {
     // CPX hhll
-    OPCodes_CMP(&m_X, MemoryRead(AbsoluteAddressing()));
+    OPCodes_CMP(&m_X, m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xED()
 {
     // SBC hhll
-    OPCodes_SBC(MemoryRead(AbsoluteAddressing()));
+    OPCodes_SBC(m_memory->Read(AbsoluteAddressing()));
 }
 
 void M6502::OPCode0xEE()
@@ -1459,7 +1459,7 @@ void M6502::OPCode0xEE()
 void M6502::OPCode0xEF()
 {
     // BBS6 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 6));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 6));
 }
 
 void M6502::OPCode0xF0()
@@ -1471,13 +1471,13 @@ void M6502::OPCode0xF0()
 void M6502::OPCode0xF1()
 {
     // SBC (ZP),Y
-    OPCodes_SBC(MemoryRead(ZeroPageIndirectIndexedAddressing()));
+    OPCodes_SBC(m_memory->Read(ZeroPageIndirectIndexedAddressing()));
 }
 
 void M6502::OPCode0xF2()
 {
     // SBC (ZP)
-    OPCodes_SBC(MemoryRead(ZeroPageIndirectAddressing()));
+    OPCodes_SBC(m_memory->Read(ZeroPageIndirectAddressing()));
 }
 
 void M6502::OPCode0xF3()
@@ -1494,7 +1494,7 @@ void M6502::OPCode0xF4()
 void M6502::OPCode0xF5()
 {
     // SBC ZP,X
-    OPCodes_SBC(MemoryRead(ZeroPageAddressing(&m_X)));
+    OPCodes_SBC(m_memory->Read(ZeroPageAddressing(&m_X)));
 }
 
 void M6502::OPCode0xF6()
@@ -1518,7 +1518,7 @@ void M6502::OPCode0xF8()
 void M6502::OPCode0xF9()
 {
     // SBC hhll,Y
-    OPCodes_SBC(MemoryRead(AbsoluteAddressing(&m_Y)));
+    OPCodes_SBC(m_memory->Read(AbsoluteAddressing(&m_Y)));
 }
 
 void M6502::OPCode0xFA()
@@ -1542,7 +1542,7 @@ void M6502::OPCode0xFC()
 void M6502::OPCode0xFD()
 {
     // SBC hhll,X
-    OPCodes_SBC(MemoryRead(AbsoluteAddressing(&m_X)));
+    OPCodes_SBC(m_memory->Read(AbsoluteAddressing(&m_X)));
 }
 
 void M6502::OPCode0xFE()
@@ -1554,5 +1554,5 @@ void M6502::OPCode0xFE()
 void M6502::OPCode0xFF()
 {
     // BBS7 ZP,rr
-    OPcodes_Branch(IS_SET_BIT(MemoryRead(ZeroPageAddressing()), 7));
+    OPcodes_Branch(IS_SET_BIT(m_memory->Read(ZeroPageAddressing()), 7));
 }

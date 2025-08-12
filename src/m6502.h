@@ -57,12 +57,6 @@ public:
         EightBitRegister* Y;
         EightBitRegister* S;
         EightBitRegister* P;
-        s32* SPEED;
-        bool* TIMER;
-        u8* TIMER_COUNTER;
-        u8* TIMER_RELOAD;
-        u8* IDR;
-        u8* IRR;
         u32* CYCLES;
     };
 
@@ -97,13 +91,8 @@ public:
     void Init(Memory* memory);
     void Reset();
     u32 RunInstruction(bool* completed = NULL);
-    void AssertIRQ1(bool asserted);
-    void AssertIRQ2(bool asserted);
+    void AssertIRQ(bool asserted);
     void InjectCycles(unsigned int cycles);
-    u8 ReadInterruptRegister(u16 address);
-    void WriteInterruptRegister(u16 address, u8 value);
-    u8 ReadTimerRegister();
-    void WriteTimerRegister(u16 address, u8 value);
     M6502_State* GetState();
     void DisassembleNextOPCode();
     void SetResetValue(int value);
@@ -134,19 +123,9 @@ private:
     EightBitRegister m_P;
     u8 m_zn_flags_lut[256];
     u32 m_cycles;
-    u32 m_clock;
-    s32 m_clock_cycles;
-    u32 m_last_instruction_cycles;
     s32 m_irq_pending;
-    s32 m_speed;
     Memory* m_memory;
     M6502_State m_processor_state;
-    bool m_timer_enabled;
-    u32 m_timer_cycles;
-    u8 m_timer_counter;
-    u8 m_timer_reload;
-    u8 m_interrupt_disable_register;
-    u8 m_interrupt_request_register;
     s32 m_debug_next_irq;
     bool m_breakpoints_enabled;
     bool m_breakpoints_irq_enabled;
@@ -169,9 +148,6 @@ private:
     void PushCallStack(u16 src, u16 dest, u16 back);
     void PopCallStack();
 
-    u8 MemoryRead(u16 address, bool block_transfer = false);
-    void MemoryWrite(u16 address, u8 value);
-
     u8 Fetch8();
     u16 Fetch16();
     u16 Address16(u8 high, u8 low);
@@ -185,6 +161,7 @@ private:
     void SetFlag(u8 flag);
     void ClearFlag(u8 flag);
     bool IsSetFlag(u8 flag);
+    bool IsNotSetFlag(u8 flag);
 
     void StackPush16(u16 value);
     void StackPush8(u8 value);
