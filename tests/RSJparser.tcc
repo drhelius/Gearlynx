@@ -285,7 +285,7 @@ public:
     bool is_parsed (void) { return (parsed_data_p!=NULL); }
     RSJresourceType type (void);
     // emitter
-    std::string as_str (bool print_comments=false, bool update_data=true);
+    std::string as_str (bool print_comments=false, bool update_data=true, bool print_hex=false);
     void print (bool print_comments=false, bool update_data=true) 
         { std::cout << as_str(print_comments,update_data) << std::endl; }
     
@@ -437,7 +437,7 @@ RSJresourceType RSJresource::type (void) {
 }
 
 inline 
-std::string RSJresource::as_str (bool print_comments, bool update_data) {
+std::string RSJresource::as_str (bool print_comments, bool update_data, bool print_hex) {
     if (exists()) {
         std::string ret;
         parse(); // parse if not parsed
@@ -446,7 +446,7 @@ std::string RSJresource::as_str (bool print_comments, bool update_data) {
         if (parsed_data_p->type==RSJ_OBJECT) {
             ret = "{\n";
             for (auto it=parsed_data_p->object.begin(); it!=parsed_data_p->object.end(); ++it) {
-                ret += RSJprinttab + "'" + it->first + "': " + insert_tab_after_newlines( it->second.as_str (print_comments, update_data) );
+                ret += RSJprinttab + "'" + it->first + "': " + insert_tab_after_newlines( it->second.as_str (print_comments, update_data, print_hex) );
                 if (std::next(it) != parsed_data_p->object.end()) ret += ",";
                 if (print_comments)
                     ret += " // " + to_string(it->second.type());
@@ -457,7 +457,7 @@ std::string RSJresource::as_str (bool print_comments, bool update_data) {
         else if (parsed_data_p->type==RSJ_ARRAY) {
             ret = "[\n";
             for (auto it=parsed_data_p->array.begin(); it!=parsed_data_p->array.end(); ++it) {
-                ret += RSJprinttab + insert_tab_after_newlines( it->as_str (print_comments, update_data) );
+                ret += RSJprinttab + insert_tab_after_newlines( it->as_str (print_comments, update_data, print_hex) );
                 if (std::next(it) != parsed_data_p->array.end()) ret += ",";
                 if (print_comments)
                     ret += " // " + to_string(it->type());
@@ -466,7 +466,34 @@ std::string RSJresource::as_str (bool print_comments, bool update_data) {
             ret += "]";
         }
         else // RSJ_LEAF or RSJ_UNKNOWN
-             ret = strtrim (data);
+        {
+            std::string trimmed = strtrim(data);
+            if (print_hex) {
+                // Try to print int/double as hex if possible
+                char* endptr = nullptr;
+                long int_val = strtol(trimmed.c_str(), &endptr, 10);
+                if (*endptr == '\0') {
+                    // It's an int
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "0x%lX", int_val);
+                    ret = std::string(buf);
+                } else {
+                    double dbl_val = strtod(trimmed.c_str(), &endptr);
+                    if (*endptr == '\0') {
+                        // It's a double, print as hex using bit representation
+                        union { double d; unsigned long long u; } conv;
+                        conv.d = dbl_val;
+                        char buf[32];
+                        snprintf(buf, sizeof(buf), "0x%llX", conv.u);
+                        ret = std::string(buf);
+                    } else {
+                        ret = trimmed;
+                    }
+                }
+            } else {
+                ret = trimmed;
+            }
+        }
         
         if (update_data) data = ret;
         return (ret);

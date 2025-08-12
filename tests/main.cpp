@@ -107,7 +107,7 @@ bool run_file(const char* filename)
         if (!run_test(test))
         {
             Log("%s: test %d failed - %s", filename, i, test["name"].as_str().c_str());
-            std::cout << test.as_str() << std::endl;
+            std::cout << test.as_str(false, true, true) << std::endl;
             failed = true;
             break;
         }
