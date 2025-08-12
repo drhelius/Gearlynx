@@ -28,7 +28,7 @@
 
 INLINE u32 M6502::RunInstruction(bool* instruction_completed)
 {
-#if !defined(GG_DISABLE_DISASSEMBLER)
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_memory_breakpoint_hit = false;
 #endif
 
@@ -38,8 +38,9 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
     CheckIRQs();
     (this->*m_opcodes[opcode])();
 
-#if !defined(GG_DISABLE_DISASSEMBLER)
-    *instruction_completed = true;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (IsValidPointer(instruction_completed))
+        *instruction_completed = true;
 #else
     UNUSED(instruction_completed);
 #endif
@@ -81,7 +82,7 @@ inline void M6502::HandleIRQ()
 
     m_cycles += 8;
 
-#if !defined(GG_DISABLE_DISASSEMBLER)
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_debug_next_irq = ((0xFFFA - vector) >> 1) + 3;
     if (m_breakpoints_irq_enabled)
         m_cpu_breakpoint_hit = true;

@@ -34,14 +34,13 @@ void M6502::OPCode0x01()
 
 void M6502::OPCode0x02()
 {
-    // SXY
-    OPCodes_Swap(&m_X, &m_Y);
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x03()
 {
-    // ST0 #nn
-    
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x04()
@@ -135,8 +134,7 @@ void M6502::OPCode0x12()
 
 void M6502::OPCode0x13()
 {
-    // ST1 #nn
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x14()
@@ -231,13 +229,13 @@ void M6502::OPCode0x21()
 
 void M6502::OPCode0x22()
 {
-    // SAX
-    OPCodes_Swap(&m_A, &m_X);
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x23()
 {
-    // ST2 #nn
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x24()
@@ -269,6 +267,7 @@ void M6502::OPCode0x28()
     // PLP
     m_P.SetValue(StackPop8());
     ClearFlag(FLAG_BREAK);
+    SetFlag(FLAG_UNUSED);
 }
 
 void M6502::OPCode0x29()
@@ -412,6 +411,7 @@ void M6502::OPCode0x40()
     m_P.SetValue(StackPop8());
     m_PC.SetValue(StackPop16());
     ClearFlag(FLAG_BREAK);
+    SetFlag(FLAG_UNUSED);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     PopCallStack();
 #endif
@@ -425,20 +425,19 @@ void M6502::OPCode0x41()
 
 void M6502::OPCode0x42()
 {
-    // SAY
-    OPCodes_Swap(&m_A, &m_Y);
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x43()
 {
-    // TMA
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x44()
 {
-    // BSR rr
-    OPCodes_Subroutine();
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x45()
@@ -526,14 +525,13 @@ void M6502::OPCode0x52()
 
 void M6502::OPCode0x53()
 {
-    // TAM
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x54()
 {
-    // CSL
-
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x55()
@@ -580,6 +578,8 @@ void M6502::OPCode0x5B()
 void M6502::OPCode0x5C()
 {
     UnofficialOPCode();
+    m_PC.Increment();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x5D()
@@ -617,8 +617,8 @@ void M6502::OPCode0x61()
 
 void M6502::OPCode0x62()
 {
-    // CLA
-    m_A.SetValue(0x00);
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x63()
@@ -719,8 +719,7 @@ void M6502::OPCode0x72()
 
 void M6502::OPCode0x73()
 {
-    // TII
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x74()
@@ -810,15 +809,13 @@ void M6502::OPCode0x81()
 
 void M6502::OPCode0x82()
 {
-    // CLX
-    m_X.SetValue(0x00);
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0x83()
 {
-    // TST #nn,ZP
-    u8 nn = Fetch8();
-    OPCodes_TST(nn, ZeroPageAddressing());
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x84()
@@ -913,9 +910,7 @@ void M6502::OPCode0x92()
 
 void M6502::OPCode0x93()
 {
-    // TST #nn,hhll
-    u8 nn = Fetch8();
-    OPCodes_TST(nn, AbsoluteAddressing());
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0x94()
@@ -1009,9 +1004,7 @@ void M6502::OPCode0xA2()
 
 void M6502::OPCode0xA3()
 {
-    // TST #nn,ZP,X
-    u8 nn = Fetch8();
-    OPCodes_TST(nn, ZeroPageAddressing(&m_X));
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0xA4()
@@ -1105,9 +1098,7 @@ void M6502::OPCode0xB2()
 
 void M6502::OPCode0xB3()
 {
-    // TST #nn,hhll,X
-    u8 nn = Fetch8();
-    OPCodes_TST(nn, AbsoluteAddressing(&m_X));
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0xB4()
@@ -1195,13 +1186,13 @@ void M6502::OPCode0xC1()
 
 void M6502::OPCode0xC2()
 {
-    // CLY
-    m_Y.SetValue(0x00);
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0xC3()
 {
-    // TDD
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0xC4()
@@ -1295,14 +1286,13 @@ void M6502::OPCode0xD2()
 
 void M6502::OPCode0xD3()
 {
-    // TIN
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0xD4()
 {
-    // CSH
-
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0xD5()
@@ -1349,6 +1339,8 @@ void M6502::OPCode0xDB()
 void M6502::OPCode0xDC()
 {
     UnofficialOPCode();
+    m_PC.Increment();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0xDD()
@@ -1384,12 +1376,12 @@ void M6502::OPCode0xE1()
 void M6502::OPCode0xE2()
 {
     UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0xE3()
 {
-    // TIA
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0xE4()
@@ -1482,13 +1474,13 @@ void M6502::OPCode0xF2()
 
 void M6502::OPCode0xF3()
 {
-    // TAI
-
+    UnofficialOPCode();
 }
 
 void M6502::OPCode0xF4()
 {
-    // SET
+    UnofficialOPCode();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0xF5()
@@ -1537,6 +1529,8 @@ void M6502::OPCode0xFB()
 void M6502::OPCode0xFC()
 {
     UnofficialOPCode();
+    m_PC.Increment();
+    m_PC.Increment();
 }
 
 void M6502::OPCode0xFD()

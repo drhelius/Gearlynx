@@ -36,13 +36,8 @@
 #define FLAG_OVERFLOW   0x40
 #define FLAG_NEGATIVE   0x80
 
-#if defined(GLYNX_TESTING)
 #define ZERO_PAGE_ADDR  0x0000
 #define STACK_ADDR      0x0100
-#else
-#define ZERO_PAGE_ADDR  0x2000
-#define STACK_ADDR      0x2100
-#endif
 
 class Memory;
 
@@ -90,7 +85,7 @@ public:
     ~M6502();
     void Init(Memory* memory);
     void Reset();
-    u32 RunInstruction(bool* completed = NULL);
+    u32 RunInstruction(bool* instruction_completed = NULL);
     void AssertIRQ(bool asserted);
     void InjectCycles(unsigned int cycles);
     M6502_State* GetState();
@@ -192,7 +187,6 @@ private:
     void OPCodes_BIT(u16 address);
     void OPCodes_BIT_Immediate(u16 address);
     void OPCodes_BRK();
-    void OPCodes_Subroutine();
     void OPCodes_CMP(EightBitRegister* reg, u8 value);
     void OPCodes_DEC_Mem(u16 address);
     void OPCodes_DEC_Reg(EightBitRegister* reg);
@@ -212,11 +206,9 @@ private:
     void OPCodes_SMB(u8 bit, u16 address);
     void OPCodes_Store(EightBitRegister* reg, u16 address);
     void OPCodes_STZ(u16 address);
-    void OPCodes_Swap(EightBitRegister* reg1, EightBitRegister* reg2);
     void OPCodes_Transfer(EightBitRegister* source, EightBitRegister* dest);
     void OPCodes_TRB(u16 address);
     void OPCodes_TSB(u16 address);
-    void OPCodes_TST(u8 value, u16 address);
 
     void InitOPCodeFunctors();
 

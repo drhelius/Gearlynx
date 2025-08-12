@@ -106,12 +106,12 @@ private:
         u16 v;
         struct
         {
-#ifdef GG_LITTLE_ENDIAN
+#ifdef GLYNX_LITTLE_ENDIAN
             u8 low;
             u8 high;
 #else
-            uint8_t high;
-            uint8_t low;
+            u8 high;
+            u8 low;
 #endif
         };
     } m_value;

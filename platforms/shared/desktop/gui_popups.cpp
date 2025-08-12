@@ -191,7 +191,7 @@ void gui_popup_modal_about(void)
                 add_build_info("define: GG_NO_OPTIMIZATIONS\n");
                 #endif
                 #if defined(GLYNX_DISABLE_DISASSEMBLER)
-                add_build_info("define: GG_DISABLE_DISASSEMBLER\n");
+                add_build_info("define: GLYNX_DISABLE_DISASSEMBLER\n");
                 #endif
                 #if defined(__cplusplus)
                 add_build_info("define: __cplusplus = %d\n", (int)__cplusplus);

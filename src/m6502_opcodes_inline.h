@@ -151,21 +151,6 @@ INLINE void M6502::OPCodes_BRK()
 #endif
 }
 
-INLINE void M6502::OPCodes_Subroutine()
-{
-    u16 pc = m_PC.GetValue();
-    s8 displacement = RelativeAddressing();
-    u16 dest = static_cast<u16>(m_PC.GetValue() + displacement);
-
-    StackPush16(pc);
-    m_PC.SetValue(dest);
-
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    PushCallStack(pc - 1, dest, pc);
-#endif
-
-}
-
 INLINE void M6502::OPCodes_CMP(EightBitRegister* reg, u8 value)
 {
     u8 reg_value = reg->GetValue();
@@ -372,14 +357,6 @@ INLINE void M6502::OPCodes_STZ(u16 address)
     m_memory->Write(address, 0x00);
 }
 
-INLINE void M6502::OPCodes_Swap(EightBitRegister* reg1, EightBitRegister* reg2)
-{
-    u8 temp = reg1->GetValue();
-    reg1->SetValue(reg2->GetValue());
-    reg2->SetValue(temp);
-}
-
-
 INLINE void M6502::OPCodes_Transfer(EightBitRegister* source, EightBitRegister* dest)
 {
     u8 value = source->GetValue();
@@ -406,16 +383,6 @@ INLINE void M6502::OPCodes_TSB(u16 address)
     ClearFlag(FLAG_ZERO);
     u8 flags = m_P.GetValue();
     flags |= (m_zn_flags_lut[m_A.GetValue() & value] & FLAG_ZERO);
-    m_P.SetValue(flags);
-}
-
-INLINE void M6502::OPCodes_TST(u8 value, u16 address)
-{
-    u8 mem = m_memory->Read(address);
-    ClearFlag(FLAG_ZERO | FLAG_OVERFLOW | FLAG_NEGATIVE);
-    u8 flags = m_P.GetValue();
-    flags |= ((value & mem) ? 0 : FLAG_ZERO);
-    flags |= (mem & (FLAG_OVERFLOW | FLAG_NEGATIVE));
     m_P.SetValue(flags);
 }
 
