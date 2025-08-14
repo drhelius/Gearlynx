@@ -261,9 +261,21 @@ static void menu_emulator(void)
             if (ImGui::InputText("##bios_path", gui_bios_path, IM_ARRAYSIZE(gui_bios_path), ImGuiInputTextFlags_AutoSelectAll))
             {
                 config_emulator.bios_path.assign(gui_bios_path);
-                emu_load_bios(gui_bios_path);
+                gui_load_bios(gui_bios_path);
             }
             ImGui::PopItemWidth();
+
+            ImGui::Separator();
+            if (emu_get_core()->GetCartridge()->IsBiosValid())
+            {
+                ImGui::TextColored(ImVec4(0.10f, 0.90f, 0.10f, 1.0f), "Valid BIOS");
+            }
+            else
+            {
+                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "BIOS not loaded or invalid!");
+                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "lynxboot.img recommended for most games.");
+            }
+
             ImGui::EndMenu();
         }
 

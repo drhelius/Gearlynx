@@ -210,7 +210,7 @@ void gui_file_dialog_load_bios(void)
     {
         strncpy(gui_bios_path, outPath, sizeof(gui_bios_path));
         config_emulator.bios_path.assign(outPath);
-        emu_load_bios(outPath);
+        gui_load_bios(outPath);
         NFD_FreePath(outPath);
     }
     else if (result != NFD_CANCEL)

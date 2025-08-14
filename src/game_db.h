@@ -41,8 +41,8 @@ struct GLYNX_Game_DB_Entry
     u32 crc;
     const char* title;
     u32 file_size;
-    u32 bank0_size;
-    u32 bank1_size;
+    u32 bank0_page_size;
+    u32 bank1_page_size;
     u32 flags;
 };
 

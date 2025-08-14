@@ -180,9 +180,9 @@ bool emu_is_bios_loaded(void)
     return core->GetCartridge()->IsBiosLoaded();
 }
 
-void emu_load_bios(const char* file_path)
+bool emu_load_bios(const char* file_path)
 {
-    core->GetCartridge()->LoadBios(file_path);
+    return core->GetCartridge()->LoadBios(file_path);
 }
 
 void emu_reset(void)

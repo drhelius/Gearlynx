@@ -50,16 +50,13 @@ public:
     void Init();
     void Reset();
     u8* GetROM();
+    u8* GetBIOS();
     bool IsReady();
     bool IsBiosLoaded();
     bool IsBiosValid();
     int GetROMSize();
     u32 GetCRC();
-    u16 GetBank0Size();
-    u16 GetBank1Size();
-    u8 GetVersion();
-    const char* GetName();
-    const char* GetManufacturer();
+    GLYNX_Cartridge_Header* GetHeader();
     GLYNX_Cartridge_Rotation GetRotation();
     bool GetAUDIN();
     GLYNX_Cartridge_EEPROM GetEEPROM();
@@ -74,10 +71,8 @@ public:
 private:
     bool LoadFromZipFile(const u8* buffer, int size, const char* path);
     void GatherCartridgeInfoFromDB();
-    void GatherBIOSInfoFromDB();
     bool GatherHeader(const u8* buffer);
     void GatherDataFromPath(const char* path);
-    bool CheckMissingInfo();
     GLYNX_Cartridge_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_Cartridge_EEPROM ReadHeaderEEPROM(u8 eeprom);
     bool IsValidFile(const char* path);
@@ -93,13 +88,10 @@ private:
     char m_file_directory[512];
     char m_file_name[512];
     char m_file_extension[512];
-    u16 m_bank0_size;
-    u16 m_bank1_size;
-    u8 m_version;
-    char m_name[128];
-    char m_manufacturer[32];
+    GLYNX_Cartridge_Header m_header;
+    u8* m_bank0;
+    u8* m_bank1;
     GLYNX_Cartridge_Rotation m_rotation;
-    bool m_audin;
     GLYNX_Cartridge_EEPROM m_eeprom;
     u32 m_crc;
 };

@@ -66,11 +66,11 @@ enum GLYNX_Keys
 struct GLYNX_Cartridge_Header
 {
     u8  magic[4];
-    u16 size_bank0;
-    u16 size_bank1;
+    u16 bank0_page_size;
+    u16 bank1_page_size;
     u16 version;
-    u8  name[32];
-    u8  manufacturer[16];
+    char  name[32];
+    char  manufacturer[16];
     u8  rotation;
     u8  audin;
     u8  eeprom;

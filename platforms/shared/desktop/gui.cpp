@@ -111,7 +111,11 @@ bool gui_init(void)
     strcpy(gui_savefiles_path, config_emulator.savefiles_path.c_str());
     strcpy(gui_savestates_path, config_emulator.savestates_path.c_str());
     strcpy(gui_screenshots_path, config_emulator.screenshots_path.c_str());
+    strcpy(gui_bios_path, config_emulator.bios_path.c_str());
     //strcpy(gui_backup_ram_path, config_emulator.backup_ram_path.c_str());
+
+    if (strlen(gui_bios_path) > 0)
+        gui_load_bios(gui_bios_path);
 
     gui_debug_init();
     gui_init_menus();
@@ -288,6 +292,40 @@ void gui_load_rom(const char* path)
 
     if (!emu_is_empty())
         application_update_title_with_rom(emu_get_core()->GetCartridge()->GetFileName());
+}
+
+void gui_load_bios(const char* path)
+{
+    using namespace std;
+    string fullpath(path);
+    string filename;
+
+    size_t pos = fullpath.find_last_of("/\\");
+    if (pos != string::npos)
+        filename = fullpath.substr(pos + 1);
+    else
+        filename = fullpath;
+
+    if (!emu_load_bios(path))
+    {
+        std::string message("Error loading BIOS:\n");
+        message += filename;
+        gui_set_error_message(message.c_str());
+        gui_action_reset();
+        return;
+    }
+
+    if (!emu_get_core()->GetCartridge()->IsBiosValid())
+    {
+        std::string message("Invalid BIOS file:\n");
+        message += filename;
+        message += "\n\nMake sure the file is a valid BIOS file.";
+        gui_set_error_message(message.c_str());
+        gui_action_reset();
+        return;
+    }
+
+    gui_action_reset();
 }
 
 void gui_set_status_message(const char* message, u32 milliseconds)
