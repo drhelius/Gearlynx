@@ -268,7 +268,7 @@ void MemEditor::Draw(bool ascii, bool preview, bool options, bool cursors)
                             if (ImGui::InputText("##editing_input", buf, (m_mem_word == 1) ? 3 : 5, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_NoHorizontalScroll | ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_AlwaysOverwrite))
                             {
                                 u16 value = 0;
-                                if (parseHexString(buf, strlen(buf), &value))
+                                if (parse_hex_string(buf, strlen(buf), &value))
                                 {
                                     if (m_mem_word == 1)
                                         m_mem_data[byte_address] = (uint8_t)value;
@@ -539,7 +539,7 @@ void MemEditor::DrawCursors()
     if (ImGui::InputTextWithHint("##gotoaddr", buf, m_goto_address, m_hex_addr_digits + 1, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
     {
         u32 address_value = 0;
-        if (parseHexString(m_goto_address, strlen(m_goto_address), &address_value))
+        if (parse_hex_string(m_goto_address, strlen(m_goto_address), &address_value))
         {
             JumpToAddress((int)address_value);
         }
@@ -549,7 +549,7 @@ void MemEditor::DrawCursors()
     if (ImGui::Button("GoTo"))
     {
         u32 address_value = 0;
-        if (parseHexString(m_goto_address, strlen(m_goto_address), &address_value))
+        if (parse_hex_string(m_goto_address, strlen(m_goto_address), &address_value))
         {
             JumpToAddress((int)address_value);
         }
@@ -564,7 +564,7 @@ void MemEditor::DrawCursors()
     if (ImGui::InputTextWithHint("##findnext", m_mem_word == 1 ? "00" : "0000", m_find_next, m_mem_word == 1 ? 3 : 5, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
     {
         u32 find_value = 0;
-        if (parseHexString(m_find_next, strlen(m_find_next), &find_value))
+        if (parse_hex_string(m_find_next, strlen(m_find_next), &find_value))
         {
             FindNextValue((int)find_value);
         }
@@ -573,7 +573,7 @@ void MemEditor::DrawCursors()
     if (ImGui::Button("Find Next"))
     {
         u32 find_value = 0;
-        if (parseHexString(m_find_next, strlen(m_find_next), &find_value))
+        if (parse_hex_string(m_find_next, strlen(m_find_next), &find_value))
         {
             FindNextValue((int)find_value);
         }
@@ -848,7 +848,7 @@ void MemEditor::BookMarkPopup()
         if (ImGui::Button("OK", ImVec2(90, 0)))
         {
             u32 bookmark_address_value = 0;
-            if (parseHexString(address, strlen(address), &bookmark_address_value))
+            if (parse_hex_string(address, strlen(address), &bookmark_address_value))
             {
                 int bookmark_address = (int)bookmark_address_value;
 
@@ -928,7 +928,7 @@ void MemEditor::WatchPopup()
         if (ImGui::Button("OK", ImVec2(90, 0)))
         {
             u32 watch_address_value = 0;
-            if (parseHexString(address, strlen(address), &watch_address_value))
+            if (parse_hex_string(address, strlen(address), &watch_address_value))
             {
                 int watch_address = (int)watch_address_value;
 
@@ -1139,7 +1139,7 @@ void MemEditor::SearchWindow()
                 if (ImGui::InputTextWithHint("##search_value", buf, m_search_compare_specific_value_str, m_mem_word == 1 ? 3 : 5, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
                 {
                     u32 value = 0;
-                    if (parseHexString(m_search_compare_specific_value_str, strlen(m_search_compare_specific_value_str), &value))
+                    if (parse_hex_string(m_search_compare_specific_value_str, strlen(m_search_compare_specific_value_str), &value))
                     {
                         m_search_compare_specific_value = (int)value;
                     }
@@ -1192,7 +1192,7 @@ void MemEditor::SearchWindow()
         if (ImGui::InputTextWithHint("##search_address", buf, m_search_compare_specific_address_str, m_hex_addr_digits + 1, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
         {
             u32 address_value = 0;
-            if (parseHexString(m_search_compare_specific_address_str, strlen(m_search_compare_specific_address_str), &address_value))
+            if (parse_hex_string(m_search_compare_specific_address_str, strlen(m_search_compare_specific_address_str), &address_value))
             {
                 m_search_compare_specific_address = (int)address_value;
 
@@ -1454,7 +1454,7 @@ void MemEditor::Paste()
             std::string byte = text.substr(i * 2, 2);
 
             uint8_t value = 0;
-            if (parseHexString(byte.c_str(), byte.length(), &value))
+            if (parse_hex_string(byte.c_str(), byte.length(), &value))
             {
                 data[i] = value;
             }
