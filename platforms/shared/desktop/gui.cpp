@@ -272,6 +272,18 @@ void gui_load_rom(const char* path)
         return;
     }
 
+    if (!emu_get_core()->GetCartridge()->IsBiosLoaded())
+    {
+        std::string message;
+        message += "BIOS is required to run ROMs!!\n";
+        message += "Make sure you have a valid BIOS file in 'Menu->Emulator->BIOS'.";
+        gui_set_error_message(message.c_str());
+
+        emu_get_core()->GetCartridge()->Reset();
+        gui_action_reset();
+        return;
+    }
+
     gui_debug_reset();
 
     std::string str(path);

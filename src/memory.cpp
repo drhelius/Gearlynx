@@ -22,12 +22,16 @@
 #include "cartridge.h"
 #include "input.h"
 #include "audio.h"
+#include "suzy.h"
+#include "mikey.h"
 
-Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio)
+Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey)
 {
     m_cartridge = cartridge;
     m_input = input;
     m_audio = audio;
+    m_suzy = suzy;
+    m_mikey = mikey;
     InitPointer(m_disassembler);
     InitPointer(m_memory);
 }
@@ -138,23 +142,25 @@ void Memory::SetupDefaultMemoryMap()
 u8 Memory::SuzyRead(u16 address)
 {
     Debug("SuzyRead called with address: %04X", address);
-    return 0;
+    return m_suzy->Read(address);
 }
 
 void Memory::SuzyWrite(u16 address, u8 value)
 {
     Debug("SuzyWrite called with address: %04X, value: %02X", address, value);
+    m_suzy->Write(address, value);
 }
 
 u8 Memory::MikeyRead(u16 address)
 {
     Debug("MikeyRead called with address: %04X", address);
-    return 0;
+    return m_mikey->Read(address);
 }
 
 void Memory::MikeyWrite(u16 address, u8 value)
 {
     Debug("MikeyWrite called with address: %04X, value: %02X", address, value);
+    m_mikey->Write(address, value);
 }
 
 u8 Memory::BiosRead(u16 address)

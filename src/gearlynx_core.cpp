@@ -30,6 +30,8 @@
 #include "audio.h"
 #include "input.h"
 #include "m6502.h"
+#include "suzy.h"
+#include "mikey.h"
 #include "memory_stream.h"
 
 GearlynxCore::GearlynxCore()
@@ -39,6 +41,8 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_input);
     InitPointer(m_cartridge);
     InitPointer(m_m6502);
+    InitPointer(m_suzy);
+    InitPointer(m_mikey);
     InitPointer(m_debug_callback);
     m_paused = true;
     m_clock = 0;
@@ -51,6 +55,8 @@ GearlynxCore::~GearlynxCore()
     SafeDelete(m_input);
     SafeDelete(m_audio);
     SafeDelete(m_memory);
+    SafeDelete(m_suzy);
+    SafeDelete(m_mikey);
 }
 
 void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
@@ -62,13 +68,17 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_cartridge = new Cartridge();
     m_input = new Input();
     m_audio = new Audio();
-    m_memory = new Memory(m_cartridge, m_input, m_audio);
+    m_suzy = new Suzy(m_cartridge);
+    m_mikey = new Mikey(m_cartridge);
+    m_memory = new Memory(m_cartridge, m_input, m_audio, m_suzy, m_mikey);
     m_m6502 = new M6502();
 
     m_cartridge->Init();
     m_memory->Init();
     m_audio->Init();
     m_input->Init();
+    m_suzy->Init(m_memory);
+    m_mikey->Init(m_memory);
     m_m6502->Init(m_memory);
 }
 
@@ -150,7 +160,6 @@ void GearlynxCore::ResetROM(bool preserve_ram)
 
     if (!m_cartridge->IsReady())
         return;
-
 
     Log("Gearlynx RESET");
     Reset();
@@ -577,7 +586,10 @@ void GearlynxCore::Reset()
     m_clock = 0;
     m_paused = false;
 
+    m_suzy->Reset();
+    m_mikey->Reset();
     m_memory->Reset();
+    m_m6502->Reset();
     m_audio->Reset();
     m_input->Reset();
 }

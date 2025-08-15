@@ -207,11 +207,26 @@
     <ClInclude Include="..\..\src\memory_inline.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\types.h">
+    <ClInclude Include="..\..\src\mikey.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\miniz\miniz.h">
-      <Filter>core\miniz</Filter>
+    <ClInclude Include="..\..\src\mikey_defines.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\mikey_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\suzy.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\suzy_defines.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\suzy_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\types.h">
+      <Filter>core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -326,8 +341,11 @@
     <ClCompile Include="..\..\src\memory.cpp">
       <Filter>core</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\miniz\miniz.c">
-      <Filter>core\miniz</Filter>
+    <ClCompile Include="..\..\src\mikey.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\suzy.cpp">
+      <Filter>core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

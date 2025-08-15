@@ -41,6 +41,7 @@ void gui_debug_destroy(void)
 {
     gui_debug_disassembler_destroy();
     gui_debug_psg_destroy();
+    gui_debug_memory_destroy();
 }
 
 void gui_debug_reset(void)

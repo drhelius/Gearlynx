@@ -1030,7 +1030,7 @@ static void replace_labels(DisassemblerLine* line, const char* color, const char
         size_t pos = instr.find(label_address);
         if (pos != std::string::npos)
         {
-            instr.replace(pos, 5, color + label + label_address + original_color);
+            instr.replace(pos, 5, color + label + "_" + label_address + original_color);
             snprintf(line->name_enhanced, 64, "%s", instr.c_str());
         }
     }

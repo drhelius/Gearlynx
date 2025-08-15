@@ -17,17 +17,37 @@
  *
  */
 
-#ifndef GEARLYNX_H
-#define	GEARLYNX_H
+#ifndef SUZY_H
+#define SUZY_H
 
+#include <iostream>
+#include <fstream>
 #include "common.h"
-#include "gearlynx_core.h"
-#include "input.h"
-#include "audio.h"
-#include "cartridge.h"
-#include "m6502.h"
-#include "memory.h"
-#include "suzy.h"
-#include "mikey.h"
+#include "suzy_defines.h"
 
-#endif /* GEARLYNX_H */
+class Cartridge;
+class Memory;
+
+class Suzy
+{
+public:
+    Suzy(Cartridge* cartridge);
+    ~Suzy();
+    void Init(Memory* memory);
+    void Reset();
+    void Clock(u32 cycles);
+    u8 Read(u16 address);
+    void Write(u16 address, u8 value);
+    void SaveState(std::ostream& stream);
+    void LoadState(std::istream& stream);
+
+private:
+    Cartridge* m_cartridge;
+    Memory* m_memory;
+    u8 m_registers[256];
+
+};
+
+#include "suzy_inline.h"
+
+#endif /* SUZY_H */

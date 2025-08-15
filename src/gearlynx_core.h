@@ -29,6 +29,8 @@ class Input;
 class Memory;
 class Cartridge;
 class M6502;
+class Suzy;
+class Mikey;
 
 class GearlynxCore
 {
@@ -90,6 +92,8 @@ private:
     Input* m_input;
     Cartridge* m_cartridge;
     M6502* m_m6502;
+    Suzy* m_suzy;
+    Mikey* m_mikey;
     bool m_paused;
     u64 m_clock;
     GLYNX_Debug_Callback m_debug_callback;

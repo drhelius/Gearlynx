@@ -234,6 +234,19 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
         DefaultHeader();
     }
 
+    Debug("Header magic: %c%c%c%c", m_header.magic[0], m_header.magic[1], m_header.magic[2], m_header.magic[3]);
+    Debug("Header bank0 page size: %d", m_header.bank0_page_size);
+    Debug("Header bank1 page size: %d", m_header.bank1_page_size);
+    Debug("Header version: %d", m_header.version);
+    Debug("Header name: %s", m_header.name);
+    Debug("Header manufacturer: %s", m_header.manufacturer);
+    Debug("Header rotation: %d", m_header.rotation);
+    Debug("Header audin: %d", m_header.audin);
+    Debug("Header EEPROM: %d", m_header.eeprom);
+
+    m_rotation = ReadHeaderRotation(m_header.rotation);
+    m_eeprom = ReadHeaderEEPROM(m_header.eeprom);
+
     Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
 
     m_rom = new u8[m_rom_size];
@@ -499,6 +512,8 @@ bool Cartridge::GatherHeader(const u8* buffer)
         return false;
     }
 
+    Debug("Header found");
+
     memcpy(m_header.magic, p, 4);
     p += 4;
 
@@ -526,23 +541,11 @@ bool Cartridge::GatherHeader(const u8* buffer)
 
     m_header.rotation = *p;
     p++;
-    m_rotation = ReadHeaderRotation(m_header.rotation);
 
     m_header.audin = (*p & 0x01) != 0;
     p++;
 
     m_header.eeprom = *p;
-    m_eeprom = ReadHeaderEEPROM(m_header.eeprom);
-
-    Debug("Header magic: %c%c%c%c", m_header.magic[0], m_header.magic[1], m_header.magic[2], m_header.magic[3]);
-    Debug("Header bank0 page size: %d", m_header.bank0_page_size);
-    Debug("Header bank1 page size: %d", m_header.bank1_page_size);
-    Debug("Header version: %d", m_header.version);
-    Debug("Header name: %s", m_header.name);
-    Debug("Header manufacturer: %s", m_header.manufacturer);
-    Debug("Header rotation: %d", m_header.rotation);
-    Debug("Header audin: %d", m_header.audin);
-    Debug("Header EEPROM: %d", m_eeprom);
 
     return true;
 }
@@ -560,10 +563,8 @@ void Cartridge::DefaultHeader()
     strncpy_fit(m_header.name, "Unknown", sizeof(m_header.name));
     strncpy_fit(m_header.manufacturer, "Unknown", sizeof(m_header.manufacturer));
     m_header.rotation = NO_ROTATION;
-    m_rotation = NO_ROTATION;
     m_header.audin = 0;
     m_header.eeprom = NO_EEPROM;
-    m_eeprom = NO_EEPROM;
 }
 
 void Cartridge::SetupBanks()
@@ -576,6 +577,8 @@ void Cartridge::SetupBanks()
         // If bank1 is not used, allocate shadow RAM/EEPROM as in Mednafen
         if (bank == 1 && page_size == 0)
         {
+            Debug("Using shadow RAM for bank1");
+
             // Shadow RAM: 64K, page size 256
             const u32 kShadowPages = 256;
             const u32 kShadowPageSize = 256;
@@ -592,6 +595,8 @@ void Cartridge::SetupBanks()
 
         if (page_size == 0)
         {
+            Debug("Unknown page size for bank %d", bank);
+
             InitPointer(m_bank_data[bank]);
             m_bank_size[bank] = 0;
             m_address_shift_bits[bank] = 0;
@@ -602,6 +607,8 @@ void Cartridge::SetupBanks()
 
         u32 total_size = page_size * 256;
         m_bank_size[bank] = total_size;
+
+        Debug("Bank %d: Page size: %d, Total size: %d bytes", bank, page_size, total_size);
 
         if (bank == 0)
         {
@@ -620,6 +627,8 @@ void Cartridge::SetupBanks()
         m_address_shift_bits[bank] = shift;
         m_page_offset_mask[bank] = (1u << shift) - 1;
         m_bank_mask[bank] = total_size - 1;
+
+        Debug("Bank %d: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X", bank, m_address_shift_bits[bank], m_page_offset_mask[bank], m_bank_mask[bank]);
     }
 }
 

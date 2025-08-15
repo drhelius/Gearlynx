@@ -73,7 +73,6 @@ public:
     void ShiftRegisterStrobe(bool strobe);
     void ShiftRegisterBit(bool bit);
 
-
 private:
     bool LoadFromZipFile(const u8* buffer, int size, const char* path);
     void GatherCartridgeInfoFromDB();

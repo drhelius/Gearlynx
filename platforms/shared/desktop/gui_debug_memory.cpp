@@ -41,6 +41,10 @@ void gui_debug_memory_init(void)
     gui_debug_memory_reset();
 }
 
+void gui_debug_memory_destroy(void)
+{
+}
+
 void gui_debug_memory_reset(void)
 {
     GearlynxCore* core = emu_get_core();

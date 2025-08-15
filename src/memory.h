@@ -27,11 +27,13 @@
 class Cartridge;
 class Input;
 class Audio;
+class Suzy;
+class Mikey;
 
 class Memory
 {
 public:
-    Memory(Cartridge* cartridge, Input* input, Audio* audio);
+    Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey);
     ~Memory();
     void Init();
     void Reset();
@@ -61,6 +63,8 @@ private:
     Cartridge* m_cartridge;
     Input* m_input;
     Audio* m_audio;
+    Suzy* m_suzy;
+    Mikey* m_mikey;
     GLYNX_Disassembler_Record** m_disassembler;
     u8* m_memory;
     u8 m_mapctl;

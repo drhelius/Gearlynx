@@ -30,7 +30,7 @@ M6502::M6502()
     InitOPCodeFunctors();
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = false;
-    m_reset_value = -1;
+    m_reset_value = 0;
     m_processor_state.A = &m_A;
     m_processor_state.X = &m_X;
     m_processor_state.Y = &m_Y;
@@ -61,22 +61,19 @@ void M6502::Reset()
         m_A.SetValue(rand() & 0xFF);
         m_X.SetValue(rand() & 0xFF);
         m_Y.SetValue(rand() & 0xFF);
-        m_S.SetValue(rand() & 0xFF);
-        m_P.SetValue(rand() & 0xFF);
     }
     else
     {
         m_A.SetValue(m_reset_value & 0xFF);
         m_X.SetValue(m_reset_value & 0xFF);
         m_Y.SetValue(m_reset_value & 0xFF);
-        m_S.SetValue(m_reset_value & 0xFF);
-        m_P.SetValue(m_reset_value & 0xFF);
     }
 
-    SetFlag(FLAG_UNUSED);
-    ClearFlag(FLAG_DECIMAL);
-    SetFlag(FLAG_INTERRUPT);
-    ClearFlag(FLAG_BREAK);
+    m_S.SetValue(0xFF);
+    m_P.SetValue(0x00);
+
+    SetFlag(FLAG_UNUSED | FLAG_INTERRUPT | FLAG_ZERO);
+
     m_cycles = 0;
     m_irq_pending = 0;
     m_cpu_breakpoint_hit = false;

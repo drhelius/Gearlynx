@@ -17,17 +17,37 @@
  *
  */
 
-#ifndef GEARLYNX_H
-#define	GEARLYNX_H
-
-#include "common.h"
-#include "gearlynx_core.h"
-#include "input.h"
-#include "audio.h"
-#include "cartridge.h"
-#include "m6502.h"
-#include "memory.h"
-#include "suzy.h"
+#include <istream>
+#include <ostream>
 #include "mikey.h"
+#include "memory.h"
 
-#endif /* GEARLYNX_H */
+Mikey::Mikey(Cartridge* cartridge)
+{
+    m_cartridge = cartridge;
+    InitPointer(m_memory);
+}
+
+Mikey::~Mikey()
+{
+}
+
+void Mikey::Init(Memory* memory)
+{
+    m_memory = memory;
+    Reset();
+}
+
+void Mikey::Reset()
+{
+}
+
+void Mikey::SaveState(std::ostream& stream)
+{
+    UNUSED(stream);
+}
+
+void Mikey::LoadState(std::istream& stream)
+{
+    UNUSED(stream);
+}
