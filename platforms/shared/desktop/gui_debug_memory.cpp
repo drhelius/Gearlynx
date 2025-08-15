@@ -51,12 +51,11 @@ void gui_debug_memory_reset(void)
     Memory* memory = core->GetMemory();
     Cartridge* cart = core->GetCartridge();
 
-    mem_edit[0].Reset("RAM", cart->GetROM(), cart->GetROMSize());
-    mem_edit[1].Reset("ZERO PAGE", cart->GetROM(), cart->GetROMSize());
-    mem_edit[2].Reset("ROM", cart->GetROM(), cart->GetROMSize());
-    mem_edit[3].Reset("VRAM", cart->GetROM(), cart->GetROMSize());
-    mem_edit[4].Reset("SAT", cart->GetROM(), cart->GetROMSize());
-    mem_edit[5].Reset("PALETTES", cart->GetROM(), cart->GetROMSize());
+    mem_edit[MEMORY_EDITOR_RAM].Reset("RAM", memory->GetMemory(), 0x10000);
+    mem_edit[MEMORY_EDITOR_ZERO_PAGE].Reset("ZP", memory->GetMemory(), 0x100);
+    mem_edit[MEMORY_EDITOR_STACK].Reset("STACK", memory->GetMemory() + 0x100, 0x100, 0x100);
+    mem_edit[MEMORY_EDITOR_ROM].Reset("ROM", cart->GetROM(), cart->GetROMSize());
+    mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", cart->GetBIOS(), 0x200, 0xFE00);
 }
 
 void gui_debug_window_memory(void)
@@ -150,7 +149,7 @@ static void draw_tabs(void)
 
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
-        if (!IsValidPointer(cart->GetROM()))
+        if (i == MEMORY_EDITOR_ROM && !IsValidPointer(cart->GetROM()))
             continue;
 
         if (ImGui::BeginTabItem(mem_edit[i].GetTitle(), NULL, mem_edit_select == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
