@@ -137,8 +137,6 @@ private:
     void HandleIRQ();
     void CheckIRQs();
 
-    void ClockTimer();
-
     void CheckBreakpoints();
     void PushCallStack(u16 src, u16 dest, u16 back);
     void PopCallStack();

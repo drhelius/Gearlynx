@@ -28,20 +28,9 @@
 
 Cartridge::Cartridge()
 {
-    InitPointer(m_rom);
-    m_rom_size = 0;
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
-    m_ready = false;
-    m_file_path[0] = 0;
-    m_file_directory[0] = 0;
-    m_file_name[0] = 0;
-    m_file_extension[0] = 0;
-    InitPointer(m_bank0);
-    InitPointer(m_bank1);
-    m_rotation = NO_ROTATION;
-    m_eeprom = NO_EEPROM;
-    m_crc = 0;
+    Reset();
 }
 
 Cartridge::~Cartridge()
@@ -64,8 +53,20 @@ void Cartridge::Reset()
     m_file_name[0] = 0;
     m_file_extension[0] = 0;
     memset(&m_header, 0, sizeof(m_header));
-    InitPointer(m_bank0);
-    InitPointer(m_bank1);
+    InitPointer(m_bank_data[0]);
+    InitPointer(m_bank_data[1]);
+    m_bank_size[0] = 0;
+    m_bank_size[1] = 0;
+    m_bank_mask[0] = 0;
+    m_bank_mask[1] = 0;
+    m_address_shift = 0;
+    m_address_shift_bits[0] = 0;
+    m_address_shift_bits[1] = 0;
+    m_page_offset = 0;
+    m_page_offset_mask[0] = 0;
+    m_page_offset_mask[1] = 0;
+    m_shift_register_strobe = false;
+    m_shift_register_bit = false;
     m_rotation = NO_ROTATION;
     m_eeprom = NO_EEPROM;
     m_crc = 0;
@@ -220,17 +221,19 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
         Debug("Header expected");
     }
 
+    m_rom_size = size;
+
     if (GatherHeader(buffer))
     {
-        size -= 0x40;
+        m_rom_size -= 0x40;
         buffer += 0x40;
     }
     else
     {
         Debug("WARNING: Unable to gather ROM header");
+        DefaultHeader();
     }
 
-    m_rom_size = size;
     Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
 
     m_rom = new u8[m_rom_size];
@@ -240,6 +243,7 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
     Log("ROM CRC32: %08X", m_crc);
 
     GatherCartridgeInfoFromDB();
+    SetupBanks();
 
     m_ready = true;
 
@@ -293,6 +297,64 @@ bool Cartridge::LoadBios(const char* path)
     }
 
     return m_is_bios_loaded;
+}
+
+u8 Cartridge::ReadBank0()
+{
+    assert(m_bank_data[0] != NULL && m_bank_size[0] > 0);
+
+    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
+    u8 data = m_bank_data[0][address & m_bank_mask[0]];
+
+    if (!m_shift_register_strobe)
+        m_page_offset = (m_page_offset + 1) & 0x7FF;
+
+    return data;
+}
+
+u8 Cartridge::ReadBank1()
+{
+    assert(m_bank_data[1] != NULL && m_bank_size[1] > 0);
+
+    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
+    u8 data = m_bank_data[1][address & m_bank_mask[1]];
+
+    if (!m_shift_register_strobe)
+        m_page_offset = (m_page_offset + 1) & 0x7FF;
+
+    return data;
+}
+
+void Cartridge::WriteBank0(u8 value)
+{
+
+}
+
+void Cartridge::WriteBank1(u8 value)
+{
+
+}
+
+void Cartridge::ShiftRegisterStrobe(bool strobe)
+{
+    if (strobe)
+        m_page_offset = 0;
+
+    // Detect rising edge (0 -> 1)
+    if (strobe && !m_shift_register_strobe)
+    {
+        // Serially shift in a bit to the address shift register
+        m_address_shift <<= 1;
+        m_address_shift |= (m_shift_register_bit ? 1 : 0);
+        m_address_shift &= 0xFF;
+    }
+
+    m_shift_register_strobe = strobe;
+}
+
+void Cartridge::ShiftRegisterBit(bool bit)
+{
+    m_shift_register_bit = bit;
 }
 
 bool Cartridge::LoadFromZipFile(const u8* buffer, int size, const char* path)
@@ -380,32 +442,32 @@ void Cartridge::GatherCartridgeInfoFromDB()
 
             if (k_game_database[i].bank0_page_size != 0)
             {
-                Debug("Forcing bank0 size to database value: %d", k_game_database[i].bank0_page_size);
+                Debug("Forcing bank0 page size to database value: %d", k_game_database[i].bank0_page_size);
                 m_header.bank0_page_size = k_game_database[i].bank0_page_size;
             }
 
             if (k_game_database[i].bank1_page_size != 0)
             {
-                Debug("Forcing bank1 size to database value: %d", k_game_database[i].bank1_page_size);
+                Debug("Forcing bank1 page size to database value: %d", k_game_database[i].bank1_page_size);
                 m_header.bank1_page_size = k_game_database[i].bank1_page_size;
             }
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
             {
-                Debug("Forcing rotation to database value: Rotate left");
+                Debug("Forcing rotation to database value: Rotate LEFT");
                 m_header.rotation = ROTATE_LEFT;
                 m_rotation = ROTATE_LEFT;
             }
             else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT)
             {
-                Debug("Forcing rotation to database value: Rotate right");
+                Debug("Forcing rotation to database value: Rotate RIGHT");
                 m_header.rotation = ROTATE_RIGHT;
                 m_rotation = ROTATE_RIGHT;
             }
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN)
             {
-                Debug("Forcing AUDIN to database value: true");
+                Debug("Forcing AUDIN to database value: TRUE");
                 m_header.audin = 1;
             }
 
@@ -451,6 +513,7 @@ bool Cartridge::GatherHeader(const u8* buffer)
     if (m_header.version != 1)
     {
         Error("Invalid header version: %d", m_header.version);
+        return false;
     }
 
     memcpy(m_header.name, p, 32);
@@ -468,7 +531,8 @@ bool Cartridge::GatherHeader(const u8* buffer)
     m_header.audin = (*p & 0x01) != 0;
     p++;
 
-    m_eeprom = ReadHeaderEEPROM(*p);
+    m_header.eeprom = *p;
+    m_eeprom = ReadHeaderEEPROM(m_header.eeprom);
 
     Debug("Header magic: %c%c%c%c", m_header.magic[0], m_header.magic[1], m_header.magic[2], m_header.magic[3]);
     Debug("Header bank0 page size: %d", m_header.bank0_page_size);
@@ -481,6 +545,82 @@ bool Cartridge::GatherHeader(const u8* buffer)
     Debug("Header EEPROM: %d", m_eeprom);
 
     return true;
+}
+
+void Cartridge::DefaultHeader()
+{
+    Debug("Using default header values");
+    m_header.magic[0] = 'L';
+    m_header.magic[1] = 'Y';
+    m_header.magic[2] = 'N';
+    m_header.magic[3] = 'X';
+    m_header.bank0_page_size = m_rom_size >> 8;
+    m_header.bank1_page_size = 0;
+    m_header.version = 1;
+    strncpy_fit(m_header.name, "Unknown", sizeof(m_header.name));
+    strncpy_fit(m_header.manufacturer, "Unknown", sizeof(m_header.manufacturer));
+    m_header.rotation = NO_ROTATION;
+    m_rotation = NO_ROTATION;
+    m_header.audin = 0;
+    m_header.eeprom = NO_EEPROM;
+    m_eeprom = NO_EEPROM;
+}
+
+void Cartridge::SetupBanks()
+{
+    // Calculate page size and number of pages for each bank
+    for (int bank = 0; bank < 2; bank++)
+    {
+        u16 page_size = (bank == 0) ? m_header.bank0_page_size : m_header.bank1_page_size;
+
+        // If bank1 is not used, allocate shadow RAM/EEPROM as in Mednafen
+        if (bank == 1 && page_size == 0)
+        {
+            // Shadow RAM: 64K, page size 256
+            const u32 kShadowPages = 256;
+            const u32 kShadowPageSize = 256;
+            const u32 kShadowSize = kShadowPages * kShadowPageSize;
+            InitPointer(m_bank_data[1]);
+            //m_bank_data[1] = new u8[kShadowSize];
+            //std::fill(m_bank_data[1], m_bank_data[1] + kShadowSize, 0xFF);
+            m_bank_size[1] = kShadowSize;
+            m_address_shift_bits[1] = 8;
+            m_page_offset_mask[1] = 0xFF;
+            m_bank_mask[1] = 0xFFFF;
+            continue;
+        }
+
+        if (page_size == 0)
+        {
+            InitPointer(m_bank_data[bank]);
+            m_bank_size[bank] = 0;
+            m_address_shift_bits[bank] = 0;
+            m_page_offset_mask[bank] = 0;
+            m_bank_mask[bank] = 0;
+            continue;
+        }
+
+        u32 total_size = page_size * 256;
+        m_bank_size[bank] = total_size;
+
+        if (bank == 0)
+        {
+            m_bank_data[0] = m_rom;
+        }
+        else
+        {
+            m_bank_data[1] = (m_rom_size > m_bank_size[0]) ? (m_rom + m_bank_size[0]) : NULL;
+        }
+
+        u32 shift = 0;
+        u32 ps = page_size;
+        while (ps >>= 1)
+            shift++;
+
+        m_address_shift_bits[bank] = shift;
+        m_page_offset_mask[bank] = (1u << shift) - 1;
+        m_bank_mask[bank] = total_size - 1;
+    }
 }
 
 void Cartridge::GatherDataFromPath(const char* path)

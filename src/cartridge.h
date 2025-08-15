@@ -58,7 +58,6 @@ public:
     u32 GetCRC();
     GLYNX_Cartridge_Header* GetHeader();
     GLYNX_Cartridge_Rotation GetRotation();
-    bool GetAUDIN();
     GLYNX_Cartridge_EEPROM GetEEPROM();
     const char* GetFilePath();
     const char* GetFileDirectory();
@@ -67,11 +66,20 @@ public:
     bool LoadFromFile(const char* path);
     bool LoadFromBuffer(const u8* buffer, int size, const char* path);
     bool LoadBios(const char* path);
+    u8 ReadBank0();
+    u8 ReadBank1();
+    void WriteBank0(u8 value);
+    void WriteBank1(u8 value);
+    void ShiftRegisterStrobe(bool strobe);
+    void ShiftRegisterBit(bool bit);
+
 
 private:
     bool LoadFromZipFile(const u8* buffer, int size, const char* path);
     void GatherCartridgeInfoFromDB();
     bool GatherHeader(const u8* buffer);
+    void DefaultHeader();
+    void SetupBanks();
     void GatherDataFromPath(const char* path);
     GLYNX_Cartridge_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_Cartridge_EEPROM ReadHeaderEEPROM(u8 eeprom);
@@ -89,8 +97,15 @@ private:
     char m_file_name[512];
     char m_file_extension[512];
     GLYNX_Cartridge_Header m_header;
-    u8* m_bank0;
-    u8* m_bank1;
+    u8* m_bank_data[2];
+    u32 m_bank_size[2];
+    u32 m_bank_mask[2];
+    u32 m_address_shift;
+    u32 m_address_shift_bits[2];
+    u32 m_page_offset;
+    u32 m_page_offset_mask[2];
+    bool m_shift_register_strobe;
+    bool m_shift_register_bit;
     GLYNX_Cartridge_Rotation m_rotation;
     GLYNX_Cartridge_EEPROM m_eeprom;
     u32 m_crc;

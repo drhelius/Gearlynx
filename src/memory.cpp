@@ -29,12 +29,13 @@ Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio)
     m_input = input;
     m_audio = audio;
     InitPointer(m_disassembler);
-    InitPointer(m_test_memory);
+    InitPointer(m_memory);
 }
 
 Memory::~Memory()
 {
-    SafeDeleteArray(m_test_memory);
+    SafeDeleteArray(m_memory);
+
     if (IsValidPointer(m_disassembler))
     {
         for (int i = 0; i < 0x200000; i++)
@@ -55,19 +56,19 @@ void Memory::Init()
     }
 #endif
 
-#if defined(GLYNX_TESTING)
-    m_test_memory = new u8[0x10000];
-#endif
+    m_memory = new u8[0x10000];
 
     Reset();
 }
 
 void Memory::Reset()
 {
-#if defined(GLYNX_TESTING)
+    m_mapctl = 0;
+
     for (int i = 0; i < 0x10000; i++)
-        m_test_memory[i] = rand() & 0xFF;
-#endif
+        m_memory[i] = rand() & 0xFF;
+
+    SetupDefaultMemoryMap();
 }
 
 GLYNX_Disassembler_Record* Memory::GetDisassemblerRecord(u16 address)
@@ -114,6 +115,96 @@ void Memory::ResetDisassemblerRecords()
 GLYNX_Disassembler_Record** Memory::GetAllDisassemblerRecords()
 {
     return m_disassembler;
+}
+
+void Memory::SetupDefaultMemoryMap()
+{
+    for (int i = 0; i < 0xFF; i++)
+    {
+        m_read_page[i] = m_memory + (i << 8);
+        m_write_page[i] = m_memory + (i << 8);
+        m_read_fn[i] = NULL;
+        m_write_fn[i] = NULL;
+    }
+
+    m_read_page[0xFF] = NULL;
+    m_write_page[0xFF] = NULL;
+    m_read_fn[0xFF] = &Memory::LastPageRead;
+    m_write_fn[0xFF] = &Memory::LastPageWrite;
+
+    RebuildMemoryMap();
+}
+
+u8 Memory::SuzyRead(u16 address)
+{
+    Debug("SuzyRead called with address: %04X", address);
+    return 0;
+}
+
+void Memory::SuzyWrite(u16 address, u8 value)
+{
+    Debug("SuzyWrite called with address: %04X, value: %02X", address, value);
+}
+
+u8 Memory::MikeyRead(u16 address)
+{
+    Debug("MikeyRead called with address: %04X", address);
+    return 0;
+}
+
+void Memory::MikeyWrite(u16 address, u8 value)
+{
+    Debug("MikeyWrite called with address: %04X, value: %02X", address, value);
+}
+
+u8 Memory::BiosRead(u16 address)
+{
+    Debug("BiosRead called with address: %04X", address);
+    return 0;
+}
+
+void Memory::BiosWrite(u16 address, u8 value)
+{
+    Debug("BiosWrite called with address: %04X, value: %02X", address, value);
+}
+
+u8 Memory::LastPageRead(u16 address)
+{
+    Debug("LastPageRead called with address: %04X", address);
+
+    if (unlikely(address == 0xFFF8))
+        return m_memory[address];
+
+    // BIOS not visible
+    if (IS_SET_BIT(m_mapctl, 2))
+    {
+        return m_memory[address];
+    }
+    // BIOS visible
+    else
+    {
+        u8* bios = m_cartridge->GetBIOS();
+        return bios[address & 0x1FF];
+    }
+}
+
+void Memory::LastPageWrite(u16 address, u8 value)
+{
+    Debug("LastPageWrite called with address: %04X, value: %02X", address, value);
+
+    if (unlikely(address == 0xFFF8))
+        m_memory[address] = value;
+
+    // BIOS not visible
+    if (IS_SET_BIT(m_mapctl, 2))
+    {
+        m_memory[address] = value;
+    }
+    // BIOS visible
+    else
+    {
+        Debug("Writing to BIOS address %04X with value %02X is not allowed", address, value);
+    }
 }
 
 void Memory::SaveState(std::ostream& stream)

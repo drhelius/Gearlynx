@@ -45,11 +45,31 @@ public:
     void LoadState(std::istream& stream);
 
 private:
+    void SetMapCtl(u8 mapctl);
+    void SetupDefaultMemoryMap();
+    void RebuildMemoryMap();
+    u8 SuzyRead(u16 address);
+    void SuzyWrite(u16 address, u8 value);
+    u8 MikeyRead(u16 address);
+    void MikeyWrite(u16 address, u8 value);
+    u8 BiosRead(u16 address);
+    void BiosWrite(u16 address, u8 value);
+    u8 LastPageRead(u16 address);
+    void LastPageWrite(u16 address, u8 value);
+
+private:
     Cartridge* m_cartridge;
     Input* m_input;
     Audio* m_audio;
     GLYNX_Disassembler_Record** m_disassembler;
-    u8* m_test_memory;
+    u8* m_memory;
+    u8 m_mapctl;
+    u8* m_read_page[256];
+    u8* m_write_page[256];
+    typedef u8 (Memory::*PageReadFn)(u16 addr);
+    typedef void (Memory::*PageWriteFn)(u16 addr, u8 v);
+    PageReadFn m_read_fn[256];
+    PageWriteFn m_write_fn[256];
 };
 
 #include "memory_inline.h"
