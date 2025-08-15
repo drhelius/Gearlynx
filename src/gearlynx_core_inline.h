@@ -66,6 +66,8 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         //m_huc6260->SetBuffer(frame_buffer);
         bool stop = false;
 
+        u32 temp_max_cycles = 0;
+
         do
         {
             if (debug_enable && (IsValidPointer(m_debug_callback)))
@@ -75,7 +77,9 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             //m_huc6280->ClockTimer(cycles);
 
             //TODO: implement video
-            stop = true;
+            temp_max_cycles += cycles;
+            if (temp_max_cycles > 60000)
+                stop = true;
 
             m_audio->Clock(cycles);
 

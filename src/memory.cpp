@@ -165,22 +165,6 @@ void Memory::MikeyWrite(u16 address, u8 value)
 
 u8 Memory::BiosRead(u16 address)
 {
-    Debug("BiosRead called with address: %04X", address);
-    return 0;
-}
-
-void Memory::BiosWrite(u16 address, u8 value)
-{
-    Debug("BiosWrite called with address: %04X, value: %02X", address, value);
-}
-
-u8 Memory::LastPageRead(u16 address)
-{
-    Debug("LastPageRead called with address: %04X", address);
-
-    if (unlikely(address == 0xFFF8))
-        return m_memory[address];
-
     // BIOS not visible
     if (IS_SET_BIT(m_mapctl, 2))
     {
@@ -194,13 +178,8 @@ u8 Memory::LastPageRead(u16 address)
     }
 }
 
-void Memory::LastPageWrite(u16 address, u8 value)
+void Memory::BiosWrite(u16 address, u8 value)
 {
-    Debug("LastPageWrite called with address: %04X, value: %02X", address, value);
-
-    if (unlikely(address == 0xFFF8))
-        m_memory[address] = value;
-
     // BIOS not visible
     if (IS_SET_BIT(m_mapctl, 2))
     {
@@ -210,6 +189,92 @@ void Memory::LastPageWrite(u16 address, u8 value)
     else
     {
         Debug("Writing to BIOS address %04X with value %02X is not allowed", address, value);
+    }
+}
+
+u8 Memory::LastPageRead(u16 address)
+{
+    if (address < 0xFFF8)
+    {
+        // BIOS not visible
+        if (IS_SET_BIT(m_mapctl, 2))
+        {
+            return m_memory[address];
+        }
+        // BIOS visible
+        else
+        {
+            u8* bios = m_cartridge->GetBIOS();
+            return bios[address & 0x1FF];
+        }
+    }
+    else if (address > 0xFFF9)
+    {
+        // VECTORS not visible
+        if (IS_SET_BIT(m_mapctl, 3))
+        {
+            return m_memory[address];
+        }
+        // VECTORS visible
+        else
+        {
+            u8* bios = m_cartridge->GetBIOS();
+            return bios[address & 0x1FF];
+        }
+    }
+    else if (unlikely(address == 0xFFF8))
+    {
+        Debug("Reading from address 0xFFF8");
+        return m_memory[address];
+    }
+    else
+    {
+        Error("LastPageRead called with invalid address: %04X", address);
+    }
+}
+
+void Memory::LastPageWrite(u16 address, u8 value)
+{
+    if (address < 0xFFF8)
+    {
+        // BIOS not visible
+        if (IS_SET_BIT(m_mapctl, 2))
+        {
+            m_memory[address] = value;
+            return;
+        }
+        // BIOS visible
+        else
+        {
+            Debug("Writing to BIOS address %04X with value %02X is not allowed", address, value);
+            return;
+        }
+    }
+    else if (address > 0xFFF9)
+    {
+        // VECTORS not visible
+        if (IS_SET_BIT(m_mapctl, 3))
+        {
+            m_memory[address] = value;
+            return;
+        }
+        // VECTORS visible
+        else
+        {
+            Debug("Writing to VECTORS address %04X with value %02X is not allowed", address, value);
+            return;
+        }
+    }
+    else if (unlikely(address == 0xFFF8))
+    {
+        Debug("Writing to address 0xFFF8 with value %02X", value);
+        m_memory[address] = value;
+        return;
+    }
+    else
+    {
+        Error("LastPageWrite called with invalid address: %04X", address);
+        return;
     }
 }
 

@@ -26,6 +26,11 @@
 #include "input.h"
 #include "audio.h"
 
+INLINE u8* Memory::GetMemory()
+{
+    return m_memory;
+}
+
 INLINE u8 Memory::Read(u16 address, bool block_transfer)
 {
 #if defined(GLYNX_TESTING)
@@ -85,9 +90,12 @@ inline void Memory::SetMapCtl(u8 mapctl)
 
 inline void Memory::RebuildMemoryMap()
 {
+    Debug("Rebuilding memory map with mapctl: %02X", m_mapctl);
+
     // SUZY not visible
     if (IS_SET_BIT(m_mapctl, 0))
     {
+        Debug("SUZY not visible");
         m_read_page[0xFC] = m_memory + 0xFC00;
         m_write_page[0xFC] = m_memory + 0xFC00;
         m_read_fn[0xFC] = NULL;
@@ -96,6 +104,7 @@ inline void Memory::RebuildMemoryMap()
     // SUZY visible
     else
     {
+        Debug("SUZY visible");
         m_read_page[0xFC] = NULL;
         m_write_page[0xFC] = NULL;
         m_read_fn[0xFC] = &Memory::SuzyRead;
@@ -105,6 +114,7 @@ inline void Memory::RebuildMemoryMap()
     // MIKEY not visible
     if (IS_SET_BIT(m_mapctl, 1))
     {
+        Debug("MIKEY not visible");
         m_read_page[0xFD] = m_memory + 0xFD00;
         m_write_page[0xFD] = m_memory + 0xFD00;
         m_read_fn[0xFD] = NULL;
@@ -113,6 +123,7 @@ inline void Memory::RebuildMemoryMap()
     // MIKEY visible
     else
     {
+        Debug("MIKEY visible");
         m_read_page[0xFD] = NULL;
         m_write_page[0xFD] = NULL;
         m_read_fn[0xFD] = &Memory::MikeyRead;
@@ -122,6 +133,7 @@ inline void Memory::RebuildMemoryMap()
     // BIOS not visible
     if (IS_SET_BIT(m_mapctl, 2))
     {
+        Debug("BIOS not visible");
         m_read_page[0xFE] = m_memory + 0xFE00;
         m_write_page[0xFE] = m_memory + 0xFE00;
         m_read_fn[0xFE] = NULL;
@@ -130,6 +142,7 @@ inline void Memory::RebuildMemoryMap()
     // BIOS visible
     else
     {
+        Debug("BIOS visible");
         m_read_page[0xFE] = NULL;
         m_write_page[0xFE] = NULL;
         m_read_fn[0xFE] = &Memory::BiosRead;

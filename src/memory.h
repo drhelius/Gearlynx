@@ -37,6 +37,7 @@ public:
     ~Memory();
     void Init();
     void Reset();
+    u8* GetMemory();
     u8 Read(u16 address, bool block_transfer = false);
     void Write(u16 address, u8 value);
     GLYNX_Disassembler_Record* GetDisassemblerRecord(u16 address);
