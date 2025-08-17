@@ -141,25 +141,21 @@ void Memory::SetupDefaultMemoryMap()
 
 u8 Memory::SuzyRead(u16 address)
 {
-    Debug("SuzyRead called with address: %04X", address);
     return m_suzy->Read(address);
 }
 
 void Memory::SuzyWrite(u16 address, u8 value)
 {
-    Debug("SuzyWrite called with address: %04X, value: %02X", address, value);
     m_suzy->Write(address, value);
 }
 
 u8 Memory::MikeyRead(u16 address)
 {
-    Debug("MikeyRead called with address: %04X", address);
     return m_mikey->Read(address);
 }
 
 void Memory::MikeyWrite(u16 address, u8 value)
 {
-    Debug("MikeyWrite called with address: %04X, value: %02X", address, value);
     m_mikey->Write(address, value);
 }
 

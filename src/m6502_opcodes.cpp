@@ -578,8 +578,7 @@ void M6502::OPCode0x5B()
 void M6502::OPCode0x5C()
 {
     UnofficialOPCode();
-    m_PC.Increment();
-    m_PC.Increment();
+    m_PC.Increment(2);
 }
 
 void M6502::OPCode0x5D()
@@ -1339,8 +1338,7 @@ void M6502::OPCode0xDB()
 void M6502::OPCode0xDC()
 {
     UnofficialOPCode();
-    m_PC.Increment();
-    m_PC.Increment();
+    m_PC.Increment(2);
 }
 
 void M6502::OPCode0xDD()
@@ -1529,8 +1527,7 @@ void M6502::OPCode0xFB()
 void M6502::OPCode0xFC()
 {
     UnofficialOPCode();
-    m_PC.Increment();
-    m_PC.Increment();
+    m_PC.Increment(2);
 }
 
 void M6502::OPCode0xFD()

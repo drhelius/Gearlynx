@@ -27,10 +27,14 @@ inline void Audio::Clock(u32 cycles)
 
 }
 
-inline void Audio::WritePSG(u32 address, u8 value)
+inline u8 Audio::Read(u32 address)
 {
-    UNUSED(address);
-    UNUSED(value);
+    return 0xFF;
+}
+
+inline void Audio::Write(u32 address, u8 value)
+{
+
 }
 
 #endif /* AUDIO_INLINE_H */

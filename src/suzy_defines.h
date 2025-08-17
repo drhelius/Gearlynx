@@ -20,76 +20,56 @@
 #ifndef SUZY_DEFINES_H
 #define SUZY_DEFINES_H
 
-#define SUZY_TMPADR      0xFC00
+#include "m6502.h"
+
+#define DebugSuzy(fmt, ...) Debug("SUZY [PC=%04X]: " fmt, m_m6502->GetState()->PC->GetValue(), ##__VA_ARGS__)
+
 #define SUZY_TMPADRL     0xFC00
 #define SUZY_TMPADRH     0xFC01
-#define SUZY_TILTACUM    0xFC02
 #define SUZY_TILTACUML   0xFC02
 #define SUZY_TILTACUMH   0xFC03
-#define SUZY_HOFF        0xFC04
 #define SUZY_HOFFL       0xFC04
 #define SUZY_HOFFH       0xFC05
-#define SUZY_VOFF        0xFC06
 #define SUZY_VOFFL       0xFC06
 #define SUZY_VOFFH       0xFC07
-#define SUZY_VIDBAS      0xFC08
 #define SUZY_VIDBASL     0xFC08
 #define SUZY_VIDBASH     0xFC09
-#define SUZY_COLLBAS     0xFC0A
 #define SUZY_COLLBASL    0xFC0A
 #define SUZY_COLLBASH    0xFC0B
-#define SUZY_VIDADR      0xFC0C
 #define SUZY_VIDADRL     0xFC0C
 #define SUZY_VIDADRH     0xFC0D
-#define SUZY_COLLADR     0xFC0E
 #define SUZY_COLLADRL    0xFC0E
 #define SUZY_COLLADRH    0xFC0F
-#define SUZY_SCBNEXT     0xFC10
 #define SUZY_SCBNEXTL    0xFC10
 #define SUZY_SCBNEXTH    0xFC11
-#define SUZY_SPRDLINE    0xFC12
 #define SUZY_SPRDLINEL   0xFC12
 #define SUZY_SPRDLINEH   0xFC13
-#define SUZY_HPOSSTRT    0xFC14
 #define SUZY_HPOSSTRTL   0xFC14
 #define SUZY_HPOSSTRTH   0xFC15
-#define SUZY_VPOSSTRT    0xFC16
 #define SUZY_VPOSSTRTL   0xFC16
 #define SUZY_VPOSSTRTH   0xFC17
-#define SUZY_SPRHSIZ     0xFC18
 #define SUZY_SPRHSIZL    0xFC18
 #define SUZY_SPRHSIZH    0xFC19
-#define SUZY_SPRVSIZ     0xFC1A
 #define SUZY_SPRVSIZL    0xFC1A
 #define SUZY_SPRVSIZH    0xFC1B
-#define SUZY_STRETCH     0xFC1C
 #define SUZY_STRETCHL    0xFC1C
 #define SUZY_STRETCHH    0xFC1D
-#define SUZY_TILT        0xFC1E
 #define SUZY_TILTL       0xFC1E
 #define SUZY_TILTH       0xFC1F
-#define SUZY_SPRDOFF     0xFC20
 #define SUZY_SPRDOFFL    0xFC20
 #define SUZY_SPRDOFFH    0xFC21
-#define SUZY_SPRVPOS     0xFC22
 #define SUZY_SPRVPOSL    0xFC22
 #define SUZY_SPRVPOSH    0xFC23
-#define SUZY_COLLOFF     0xFC24
 #define SUZY_COLLOFFL    0xFC24
 #define SUZY_COLLOFFH    0xFC25
-#define SUZY_VSIZACUM    0xFC26
 #define SUZY_VSIZACUML   0xFC26
 #define SUZY_VSIZACUMH   0xFC27
-#define SUZY_HSIZOFF     0xFC28
 #define SUZY_HSIZOFFL    0xFC28
 #define SUZY_HSIZOFFH    0xFC29
-#define SUZY_VSIZOFF     0xFC2A
 #define SUZY_VSIZOFFL    0xFC2A
 #define SUZY_VSIZOFFH    0xFC2B
-#define SUZY_SCBADR      0xFC2C
 #define SUZY_SCBADRL     0xFC2C
 #define SUZY_SCBADRH     0xFC2D
-#define SUZY_PROCADR     0xFC2E
 #define SUZY_PROCADRL    0xFC2E
 #define SUZY_PROCADRH    0xFC2F
 #define SUZY_MATHD       0xFC52

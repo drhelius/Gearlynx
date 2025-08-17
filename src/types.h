@@ -31,6 +31,21 @@ typedef int32_t s32;
 typedef uint64_t u64;
 typedef int64_t s64;
 
+union u16_union
+{
+    u16 value;
+    struct
+    {
+#ifdef GLYNX_LITTLE_ENDIAN
+        u8 low;
+        u8 high;
+#else
+        u8 high;
+        u8 low;
+#endif
+    };
+};
+
 struct GLYNX_Runtime_Info
 {
     int screen_width;
@@ -118,6 +133,32 @@ struct GLYNX_Disassembler_Record
     u8 jump_bank;
     bool subroutine;
     int irq;
+};
+
+struct GLYNX_Mikey_Timer
+{
+    u16 backup;
+    u8 control_a;
+    u8 control_b;
+    u8 count;
+};
+
+struct GLYNX_Mikey_Audio
+{
+    u8 volume;
+    u8 shift_feedback;
+    u8 output_value;
+    u8 left_shift;
+    u8 timer_backup;
+    u8 control;
+    u8 count;
+    u8 misc;
+};
+
+struct GLYNX_Mikey_Color
+{
+    u8 green;
+    u8 bluered;
 };
 
 #endif /* TYPES_H */

@@ -68,10 +68,10 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_cartridge = new Cartridge();
     m_input = new Input();
     m_audio = new Audio();
-    m_suzy = new Suzy(m_cartridge);
-    m_mikey = new Mikey(m_cartridge);
-    m_memory = new Memory(m_cartridge, m_input, m_audio, m_suzy, m_mikey);
     m_m6502 = new M6502();
+    m_suzy = new Suzy(m_cartridge, m_m6502);
+    m_mikey = new Mikey(m_cartridge, m_m6502);
+    m_memory = new Memory(m_cartridge, m_input, m_audio, m_suzy, m_mikey);
 
     m_cartridge->Init();
     m_memory->Init();

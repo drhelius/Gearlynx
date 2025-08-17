@@ -20,6 +20,8 @@
 #ifndef M6502_REGISTERS_H
 #define M6502_REGISTERS_H
 
+#include <istream>
+#include <ostream>
 #include "common.h"
 
 class EightBitRegister
@@ -84,7 +86,7 @@ INLINE void EightBitRegister::LoadState(std::istream& stream)
 class SixteenBitRegister
 {
 public:
-    SixteenBitRegister() { m_value.v = 0; }
+    SixteenBitRegister() { m_value.value = 0; }
     void SetLow(u8 low);
     u8 GetLow() const;
     void SetHigh(u8 high);
@@ -101,20 +103,7 @@ public:
     void LoadState(std::istream& stream);
 
 private:
-    union sixteenBit
-    {
-        u16 v;
-        struct
-        {
-#ifdef GLYNX_LITTLE_ENDIAN
-            u8 low;
-            u8 high;
-#else
-            u8 high;
-            u8 low;
-#endif
-        };
-    } m_value;
+    u16_union m_value;
 };
 
 
@@ -150,42 +139,42 @@ INLINE u8* SixteenBitRegister::GetLowRegister()
 
 INLINE void SixteenBitRegister::SetValue(u16 value)
 {
-    m_value.v = value;
+    m_value.value = value;
 }
 
 INLINE u16 SixteenBitRegister::GetValue() const
 {
-    return m_value.v;
+    return m_value.value;
 }
 
 INLINE void SixteenBitRegister::Increment()
 {
-    m_value.v++;
+    m_value.value++;
 }
 
 INLINE void SixteenBitRegister::Increment(u16 value)
 {
-    m_value.v += value;
+    m_value.value += value;
 }
 
 INLINE void SixteenBitRegister::Decrement()
 {
-    m_value.v--;
+    m_value.value--;
 }
 
 INLINE void SixteenBitRegister::Decrement(u16 value)
 {
-    m_value.v -= value;
+    m_value.value -= value;
 }
 
 INLINE void SixteenBitRegister::SaveState(std::ostream& stream)
 {
-    stream.write(reinterpret_cast<const char*> (&m_value.v), sizeof(m_value.v));
+    stream.write(reinterpret_cast<const char*> (&m_value.value), sizeof(m_value.value));
 }
 
 INLINE void SixteenBitRegister::LoadState(std::istream& stream)
 {
-    stream.read(reinterpret_cast<char*> (&m_value.v), sizeof(m_value.v));
+    stream.read(reinterpret_cast<char*> (&m_value.value), sizeof(m_value.value));
 }
 
 #endif /* M6502_REGISTERS_H */

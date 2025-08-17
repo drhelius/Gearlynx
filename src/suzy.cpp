@@ -22,10 +22,12 @@
 #include "suzy.h"
 #include "cartridge.h"
 #include "memory.h"
+#include "m6502.h"
 
-Suzy::Suzy(Cartridge* cartridge)
+Suzy::Suzy(Cartridge* cartridge, M6502* m6502)
 {
     m_cartridge = cartridge;
+    m_m6502 = m6502;
     InitPointer(m_memory);
 }
 

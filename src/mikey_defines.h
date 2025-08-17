@@ -20,6 +20,8 @@
 #ifndef MIKEY_DEFINES_H
 #define MIKEY_DEFINES_H
 
+#define DebugMikey(fmt, ...) Debug("MIKEY [PC=%04X]: " fmt, m_m6502->GetState()->PC->GetValue(), ##__VA_ARGS__)
+
 #define MIKEY_TIM0BKUP      0xFD00
 #define MIKEY_TIM0CTLA      0xFD01
 #define MIKEY_TIM0CNT       0xFD02
@@ -111,7 +113,6 @@
 #define MIKEY_CPUSLEEP      0xFD91
 #define MIKEY_DISPCTL       0xFD92
 #define MIKEY_PBKUP         0xFD93
-#define MIKEY_DISPADR       0xFD94
 #define MIKEY_DISPADRL      0xFD94
 #define MIKEY_DISPADRH      0xFD95
 #define MIKEY_MTEST0        0xFD9C

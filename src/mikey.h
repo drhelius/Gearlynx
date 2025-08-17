@@ -27,11 +27,12 @@
 
 class Cartridge;
 class Memory;
+class M6502;
 
 class Mikey
 {
 public:
-    Mikey(Cartridge* cartridge);
+    Mikey(Cartridge* cartridge, M6502* m6502);
     ~Mikey();
     void Init(Memory* memory);
     void Reset();
@@ -42,9 +43,38 @@ public:
     void LoadState(std::istream& stream);
 
 private:
+    u8 ReadTimer(u8 timer_index, u8 reg);
+    void WriteTimer(u8 timer_index, u8 reg, u8 value);
+    u8 ReadAudio(u8 channel, u8 reg);
+    void WriteAudio(u8 channel, u8 reg, u8 value);
+    u8 ReadAudioExtra(u16 address);
+    void WriteAudioExtra(u16 address, u8 value);
+
+private:
     Cartridge* m_cartridge;
     Memory* m_memory;
-    u8 m_registers[256];
+    M6502* m_m6502;
+    GLYNX_Mikey_Timer m_timers[8];
+    GLYNX_Mikey_Color m_colors[16];
+    GLYNX_Mikey_Audio m_audio[4];
+    u8 m_ATTEN_A;
+    u8 m_ATTEN_B;
+    u8 m_ATTEN_C;
+    u8 m_ATTEN_D;
+    u8 m_MPAN;
+    u8 m_MSTEREO;
+    u8 m_INTRST;
+    u8 m_INTSET;
+    u8 m_SYSCTL1;
+    u8 m_IODIR;
+    u8 m_IODAT;
+    u8 m_SERCTL;
+    u8 m_SERDAT;
+    u8 m_SDONEACK;
+    u8 m_CPUSLEEP;
+    u8 m_DISPCTL;
+    u8 m_PBKUP;
+    u16_union m_DISPADR;
 };
 
 #include "mikey_inline.h"

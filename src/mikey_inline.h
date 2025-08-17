@@ -22,6 +22,7 @@
 
 #include "mikey.h"
 #include "cartridge.h"
+#include "m6502.h"
 
 INLINE void Mikey::Clock(u32 cycles)
 {
@@ -29,39 +30,358 @@ INLINE void Mikey::Clock(u32 cycles)
 
 INLINE u8 Mikey::Read(u16 address)
 {
-    switch (address)
+    if (address < 0xFD20)
     {
-        case MIKEY_IODIR:
-            Debug("Mikey Read called for IODIR");
-            return m_registers[address]; // Placeholder value
-        case MIKEY_IODAT:
-            Debug("Mikey Read called for IODATA");
-            return m_registers[address]; // Placeholder value
-        default:
-            Debug("Mikey Read called with unknown address: %04X", address);
-            return m_registers[address];
+        u8 reg = address & 0x0003;
+        u8 timer_index = (address >> 2) & 0x0007;
+        return ReadTimer(timer_index, reg);
     }
+    else if (address < 0xFD40)
+    {
+        u8 reg = address & 0x0007;
+        u8 channel = (address >> 7) & 0x0003;
+        return ReadAudio(channel, reg);
+    }
+    else if (address < 0xFD80)
+    {
+        return ReadAudioExtra(address);
+    }
+    else if (address >= 0xFDA0 && address < 0xFDC0)
+    {
+        u8 color_index = address & 0x000F;
+        if (address < MIKEY_BLUERED0)
+            return m_colors[color_index].green;
+        else
+            return m_colors[color_index].bluered;
+    }
+    else
+    {
+        switch (address)
+        {
+        case MIKEY_INTRST:        // 0xFD80
+            return m_INTRST;
+        case MIKEY_INTSET:        // 0xFD81
+            return m_INTSET;
+        case MIKEY_MAGRDY0:       // 0xFD84
+            DebugMikey("Reading MAGRDY0 (unused)");
+            return 0x00;
+        case MIKEY_MAGRDY1:       // 0xFD85
+            DebugMikey("Reading MAGRDY1 (unused)");
+            return 0x00;
+        case MIKEY_AUDIN:         // 0xFD86
+            DebugMikey("Reading AUDIN (unused)");
+            return 0x80;
+        case MIKEY_SYSCTL1:       // 0xFD87
+            DebugMikey("Reading write-only SYSCTL1: %02X", m_SYSCTL1);
+            return 0xFF;
+        case MIKEY_MIKEYHREV:     // 0xFD88
+            return 0x01;
+        case MIKEY_MIKEYSREV:     // 0xFD89
+            DebugMikey("Reading write-only MIKEYSREV");
+            return 0xFF;
+        case MIKEY_IODIR:         // 0xFD8A
+            DebugMikey("Reading write-only IODIR: %02X", m_IODIR);
+            return 0xFF;
+        case MIKEY_IODAT:         // 0xFD8B
+            DebugMikey("READ IODATA");
+            return m_IODAT;
+        case MIKEY_SERCTL:        // 0xFD8C
+            return m_SERCTL;
+        case MIKEY_SERDAT:        // 0xFD8D
+            return m_SERDAT;
+        case MIKEY_SDONEACK:      // 0xFD90
+            DebugMikey("Reading write-only SDONEACK: %02X", m_SDONEACK);
+            return 0xFF;
+        case MIKEY_CPUSLEEP:      // 0xFD91
+            DebugMikey("Reading write-only CPUSLEEP: %02X", m_CPUSLEEP);
+            return 0xFF;
+        case MIKEY_DISPCTL:       // 0xFD92
+            DebugMikey("Reading write-only DISPCTL: %02X", m_DISPCTL);
+            return 0xFF;
+        case MIKEY_PBKUP:         // 0xFD93
+            DebugMikey("Reading write-only PBKUP: %02X", m_PBKUP);
+            return 0xFF;
+        case MIKEY_DISPADRL:      // 0xFD94
+            DebugMikey("Reading write-only DISPADRL: %02X", m_DISPADR.low);
+            return 0xFF;
+        case MIKEY_DISPADRH:      // 0xFD95
+            DebugMikey("Reading write-only DISPADRH: %02X", m_DISPADR.high);
+            return 0xFF;
+        case MIKEY_MTEST0:        // 0xFD9C
+            DebugMikey("Reading MTEST0 (unused)");
+            return 0xFF;
+        case MIKEY_MTEST1:        // 0xFD9D
+            DebugMikey("Reading MTEST1 (unused)");
+            return 0xFF;
+        case MIKEY_MTEST2:        // 0xFD9E
+            DebugMikey("Reading MTEST2 (unused)");
+            return 0xFF;
+        default:
+            DebugMikey("Register READ called with unknown address: %04X", address);
+            return 0xFF;
+        }
+    }
+
+    assert(false && "Unhandled Mikey Read Address");
+    return 0xFF;
 }
 
 INLINE void Mikey::Write(u16 address, u8 value)
 {
-    m_registers[address] = value;
-
-    switch (address)
+    if (address < 0xFD20)
     {
-        case MIKEY_SYSCTL1:
-            Debug("Mikey Write called for SYSCTL1, value: %02X", value);
-            m_cartridge->ShiftRegisterStrobe(value & 0x01);
+        u8 reg = address & 0x0003;
+        u8 timer_index = (address >> 2) & 0x0007;
+        WriteTimer(timer_index, reg, value);
+    }
+    else if (address < 0xFD40)
+    {
+        u8 reg = address & 0x0007;
+        u8 channel = (address >> 7) & 0x0003;
+        WriteAudio(channel, reg, value);
+    }
+    else if (address < 0xFD80)
+    {
+        WriteAudioExtra(address, value);
+    }
+    else if (address >= 0xFDA0 && address < 0xFDC0)
+    {
+        u8 color_index = address & 0x000F;
+        if (address < MIKEY_BLUERED0)
+            m_colors[color_index].green = value;
+        else
+            m_colors[color_index].bluered = value;
+    }
+    else
+    {
+        switch (address)
+        {
+        case MIKEY_INTRST:        // 0xFD80
+            m_INTRST = value;
             break;
-        case MIKEY_IODIR:
-            Debug("Mikey Write called for IODIR, value: %02X", value);
+        case MIKEY_INTSET:        // 0xFD81
+            m_INTSET = value;
             break;
-        case MIKEY_IODAT:
-            Debug("Mikey Write called for IODATA, value: %02X", value);
-            m_cartridge->ShiftRegisterBit(value & 0x02);
+        case MIKEY_MAGRDY0:       // 0xFD84
+            DebugMikey("Writing MAGRDY0 (unused): %02X", value);
+            break;
+        case MIKEY_MAGRDY1:       // 0xFD85
+            DebugMikey("Writing MAGRDY1 (unused): %02X", value);
+            break;
+        case MIKEY_AUDIN:         // 0xFD86
+            DebugMikey("Writing AUDIN (unused): %02X", value);
+            break;
+        case MIKEY_SYSCTL1:       // 0xFD87
+            m_SYSCTL1 = value;
+            break;
+        case MIKEY_MIKEYHREV:     // 0xFD88
+            DebugMikey("Writing to read-only MIKEYHREV: %02X", value);
+            break;
+        case MIKEY_MIKEYSREV:     // 0xFD89
+            DebugMikey("Writing MIKEYSREV (unused): %02X", value);
+            break;
+        case MIKEY_IODIR:         // 0xFD8A
+            m_IODIR = value;
+            break;
+        case MIKEY_IODAT:         // 0xFD8B
+            m_IODAT = value;
+            break;
+        case MIKEY_SERCTL:        // 0xFD8C
+            m_SERCTL = value;
+            break;
+        case MIKEY_SERDAT:        // 0xFD8D
+            m_SERDAT = value;
+            break;
+        case MIKEY_SDONEACK:      // 0xFD90
+            m_SDONEACK = value;
+            break;
+        case MIKEY_CPUSLEEP:      // 0xFD91
+            DebugMikey("Writing to CPUSLEEP: %02X", value);
+            m_CPUSLEEP = value;
+            break;
+        case MIKEY_DISPCTL:       // 0xFD92
+            m_DISPCTL = value;
+            break;
+        case MIKEY_PBKUP:         // 0xFD93
+            m_PBKUP = value;
+            break;
+        case MIKEY_DISPADRL:      // 0xFD94
+            m_DISPADR.low = value;
+            break;
+        case MIKEY_DISPADRH:      // 0xFD95
+            m_DISPADR.high = value;
+            break;
+        case MIKEY_MTEST0:        // 0xFD9C
+            DebugMikey("Writing MTEST0 (unused): %02X", value);
+            break;
+        case MIKEY_MTEST1:        // 0xFD9D
+            DebugMikey("Writing MTEST1 (unused): %02X", value);
+            break;
+        case MIKEY_MTEST2:        // 0xFD9E
+            DebugMikey("Writing MTEST2 (unused): %02X", value);
             break;
         default:
-            Debug("Mikey Write called with unknown address: %04X, value: %02X", address, value);
+            DebugMikey("Register WRITE called with unknown address: %04X, value: %02X", address, value);
+            break;
+        }
+    }
+}
+
+INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)
+{
+    assert(timer_index < 8 && reg < 4 && "Invalid timer index or register");
+
+    switch (reg)
+    {
+    case 0:
+        return m_timers[timer_index].backup;
+    case 1:
+        return m_timers[timer_index].control_a;
+    case 2:
+        return m_timers[timer_index].count;
+    case 3:
+        return m_timers[timer_index].control_b;
+    default:
+        DebugMikey("Timer READ called with unknown register: %02X, index: %02X", reg, timer_index);
+        return 0xFF;
+    }
+}
+
+INLINE void Mikey::WriteTimer(u8 timer_index, u8 reg, u8 value)
+{
+    assert(timer_index < 8 && reg < 4 && "Invalid timer index or register");
+
+    switch (reg)
+    {
+    case 0:
+        m_timers[timer_index].backup = value;
+        break;
+    case 1:
+        m_timers[timer_index].control_a = value;
+        break;
+    case 2:
+        m_timers[timer_index].count = value;
+        break;
+    case 3:
+        m_timers[timer_index].control_b = value;
+        break;
+    default:
+        DebugMikey("Timer WRITE called with unknown register: %02X, index: %02X, value: %02X", reg, timer_index, value);
+        break;
+    }
+}
+
+INLINE u8 Mikey::ReadAudio(u8 channel, u8 reg)
+{
+    assert(channel < 4 && reg < 8 && "Invalid audio channel or register");
+
+    switch (reg)
+    {
+    case 0:
+        return m_audio[channel].volume;
+    case 1:
+        return m_audio[channel].shift_feedback;
+    case 2:
+        return m_audio[channel].output_value;
+    case 3:
+        return m_audio[channel].left_shift;
+    case 4:
+        return m_audio[channel].timer_backup;
+    case 5:
+        return m_audio[channel].control;
+    case 6:
+        return m_audio[channel].count;
+    case 7:
+        return m_audio[channel].misc;
+    default:
+        DebugMikey("Audio READ called with unknown register: %02X, channel: %02X", reg, channel);
+        return 0xFF;
+    }
+}
+
+INLINE void Mikey::WriteAudio(u8 channel, u8 reg, u8 value)
+{
+    assert(channel < 4 && reg < 8 && "Invalid audio channel or register");
+
+    switch (reg)
+    {
+    case 0:
+        m_audio[channel].volume = value;
+        break;
+    case 1:
+        m_audio[channel].shift_feedback = value;
+        break;
+    case 2:
+        m_audio[channel].output_value = value;
+        break;
+    case 3:
+        m_audio[channel].left_shift = value;
+        break;
+    case 4:
+        m_audio[channel].timer_backup = value;
+        break;
+    case 5:
+        m_audio[channel].control = value;
+        break;
+    case 6:
+        m_audio[channel].count = value;
+        break;
+    case 7:
+        m_audio[channel].misc = value;
+        break;
+    default:
+        DebugMikey("Audio WRITE called with unknown register: %02X, channel: %02X, value: %02X", reg, channel, value);
+        break;
+    }
+}
+
+INLINE u8 Mikey::ReadAudioExtra(u16 address)
+{
+    switch (address)
+    {
+    case MIKEY_ATTEN_A:       // 0xFD40
+        return m_ATTEN_A;
+    case MIKEY_ATTEN_B:       // 0xFD41
+        return m_ATTEN_B;
+    case MIKEY_ATTEN_C:       // 0xFD42
+        return m_ATTEN_C;
+    case MIKEY_ATTEN_D:       // 0xFD43
+        return m_ATTEN_D;
+    case MIKEY_MPAN:          // 0xFD44
+        return m_MPAN;
+    case MIKEY_MSTEREO:       // 0xFD50
+        return m_MSTEREO;
+    default:
+        DebugMikey("Audio Extra READ called with unknown address: %04X", address);
+        return 0xFF;
+    }
+}
+
+INLINE void Mikey::WriteAudioExtra(u16 address, u8 value)
+{
+    switch (address)
+    {
+    case MIKEY_ATTEN_A:       // 0xFD40
+        m_ATTEN_A = value;
+        break;
+    case MIKEY_ATTEN_B:       // 0xFD41
+        m_ATTEN_B = value;
+        break;
+    case MIKEY_ATTEN_C:       // 0xFD42
+        m_ATTEN_C = value;
+        break;
+    case MIKEY_ATTEN_D:       // 0xFD43
+        m_ATTEN_D = value;
+        break;
+    case MIKEY_MPAN:          // 0xFD44
+        m_MPAN = value;
+        break;
+    case MIKEY_MSTEREO:       // 0xFD50
+        m_MSTEREO = value;
+        break;
+    default:
+        DebugMikey("Audio Extra WRITE called with unknown address: %04X, value: %02X", address, value);
+        break;
     }
 }
 

@@ -22,9 +22,10 @@
 #include "mikey.h"
 #include "memory.h"
 
-Mikey::Mikey(Cartridge* cartridge)
+Mikey::Mikey(Cartridge* cartridge, M6502* m6502)
 {
     m_cartridge = cartridge;
+    m_m6502 = m6502;
     InitPointer(m_memory);
 }
 

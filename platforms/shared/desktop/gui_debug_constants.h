@@ -245,7 +245,6 @@ static const stDebugLabel k_debug_labels[k_debug_label_count] =
     { 0xFD91, "MIKEY_CPUSLEEP" },
     { 0xFD92, "MIKEY_DISPCTL" },
     { 0xFD93, "MIKEY_PBKUP" },
-    { 0xFD94, "MIKEY_DISPADR" },
     { 0xFD94, "MIKEY_DISPADRL" },
     { 0xFD95, "MIKEY_DISPADRH" },
     { 0xFD9C, "MIKEY_MTEST0" },
@@ -283,6 +282,7 @@ static const stDebugLabel k_debug_labels[k_debug_label_count] =
     { 0xFDBD, "MIKEY_BLUEREDD" },
     { 0xFDBE, "MIKEY_BLUEREDE" },
     { 0xFDBF, "MIKEY_BLUEREDF" },
+    { 0xFFF8, "RESERVED" },
     { 0xFFF9, "MAPCTL" }
 };
 
