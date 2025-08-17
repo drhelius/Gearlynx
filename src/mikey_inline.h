@@ -172,6 +172,8 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing AUDIN (unused): %02X", value);
             break;
         case MIKEY_SYSCTL1:       // 0xFD87
+            DebugMikey("Writing SYSCTL1, value: %02X", value);
+            m_cartridge->ShiftRegisterStrobe(value & 0x01);
             m_SYSCTL1 = value;
             break;
         case MIKEY_MIKEYHREV:     // 0xFD88
@@ -181,9 +183,12 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing MIKEYSREV (unused): %02X", value);
             break;
         case MIKEY_IODIR:         // 0xFD8A
+            DebugMikey("Writing IODIR, value: %02X", value);
             m_IODIR = value;
             break;
         case MIKEY_IODAT:         // 0xFD8B
+            DebugMikey("Writing IODAT, value: %02X", value);
+            m_cartridge->ShiftRegisterBit(value & 0x02);
             m_IODAT = value;
             break;
         case MIKEY_SERCTL:        // 0xFD8C

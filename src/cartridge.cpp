@@ -340,12 +340,12 @@ u8 Cartridge::ReadBank1()
 
 void Cartridge::WriteBank0(u8 value)
 {
-
+    Debug("WARNING: WriteBank0 called with value: %02X", value);
 }
 
 void Cartridge::WriteBank1(u8 value)
 {
-
+    Debug("WARNING: WriteBank1 called with value: %02X", value);
 }
 
 void Cartridge::ShiftRegisterStrobe(bool strobe)
