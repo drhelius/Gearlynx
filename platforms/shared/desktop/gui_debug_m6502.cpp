@@ -175,7 +175,7 @@ static void goto_address(u8 mpr_value)
     if (mpr_value < 0x80)
     {
         u32 rom_address = mpr_value << 13;
-        gui_debug_memory_goto(MEMORY_EDITOR_ROM, rom_address);
+        gui_debug_memory_goto(MEMORY_EDITOR_CART, rom_address);
     }
     // 0xF8 - 0xFB
     else if (mpr_value < 0xFC)
