@@ -59,7 +59,9 @@
     <ClInclude Include="..\shared\desktop\gui_debug_m6502.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_memeditor.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_memory.h" />
+    <ClInclude Include="..\shared\desktop\gui_debug_mikey.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_psg.h" />
+    <ClInclude Include="..\shared\desktop\gui_debug_suzy.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_text.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_trace_logger.h" />
     <ClInclude Include="..\shared\desktop\gui_filedialogs.h" />
@@ -110,7 +112,9 @@
     <ClCompile Include="..\shared\desktop\gui_debug_m6502.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_memeditor.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_memory.cpp" />
+    <ClCompile Include="..\shared\desktop\gui_debug_mikey.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_psg.cpp" />
+    <ClCompile Include="..\shared\desktop\gui_debug_suzy.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_trace_logger.cpp" />
     <ClCompile Include="..\shared\desktop\gui_filedialogs.cpp" />
     <ClCompile Include="..\shared\desktop\gui_menus.cpp" />

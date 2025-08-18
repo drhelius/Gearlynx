@@ -33,12 +33,21 @@ Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mik
     m_suzy = suzy;
     m_mikey = mikey;
     InitPointer(m_disassembler);
-    InitPointer(m_memory);
+    InitPointer(m_state.ram);
+    m_state.MAPCTL = 0;
+
+    for (int i = 0; i < 256; i++)
+    {
+        m_read_page[i] = NULL;
+        m_write_page[i] = NULL;
+        m_read_fn[i] = NULL;
+        m_write_fn[i] = NULL;
+    }
 }
 
 Memory::~Memory()
 {
-    SafeDeleteArray(m_memory);
+    SafeDeleteArray(m_state.ram);
 
     if (IsValidPointer(m_disassembler))
     {
@@ -60,17 +69,17 @@ void Memory::Init()
     }
 #endif
 
-    m_memory = new u8[0x10000];
+    m_state.ram = new u8[0x10000];
 
     Reset();
 }
 
 void Memory::Reset()
 {
-    m_mapctl = 0;
+    m_state.MAPCTL = 0;
 
     for (int i = 0; i < 0x10000; i++)
-        m_memory[i] = rand() & 0xFF;
+        m_state.ram[i] = rand() & 0xFF;
 
     SetupDefaultMemoryMap();
 }
@@ -125,8 +134,8 @@ void Memory::SetupDefaultMemoryMap()
 {
     for (int i = 0; i < 0xFF; i++)
     {
-        m_read_page[i] = m_memory + (i << 8);
-        m_write_page[i] = m_memory + (i << 8);
+        m_read_page[i] = m_state.ram + (i << 8);
+        m_write_page[i] = m_state.ram + (i << 8);
         m_read_fn[i] = NULL;
         m_write_fn[i] = NULL;
     }
@@ -162,9 +171,9 @@ void Memory::MikeyWrite(u16 address, u8 value)
 u8 Memory::BiosRead(u16 address)
 {
     // BIOS not visible
-    if (IS_SET_BIT(m_mapctl, 2))
+    if (IS_SET_BIT(m_state.MAPCTL, 2))
     {
-        return m_memory[address];
+        return m_state.ram[address];
     }
     // BIOS visible
     else
@@ -177,9 +186,9 @@ u8 Memory::BiosRead(u16 address)
 void Memory::BiosWrite(u16 address, u8 value)
 {
     // BIOS not visible
-    if (IS_SET_BIT(m_mapctl, 2))
+    if (IS_SET_BIT(m_state.MAPCTL, 2))
     {
-        m_memory[address] = value;
+        m_state.ram[address] = value;
     }
     // BIOS visible
     else
@@ -193,9 +202,9 @@ u8 Memory::LastPageRead(u16 address)
     if (address < 0xFFF8)
     {
         // BIOS not visible
-        if (IS_SET_BIT(m_mapctl, 2))
+        if (IS_SET_BIT(m_state.MAPCTL, 2))
         {
-            return m_memory[address];
+            return m_state.ram[address];
         }
         // BIOS visible
         else
@@ -207,9 +216,9 @@ u8 Memory::LastPageRead(u16 address)
     else if (address > 0xFFF9)
     {
         // VECTORS not visible
-        if (IS_SET_BIT(m_mapctl, 3))
+        if (IS_SET_BIT(m_state.MAPCTL, 3))
         {
-            return m_memory[address];
+            return m_state.ram[address];
         }
         // VECTORS visible
         else
@@ -221,7 +230,7 @@ u8 Memory::LastPageRead(u16 address)
     else if (unlikely(address == 0xFFF8))
     {
         Debug("Reading from address 0xFFF8");
-        return m_memory[address];
+        return m_state.ram[address];
     }
     else
     {
@@ -234,9 +243,9 @@ void Memory::LastPageWrite(u16 address, u8 value)
     if (address < 0xFFF8)
     {
         // BIOS not visible
-        if (IS_SET_BIT(m_mapctl, 2))
+        if (IS_SET_BIT(m_state.MAPCTL, 2))
         {
-            m_memory[address] = value;
+            m_state.ram[address] = value;
             return;
         }
         // BIOS visible
@@ -249,9 +258,9 @@ void Memory::LastPageWrite(u16 address, u8 value)
     else if (address > 0xFFF9)
     {
         // VECTORS not visible
-        if (IS_SET_BIT(m_mapctl, 3))
+        if (IS_SET_BIT(m_state.MAPCTL, 3))
         {
-            m_memory[address] = value;
+            m_state.ram[address] = value;
             return;
         }
         // VECTORS visible
@@ -264,7 +273,7 @@ void Memory::LastPageWrite(u16 address, u8 value)
     else if (unlikely(address == 0xFFF8))
     {
         Debug("Writing to address 0xFFF8 with value %02X", value);
-        m_memory[address] = value;
+        m_state.ram[address] = value;
         return;
     }
     else

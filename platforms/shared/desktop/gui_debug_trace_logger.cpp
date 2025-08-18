@@ -110,17 +110,17 @@ void gui_debug_trace_logger_update(void)
         Memory* memory = emu_get_core()->GetMemory();
         M6502* m6502 = emu_get_core()->GetM6502();
         M6502::M6502_State* state = m6502->GetState();
-        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(state->PC->GetValue());
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(state->PC.GetValue());
 
         if (!IsValidPointer(record))
             return;
 
         char registers[40];
         snprintf(registers, sizeof(registers), "A: %02X  X: %02X  Y: %02X  S: %02X   ",
-            state->A->GetValue(), state->X->GetValue(), state->Y->GetValue(), state->S->GetValue());
+            state->A.GetValue(), state->X.GetValue(), state->Y.GetValue(), state->S.GetValue());
 
         char flags[32];
-        u8 p = state->P->GetValue();
+        u8 p = state->P.GetValue();
         snprintf(flags, sizeof(flags), "P: %c%c%c%c%c%c%c%c   ",
             (p & FLAG_NEGATIVE) ? 'N' : 'n',
             (p & FLAG_OVERFLOW) ? 'V' : 'v',

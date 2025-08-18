@@ -46,13 +46,15 @@ class M6502
 public:
     struct M6502_State
     {
-        SixteenBitRegister* PC;
-        EightBitRegister* A;
-        EightBitRegister* X;
-        EightBitRegister* Y;
-        EightBitRegister* S;
-        EightBitRegister* P;
-        u32* CYCLES;
+        SixteenBitRegister PC;
+        EightBitRegister A;
+        EightBitRegister X;
+        EightBitRegister Y;
+        EightBitRegister S;
+        EightBitRegister P;
+        u32 cycles;
+        s32 irq_pending;
+        s32 debug_next_irq;
     };
 
     enum GLYNX_Breakpoint_Type
@@ -110,18 +112,9 @@ public:
 private:
     typedef void (M6502::*opcodeptr) (void);
     opcodeptr m_opcodes[256];
-    SixteenBitRegister m_PC;
-    EightBitRegister m_A;
-    EightBitRegister m_X;
-    EightBitRegister m_Y;
-    EightBitRegister m_S;
-    EightBitRegister m_P;
     u8 m_zn_flags_lut[256];
-    u32 m_cycles;
-    s32 m_irq_pending;
     Memory* m_memory;
-    M6502_State m_processor_state;
-    s32 m_debug_next_irq;
+    M6502_State m_s;
     bool m_breakpoints_enabled;
     bool m_breakpoints_irq_enabled;
     bool m_cpu_breakpoint_hit;

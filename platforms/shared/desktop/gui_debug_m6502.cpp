@@ -29,44 +29,46 @@
 #include "emu.h"
 #include "utils.h"
 
-static void get_bank_name(u8 mpr, u8 mpr_value, char *name, char* tooltip);
-static void goto_address(u8 mpr_value);
-
 void gui_debug_window_m6502(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(3, 26), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("65C02", &config_debug.show_processor, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Suzy 65C02", &config_debug.show_processor, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
 
     ImGui::PushFont(gui_default_font);
 
     GearlynxCore* core = emu_get_core();
-    M6502* processor = core->GetM6502();
-    M6502::M6502_State* proc_state = processor->GetState();
+    M6502::M6502_State* cpu = core->GetM6502()->GetState();
+    Memory::Memory_State* mem = core->GetMemory()->GetState();
 
     if (ImGui::BeginTable("m6502", 1, ImGuiTableFlags_BordersInnerH))
     {
         ImGui::TableNextColumn();
-        ImGui::TextColored(cyan, "      STATUS");
-        ImGui::TextColored(orange, "  N V - B D I Z C");
-        ImGui::Text("  " BYTE_TO_BINARY_PATTERN_ALL_SPACED, BYTE_TO_BINARY(proc_state->P->GetValue()));
+        ImGui::TextColored(orange, "   N V - B D I Z C");
+        ImGui::Text("   " BYTE_TO_BINARY_PATTERN_ALL_SPACED, BYTE_TO_BINARY(cpu->P.GetValue()));
 
         ImGui::TableNextColumn();
-        ImGui::TextColored(yellow, "    PC"); ImGui::SameLine();
-        ImGui::Text("= $%04X", proc_state->PC->GetValue());
-        ImGui::Text(BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(proc_state->PC->GetHigh()), BYTE_TO_BINARY(proc_state->PC->GetLow()));
+        ImGui::TextColored(yellow, "     PC"); ImGui::SameLine();
+        if (ImGui::IsItemClicked())
+            gui_debug_memory_goto(MEMORY_EDITOR_RAM, cpu->PC.GetValue());
+        ImGui::Text("= $%04X", cpu->PC.GetValue());
+        if (ImGui::IsItemClicked())
+            gui_debug_memory_goto(MEMORY_EDITOR_RAM, cpu->PC.GetValue());
+        ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(cpu->PC.GetHigh()), BYTE_TO_BINARY(cpu->PC.GetLow()));
+        if (ImGui::IsItemClicked())
+            gui_debug_memory_goto(MEMORY_EDITOR_RAM, cpu->PC.GetValue());
 
         ImGui::TableNextColumn();
-        ImGui::TextColored(yellow, "    SP"); ImGui::SameLine();
+        ImGui::TextColored(yellow, "     SP"); ImGui::SameLine();
         if (ImGui::IsItemClicked())
-            gui_debug_memory_goto(MEMORY_EDITOR_RAM, (STACK_ADDR - 0x2000) | proc_state->S->GetValue());
-        ImGui::Text("= $%04X", STACK_ADDR | proc_state->S->GetValue());
+            gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
+        ImGui::Text("= $%04X", STACK_ADDR | cpu->S.GetValue());
         if (ImGui::IsItemClicked())
-            gui_debug_memory_goto(MEMORY_EDITOR_RAM, (STACK_ADDR - 0x2000) | proc_state->S->GetValue());
-        ImGui::Text(BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(0x21), BYTE_TO_BINARY(proc_state->S->GetValue()));
+            gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
+        ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(0x21), BYTE_TO_BINARY(cpu->S.GetValue()));
         if (ImGui::IsItemClicked())
-            gui_debug_memory_goto(MEMORY_EDITOR_RAM, (STACK_ADDR - 0x2000) | proc_state->S->GetValue());
+            gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
 
         ImGui::TableNextColumn();
 
@@ -75,44 +77,66 @@ void gui_debug_window_m6502(void)
         if (ImGui::BeginTable("regs", 2, ImGuiTableFlags_BordersInnerH |ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))
         {
             ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, " A"); ImGui::SameLine();
-            ImGui::Text("   $%02X", proc_state->A->GetValue());
-            ImGui::Text(BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(proc_state->A->GetValue()));
+            ImGui::TextColored(cyan, "  A"); ImGui::SameLine();
+            ImGui::Text("   $%02X", cpu->A.GetValue());
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
 
             ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, " S"); ImGui::SameLine();
-            ImGui::Text("   $%02X", proc_state->S->GetValue());
-            ImGui::Text(BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(proc_state->S->GetValue()));
+            ImGui::TextColored(cyan, "  S"); ImGui::SameLine();
+            ImGui::Text("   $%02X", cpu->S.GetValue());
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
 
             ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, " X"); ImGui::SameLine();
-            ImGui::Text("   $%02X", proc_state->X->GetValue());
-            ImGui::Text(BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(proc_state->X->GetValue()));
+            ImGui::TextColored(cyan, "  X"); ImGui::SameLine();
+            ImGui::Text("   $%02X", cpu->X.GetValue());
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
 
             ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, " Y"); ImGui::SameLine();
-            ImGui::Text("   $%02X", proc_state->Y->GetValue());
-            ImGui::Text(BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(proc_state->Y->GetValue()));
+            ImGui::TextColored(cyan, "  Y"); ImGui::SameLine();
+            ImGui::Text("   $%02X", cpu->Y.GetValue());
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(violet, "MAPCTL"); ImGui::SameLine();
+            ImGui::Text("$%02X", mem->MAPCTL);
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(0));
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(magenta, "XXXXXX"); ImGui::SameLine();
+            ImGui::Text("$%02X", 0);
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(0));
+
+            bool suzy_visible = !(mem->MAPCTL & 0x01);
+            bool mikey_visible = !(mem->MAPCTL & 0x02);
+            bool rom_visible = !(mem->MAPCTL & 0x04);
+            bool vectors_visible = !(mem->MAPCTL & 0x08);
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(violet, "SUZY  "); ImGui::SameLine();
+            ImGui::TextColored(suzy_visible ? green : gray, suzy_visible ? "ON" : "OFF");
+            ImGui::TextColored(brown, " FC00-FCFF");
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(violet, "MIKEY "); ImGui::SameLine();
+            ImGui::TextColored(mikey_visible ? green : gray, mikey_visible ? "ON" : "OFF");
+            ImGui::TextColored(brown, " FD00-FDFF");
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(violet, "ROM   "); ImGui::SameLine();
+            ImGui::TextColored(rom_visible ? green : gray, rom_visible ? "ON" : "OFF");
+            ImGui::TextColored(brown, " FE00-FFF7");
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(violet, "VECTOR"); ImGui::SameLine();
+            ImGui::TextColored(vectors_visible ? green : gray, vectors_visible ? "ON" : "OFF");
+            ImGui::TextColored(brown, " FFFA-FFFF");
 
             ImGui::EndTable();
         }
 
         ImGui::PopStyleVar();
 
-        ImGui::TableNextColumn();
-
-        // ImGui::TextColored(magenta, "IRQ1:"); ImGui::SameLine();
-        // ImGui::TextColored(*proc_state->IDR & 0x02 ? gray : green, *proc_state->IDR & 0x02 ? "OFF" : "ON "); ImGui::SameLine();
-        // ImGui::TextColored(*proc_state->IRR & 0x02 ? green : gray, "ASSERTED");
-
-        // ImGui::TextColored(magenta, "IRQ2:"); ImGui::SameLine();
-        // ImGui::TextColored(*proc_state->IDR & 0x01 ? gray : green, *proc_state->IDR & 0x01 ? "OFF" : "ON "); ImGui::SameLine();
-        // ImGui::TextColored(*proc_state->IRR & 0x01 ? green : gray, "ASSERTED");
-
-        // ImGui::TextColored(magenta, "TIQ: "); ImGui::SameLine();
-        // ImGui::TextColored(*proc_state->IDR & 0x04 ? gray : green, *proc_state->IDR & 0x04 ? "OFF" : "ON "); ImGui::SameLine();
-        // ImGui::TextColored(*proc_state->IRR & 0x04 ? green : gray, "ASSERTED");
-
+        
         ImGui::EndTable();
     }
 
@@ -120,68 +144,4 @@ void gui_debug_window_m6502(void)
 
     ImGui::End();
     ImGui::PopStyleVar();
-}
-
-static void get_bank_name(u8 mpr, u8 mpr_value, char *name, char* tooltip)
-{
-    u16 cpu_address = mpr << 13;
-
-    // 0x00 - 0x7F
-    if (mpr_value < 0x80)
-    {
-        u32 rom_address = mpr_value << 13;
-        snprintf(name, 16, "ROM $%02X", mpr_value);
-        snprintf(tooltip, 128, "Range (CPU) $%04X-$%04X \nRange (ROM) $%06X-$%06X",
-            cpu_address, cpu_address + 0x1FFF,  rom_address,  rom_address + 0x1FFF);
-    }
-    // 0x80 - 0xF6
-    else if (mpr_value < 0xF7)
-    {
-        snprintf(name, 16, "UNUSED");
-        snprintf(tooltip, 128, "Range (CPU) $%04X-$%04X", cpu_address, cpu_address + 0x1FFF);
-    }
-    // 0xF7
-    else if (mpr_value < 0xF8)
-    {
-        snprintf(name, 16, "BRAM");
-        snprintf(tooltip, 128, "Range (CPU) $%04X-$%04X", cpu_address, cpu_address + 0x1FFF);
-    }
-    // 0xF8 - 0xFB
-    else if (mpr_value < 0xFC)
-    {
-        u8 ram_bank = mpr_value - 0xF8;
-        u16 ram_address = ram_bank << 13;
-        snprintf(name, 16, "WRAM $%02X", ram_bank);
-        snprintf(tooltip, 128, "Range (CPU) $%04X-$%04X \nRange (WRAM) $%04X-$%04X",
-            cpu_address, cpu_address + 0x1FFF,  ram_address,  ram_address + 0x1FFF);
-    }
-    // 0xFC - 0xFE
-    else if (mpr_value < 0xFF)
-    {
-        snprintf(name, 16, "UNUSED");
-        snprintf(tooltip, 128, "Range (CPU) $%04X-$%04X", cpu_address, cpu_address + 0x1FFF);
-    }
-    // 0xFF
-    else
-    {
-        snprintf(name, 16, "HARDWARE");
-        snprintf(tooltip, 128, "Range (CPU) $%04X-$%04X", cpu_address, cpu_address + 0x1FFF);
-    }
-}
-
-static void goto_address(u8 mpr_value)
-{
-    // 0x00 - 0x7F
-    if (mpr_value < 0x80)
-    {
-        u32 rom_address = mpr_value << 13;
-        gui_debug_memory_goto(MEMORY_EDITOR_CART, rom_address);
-    }
-    // 0xF8 - 0xFB
-    else if (mpr_value < 0xFC)
-    {
-        u8 ram_bank = mpr_value - 0xF8;
-        u16 ram_address = ram_bank << 13;
-        gui_debug_memory_goto(MEMORY_EDITOR_RAM, ram_address);
-    }
 }

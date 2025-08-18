@@ -50,10 +50,11 @@ void gui_debug_memory_reset(void)
     GearlynxCore* core = emu_get_core();
     Memory* memory = core->GetMemory();
     Cartridge* cart = core->GetCartridge();
+    u8* ram = memory->GetRAM();
 
-    mem_edit[MEMORY_EDITOR_RAM].Reset("RAM", memory->GetMemory(), 0x10000);
-    mem_edit[MEMORY_EDITOR_ZERO_PAGE].Reset("ZP", memory->GetMemory(), 0x100);
-    mem_edit[MEMORY_EDITOR_STACK].Reset("STACK", memory->GetMemory() + 0x100, 0x100, 0x100);
+    mem_edit[MEMORY_EDITOR_RAM].Reset("RAM", ram, 0x10000);
+    mem_edit[MEMORY_EDITOR_ZERO_PAGE].Reset("ZP", ram, 0x100);
+    mem_edit[MEMORY_EDITOR_STACK].Reset("STACK", ram + 0x100, 0x100, 0x100);
     mem_edit[MEMORY_EDITOR_CART].Reset("CART", cart->GetROM(), cart->GetROMSize());
     mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", cart->GetBIOS(), 0x200, 0xFE00);
 }

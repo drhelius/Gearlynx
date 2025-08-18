@@ -101,6 +101,12 @@ void config_read(void)
     config_debug.show_call_stack = read_bool("Debug", "CallStack", false);
     config_debug.show_psg = read_bool("Debug", "PSG", false);
     config_debug.show_trace_logger = read_bool("Debug", "TraceLogger", false);
+    config_debug.show_mikey_regs = read_bool("Debug", "MikeyRegs", false);
+    config_debug.show_mikey_timers = read_bool("Debug", "MikeyTimers", false);
+    config_debug.show_mikey_audio = read_bool("Debug", "MikeyAudio", false);
+    config_debug.show_mikey_colors = read_bool("Debug", "MikeyColors", false);
+    config_debug.show_suzy_regs = read_bool("Debug", "SuzyRegs", false);
+    config_debug.show_suzy_math_regs = read_bool("Debug", "SuzyMathRegs", false);
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
@@ -208,6 +214,12 @@ void config_write(void)
     write_bool("Debug", "Processor", config_debug.show_processor);
     write_bool("Debug", "CallStack", config_debug.show_call_stack);
     write_bool("Debug", "PSG", config_debug.show_psg);
+    write_bool("Debug", "MikeyRegs", config_debug.show_mikey_regs);
+    write_bool("Debug", "MikeyTimers", config_debug.show_mikey_timers);
+    write_bool("Debug", "MikeyAudio", config_debug.show_mikey_audio);
+    write_bool("Debug", "MikeyColors", config_debug.show_mikey_colors);
+    write_bool("Debug", "SuzyRegs", config_debug.show_suzy_regs);
+    write_bool("Debug", "SuzyMathRegs", config_debug.show_suzy_math_regs);
     write_bool("Debug", "TraceLogger", config_debug.show_trace_logger);
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);

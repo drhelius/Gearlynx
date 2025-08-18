@@ -29,7 +29,9 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/gui_debug_m6502.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_memeditor.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_memory.cpp \
+    $(DESKTOP_SRC_DIR)/gui_debug_mikey.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_psg.cpp \
+    $(DESKTOP_SRC_DIR)/gui_debug_suzy.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_trace_logger.cpp \
     $(DESKTOP_SRC_DIR)/renderer.cpp \
     $(DESKTOP_SRC_DIR)/emu.cpp \

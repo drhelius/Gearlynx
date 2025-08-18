@@ -125,12 +125,12 @@ bool run_test(RSJresource& test)
 {
     bool failed = false;
 
-    cpu->GetState()->PC->SetValue(test["initial"]["pc"].as<int>());
-    cpu->GetState()->S->SetValue(test["initial"]["s"].as<int>());
-    cpu->GetState()->A->SetValue(test["initial"]["a"].as<int>());
-    cpu->GetState()->X->SetValue(test["initial"]["x"].as<int>());
-    cpu->GetState()->Y->SetValue(test["initial"]["y"].as<int>());
-    cpu->GetState()->P->SetValue(test["initial"]["p"].as<int>());
+    cpu->GetState()->PC.SetValue(test["initial"]["pc"].as<int>());
+    cpu->GetState()->S.SetValue(test["initial"]["s"].as<int>());
+    cpu->GetState()->A.SetValue(test["initial"]["a"].as<int>());
+    cpu->GetState()->X.SetValue(test["initial"]["x"].as<int>());
+    cpu->GetState()->Y.SetValue(test["initial"]["y"].as<int>());
+    cpu->GetState()->P.SetValue(test["initial"]["p"].as<int>());
 
     for (auto it=test["initial"]["ram"].as_array().begin(); it!=test["initial"]["ram"].as_array().end(); ++it)
     {
@@ -151,12 +151,12 @@ bool run_test(RSJresource& test)
     }
 #endif
 
-    u16 pc = cpu->GetState()->PC->GetValue();
-    u8 s = cpu->GetState()->S->GetValue();
-    u8 a = cpu->GetState()->A->GetValue();
-    u8 x = cpu->GetState()->X->GetValue();
-    u8 y = cpu->GetState()->Y->GetValue();
-    u8 p = cpu->GetState()->P->GetValue();
+    u16 pc = cpu->GetState()->PC.GetValue();
+    u8 s = cpu->GetState()->S.GetValue();
+    u8 a = cpu->GetState()->A.GetValue();
+    u8 x = cpu->GetState()->X.GetValue();
+    u8 y = cpu->GetState()->Y.GetValue();
+    u8 p = cpu->GetState()->P.GetValue();
 
     if (pc != test["final"]["pc"].as<int>())
     {

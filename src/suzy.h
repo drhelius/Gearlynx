@@ -32,6 +32,41 @@ class M6502;
 class Suzy
 {
 public:
+    struct Suzy_State
+    {
+        u16_union TMPADR;
+        u16_union TILTACUM;
+        u16_union HOFF;
+        u16_union VOFF;
+        u16_union VIDBAS;
+        u16_union COLLBAS;
+        u16_union VIDADR;
+        u16_union COLLADR;
+        u16_union SCBNEXT;
+        u16_union SPRDLINE;
+        u16_union HPOSSTRT;
+        u16_union VPOSSTRT;
+        u16_union SPRHSIZ;
+        u16_union SPRVSIZ;
+        u16_union STRETCH;
+        u16_union TILT;
+        u16_union SPRDOFF;
+        u16_union SPRVPOS;
+        u16_union COLLOFF;
+        u16_union VSIZACUM;
+        u16_union HSIZOFF;
+        u16_union VSIZOFF;
+        u16_union SCBADR;
+        u16_union PROCADR;
+
+        u8 MATHD, MATHC, MATHB, MATHA, MATHP, MATHN, MATHH, MATHG, MATHF, MATHE, MATHM, MATHL, MATHK, MATHJ;
+
+        u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO, SPRSYS;
+
+        u8 JOYSTICK, SWITCHES;
+    };
+
+public:
     Suzy(Cartridge* cartridge, M6502* m6502);
     ~Suzy();
     void Init(Memory* memory);
@@ -39,6 +74,7 @@ public:
     void Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
+    Suzy_State* GetState();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -46,53 +82,7 @@ private:
     Cartridge* m_cartridge;
     Memory* m_memory;
     M6502* m_m6502;
-    u16_union m_TMPADR;
-    u16_union m_TILTACUM;
-    u16_union m_HOFF;
-    u16_union m_VOFF;
-    u16_union m_VIDBAS;
-    u16_union m_COLLBAS;
-    u16_union m_VIDADR;
-    u16_union m_COLLADR;
-    u16_union m_SCBNEXT;
-    u16_union m_SPRDLINE;
-    u16_union m_HPOSSTRT;
-    u16_union m_VPOSSTRT;
-    u16_union m_SPRHSIZ;
-    u16_union m_SPRVSIZ;
-    u16_union m_STRETCH;
-    u16_union m_TILT;
-    u16_union m_SPRDOFF;
-    u16_union m_SPRVPOS;
-    u16_union m_COLLOFF;
-    u16_union m_VSIZACUM;
-    u16_union m_HSIZOFF;
-    u16_union m_VSIZOFF;
-    u16_union m_SCBADR;
-    u16_union m_PROCADR;
-    u8 m_MATHD;
-    u8 m_MATHC;
-    u8 m_MATHB;
-    u8 m_MATHA;
-    u8 m_MATHP;
-    u8 m_MATHN;
-    u8 m_MATHH;
-    u8 m_MATHG;
-    u8 m_MATHF;
-    u8 m_MATHE;
-    u8 m_MATHM;
-    u8 m_MATHL;
-    u8 m_MATHK;
-    u8 m_MATHJ;
-    u8 m_SPRCTL0;
-    u8 m_SPRCTL1;
-    u8 m_SPRCOLL;
-    u8 m_SPRINIT;
-    u8 m_SUZYBUSEN;
-    u8 m_SPRGO;
-    u8 m_SPRSYS;
-    u8 m_JOYSTICK;
-    u8 m_SWITCHES;
+    Suzy_State m_state;
 };
 
 #include "suzy_inline.h"

@@ -27,16 +27,11 @@
 
 M6502::M6502()
 {
+    InitPointer(m_memory);
     InitOPCodeFunctors();
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = false;
-    m_reset_value = 0;
-    m_processor_state.A = &m_A;
-    m_processor_state.X = &m_X;
-    m_processor_state.Y = &m_Y;
-    m_processor_state.S = &m_S;
-    m_processor_state.P = &m_P;
-    m_processor_state.PC = &m_PC;
+    m_reset_value = -1;
 }
 
 M6502::~M6502()
@@ -51,31 +46,33 @@ void M6502::Init(Memory* memory)
 
 void M6502::Reset()
 {
-    m_PC.SetLow(m_memory->Read(0xFFFC));
-    m_PC.SetHigh(m_memory->Read(0xFFFD));
-    m_debug_next_irq = 1;
+    m_s.PC.SetLow(m_memory->Read(0xFFFC));
+    m_s.PC.SetHigh(m_memory->Read(0xFFFD));
+    m_s.debug_next_irq = 1;
     DisassembleNextOPCode();
 
     if (m_reset_value < 0)
     {
-        m_A.SetValue(rand() & 0xFF);
-        m_X.SetValue(rand() & 0xFF);
-        m_Y.SetValue(rand() & 0xFF);
+        m_s.A.SetValue(rand() & 0xFF);
+        m_s.X.SetValue(rand() & 0xFF);
+        m_s.Y.SetValue(rand() & 0xFF);
+        m_s.S.SetValue(rand() & 0xFF);
+        m_s.P.SetValue(rand() & 0xFF);
     }
     else
     {
-        m_A.SetValue(m_reset_value & 0xFF);
-        m_X.SetValue(m_reset_value & 0xFF);
-        m_Y.SetValue(m_reset_value & 0xFF);
+        m_s.A.SetValue(m_reset_value & 0xFF);
+        m_s.X.SetValue(m_reset_value & 0xFF);
+        m_s.Y.SetValue(m_reset_value & 0xFF);
+        m_s.S.SetValue(m_reset_value & 0xFF);
+        m_s.P.SetValue(m_reset_value & 0xFF);
     }
 
-    m_S.SetValue(0xFF);
-    m_P.SetValue(0x00);
+    SetFlag(FLAG_UNUSED | FLAG_INTERRUPT | FLAG_BREAK);
+    ClearFlag(FLAG_DECIMAL);
 
-    SetFlag(FLAG_UNUSED | FLAG_INTERRUPT | FLAG_ZERO);
-
-    m_cycles = 0;
-    m_irq_pending = 0;
+    m_s.cycles = 0;
+    m_s.irq_pending = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
@@ -85,7 +82,7 @@ void M6502::Reset()
 
 M6502::M6502_State* M6502::GetState()
 {
-    return &m_processor_state;
+    return &m_s;
 }
 
 void M6502::SetResetValue(int value)
@@ -300,28 +297,28 @@ void M6502::CreateZNFlagsTable()
 
 void M6502::SaveState(std::ostream& stream)
 {
-    m_PC.SaveState(stream);
-    m_A.SaveState(stream);
-    m_X.SaveState(stream);
-    m_Y.SaveState(stream);
-    m_S.SaveState(stream);
-    m_P.SaveState(stream);
+    m_s.PC.SaveState(stream);
+    m_s.A.SaveState(stream);
+    m_s.X.SaveState(stream);
+    m_s.Y.SaveState(stream);
+    m_s.S.SaveState(stream);
+    m_s.P.SaveState(stream);
 
-    stream.write(reinterpret_cast<const char*> (&m_cycles), sizeof(m_cycles));
-    stream.write(reinterpret_cast<const char*> (&m_irq_pending), sizeof(m_irq_pending));
-    stream.write(reinterpret_cast<const char*> (&m_debug_next_irq), sizeof(m_debug_next_irq));
+    stream.write(reinterpret_cast<const char*> (&m_s.cycles), sizeof(m_s.cycles));
+    stream.write(reinterpret_cast<const char*> (&m_s.irq_pending), sizeof(m_s.irq_pending));
+    stream.write(reinterpret_cast<const char*> (&m_s.debug_next_irq), sizeof(m_s.debug_next_irq));
 }
 
 void M6502::LoadState(std::istream& stream)
 {
-    m_PC.LoadState(stream);
-    m_A.LoadState(stream);
-    m_X.LoadState(stream);
-    m_Y.LoadState(stream);
-    m_S.LoadState(stream);
-    m_P.LoadState(stream);
+    m_s.PC.LoadState(stream);
+    m_s.A.LoadState(stream);
+    m_s.X.LoadState(stream);
+    m_s.Y.LoadState(stream);
+    m_s.S.LoadState(stream);
+    m_s.P.LoadState(stream);
 
-    stream.read(reinterpret_cast<char*> (&m_cycles), sizeof(m_cycles));
-    stream.read(reinterpret_cast<char*> (&m_irq_pending), sizeof(m_irq_pending));
-    stream.read(reinterpret_cast<char*> (&m_debug_next_irq), sizeof(m_debug_next_irq));
+    stream.read(reinterpret_cast<char*> (&m_s.cycles), sizeof(m_s.cycles));
+    stream.read(reinterpret_cast<char*> (&m_s.irq_pending), sizeof(m_s.irq_pending));
+    stream.read(reinterpret_cast<char*> (&m_s.debug_next_irq), sizeof(m_s.debug_next_irq));
 }

@@ -33,13 +33,21 @@ class Mikey;
 class Memory
 {
 public:
+    struct Memory_State
+    {
+        u8 MAPCTL;
+        u8* ram;
+    };
+
+public:
     Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey);
     ~Memory();
     void Init();
     void Reset();
-    u8* GetMemory();
-    u8 Read(u16 address, bool block_transfer = false);
+    u8* GetRAM();
+    u8 Read(u16 address);
     void Write(u16 address, u8 value);
+    Memory_State* GetState();
     GLYNX_Disassembler_Record* GetDisassemblerRecord(u16 address);
     GLYNX_Disassembler_Record* GetOrCreateDisassemblerRecord(u16 address);
     void ResetDisassemblerRecords();
@@ -66,9 +74,8 @@ private:
     Audio* m_audio;
     Suzy* m_suzy;
     Mikey* m_mikey;
+    Memory_State m_state;
     GLYNX_Disassembler_Record** m_disassembler;
-    u8* m_memory;
-    u8 m_mapctl;
     u8* m_read_page[256];
     u8* m_write_page[256];
     typedef u8 (Memory::*PageReadFn)(u16 addr);

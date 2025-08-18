@@ -29,6 +29,7 @@ Suzy::Suzy(Cartridge* cartridge, M6502* m6502)
     m_cartridge = cartridge;
     m_m6502 = m6502;
     InitPointer(m_memory);
+    memset(&m_state, 0, sizeof(Suzy_State));
 }
 
 Suzy::~Suzy()

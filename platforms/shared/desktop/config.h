@@ -114,6 +114,12 @@ struct config_Debug
     bool show_memory = false;
     bool show_psg = false;
     bool show_trace_logger = false;
+    bool show_mikey_regs = false;
+    bool show_mikey_timers = false;
+    bool show_mikey_audio = false;
+    bool show_mikey_colors = false;
+    bool show_suzy_regs = false;
+    bool show_suzy_math_regs = false;
     bool trace_counter = true;
     bool trace_registers = true;
     bool trace_flags = true;

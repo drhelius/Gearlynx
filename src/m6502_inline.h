@@ -32,7 +32,7 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
     m_memory_breakpoint_hit = false;
 #endif
 
-    m_cycles = 0;
+    m_s.cycles = 0;
 
     u8 opcode = Fetch8();
     CheckIRQs();
@@ -45,14 +45,14 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
     UNUSED(instruction_completed);
 #endif
 
-    if(m_irq_pending)
+    if(m_s.irq_pending)
         HandleIRQ();
 
     DisassembleNextOPCode();
 
-    m_cycles += k_m6502_opcode_cycles[opcode];
+    m_s.cycles += k_m6502_opcode_cycles[opcode];
 
-    return m_cycles;
+    return m_s.cycles;
 }
 
 inline void M6502::HandleIRQ()
@@ -60,41 +60,41 @@ inline void M6502::HandleIRQ()
     u16 vector = 0xFFFE;
 
     // // TIQ
-    // if (IS_SET_BIT(m_irq_pending, 2) && IS_SET_BIT(m_interrupt_request_register, 2))
+    // if (IS_SET_BIT(m_s.irq_pending, 2) && IS_SET_BIT(m_interrupt_request_register, 2))
     //     vector = 0xFFFA;
     // // IRQ1
-    // else if (IS_SET_BIT(m_irq_pending, 1))
+    // else if (IS_SET_BIT(m_s.irq_pending, 1))
     //     vector = 0xFFF8;
     // // IRQ2
-    // else if (IS_SET_BIT(m_irq_pending, 0))
+    // else if (IS_SET_BIT(m_s.irq_pending, 0))
     //     vector = 0xFFF6;
     // else
     //     return;
 
-    u16 pc = m_PC.GetValue();
+    u16 pc = m_s.PC.GetValue();
     StackPush16(pc);
-    StackPush8(m_P.GetValue() & ~FLAG_BREAK);
+    StackPush8(m_s.P.GetValue() & ~FLAG_BREAK);
     SetFlag(FLAG_INTERRUPT);
     ClearFlag(FLAG_DECIMAL);
 
-    m_PC.SetLow(m_memory->Read(vector));
-    m_PC.SetHigh(m_memory->Read(vector + 1));
+    m_s.PC.SetLow(m_memory->Read(vector));
+    m_s.PC.SetHigh(m_memory->Read(vector + 1));
 
-    m_cycles += 8;
+    m_s.cycles += 8;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    m_debug_next_irq = ((0xFFFA - vector) >> 1) + 3;
+    m_s.debug_next_irq = ((0xFFFA - vector) >> 1) + 3;
     if (m_breakpoints_irq_enabled)
         m_cpu_breakpoint_hit = true;
-    u16 dest = m_PC.GetValue();
+    u16 dest = m_s.PC.GetValue();
     PushCallStack(pc, dest, pc);
 #endif
 }
 
 INLINE void M6502::CheckIRQs()
 {
-    //m_irq_pending = IsSetFlag(FLAG_INTERRUPT) ? 0 : m_interrupt_request_register & ~m_interrupt_disable_register;
-    m_irq_pending = 0;
+    //m_s.irq_pending = IsSetFlag(FLAG_INTERRUPT) ? 0 : m_interrupt_request_register & ~m_interrupt_disable_register;
+    m_s.irq_pending = 0;
 }
 
 INLINE void M6502::AssertIRQ(bool asserted)
@@ -103,22 +103,22 @@ INLINE void M6502::AssertIRQ(bool asserted)
 
 INLINE void M6502::InjectCycles(unsigned int cycles)
 {
-    m_cycles += cycles;
+    m_s.cycles += cycles;
 }
 
 INLINE u8 M6502::Fetch8()
 {
-    u8 value = m_memory->Read(m_PC.GetValue());
-    m_PC.Increment();
+    u8 value = m_memory->Read(m_s.PC.GetValue());
+    m_s.PC.Increment();
     return value;
 }
 
 INLINE u16 M6502::Fetch16()
 {
-    u16 pc = m_PC.GetValue();
+    u16 pc = m_s.PC.GetValue();
     u8 l = m_memory->Read(pc);
     u8 h = m_memory->Read(pc + 1);
-    m_PC.SetValue(pc + 2);
+    m_s.PC.SetValue(pc + 2);
     return Address16(h, l);
 }
 
@@ -134,72 +134,72 @@ INLINE bool M6502::PageCrossed(u16 old_address, u16 new_address)
 
 INLINE u16 M6502::ZeroPageX()
 {
-    return ZERO_PAGE_ADDR | m_X.GetValue();
+    return ZERO_PAGE_ADDR | m_s.X.GetValue();
 }
 
 INLINE void M6502::SetOrClearZNFlags(u8 result)
 {
     ClearFlag(FLAG_ZERO | FLAG_NEGATIVE);
-    m_P.SetValue(m_P.GetValue() | m_zn_flags_lut[result]);
+    m_s.P.SetValue(m_s.P.GetValue() | m_zn_flags_lut[result]);
 }
 
 INLINE void M6502::SetZNFlags(u8 result)
 {
-    m_P.SetValue(m_P.GetValue() | m_zn_flags_lut[result]);
+    m_s.P.SetValue(m_s.P.GetValue() | m_zn_flags_lut[result]);
 }
 
 INLINE void M6502::SetOverflowFlag(u8 result)
 {
-    m_P.SetValue((m_P.GetValue() & 0xBF) | (result & 0x40));
+    m_s.P.SetValue((m_s.P.GetValue() & 0xBF) | (result & 0x40));
 }
 
 INLINE void M6502::SetFlag(u8 flag)
 {
-    m_P.SetValue(m_P.GetValue() | flag);
+    m_s.P.SetValue(m_s.P.GetValue() | flag);
 }
 
 INLINE void M6502::ClearFlag(u8 flag)
 {
-    m_P.SetValue(m_P.GetValue() & (~flag));
+    m_s.P.SetValue(m_s.P.GetValue() & (~flag));
 }
 
 INLINE bool M6502::IsSetFlag(u8 flag)
 {
-    return (m_P.GetValue() & flag) != 0;
+    return (m_s.P.GetValue() & flag) != 0;
 }
 
 INLINE bool M6502::IsNotSetFlag(u8 flag)
 {
-    return (m_P.GetValue() & flag) == 0;
+    return (m_s.P.GetValue() & flag) == 0;
 }
 
 INLINE void M6502::StackPush16(u16 value)
 {
-    m_memory->Write(STACK_ADDR | m_S.GetValue(), static_cast<u8>(value >> 8));
-    m_S.Decrement();
-    m_memory->Write(STACK_ADDR | m_S.GetValue(), static_cast<u8>(value & 0x00FF));
-    m_S.Decrement();
+    m_memory->Write(STACK_ADDR | m_s.S.GetValue(), static_cast<u8>(value >> 8));
+    m_s.S.Decrement();
+    m_memory->Write(STACK_ADDR | m_s.S.GetValue(), static_cast<u8>(value & 0x00FF));
+    m_s.S.Decrement();
 }
 
 INLINE void M6502::StackPush8(u8 value)
 {
-    m_memory->Write(STACK_ADDR | m_S.GetValue(), value);
-    m_S.Decrement();
+    m_memory->Write(STACK_ADDR | m_s.S.GetValue(), value);
+    m_s.S.Decrement();
 }
 
 INLINE u16 M6502::StackPop16()
 {
-    m_S.Increment();
-    u8 l = m_memory->Read(STACK_ADDR | m_S.GetValue());
-    m_S.Increment();
-    u8 h = m_memory->Read(STACK_ADDR | m_S.GetValue());
+    m_s.S.Increment();
+    u8 l = m_memory->Read(STACK_ADDR | m_s.S.GetValue());
+    m_s.S.Increment();
+    u8 h = m_memory->Read(STACK_ADDR | m_s.S.GetValue());
     return Address16(h, l);
 }
 
 INLINE u8 M6502::StackPop8()
 {
-    m_S.Increment();
-    return m_memory->Read(STACK_ADDR | m_S.GetValue());
+    m_s.S.Increment();
+    return m_memory->Read(STACK_ADDR | m_s.S.GetValue());
 }
 
 INLINE u8 M6502::ImmediateAddressing()
@@ -234,7 +234,7 @@ INLINE u16 M6502::ZeroPageIndirectAddressing()
 
 INLINE u16 M6502::ZeroPageIndexedIndirectAddressing()
 {
-    u16 address = (ZeroPageAddressing() + m_X.GetValue()) & 0x20FF;
+    u16 address = (ZeroPageAddressing() + m_s.X.GetValue()) & 0x20FF;
     u8 l = m_memory->Read(address);
     u8 h = m_memory->Read((address + 1) & 0x20FF);
     return Address16(h, l);
@@ -245,7 +245,7 @@ INLINE u16 M6502::ZeroPageIndirectIndexedAddressing()
     u16 address = ZeroPageAddressing();
     u8 l = m_memory->Read(address);
     u8 h = m_memory->Read((address + 1) & 0x20FF);
-    return Address16(h, l) + m_Y.GetValue();
+    return Address16(h, l) + m_s.Y.GetValue();
 }
 
 INLINE s8 M6502::RelativeAddressing()
@@ -275,7 +275,7 @@ INLINE u16 M6502::AbsoluteIndirectAddressing()
 
 INLINE u16 M6502::AbsoluteIndexedIndirectAddressing()
 {
-    u16 address = Fetch16() + m_X.GetValue();
+    u16 address = Fetch16() + m_s.X.GetValue();
     u8 l = m_memory->Read(address);
     u8 h = m_memory->Read(address + 1);
     return Address16(h, l);
@@ -329,7 +329,7 @@ INLINE void M6502::CheckBreakpoints()
 
     if (m_run_to_breakpoint_requested)
     {
-        if (m_PC.GetValue() == m_run_to_breakpoint.address1)
+        if (m_s.PC.GetValue() == m_run_to_breakpoint.address1)
         {
             m_run_to_breakpoint_hit = true;
             m_run_to_breakpoint_requested = false;
@@ -353,7 +353,7 @@ INLINE void M6502::CheckBreakpoints()
 
         if (brk->range)
         {
-            if (m_PC.GetValue() >= brk->address1 && m_PC.GetValue() <= brk->address2)
+            if (m_s.PC.GetValue() >= brk->address1 && m_s.PC.GetValue() <= brk->address2)
             {
                 m_cpu_breakpoint_hit = true;
                 m_run_to_breakpoint_requested = false;
@@ -362,7 +362,7 @@ INLINE void M6502::CheckBreakpoints()
         }
         else
         {
-            if (m_PC.GetValue() == brk->address1)
+            if (m_s.PC.GetValue() == brk->address1)
             {
                 m_cpu_breakpoint_hit = true;
                 m_run_to_breakpoint_requested = false;
@@ -380,7 +380,7 @@ INLINE void M6502::DisassembleNextOPCode()
 
     CheckBreakpoints();
 
-    u16 address = m_PC.GetValue();
+    u16 address = m_s.PC.GetValue();
     GLYNX_Disassembler_Record* record = m_memory->GetOrCreateDisassemblerRecord(address);
 
     assert(IsValidPointer(record));
@@ -404,10 +404,10 @@ INLINE void M6502::DisassembleNextOPCode()
 
     if (!changed && record->size != 0)
     {
-        if (m_debug_next_irq > 0)
+        if (m_s.debug_next_irq > 0)
         {
-            record->irq = m_debug_next_irq;
-            m_debug_next_irq = 0;
+            record->irq = m_s.debug_next_irq;
+            m_s.debug_next_irq = 0;
         }
         return;
     }
@@ -432,10 +432,10 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
     record->subroutine = false;
     record->irq = 0;
 
-    if (m_debug_next_irq > 0)
+    if (m_s.debug_next_irq > 0)
     {
-        record->irq = m_debug_next_irq;
-        m_debug_next_irq = 0;
+        record->irq = m_s.debug_next_irq;
+        m_s.debug_next_irq = 0;
     }
 
     for (int i = 0; i < opcode_size; i++)

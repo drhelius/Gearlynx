@@ -74,7 +74,7 @@ public:
     void ShiftRegisterBit(bool bit);
 
 private:
-    bool LoadFromZipFile(const u8* buffer, int size, const char* path);
+    bool LoadFromZipFile(const u8* buffer, int size);
     void GatherCartridgeInfoFromDB();
     bool GatherHeader(const u8* buffer);
     void DefaultHeader();

@@ -28,6 +28,9 @@
 
 Cartridge::Cartridge()
 {
+    InitPointer(m_rom);
+    InitPointer(m_bank_data[0]);
+    InitPointer(m_bank_data[1]);
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
     Reset();
@@ -183,7 +186,7 @@ bool Cartridge::LoadFromFile(const char* path)
         if (!is_empty)
         {
             if (strcmp(m_file_extension, "zip") == 0)
-                m_ready = LoadFromZipFile((u8*)(buffer), size, path);
+                m_ready = LoadFromZipFile((u8*)(buffer), size);
             else
                 m_ready = LoadFromBuffer((u8*)(buffer), size, path);
         }
@@ -370,9 +373,9 @@ void Cartridge::ShiftRegisterBit(bool bit)
     m_shift_register_bit = bit;
 }
 
-bool Cartridge::LoadFromZipFile(const u8* buffer, int size, const char* path)
+bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
 {
-    Debug("Loading from ZIP file... Size: %d, File: %s", size, path);
+    Debug("Loading from ZIP file... Size: %d", size);
 
     using namespace std;
 

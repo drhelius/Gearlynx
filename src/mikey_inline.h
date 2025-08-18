@@ -50,18 +50,18 @@ INLINE u8 Mikey::Read(u16 address)
     {
         u8 color_index = address & 0x000F;
         if (address < MIKEY_BLUERED0)
-            return m_colors[color_index].green;
+            return m_state.colors[color_index].green;
         else
-            return m_colors[color_index].bluered;
+            return m_state.colors[color_index].bluered;
     }
     else
     {
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
-            return m_INTRST;
+            return m_state.INTRST;
         case MIKEY_INTSET:        // 0xFD81
-            return m_INTSET;
+            return m_state.INTSET;
         case MIKEY_MAGRDY0:       // 0xFD84
             DebugMikey("Reading MAGRDY0 (unused)");
             return 0x00;
@@ -72,7 +72,7 @@ INLINE u8 Mikey::Read(u16 address)
             DebugMikey("Reading AUDIN (unused)");
             return 0x80;
         case MIKEY_SYSCTL1:       // 0xFD87
-            DebugMikey("Reading write-only SYSCTL1: %02X", m_SYSCTL1);
+            DebugMikey("Reading write-only SYSCTL1: %02X", m_state.SYSCTL1);
             return 0xFF;
         case MIKEY_MIKEYHREV:     // 0xFD88
             return 0x01;
@@ -80,32 +80,32 @@ INLINE u8 Mikey::Read(u16 address)
             DebugMikey("Reading write-only MIKEYSREV");
             return 0xFF;
         case MIKEY_IODIR:         // 0xFD8A
-            DebugMikey("Reading write-only IODIR: %02X", m_IODIR);
+            DebugMikey("Reading write-only IODIR: %02X", m_state.IODIR);
             return 0xFF;
         case MIKEY_IODAT:         // 0xFD8B
             DebugMikey("READ IODATA");
-            return m_IODAT;
+            return m_state.IODAT;
         case MIKEY_SERCTL:        // 0xFD8C
-            return m_SERCTL;
+            return m_state.SERCTL;
         case MIKEY_SERDAT:        // 0xFD8D
-            return m_SERDAT;
+            return m_state.SERDAT;
         case MIKEY_SDONEACK:      // 0xFD90
-            DebugMikey("Reading write-only SDONEACK: %02X", m_SDONEACK);
+            DebugMikey("Reading write-only SDONEACK: %02X", m_state.SDONEACK);
             return 0xFF;
         case MIKEY_CPUSLEEP:      // 0xFD91
-            DebugMikey("Reading write-only CPUSLEEP: %02X", m_CPUSLEEP);
+            DebugMikey("Reading write-only CPUSLEEP: %02X", m_state.CPUSLEEP);
             return 0xFF;
         case MIKEY_DISPCTL:       // 0xFD92
-            DebugMikey("Reading write-only DISPCTL: %02X", m_DISPCTL);
+            DebugMikey("Reading write-only DISPCTL: %02X", m_state.DISPCTL);
             return 0xFF;
         case MIKEY_PBKUP:         // 0xFD93
-            DebugMikey("Reading write-only PBKUP: %02X", m_PBKUP);
+            DebugMikey("Reading write-only PBKUP: %02X", m_state.PBKUP);
             return 0xFF;
         case MIKEY_DISPADRL:      // 0xFD94
-            DebugMikey("Reading write-only DISPADRL: %02X", m_DISPADR.low);
+            DebugMikey("Reading write-only DISPADRL: %02X", m_state.DISPADR.low);
             return 0xFF;
         case MIKEY_DISPADRH:      // 0xFD95
-            DebugMikey("Reading write-only DISPADRH: %02X", m_DISPADR.high);
+            DebugMikey("Reading write-only DISPADRH: %02X", m_state.DISPADR.high);
             return 0xFF;
         case MIKEY_MTEST0:        // 0xFD9C
             DebugMikey("Reading MTEST0 (unused)");
@@ -148,19 +148,19 @@ INLINE void Mikey::Write(u16 address, u8 value)
     {
         u8 color_index = address & 0x000F;
         if (address < MIKEY_BLUERED0)
-            m_colors[color_index].green = value;
+            m_state.colors[color_index].green = value;
         else
-            m_colors[color_index].bluered = value;
+            m_state.colors[color_index].bluered = value;
     }
     else
     {
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
-            m_INTRST = value;
+            m_state.INTRST = value;
             break;
         case MIKEY_INTSET:        // 0xFD81
-            m_INTSET = value;
+            m_state.INTSET = value;
             break;
         case MIKEY_MAGRDY0:       // 0xFD84
             DebugMikey("Writing MAGRDY0 (unused): %02X", value);
@@ -174,7 +174,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_SYSCTL1:       // 0xFD87
             DebugMikey("Writing SYSCTL1, value: %02X", value);
             m_cartridge->ShiftRegisterStrobe(value & 0x01);
-            m_SYSCTL1 = value;
+            m_state.SYSCTL1 = value;
             break;
         case MIKEY_MIKEYHREV:     // 0xFD88
             DebugMikey("Writing to read-only MIKEYHREV: %02X", value);
@@ -184,37 +184,37 @@ INLINE void Mikey::Write(u16 address, u8 value)
             break;
         case MIKEY_IODIR:         // 0xFD8A
             DebugMikey("Writing IODIR, value: %02X", value);
-            m_IODIR = value;
+            m_state.IODIR = value;
             break;
         case MIKEY_IODAT:         // 0xFD8B
             DebugMikey("Writing IODAT, value: %02X", value);
             m_cartridge->ShiftRegisterBit(value & 0x02);
-            m_IODAT = value;
+            m_state.IODAT = value;
             break;
         case MIKEY_SERCTL:        // 0xFD8C
-            m_SERCTL = value;
+            m_state.SERCTL = value;
             break;
         case MIKEY_SERDAT:        // 0xFD8D
-            m_SERDAT = value;
+            m_state.SERDAT = value;
             break;
         case MIKEY_SDONEACK:      // 0xFD90
-            m_SDONEACK = value;
+            m_state.SDONEACK = value;
             break;
         case MIKEY_CPUSLEEP:      // 0xFD91
             DebugMikey("Writing to CPUSLEEP: %02X", value);
-            m_CPUSLEEP = value;
+            m_state.CPUSLEEP = value;
             break;
         case MIKEY_DISPCTL:       // 0xFD92
-            m_DISPCTL = value;
+            m_state.DISPCTL = value;
             break;
         case MIKEY_PBKUP:         // 0xFD93
-            m_PBKUP = value;
+            m_state.PBKUP = value;
             break;
         case MIKEY_DISPADRL:      // 0xFD94
-            m_DISPADR.low = value;
+            m_state.DISPADR.low = value;
             break;
         case MIKEY_DISPADRH:      // 0xFD95
-            m_DISPADR.high = value;
+            m_state.DISPADR.high = value;
             break;
         case MIKEY_MTEST0:        // 0xFD9C
             DebugMikey("Writing MTEST0 (unused): %02X", value);
@@ -232,6 +232,11 @@ INLINE void Mikey::Write(u16 address, u8 value)
     }
 }
 
+INLINE Mikey::Mikey_State* Mikey::GetState()
+{
+    return &m_state;
+}
+
 INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)
 {
     assert(timer_index < 8 && reg < 4 && "Invalid timer index or register");
@@ -239,13 +244,13 @@ INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)
     switch (reg)
     {
     case 0:
-        return m_timers[timer_index].backup;
+        return m_state.timers[timer_index].backup;
     case 1:
-        return m_timers[timer_index].control_a;
+        return m_state.timers[timer_index].control_a;
     case 2:
-        return m_timers[timer_index].count;
+        return m_state.timers[timer_index].count;
     case 3:
-        return m_timers[timer_index].control_b;
+        return m_state.timers[timer_index].control_b;
     default:
         DebugMikey("Timer READ called with unknown register: %02X, index: %02X", reg, timer_index);
         return 0xFF;
@@ -259,16 +264,16 @@ INLINE void Mikey::WriteTimer(u8 timer_index, u8 reg, u8 value)
     switch (reg)
     {
     case 0:
-        m_timers[timer_index].backup = value;
+        m_state.timers[timer_index].backup = value;
         break;
     case 1:
-        m_timers[timer_index].control_a = value;
+        m_state.timers[timer_index].control_a = value;
         break;
     case 2:
-        m_timers[timer_index].count = value;
+        m_state.timers[timer_index].count = value;
         break;
     case 3:
-        m_timers[timer_index].control_b = value;
+        m_state.timers[timer_index].control_b = value;
         break;
     default:
         DebugMikey("Timer WRITE called with unknown register: %02X, index: %02X, value: %02X", reg, timer_index, value);
@@ -283,21 +288,21 @@ INLINE u8 Mikey::ReadAudio(u8 channel, u8 reg)
     switch (reg)
     {
     case 0:
-        return m_audio[channel].volume;
+        return m_state.audio[channel].volume;
     case 1:
-        return m_audio[channel].shift_feedback;
+        return m_state.audio[channel].shift_feedback;
     case 2:
-        return m_audio[channel].output_value;
+        return m_state.audio[channel].output_value;
     case 3:
-        return m_audio[channel].left_shift;
+        return m_state.audio[channel].left_shift;
     case 4:
-        return m_audio[channel].timer_backup;
+        return m_state.audio[channel].timer_backup;
     case 5:
-        return m_audio[channel].control;
+        return m_state.audio[channel].control;
     case 6:
-        return m_audio[channel].count;
+        return m_state.audio[channel].count;
     case 7:
-        return m_audio[channel].misc;
+        return m_state.audio[channel].misc;
     default:
         DebugMikey("Audio READ called with unknown register: %02X, channel: %02X", reg, channel);
         return 0xFF;
@@ -311,28 +316,28 @@ INLINE void Mikey::WriteAudio(u8 channel, u8 reg, u8 value)
     switch (reg)
     {
     case 0:
-        m_audio[channel].volume = value;
+        m_state.audio[channel].volume = value;
         break;
     case 1:
-        m_audio[channel].shift_feedback = value;
+        m_state.audio[channel].shift_feedback = value;
         break;
     case 2:
-        m_audio[channel].output_value = value;
+        m_state.audio[channel].output_value = value;
         break;
     case 3:
-        m_audio[channel].left_shift = value;
+        m_state.audio[channel].left_shift = value;
         break;
     case 4:
-        m_audio[channel].timer_backup = value;
+        m_state.audio[channel].timer_backup = value;
         break;
     case 5:
-        m_audio[channel].control = value;
+        m_state.audio[channel].control = value;
         break;
     case 6:
-        m_audio[channel].count = value;
+        m_state.audio[channel].count = value;
         break;
     case 7:
-        m_audio[channel].misc = value;
+        m_state.audio[channel].misc = value;
         break;
     default:
         DebugMikey("Audio WRITE called with unknown register: %02X, channel: %02X, value: %02X", reg, channel, value);
@@ -345,17 +350,17 @@ INLINE u8 Mikey::ReadAudioExtra(u16 address)
     switch (address)
     {
     case MIKEY_ATTEN_A:       // 0xFD40
-        return m_ATTEN_A;
+        return m_state.ATTEN_A;
     case MIKEY_ATTEN_B:       // 0xFD41
-        return m_ATTEN_B;
+        return m_state.ATTEN_B;
     case MIKEY_ATTEN_C:       // 0xFD42
-        return m_ATTEN_C;
+        return m_state.ATTEN_C;
     case MIKEY_ATTEN_D:       // 0xFD43
-        return m_ATTEN_D;
+        return m_state.ATTEN_D;
     case MIKEY_MPAN:          // 0xFD44
-        return m_MPAN;
+        return m_state.MPAN;
     case MIKEY_MSTEREO:       // 0xFD50
-        return m_MSTEREO;
+        return m_state.MSTEREO;
     default:
         DebugMikey("Audio Extra READ called with unknown address: %04X", address);
         return 0xFF;
@@ -367,22 +372,22 @@ INLINE void Mikey::WriteAudioExtra(u16 address, u8 value)
     switch (address)
     {
     case MIKEY_ATTEN_A:       // 0xFD40
-        m_ATTEN_A = value;
+        m_state.ATTEN_A = value;
         break;
     case MIKEY_ATTEN_B:       // 0xFD41
-        m_ATTEN_B = value;
+        m_state.ATTEN_B = value;
         break;
     case MIKEY_ATTEN_C:       // 0xFD42
-        m_ATTEN_C = value;
+        m_state.ATTEN_C = value;
         break;
     case MIKEY_ATTEN_D:       // 0xFD43
-        m_ATTEN_D = value;
+        m_state.ATTEN_D = value;
         break;
     case MIKEY_MPAN:          // 0xFD44
-        m_MPAN = value;
+        m_state.MPAN = value;
         break;
     case MIKEY_MSTEREO:       // 0xFD50
-        m_MSTEREO = value;
+        m_state.MSTEREO = value;
         break;
     default:
         DebugMikey("Audio Extra WRITE called with unknown address: %04X, value: %02X", address, value);

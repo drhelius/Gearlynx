@@ -36,7 +36,7 @@ extern retro_log_printf_t log_cb;
     #endif
     #define Debug(msg, ...) (Log_func(msg, ##__VA_ARGS__))
 #else
-    #define Debug(msg, ...)
+    #define Debug(msg, ...) (Log_func(msg, ##__VA_ARGS__))
 #endif
 
 #define Log(msg, ...) (Log_func(msg, ##__VA_ARGS__))

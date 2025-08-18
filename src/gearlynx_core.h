@@ -76,6 +76,8 @@ public:
     Audio* GetAudio();
     Input* GetInput();
     M6502* GetM6502();
+    Suzy* GetSuzy();
+    Mikey* GetMikey();
     void SetDebugCallback(GLYNX_Debug_Callback callback);
 
 private:

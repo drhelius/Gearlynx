@@ -159,4 +159,14 @@ INLINE M6502* GearlynxCore::GetM6502()
     return m_m6502;
 }
 
+INLINE Suzy* GearlynxCore::GetSuzy()
+{
+    return m_suzy;
+}
+
+INLINE Mikey* GearlynxCore::GetMikey()
+{
+    return m_mikey;
+}
+
 #endif /* GEARLYNX_CORE_INLINE_H */

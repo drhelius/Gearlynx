@@ -17,14 +17,18 @@
  *
  */
 
-#ifndef AUDIO_INLINE_H
-#define AUDIO_INLINE_H
+#ifndef GUI_DEBUG_SUZY_H
+#define	GUI_DEBUG_SUZY_H
 
-#include "audio.h"
+#ifdef GUI_DEBUG_SUZY_IMPORT
+    #define EXTERN
+#else
+    #define EXTERN extern
+#endif
 
-inline void Audio::Clock(u32 cycles)
-{
+EXTERN void gui_debug_window_suzy_regs(void);
+EXTERN void gui_debug_window_suzy_math_regs(void);
 
-}
-
-#endif /* AUDIO_INLINE_H */
+#undef GUI_DEBUG_SUZY_IMPORT
+#undef EXTERN
+#endif /* GUI_DEBUG_SUZY_H */

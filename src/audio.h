@@ -37,8 +37,6 @@ public:
     void Reset();
     void Mute(bool mute);
     void Clock(u32 cycles);
-    u8 Read(u32 address);
-    void Write(u32 address, u8 value);
     void EndFrame(s16* sample_buffer, int* sample_count);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);

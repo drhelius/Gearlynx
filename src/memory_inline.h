@@ -26,15 +26,15 @@
 #include "input.h"
 #include "audio.h"
 
-INLINE u8* Memory::GetMemory()
+INLINE u8* Memory::GetRAM()
 {
-    return m_memory;
+    return m_state.ram;
 }
 
-INLINE u8 Memory::Read(u16 address, bool block_transfer)
+INLINE u8 Memory::Read(u16 address)
 {
 #if defined(GLYNX_TESTING)
-    return m_memory[address];
+    return m_state.ram[address];
 #endif
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
@@ -43,7 +43,7 @@ INLINE u8 Memory::Read(u16 address, bool block_transfer)
 #endif
 
     if (unlikely(address == 0xFFF9))
-        return m_mapctl;
+        return m_state.MAPCTL;
 
     u8 page = hi(address);
 
@@ -56,7 +56,7 @@ INLINE u8 Memory::Read(u16 address, bool block_transfer)
 INLINE void Memory::Write(u16 address, u8 value)
 {
 #if defined(GLYNX_TESTING)
-    m_memory[address] = value;
+    m_state.ram[address] = value;
     return;
 #endif
 
@@ -79,25 +79,30 @@ INLINE void Memory::Write(u16 address, u8 value)
         (this->*m_write_fn[page])(address, value);
 }
 
-inline void Memory::SetMapCtl(u8 mapctl)
+INLINE Memory::Memory_State* Memory::GetState()
 {
-    if (m_mapctl != mapctl)
+    return &m_state;
+}
+
+inline void Memory::SetMapCtl(u8 MAPCTL)
+{
+    if (m_state.MAPCTL != MAPCTL)
     {
-        m_mapctl = mapctl;
+        m_state.MAPCTL = MAPCTL;
         RebuildMemoryMap();
     }
 }
 
 inline void Memory::RebuildMemoryMap()
 {
-    Debug("Rebuilding memory map with mapctl: %02X", m_mapctl);
+    Debug("Rebuilding memory map with MAPCTL: %02X", m_state.MAPCTL);
 
     // SUZY not visible
-    if (IS_SET_BIT(m_mapctl, 0))
+    if (IS_SET_BIT(m_state.MAPCTL, 0))
     {
         Debug("SUZY not visible");
-        m_read_page[0xFC] = m_memory + 0xFC00;
-        m_write_page[0xFC] = m_memory + 0xFC00;
+        m_read_page[0xFC] = m_state.ram + 0xFC00;
+        m_write_page[0xFC] = m_state.ram + 0xFC00;
         m_read_fn[0xFC] = NULL;
         m_write_fn[0xFC] = NULL;
     }
@@ -112,11 +117,11 @@ inline void Memory::RebuildMemoryMap()
     }
 
     // MIKEY not visible
-    if (IS_SET_BIT(m_mapctl, 1))
+    if (IS_SET_BIT(m_state.MAPCTL, 1))
     {
         Debug("MIKEY not visible");
-        m_read_page[0xFD] = m_memory + 0xFD00;
-        m_write_page[0xFD] = m_memory + 0xFD00;
+        m_read_page[0xFD] = m_state.ram + 0xFD00;
+        m_write_page[0xFD] = m_state.ram + 0xFD00;
         m_read_fn[0xFD] = NULL;
         m_write_fn[0xFD] = NULL;
     }
@@ -131,11 +136,11 @@ inline void Memory::RebuildMemoryMap()
     }
 
     // BIOS not visible
-    if (IS_SET_BIT(m_mapctl, 2))
+    if (IS_SET_BIT(m_state.MAPCTL, 2))
     {
         Debug("BIOS not visible");
-        m_read_page[0xFE] = m_memory + 0xFE00;
-        m_write_page[0xFE] = m_memory + 0xFE00;
+        m_read_page[0xFE] = m_state.ram + 0xFE00;
+        m_write_page[0xFE] = m_state.ram + 0xFE00;
         m_read_fn[0xFE] = NULL;
         m_write_fn[0xFE] = NULL;
     }

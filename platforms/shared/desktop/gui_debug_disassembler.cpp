@@ -515,7 +515,7 @@ static void prepare_drawable_lines(void)
     Memory* memory = emu_get_core()->GetMemory();
     M6502* processor = emu_get_core()->GetM6502();
     M6502::M6502_State* proc_state = processor->GetState();
-    u16 pc = proc_state->PC->GetValue();
+    u16 pc = proc_state->PC.GetValue();
 
     disassembler_lines.clear();
     pc_pos = 0;
@@ -609,7 +609,7 @@ static void draw_disassembly(void)
     {
         M6502* processor = emu_get_core()->GetM6502();
         M6502::M6502_State* proc_state = processor->GetState();
-        u16 pc = proc_state->PC->GetValue();
+        u16 pc = proc_state->PC.GetValue();
 
         prepare_drawable_lines();
 
@@ -1456,7 +1456,7 @@ void gui_debug_window_call_stack(void)
     ImGui::SetNextWindowPos(ImVec2(340, 168), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(330, 240), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("Call Stack", &config_debug.show_call_stack);
+    ImGui::Begin("Suzy 65C02 Call Stack", &config_debug.show_call_stack);
 
     GearlynxCore* core = emu_get_core();
     Memory* memory = core->GetMemory();

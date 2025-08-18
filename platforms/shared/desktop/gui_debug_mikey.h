@@ -17,14 +17,20 @@
  *
  */
 
-#ifndef AUDIO_INLINE_H
-#define AUDIO_INLINE_H
+#ifndef GUI_DEBUG_MIKEY_H
+#define	GUI_DEBUG_MIKEY_H
 
-#include "audio.h"
+#ifdef GUI_DEBUG_MIKEY_IMPORT
+    #define EXTERN
+#else
+    #define EXTERN extern
+#endif
 
-inline void Audio::Clock(u32 cycles)
-{
+EXTERN void gui_debug_window_mikey_regs(void);
+EXTERN void gui_debug_window_mikey_timers(void);
+EXTERN void gui_debug_window_mikey_audio(void);
+EXTERN void gui_debug_window_mikey_colors(void);
 
-}
-
-#endif /* AUDIO_INLINE_H */
+#undef GUI_DEBUG_MIKEY_IMPORT
+#undef EXTERN
+#endif /* GUI_DEBUG_MIKEY_H */

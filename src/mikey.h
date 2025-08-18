@@ -32,6 +32,32 @@ class M6502;
 class Mikey
 {
 public:
+    struct Mikey_State
+    {
+        GLYNX_Mikey_Timer timers[8];
+        GLYNX_Mikey_Color colors[16];
+        GLYNX_Mikey_Audio audio[4];
+        u8 ATTEN_A;
+        u8 ATTEN_B;
+        u8 ATTEN_C;
+        u8 ATTEN_D;
+        u8 MPAN;
+        u8 MSTEREO;
+        u8 INTRST;
+        u8 INTSET;
+        u8 SYSCTL1;
+        u8 IODIR;
+        u8 IODAT;
+        u8 SERCTL;
+        u8 SERDAT;
+        u8 SDONEACK;
+        u8 CPUSLEEP;
+        u8 DISPCTL;
+        u8 PBKUP;
+        u16_union DISPADR;
+    };
+
+public:
     Mikey(Cartridge* cartridge, M6502* m6502);
     ~Mikey();
     void Init(Memory* memory);
@@ -39,6 +65,7 @@ public:
     void Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
+    Mikey_State* GetState();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -54,27 +81,7 @@ private:
     Cartridge* m_cartridge;
     Memory* m_memory;
     M6502* m_m6502;
-    GLYNX_Mikey_Timer m_timers[8];
-    GLYNX_Mikey_Color m_colors[16];
-    GLYNX_Mikey_Audio m_audio[4];
-    u8 m_ATTEN_A;
-    u8 m_ATTEN_B;
-    u8 m_ATTEN_C;
-    u8 m_ATTEN_D;
-    u8 m_MPAN;
-    u8 m_MSTEREO;
-    u8 m_INTRST;
-    u8 m_INTSET;
-    u8 m_SYSCTL1;
-    u8 m_IODIR;
-    u8 m_IODAT;
-    u8 m_SERCTL;
-    u8 m_SERDAT;
-    u8 m_SDONEACK;
-    u8 m_CPUSLEEP;
-    u8 m_DISPCTL;
-    u8 m_PBKUP;
-    u16_union m_DISPADR;
+    Mikey_State m_state;
 };
 
 #include "mikey_inline.h"

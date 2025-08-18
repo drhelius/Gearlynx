@@ -27,6 +27,8 @@
 #include "gui_debug_memory.h"
 #include "gui_debug_psg.h"
 #include "gui_debug_trace_logger.h"
+#include "gui_debug_mikey.h"
+#include "gui_debug_suzy.h"
 #include "emu.h"
 #include "config.h"
 
@@ -73,7 +75,18 @@ void gui_debug_windows(void)
             gui_debug_window_psg();
         if (config_debug.show_trace_logger)
             gui_debug_window_trace_logger();
-
+        if (config_debug.show_mikey_regs)
+            gui_debug_window_mikey_regs();
+        if (config_debug.show_mikey_timers)
+            gui_debug_window_mikey_timers();
+        if (config_debug.show_mikey_audio)
+            gui_debug_window_mikey_audio();
+        if (config_debug.show_mikey_colors)
+            gui_debug_window_mikey_colors();
+        if (config_debug.show_suzy_regs)
+            gui_debug_window_suzy_regs();
+        if (config_debug.show_suzy_math_regs)
+            gui_debug_window_suzy_math_regs();
         gui_debug_memory_watches_window();
         gui_debug_memory_search_window();
     }

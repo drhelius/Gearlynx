@@ -15,3 +15,5 @@ SOURCES_CXX := \
     $(SRC_DIR)/m6502_functors.cpp \
     $(SRC_DIR)/m6502_opcodes.cpp \
     $(SRC_DIR)/memory.cpp \
+    $(SRC_DIR)/mikey.cpp \
+    $(SRC_DIR)/suzy.cpp \
