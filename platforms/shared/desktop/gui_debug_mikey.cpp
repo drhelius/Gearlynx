@@ -42,7 +42,6 @@ void gui_debug_window_mikey_regs(void)
     GearlynxCore* core = emu_get_core();
     Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
 
-    // Mostrar registros de Mikey de 8 bits
     struct {
         const char* name;
         const char* addr;
@@ -54,8 +53,8 @@ void gui_debug_window_mikey_regs(void)
         {"ATTEN_D ", "FD43", &mikey_state->ATTEN_D},
         {"MPAN    ", "FD44", &mikey_state->MPAN},
         {"MSTEREO ", "FD50", &mikey_state->MSTEREO},
-        {"INTRST  ", "FD80", &mikey_state->INTRST},
-        {"INTSET  ", "FD81", &mikey_state->INTSET},
+        {"INTRST  ", "FD80", &mikey_state->irq_pending},
+        {"INTSET  ", "FD81", &mikey_state->irq_pending},
         {"SYSCTL1 ", "FD87", &mikey_state->SYSCTL1},
         {"IODIR   ", "FD8A", &mikey_state->IODIR},
         {"IODAT   ", "FD8B", &mikey_state->IODAT},
@@ -77,7 +76,6 @@ void gui_debug_window_mikey_regs(void)
         i++;
     }
 
-    // Mostrar registros de Mikey de 16 bits
     struct {
         const char* name;
         const char* addr;
@@ -165,6 +163,10 @@ void gui_debug_window_mikey_timers(void)
     int i = 0;
     while (timer_regs16[i].name != 0)
     {
+        if (i > 0)
+            ImGui::NewLine();
+        ImGui::TextColored(cyan, "TIMER %d", i); ImGui::Separator();
+
         ImGui::TextColored(cyan, "%s ", timer_regs16[i].addr); ImGui::SameLine();
         ImGui::TextColored(violet, "%s ", timer_regs16[i].name); ImGui::SameLine();
         ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", *timer_regs16[i].reg, BYTE_TO_BINARY(*timer_regs16[i].reg >> 8), BYTE_TO_BINARY(*timer_regs16[i].reg & 0xFF));
@@ -239,6 +241,14 @@ void gui_debug_window_mikey_audio(void)
     int i = 0;
     while (audio_regs[i].name != 0)
     {
+        if (i % 8 == 0)
+        {
+            if (i > 0)
+                ImGui::NewLine();
+
+            ImGui::TextColored(cyan, "CHANNEL %d", i / 8); ImGui::Separator();
+        }
+
         ImGui::TextColored(cyan, "%s ", audio_regs[i].addr); ImGui::SameLine();
         ImGui::TextColored(violet, "%s ", audio_regs[i].name); ImGui::SameLine();
         ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *audio_regs[i].reg, BYTE_TO_BINARY(*audio_regs[i].reg));

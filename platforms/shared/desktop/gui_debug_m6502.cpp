@@ -41,6 +41,7 @@ void gui_debug_window_m6502(void)
     GearlynxCore* core = emu_get_core();
     M6502::M6502_State* cpu = core->GetM6502()->GetState();
     Memory::Memory_State* mem = core->GetMemory()->GetState();
+    Mikey::Mikey_State* mikey = core->GetMikey()->GetState();
 
     if (ImGui::BeginTable("m6502", 1, ImGuiTableFlags_BordersInnerH))
     {
@@ -99,12 +100,12 @@ void gui_debug_window_m6502(void)
             ImGui::TableNextColumn();
             ImGui::TextColored(violet, "MAPCTL"); ImGui::SameLine();
             ImGui::Text("$%02X", mem->MAPCTL);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(0));
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mem->MAPCTL));
 
             ImGui::TableNextColumn();
-            ImGui::TextColored(magenta, "XXXXXX"); ImGui::SameLine();
-            ImGui::Text("$%02X", 0);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(0));
+            ImGui::TextColored(blue, "IRQPEN"); ImGui::SameLine();
+            ImGui::Text("$%02X", mikey->irq_pending);
+            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mikey->irq_pending));
 
             bool suzy_visible = !(mem->MAPCTL & 0x01);
             bool mikey_visible = !(mem->MAPCTL & 0x02);
@@ -131,12 +132,27 @@ void gui_debug_window_m6502(void)
             ImGui::TextColored(vectors_visible ? green : gray, vectors_visible ? "ON" : "OFF");
             ImGui::TextColored(brown, " FFFA-FFFF");
 
+            for (int i = 0; i < 8; i++)
+            {
+                GLYNX_Mikey_Timer* timer = &mikey->timers[i];
+                bool enabled = IS_SET_BIT(timer->control_a, 7);
+                bool asserted = mikey->irq_pending & (1 << i);
+                ImGui::TableNextColumn();
+                ImGui::TextColored(blue, "IRQ %d ", i); ImGui::SameLine();
+                ImGui::TextColored(enabled ? green : gray, enabled ? "ON" : "OFF");
+                ImGui::TextColored(asserted ? green : gray, " ASSERTED");
+            }
+
             ImGui::EndTable();
         }
 
         ImGui::PopStyleVar();
 
-        
+        ImGui::TableNextColumn();
+
+        ImGui::TextColored(magenta, " IRQ LINE: "); ImGui::SameLine();
+        ImGui::TextColored(cpu->irq_asserted ? green : gray, "ASSERTED");
+
         ImGui::EndTable();
     }
 

@@ -84,12 +84,12 @@ struct GLYNX_Cartridge_Header
     u16 bank0_page_size;
     u16 bank1_page_size;
     u16 version;
-    char  name[32];
-    char  manufacturer[16];
-    u8  rotation;
-    u8  audin;
-    u8  eeprom;
-    u8  spare[3];
+    char name[32];
+    char manufacturer[16];
+    u8 rotation;
+    u8 audin;
+    u8 eeprom;
+    u8 reserved[3];
 };
 
 struct GLYNX_SaveState_Header

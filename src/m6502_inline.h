@@ -57,33 +57,19 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
 
 inline void M6502::HandleIRQ()
 {
-    u16 vector = 0xFFFE;
-
-    // // TIQ
-    // if (IS_SET_BIT(m_s.irq_pending, 2) && IS_SET_BIT(m_interrupt_request_register, 2))
-    //     vector = 0xFFFA;
-    // // IRQ1
-    // else if (IS_SET_BIT(m_s.irq_pending, 1))
-    //     vector = 0xFFF8;
-    // // IRQ2
-    // else if (IS_SET_BIT(m_s.irq_pending, 0))
-    //     vector = 0xFFF6;
-    // else
-    //     return;
-
     u16 pc = m_s.PC.GetValue();
     StackPush16(pc);
     StackPush8(m_s.P.GetValue() & ~FLAG_BREAK);
     SetFlag(FLAG_INTERRUPT);
     ClearFlag(FLAG_DECIMAL);
 
-    m_s.PC.SetLow(m_memory->Read(vector));
-    m_s.PC.SetHigh(m_memory->Read(vector + 1));
+    m_s.PC.SetLow(m_memory->Read(0xFFFE));
+    m_s.PC.SetHigh(m_memory->Read(0xFFFF));
 
-    m_s.cycles += 8;
+    m_s.cycles += 7;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    m_s.debug_next_irq = ((0xFFFA - vector) >> 1) + 3;
+    m_s.debug_next_irq = 3;
     if (m_breakpoints_irq_enabled)
         m_cpu_breakpoint_hit = true;
     u16 dest = m_s.PC.GetValue();
@@ -93,12 +79,12 @@ inline void M6502::HandleIRQ()
 
 INLINE void M6502::CheckIRQs()
 {
-    //m_s.irq_pending = IsSetFlag(FLAG_INTERRUPT) ? 0 : m_interrupt_request_register & ~m_interrupt_disable_register;
-    m_s.irq_pending = 0;
+    m_s.irq_pending = IsSetFlag(FLAG_INTERRUPT) ? false : m_s.irq_asserted;
 }
 
 INLINE void M6502::AssertIRQ(bool asserted)
 {
+    m_s.irq_asserted = asserted;
 }
 
 INLINE void M6502::InjectCycles(unsigned int cycles)

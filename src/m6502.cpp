@@ -29,8 +29,15 @@ M6502::M6502()
 {
     InitPointer(m_memory);
     InitOPCodeFunctors();
+    m_s.cycles = 0;
+    m_s.irq_asserted = false;
+    m_s.irq_pending = 0;
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = false;
+    m_cpu_breakpoint_hit = false;
+    m_memory_breakpoint_hit = false;
+    m_run_to_breakpoint_hit = false;
+    m_run_to_breakpoint_requested = false;
     m_reset_value = -1;
 }
 
@@ -72,6 +79,7 @@ void M6502::Reset()
     ClearFlag(FLAG_DECIMAL);
 
     m_s.cycles = 0;
+    m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
@@ -305,6 +313,7 @@ void M6502::SaveState(std::ostream& stream)
     m_s.P.SaveState(stream);
 
     stream.write(reinterpret_cast<const char*> (&m_s.cycles), sizeof(m_s.cycles));
+    stream.write(reinterpret_cast<const char*> (&m_s.irq_asserted), sizeof(m_s.irq_asserted));
     stream.write(reinterpret_cast<const char*> (&m_s.irq_pending), sizeof(m_s.irq_pending));
     stream.write(reinterpret_cast<const char*> (&m_s.debug_next_irq), sizeof(m_s.debug_next_irq));
 }
@@ -319,6 +328,7 @@ void M6502::LoadState(std::istream& stream)
     m_s.P.LoadState(stream);
 
     stream.read(reinterpret_cast<char*> (&m_s.cycles), sizeof(m_s.cycles));
+    stream.read(reinterpret_cast<char*> (&m_s.irq_asserted), sizeof(m_s.irq_asserted));
     stream.read(reinterpret_cast<char*> (&m_s.irq_pending), sizeof(m_s.irq_pending));
     stream.read(reinterpret_cast<char*> (&m_s.debug_next_irq), sizeof(m_s.debug_next_irq));
 }

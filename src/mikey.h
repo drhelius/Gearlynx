@@ -43,8 +43,6 @@ public:
         u8 ATTEN_D;
         u8 MPAN;
         u8 MSTEREO;
-        u8 INTRST;
-        u8 INTSET;
         u8 SYSCTL1;
         u8 IODIR;
         u8 IODAT;
@@ -55,6 +53,8 @@ public:
         u8 DISPCTL;
         u8 PBKUP;
         u16_union DISPADR;
+        u8 irq_pending;
+        u8 irq_mask;
     };
 
 public:

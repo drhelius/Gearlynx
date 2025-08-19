@@ -26,6 +26,8 @@
 
 INLINE void Mikey::Clock(u32 cycles)
 {
+
+    m_m6502->AssertIRQ((m_state.irq_pending && m_state.irq_mask) != 0);
 }
 
 INLINE u8 Mikey::Read(u16 address)
@@ -59,9 +61,9 @@ INLINE u8 Mikey::Read(u16 address)
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
-            return m_state.INTRST;
+            return m_state.irq_pending;
         case MIKEY_INTSET:        // 0xFD81
-            return m_state.INTSET;
+            return m_state.irq_pending;
         case MIKEY_MAGRDY0:       // 0xFD84
             DebugMikey("Reading MAGRDY0 (unused)");
             return 0x00;
@@ -157,10 +159,10 @@ INLINE void Mikey::Write(u16 address, u8 value)
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
-            m_state.INTRST = value;
+            m_state.irq_pending &= ~value;
             break;
         case MIKEY_INTSET:        // 0xFD81
-            m_state.INTSET = value;
+            m_state.irq_pending |= value;
             break;
         case MIKEY_MAGRDY0:       // 0xFD84
             DebugMikey("Writing MAGRDY0 (unused): %02X", value);

@@ -892,13 +892,11 @@ static void add_symbol(const char* line)
     }
 }
 
-static const char* k_irq_symbol_format[6] = {
-    "????_%02X_%04X",
-    "RESET_%02X_%04X",
-    "NMI_%02X_%04X",
-    "TIMER_IRQ_%02X_%04X",
-    "IRQ1_%02X_%04X",
-    "IRQ2_BRK_%02X_%04X"
+static const char* k_irq_symbol_format[4] = {
+    "????_%04X",
+    "RESET_%04X",
+    "NMI_%04X",
+    "IRQ_%04X"
 };
 
 static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)

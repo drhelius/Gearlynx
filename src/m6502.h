@@ -53,7 +53,8 @@ public:
         EightBitRegister S;
         EightBitRegister P;
         u32 cycles;
-        s32 irq_pending;
+        bool irq_asserted;
+        bool irq_pending;
         s32 debug_next_irq;
     };
 

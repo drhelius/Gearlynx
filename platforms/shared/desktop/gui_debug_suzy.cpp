@@ -42,10 +42,6 @@ void gui_debug_window_suzy_regs(void)
     GearlynxCore* core = emu_get_core();
     Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
 
-    //ImGui::NewLine(); ImGui::TextColored(cyan, "SEPARATOR"); ImGui::Separator();
-
-
-    // Mostrar todos los registros de Suzy
     struct
     {
         const char* name;
@@ -132,8 +128,6 @@ void gui_debug_window_suzy_math_regs(void)
 
     GearlynxCore* core = emu_get_core();
     Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
-
-    //ImGui::NewLine(); ImGui::TextColored(cyan, "SEPARATOR"); ImGui::Separator();
 
     struct {
         const char* name;

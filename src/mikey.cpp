@@ -27,7 +27,7 @@ Mikey::Mikey(Cartridge* cartridge, M6502* m6502)
     m_cartridge = cartridge;
     m_m6502 = m6502;
     InitPointer(m_memory);
-    memset(&m_state, 0, sizeof(Mikey_State));
+    Reset();
 }
 
 Mikey::~Mikey()
@@ -42,6 +42,7 @@ void Mikey::Init(Memory* memory)
 
 void Mikey::Reset()
 {
+    memset(&m_state, 0, sizeof(Mikey_State));
 }
 
 void Mikey::SaveState(std::ostream& stream)
