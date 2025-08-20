@@ -149,7 +149,7 @@ void gui_debug_trace_logger_update(void)
         char line[256];
         snprintf(line, sizeof(line), "%s%04X   %s%s%s   %s",
             config_debug.trace_counter ? counter : "",
-            state->PC, 
+            state->PC.GetValue(),
             config_debug.trace_registers ? registers : "", 
             config_debug.trace_flags ? flags : "",
             instr.c_str(),

@@ -153,6 +153,8 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.colors[color_index].green = value;
         else
             m_state.colors[color_index].bluered = value;
+
+        m_palette[color_index] = ((m_state.colors[color_index].green & 0x0F) << 8) | (m_state.colors[color_index].bluered & 0xFF);
     }
     else
     {
@@ -237,6 +239,11 @@ INLINE void Mikey::Write(u16 address, u8 value)
 INLINE Mikey::Mikey_State* Mikey::GetState()
 {
     return &m_state;
+}
+
+INLINE u16* Mikey::GetPalette()
+{
+    return m_palette;
 }
 
 INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)

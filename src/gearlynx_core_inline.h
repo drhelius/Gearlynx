@@ -24,6 +24,7 @@
 #include "cartridge.h"
 #include "m6502.h"
 #include "audio.h"
+#include "suzy.h"
 
 INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
@@ -62,8 +63,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             m_m6502->EnableBreakpoints(debug->stop_on_breakpoint, debug->stop_on_irq);
         }
 
-        //TODO: implement video
-        //m_huc6260->SetBuffer(frame_buffer);
+        m_suzy->SetBuffer(frame_buffer);
         bool stop = false;
 
         u32 temp_max_cycles = 0;

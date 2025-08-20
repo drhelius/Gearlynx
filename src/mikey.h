@@ -28,6 +28,7 @@
 class Cartridge;
 class Memory;
 class M6502;
+class Suzy;
 
 class Mikey
 {
@@ -60,12 +61,13 @@ public:
 public:
     Mikey(Cartridge* cartridge, M6502* m6502);
     ~Mikey();
-    void Init(Memory* memory);
+    void Init(Suzy* suzy, Memory* memory);
     void Reset();
     void Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
     Mikey_State* GetState();
+    u16* GetPalette();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -79,9 +81,11 @@ private:
 
 private:
     Cartridge* m_cartridge;
+    Suzy* m_suzy;
     Memory* m_memory;
     M6502* m_m6502;
     Mikey_State m_state;
+    u16 m_palette[16] = {};
 };
 
 #include "mikey_inline.h"

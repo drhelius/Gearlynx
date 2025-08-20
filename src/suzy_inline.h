@@ -468,4 +468,14 @@ INLINE Suzy::Suzy_State* Suzy::GetState()
     return &m_state;
 }
 
+INLINE void Suzy::SetBuffer(u8* frame_buffer)
+{
+    m_frame_buffer = frame_buffer;
+}
+
+INLINE u8* Suzy::GetBuffer()
+{
+    return m_frame_buffer;
+}
+
 #endif /* SUZY_INLINE_H */

@@ -28,6 +28,7 @@
 class Cartridge;
 class Memory;
 class M6502;
+class Mikey;
 
 class Suzy
 {
@@ -69,20 +70,34 @@ public:
 public:
     Suzy(Cartridge* cartridge, M6502* m6502);
     ~Suzy();
-    void Init(Memory* memory);
+    void Init(Mikey* mikey, Memory* memory, GLYNX_Pixel_Format pixel_format);
     void Reset();
     void Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
     Suzy_State* GetState();
+    void SetBuffer(u8* frame_buffer);
+    u8* GetBuffer();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
+    void InitPalettes();
+    void RenderLine(int line);
+    template <int bytes_per_pixel>
+    void RenderLineTemplate(int line);
+
+private:
     Cartridge* m_cartridge;
+    Mikey* m_mikey;
     Memory* m_memory;
     M6502* m_m6502;
     Suzy_State m_state;
+    u8* m_frame_buffer;
+    u8 m_lynx_buffer[GLYNX_SCREEN_WIDTH / 2][GLYNX_SCREEN_HEIGHT] = {};
+    GLYNX_Pixel_Format m_pixel_format;
+    u8 m_rgba888_palette[4096][4] = {};
+    u8 m_rgb565_palette[4096][2] = {};
 };
 
 #include "suzy_inline.h"

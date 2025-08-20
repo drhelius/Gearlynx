@@ -803,6 +803,14 @@ static void draw_savestate_slot_info(int slot)
 {
     if (emu_savestates[slot].rom_name[0] != 0)
     {
+        if (emu_savestates[slot].version != GLYNX_SAVESTATE_VERSION)
+        {
+            ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "This savestate is from an older version and will not work" );
+            if (emu_savestates[slot].emu_build[0] != 0)
+                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "Use %s - %s", GLYNX_TITLE, emu_savestates[slot].emu_build);
+            ImGui::Separator();
+        }
+
         ImGui::Text("%s", emu_savestates[slot].rom_name);
         char date[64];
         get_date_time_string(emu_savestates[slot].timestamp, date, sizeof(date));
@@ -812,7 +820,7 @@ static void draw_savestate_slot_info(int slot)
         {
             float width = (float)emu_savestates_screenshots[slot].width;
             float height = (float)emu_savestates_screenshots[slot].height;
-            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_savestates[slot], ImVec2((height / 3.0f) * 4.0f, height), ImVec2(0, 0), ImVec2(width / 512.0f, height / 512.0f));
+            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_savestates, ImVec2((height / 3.0f) * 4.0f, height), ImVec2(0, 0), ImVec2(width / 2048.0f, height / 256.0f));
         }
     }
     else

@@ -77,8 +77,8 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_memory->Init();
     m_audio->Init();
     m_input->Init();
-    m_suzy->Init(m_memory);
-    m_mikey->Init(m_memory);
+    m_suzy->Init(m_mikey, m_memory, pixel_format);
+    m_mikey->Init(m_suzy, m_memory);
     m_m6502->Init(m_memory);
 }
 
@@ -113,9 +113,8 @@ bool GearlynxCore::LoadBios(const char* file_path)
 
 bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
 {
-    // TODO: Implement runtime info
-    runtime_info.screen_width = 0;
-    runtime_info.screen_height = 0;
+    runtime_info.screen_width = GLYNX_SCREEN_WIDTH;
+    runtime_info.screen_height = GLYNX_SCREEN_HEIGHT;
 
     return m_cartridge->IsReady();
 }

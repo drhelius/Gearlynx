@@ -21,11 +21,13 @@
 #include <ostream>
 #include "mikey.h"
 #include "memory.h"
+#include "suzy.h"
 
 Mikey::Mikey(Cartridge* cartridge, M6502* m6502)
 {
     m_cartridge = cartridge;
     m_m6502 = m6502;
+    InitPointer(m_suzy);
     InitPointer(m_memory);
     Reset();
 }
@@ -34,8 +36,9 @@ Mikey::~Mikey()
 {
 }
 
-void Mikey::Init(Memory* memory)
+void Mikey::Init(Suzy* suzy, Memory* memory)
 {
+    m_suzy = suzy;
     m_memory = memory;
     Reset();
 }
@@ -43,6 +46,7 @@ void Mikey::Init(Memory* memory)
 void Mikey::Reset()
 {
     memset(&m_state, 0, sizeof(Mikey_State));
+    memset(m_palette, 0, sizeof(m_palette));
 }
 
 void Mikey::SaveState(std::ostream& stream)
