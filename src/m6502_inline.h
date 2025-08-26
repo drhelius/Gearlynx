@@ -70,8 +70,6 @@ inline void M6502::HandleIRQ()
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_s.debug_next_irq = 3;
-    if (m_breakpoints_irq_enabled)
-        m_cpu_breakpoint_hit = true;
     u16 dest = m_s.PC.GetValue();
     PushCallStack(pc, dest, pc);
 #endif
@@ -310,7 +308,7 @@ INLINE void M6502::CheckBreakpoints()
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
 
-    m_cpu_breakpoint_hit = false;
+    m_cpu_breakpoint_hit = (m_breakpoints_irq_enabled && m_s.debug_next_irq > 0);
     m_run_to_breakpoint_hit = false;
 
     if (m_run_to_breakpoint_requested)
