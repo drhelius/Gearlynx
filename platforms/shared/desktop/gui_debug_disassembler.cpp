@@ -902,22 +902,22 @@ static const char* k_irq_symbol_format[4] = {
 static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
 {
     DebugSymbol s;
-    s.address = address;
     bool insert = false;
 
-    if (record->jump)
+    if (record->irq > 0 && record->irq < 4)
+    {
+        s.address = address;
+        insert = true;
+        snprintf(s.text, 64, k_irq_symbol_format[record->irq], address);
+    }
+    else if (record->jump)
     {
         s.address = record->jump_address;
+        insert = true;
         if (record->subroutine)
             snprintf(s.text, 64, "SUB_%04X", record->jump_address);
         else
             snprintf(s.text, 64, "TAG_%04X", record->jump_address);
-        insert = true;
-    }
-    else if (record->irq > 0)
-    {
-        snprintf(s.text, 64, k_irq_symbol_format[record->irq], address);
-        insert = true;
     }
 
     if (insert)
