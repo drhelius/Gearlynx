@@ -192,6 +192,9 @@ void GearlynxCore::ResetSound()
 
 std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
 {
+    if (index < 0)
+        return path;
+
     using namespace std;
     string full_path;
 
@@ -209,12 +212,9 @@ std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
     if (dot_index != string::npos)
         full_path.replace(dot_index + 1, full_path.length() - dot_index - 1, "state");
 
-    if (index >= 0)
-    {
-        stringstream ss;
-        ss << index;
-        full_path += ss.str();
-    }
+    stringstream ss;
+    ss << index;
+    full_path += ss.str();
 
     return full_path;
 }
