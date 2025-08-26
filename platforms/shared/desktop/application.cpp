@@ -640,40 +640,82 @@ static void sdl_events_emu(const SDL_Event* event)
             if (!config_input.gamepad)
                 break;
 
-            if (config_input.gamepad_directional == 0)
-                break;
-
             if (event->caxis.which != id)
                 break;
 
-            const int STICK_DEAD_ZONE = 8000;
-
-            if(event->caxis.axis == config_input.gamepad_x_axis)
+            if (config_input.gamepad_directional == 1)
             {
-                int x_motion = event->caxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
+                const int STICK_DEAD_ZONE = 8000;
 
-                if (x_motion < -STICK_DEAD_ZONE)
-                    emu_key_pressed(GLYNX_KEY_LEFT);
-                else if (x_motion > STICK_DEAD_ZONE)
-                    emu_key_pressed(GLYNX_KEY_RIGHT);
-                else
+                if(event->caxis.axis == config_input.gamepad_x_axis)
                 {
-                    emu_key_released(GLYNX_KEY_LEFT);
-                    emu_key_released(GLYNX_KEY_RIGHT);
+                    int x_motion = event->caxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
+
+                    if (x_motion < -STICK_DEAD_ZONE)
+                        emu_key_pressed(GLYNX_KEY_LEFT);
+                    else if (x_motion > STICK_DEAD_ZONE)
+                        emu_key_pressed(GLYNX_KEY_RIGHT);
+                    else
+                    {
+                        emu_key_released(GLYNX_KEY_LEFT);
+                        emu_key_released(GLYNX_KEY_RIGHT);
+                    }
+                }
+                else if(event->caxis.axis == config_input.gamepad_y_axis)
+                {
+                    int y_motion = event->caxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
+
+                    if (y_motion < -STICK_DEAD_ZONE)
+                        emu_key_pressed(GLYNX_KEY_UP);
+                    else if (y_motion > STICK_DEAD_ZONE)
+                        emu_key_pressed(GLYNX_KEY_DOWN);
+                    else
+                    {
+                        emu_key_released(GLYNX_KEY_UP);
+                        emu_key_released(GLYNX_KEY_DOWN);
+                    }
                 }
             }
-            else if(event->caxis.axis == config_input.gamepad_y_axis)
-            {
-                int y_motion = event->caxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
 
-                if (y_motion < -STICK_DEAD_ZONE)
-                    emu_key_pressed(GLYNX_KEY_UP);
-                else if (y_motion > STICK_DEAD_ZONE)
-                    emu_key_pressed(GLYNX_KEY_DOWN);
-                else
+            if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT || event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+            {
+                int vbtn = GAMEPAD_VBTN_AXIS_BASE + event->caxis.axis;
+                bool pressed = event->caxis.value > GAMEPAD_VBTN_AXIS_THRESHOLD;
+
+                if (config_input.gamepad_A == vbtn)
                 {
-                    emu_key_released(GLYNX_KEY_UP);
-                    emu_key_released(GLYNX_KEY_DOWN);
+                    if (pressed)
+                        emu_key_pressed(GLYNX_KEY_A);
+                    else
+                        emu_key_released(GLYNX_KEY_UP);
+                }
+                else if (config_input.gamepad_B == vbtn)
+                {
+                    if (pressed)
+                        emu_key_pressed(GLYNX_KEY_B);
+                    else
+                        emu_key_released(GLYNX_KEY_B);
+                }
+                else if (config_input.gamepad_start == vbtn)
+                {
+                    if (pressed)
+                        emu_key_pressed(GLYNX_KEY_START);
+                    else
+                        emu_key_released(GLYNX_KEY_START);
+                }
+                else if (config_input.gamepad_option1 == vbtn)
+                {
+                    if (pressed)
+                        emu_key_pressed(GLYNX_KEY_OPTION1);
+                    else
+                        emu_key_released(GLYNX_KEY_OPTION1);
+                }
+                else if (config_input.gamepad_option2 == vbtn)
+                {
+                    if (pressed)
+                        emu_key_pressed(GLYNX_KEY_OPTION2);
+                    else
+                        emu_key_released(GLYNX_KEY_OPTION2);
                 }
             }
         }

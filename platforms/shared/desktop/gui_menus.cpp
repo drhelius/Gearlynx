@@ -715,13 +715,32 @@ static void keyboard_configuration_item(const char* text, SDL_Scancode* key)
 static void gamepad_configuration_item(const char* text, int* button)
 {
     ImGui::Text("%s", text);
-    ImGui::SameLine(100);
+    ImGui::SameLine(120);
 
-    static const char* gamepad_names[16] = {"A", "B", "X" ,"Y", "BACK", "GUIDE", "START", "L3", "R3", "L1", "R1", "UP", "DOWN", "LEFT", "RIGHT", "15"};
-    const char* button_name = (*button >= 0 && *button < 16) ? gamepad_names[*button] : "";
+    const char* button_name = "";
+
+    if (*button == SDL_CONTROLLER_BUTTON_INVALID)
+    {
+        button_name = "";
+    }
+    else if (*button >= 0 && *button < SDL_CONTROLLER_BUTTON_MAX)
+    {
+        static const char* gamepad_names[21] = {"A", "B", "X" ,"Y", "BACK", "GUIDE", "START", "L3", "R3", "L1", "R1", "UP", "DOWN", "LEFT", "RIGHT", "MISC", "PAD1", "PAD2", "PAD3", "PAD4", "TOUCH"};
+        button_name = gamepad_names[*button];
+    }
+    else if (*button >= GAMEPAD_VBTN_AXIS_BASE)
+    {
+        int axis = *button - GAMEPAD_VBTN_AXIS_BASE;
+        if (axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
+            button_name = "L2";
+        else if (axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+            button_name = "R2";
+        else
+            button_name = "??";
+    }
 
     char button_label[256];
-    snprintf(button_label, 256, "%s##%s", button_name, text);
+    snprintf(button_label, sizeof(button_label), "%s##%s", button_name, text);
 
     if (ImGui::Button(button_label, ImVec2(70,0)))
     {
