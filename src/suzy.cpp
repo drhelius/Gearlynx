@@ -52,7 +52,6 @@ void Suzy::Init(Mikey* mikey, Memory* memory, GLYNX_Pixel_Format pixel_format)
 void Suzy::Reset()
 {
     memset(&m_state, 0, sizeof(Suzy_State));
-    memset(m_lynx_buffer, 0, sizeof(m_lynx_buffer));
 }
 
 void Suzy::InitPalettes()
@@ -76,22 +75,17 @@ void Suzy::InitPalettes()
     }
 }
 
-void Suzy::RenderLine(int line)
-{
-    if (m_pixel_format == GLYNX_PIXEL_RGB565)
-        RenderLineTemplate<2>(line);
-    else
-        RenderLineTemplate<4>(line);
-}
-
 template <int bytes_per_pixel>
 void Suzy::RenderLineTemplate(int line)
 {
-    u8* dst_line_ptr = m_frame_buffer + (line * 160 * bytes_per_pixel);
-    for (int i = 0; i < 160; ++i)
+    u8* ram = m_memory->GetRAM();
+    u8* src_line_ptr = ram + m_state.VIDBAS.value + (line * (GLYNX_SCREEN_WIDTH / 2));
+    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
+
+    for (int i = 0; i < GLYNX_SCREEN_WIDTH; ++i)
     {
         int byte_index = i / 2;
-        u8 byte = m_lynx_buffer[byte_index][line];
+        u8 byte = src_line_ptr[byte_index];
         u8 color_index = (i % 2 == 0) ? (byte >> 4) : (byte & 0x0F);
         u16 lut_index = m_mikey->GetPalette()[color_index];
 

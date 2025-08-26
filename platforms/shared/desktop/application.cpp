@@ -482,7 +482,7 @@ static void sdl_events(void)
             if (!gui_in_use)
             {
                 sdl_events_emu(&event);
-                sdl_shortcuts_gui(&event);
+                sdl_events_shortcuts_gui(&event);
             }
         }
     }

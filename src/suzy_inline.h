@@ -478,4 +478,12 @@ INLINE u8* Suzy::GetBuffer()
     return m_frame_buffer;
 }
 
+INLINE void Suzy::RenderLine(int line)
+{
+    if (m_pixel_format == GLYNX_PIXEL_RGB565)
+        RenderLineTemplate<2>(line);
+    else
+        RenderLineTemplate<4>(line);
+}
+
 #endif /* SUZY_INLINE_H */

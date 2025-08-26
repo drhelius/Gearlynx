@@ -72,12 +72,16 @@ public:
     void LoadState(std::istream& stream);
 
 private:
+    void InitTimers();
     u8 ReadTimer(u8 timer_index, u8 reg);
     void WriteTimer(u8 timer_index, u8 reg, u8 value);
     u8 ReadAudio(u8 channel, u8 reg);
     void WriteAudio(u8 channel, u8 reg, u8 value);
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
+    void UpdateTimers(u32 cycles);
+    void DecrementTimerCounter(u8 timer_index);
+    void UpdateIRQs();
 
 private:
     Cartridge* m_cartridge;
@@ -87,6 +91,8 @@ private:
     Mikey_State m_state;
     u16 m_palette[16] = {};
 };
+
+static const u32 k_mikey_timer_period_cycles[8] = { 16, 32, 64, 128, 256, 512, 1024, 0 };
 
 #include "mikey_inline.h"
 

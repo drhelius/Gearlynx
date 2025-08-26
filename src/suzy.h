@@ -94,7 +94,6 @@ private:
     M6502* m_m6502;
     Suzy_State m_state;
     u8* m_frame_buffer;
-    u8 m_lynx_buffer[GLYNX_SCREEN_WIDTH / 2][GLYNX_SCREEN_HEIGHT] = {};
     GLYNX_Pixel_Format m_pixel_format;
     u8 m_rgba888_palette[4096][4] = {};
     u8 m_rgb565_palette[4096][2] = {};

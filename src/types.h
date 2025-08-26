@@ -137,10 +137,14 @@ struct GLYNX_Disassembler_Record
 
 struct GLYNX_Mikey_Timer
 {
-    u16 backup;
+    u8 backup;
     u8 control_a;
     u8 control_b;
-    u8 count;
+    u8 counter;
+
+    s8 internal_linked_to;
+    u32 internal_cycles;
+    u32 internal_period_cycles;
 };
 
 struct GLYNX_Mikey_Audio

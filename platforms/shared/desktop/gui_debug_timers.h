@@ -17,20 +17,19 @@
  *
  */
 
-#ifndef GUI_DEBUG_MIKEY_H
-#define	GUI_DEBUG_MIKEY_H
+#ifndef GUI_DEBUG_TIMERS_H
+#define GUI_DEBUG_TIMERS_H
 
-#ifdef GUI_DEBUG_MIKEY_IMPORT
+#ifdef GUI_DEBUG_TIMERS_IMPORT
     #define EXTERN
 #else
     #define EXTERN extern
 #endif
 
-EXTERN void gui_debug_window_mikey_regs(void);
-EXTERN void gui_debug_window_mikey_timer_regs(void);
-EXTERN void gui_debug_window_mikey_audio(void);
-EXTERN void gui_debug_window_mikey_colors(void);
+EXTERN void gui_debug_timers_init(void);
+EXTERN void gui_debug_timers_destroy(void);
+EXTERN void gui_debug_window_timers(void);
 
-#undef GUI_DEBUG_MIKEY_IMPORT
+#undef GUI_DEBUG_TIMERS_IMPORT
 #undef EXTERN
-#endif /* GUI_DEBUG_MIKEY_H */
+#endif /* GUI_DEBUG_TIMERS_H */

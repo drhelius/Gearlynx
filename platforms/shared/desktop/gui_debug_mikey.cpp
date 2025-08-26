@@ -99,7 +99,7 @@ void gui_debug_window_mikey_regs(void)
     ImGui::PopStyleVar();
 }
 
-void gui_debug_window_mikey_timers(void)
+void gui_debug_window_mikey_timer_regs(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(400, 79), ImGuiCond_FirstUseEver);
@@ -114,7 +114,7 @@ void gui_debug_window_mikey_timers(void)
     struct {
         const char* name;
         const char* addr;
-        u16* reg;
+        u8* reg;
     } timer_regs16[] = {
         {"TIM0BKUP", "FD00", &mikey_state->timers[0].backup},
         {"TIM1BKUP", "FD04", &mikey_state->timers[1].backup},
@@ -133,28 +133,28 @@ void gui_debug_window_mikey_timers(void)
         u8* reg;
     } timer_regs8[] = {
         {"TIM0CTLA", "FD01", &mikey_state->timers[0].control_a},
-        {"TIM0CNT ", "FD02", &mikey_state->timers[0].count},
+        {"TIM0CNT ", "FD02", &mikey_state->timers[0].counter},
         {"TIM0CTLB", "FD03", &mikey_state->timers[0].control_b},
         {"TIM1CTLA", "FD05", &mikey_state->timers[1].control_a},
-        {"TIM1CNT ", "FD06", &mikey_state->timers[1].count},
+        {"TIM1CNT ", "FD06", &mikey_state->timers[1].counter},
         {"TIM1CTLB", "FD07", &mikey_state->timers[1].control_b},
         {"TIM2CTLA", "FD09", &mikey_state->timers[2].control_a},
-        {"TIM2CNT ", "FD0A", &mikey_state->timers[2].count},
+        {"TIM2CNT ", "FD0A", &mikey_state->timers[2].counter},
         {"TIM2CTLB", "FD0B", &mikey_state->timers[2].control_b},
         {"TIM3CTLA", "FD0D", &mikey_state->timers[3].control_a},
-        {"TIM3CNT ", "FD0E", &mikey_state->timers[3].count},
+        {"TIM3CNT ", "FD0E", &mikey_state->timers[3].counter},
         {"TIM3CTLB", "FD0F", &mikey_state->timers[3].control_b},
         {"TIM4CTLA", "FD11", &mikey_state->timers[4].control_a},
-        {"TIM4CNT ", "FD12", &mikey_state->timers[4].count},
+        {"TIM4CNT ", "FD12", &mikey_state->timers[4].counter},
         {"TIM4CTLB", "FD13", &mikey_state->timers[4].control_b},
         {"TIM5CTLA", "FD15", &mikey_state->timers[5].control_a},
-        {"TIM5CNT ", "FD16", &mikey_state->timers[5].count},
+        {"TIM5CNT ", "FD16", &mikey_state->timers[5].counter},
         {"TIM5CTLB", "FD17", &mikey_state->timers[5].control_b},
         {"TIM6CTLA", "FD19", &mikey_state->timers[6].control_a},
-        {"TIM6CNT ", "FD1A", &mikey_state->timers[6].count},
+        {"TIM6CNT ", "FD1A", &mikey_state->timers[6].counter},
         {"TIM6CTLB", "FD1B", &mikey_state->timers[6].control_b},
         {"TIM7CTLA", "FD1D", &mikey_state->timers[7].control_a},
-        {"TIM7CNT ", "FD1E", &mikey_state->timers[7].count},
+        {"TIM7CNT ", "FD1E", &mikey_state->timers[7].counter},
         {"TIM7CTLB", "FD1F", &mikey_state->timers[7].control_b},
         {0, 0, 0}
     };

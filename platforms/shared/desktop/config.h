@@ -115,6 +115,7 @@ struct config_Debug
     bool show_psg = false;
     bool show_trace_logger = false;
     bool show_mikey_regs = false;
+    bool show_mikey_timer_regs = false;
     bool show_mikey_timers = false;
     bool show_mikey_audio = false;
     bool show_mikey_colors = false;

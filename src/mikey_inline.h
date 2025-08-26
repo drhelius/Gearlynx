@@ -26,8 +26,8 @@
 
 INLINE void Mikey::Clock(u32 cycles)
 {
-
-    m_m6502->AssertIRQ((m_state.irq_pending && m_state.irq_mask) != 0);
+    UpdateTimers(cycles);
+    UpdateIRQs();
 }
 
 INLINE u8 Mikey::Read(u16 address)
@@ -257,7 +257,7 @@ INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)
     case 1:
         return m_state.timers[timer_index].control_a;
     case 2:
-        return m_state.timers[timer_index].count;
+        return m_state.timers[timer_index].counter;
     case 3:
         return m_state.timers[timer_index].control_b;
     default:
@@ -277,9 +277,17 @@ INLINE void Mikey::WriteTimer(u8 timer_index, u8 reg, u8 value)
         break;
     case 1:
         m_state.timers[timer_index].control_a = value;
+        m_state.timers[timer_index].internal_period_cycles = k_mikey_timer_period_cycles[value & 0x07];
+        if (IS_SET_BIT(value, 7))
+            m_state.irq_mask = (m_state.irq_mask | (1 << timer_index));
+        else
+            m_state.irq_mask = (m_state.irq_mask & ~(1 << timer_index));
+        if (IS_SET_BIT(value, 6))
+            // clear timer done bit
+            m_state.timers[timer_index].control_b = UNSET_BIT(m_state.timers[timer_index].control_b, 3); 
         break;
     case 2:
-        m_state.timers[timer_index].count = value;
+        m_state.timers[timer_index].counter = value;
         break;
     case 3:
         m_state.timers[timer_index].control_b = value;
@@ -402,6 +410,92 @@ INLINE void Mikey::WriteAudioExtra(u16 address, u8 value)
         DebugMikey("Audio Extra WRITE called with unknown address: %04X, value: %02X", address, value);
         break;
     }
+}
+
+INLINE void Mikey::UpdateTimers(u32 cycles)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        GLYNX_Mikey_Timer* t = &m_state.timers[i];
+
+        // if timer is disabled, skip it
+        if (IS_NOT_SET_BIT(t->control_a, 3))
+            continue;
+
+        // independent mode
+        if (t->internal_period_cycles != 0)
+        {
+            t->internal_cycles += cycles;
+
+            bool borrow_in = false;
+
+            while (t->internal_cycles >= t->internal_period_cycles)
+            {
+                t->internal_cycles -= t->internal_period_cycles;
+                DecrementTimerCounter(i);
+                borrow_in = true;
+            }
+
+            // set borrow in flag
+            t->control_b = borrow_in ? SET_BIT(t->control_b, 1) : UNSET_BIT(t->control_b, 1);
+        }
+        // linked mode and borrow out from linked timer
+        else if (IS_SET_BIT(m_state.timers[t->internal_linked_to].control_b, 0))
+        {
+            DecrementTimerCounter(i);
+            t->control_b = SET_BIT(t->control_b, 1);
+        }
+        else
+        {
+            // clear borrow in flag
+            t->control_b = UNSET_BIT(t->control_b, 1);
+            // clear borrow out flag
+            t->control_b = UNSET_BIT(t->control_b, 0);
+        }
+    }
+}
+
+INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
+{
+    GLYNX_Mikey_Timer* t = &m_state.timers[timer_index];
+
+    if (t->counter == 0x00)
+    {
+        // if reload on underflow is set
+        if (IS_SET_BIT(t->control_a, 4))
+            t->counter = t->backup;
+
+        // set irq status even if irq is disabled?
+        if (IS_SET_BIT(t->control_a, 7))
+            m_state.irq_pending = SET_BIT(m_state.irq_pending, timer_index);
+
+        // set timer done bit
+        t->control_b = SET_BIT(t->control_b, 3);
+
+        // set borrow out flag
+        t->control_b = SET_BIT(t->control_b, 0);
+
+        if (timer_index == 0)
+        {
+            Debug("Render line");
+        }
+        else if (timer_index == 2)
+        {
+            Debug("VBLANK frame done");
+        }
+    }
+    else
+    {
+        // clear borrow out flag
+        t->control_b = UNSET_BIT(t->control_b, 0);
+        t->counter--;
+    }
+
+}
+
+INLINE void Mikey::UpdateIRQs()
+{
+    m_m6502->AssertIRQ((m_state.irq_pending && m_state.irq_mask) != 0);
 }
 
 #endif /* MIKEY_INLINE_H */

@@ -604,7 +604,8 @@ static void menu_debug(void)
         ImGui::MenuItem("Show Suzy Registers", "", &config_debug.show_suzy_regs, config_debug.debug);
         ImGui::MenuItem("Show Suzy Math Registers", "", &config_debug.show_suzy_math_regs, config_debug.debug);
         ImGui::MenuItem("Show Mikey Registers", "", &config_debug.show_mikey_regs, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Timer Registers", "", &config_debug.show_mikey_timers, config_debug.debug);
+        ImGui::MenuItem("Show Mikey Timers", "", &config_debug.show_mikey_timers, config_debug.debug);
+        ImGui::MenuItem("Show Mikey Timer Registers", "", &config_debug.show_mikey_timer_regs, config_debug.debug);
         ImGui::MenuItem("Show Mikey Audio Registers", "", &config_debug.show_mikey_audio, config_debug.debug);
         ImGui::MenuItem("Show Mikey Color Registers", "", &config_debug.show_mikey_colors, config_debug.debug);
         ImGui::MenuItem("Show Lynx Memory Map", "", &config_debug.show_memory);

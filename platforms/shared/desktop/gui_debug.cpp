@@ -29,6 +29,7 @@
 #include "gui_debug_trace_logger.h"
 #include "gui_debug_mikey.h"
 #include "gui_debug_suzy.h"
+#include "gui_debug_timers.h"
 #include "emu.h"
 #include "config.h"
 
@@ -37,6 +38,7 @@ void gui_debug_init(void)
     gui_debug_disassembler_init();
     gui_debug_psg_init();
     gui_debug_memory_init();
+    gui_debug_timers_init();
 }
 
 void gui_debug_destroy(void)
@@ -44,6 +46,7 @@ void gui_debug_destroy(void)
     gui_debug_disassembler_destroy();
     gui_debug_psg_destroy();
     gui_debug_memory_destroy();
+    gui_debug_timers_destroy();
 }
 
 void gui_debug_reset(void)
@@ -77,8 +80,10 @@ void gui_debug_windows(void)
             gui_debug_window_trace_logger();
         if (config_debug.show_mikey_regs)
             gui_debug_window_mikey_regs();
+        if (config_debug.show_mikey_timer_regs)
+            gui_debug_window_mikey_timer_regs();
         if (config_debug.show_mikey_timers)
-            gui_debug_window_mikey_timers();
+            gui_debug_window_timers();
         if (config_debug.show_mikey_audio)
             gui_debug_window_mikey_audio();
         if (config_debug.show_mikey_colors)

@@ -24,6 +24,7 @@
 #include "cartridge.h"
 #include "m6502.h"
 #include "audio.h"
+#include "mikey.h"
 #include "suzy.h"
 
 INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
@@ -53,6 +54,8 @@ INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int*
 template<bool debugger>
 bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
+    m_suzy->SetBuffer(frame_buffer);
+
     if (debugger)
     {
         bool debug_enable = false;
@@ -63,7 +66,6 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             m_m6502->EnableBreakpoints(debug->stop_on_breakpoint, debug->stop_on_irq);
         }
 
-        m_suzy->SetBuffer(frame_buffer);
         bool stop = false;
 
         u32 temp_max_cycles = 0;
@@ -74,6 +76,8 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
                 m_debug_callback();
 
             u32 cycles = m_m6502->RunInstruction(&instruction_completed);
+            m_mikey->Clock(cycles);
+            m_suzy->Clock(cycles);
             //m_huc6280->ClockTimer(cycles);
 
             //TODO: implement video
@@ -109,16 +113,11 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
     {
         UNUSED(debug);
 
-        //TODO: implement video
-        //m_huc6260->SetBuffer(frame_buffer);
-
         bool stop = false;
 
         do
         {
             u32 cycles = m_m6502->RunInstruction();
-
-            //m_huc6280->ClockTimer(cycles);
 
             //TODO: implement video
             stop = true;

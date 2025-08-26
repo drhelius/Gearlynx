@@ -40,6 +40,7 @@ void Mikey::Init(Suzy* suzy, Memory* memory)
 {
     m_suzy = suzy;
     m_memory = memory;
+    InitTimers();
     Reset();
 }
 
@@ -47,6 +48,25 @@ void Mikey::Reset()
 {
     memset(&m_state, 0, sizeof(Mikey_State));
     memset(m_palette, 0, sizeof(m_palette));
+}
+
+void Mikey::InitTimers()
+{
+    m_state.timers[0].internal_linked_to = -1;
+    m_state.timers[2].internal_linked_to = 0;
+    m_state.timers[4].internal_linked_to = 2;
+
+    m_state.timers[1].internal_linked_to = -1;
+    m_state.timers[3].internal_linked_to = 1;
+    m_state.timers[5].internal_linked_to = 3;
+    m_state.timers[7].internal_linked_to = 5;
+
+    m_state.timers[6].internal_linked_to = -1;
+
+    for (int i = 0; i < 8; i++)
+    {
+        m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
+    }
 }
 
 void Mikey::SaveState(std::ostream& stream)
