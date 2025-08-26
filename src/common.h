@@ -61,7 +61,7 @@ inline u32 read_u32_be(const u8* p)
 }
 
 inline u16 hi(u16 a)
-{ 
+{
     return (u16)(a >> 8);
 }
 
