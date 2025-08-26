@@ -765,8 +765,7 @@ void MemEditor::DrawContexMenu(int address, bool cell_hovered, bool options)
 
     if (ImGui::BeginPopup(id, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings))
     {
-        if (m_gui_font != NULL)
-            ImGui::PushFont(m_gui_font);
+        PushGuiFont();
 
         if ((address < m_selection_start) || (address > m_selection_end))
             m_selection_start = m_selection_end = address;
@@ -774,6 +773,11 @@ void MemEditor::DrawContexMenu(int address, bool cell_hovered, bool options)
         if (ImGui::Selectable("Copy"))
         {
             Copy();
+        }
+
+        if (ImGui::Selectable("Copy As Decimal"))
+        {
+            Copy(true);
         }
 
         if (ImGui::Selectable("Paste"))
@@ -799,8 +803,7 @@ void MemEditor::DrawContexMenu(int address, bool cell_hovered, bool options)
             }
         }
 
-        if (m_gui_font != NULL)
-            ImGui::PopFont();
+        PopGuiFont();
 
         ImGui::EndPopup();
     }
@@ -817,8 +820,7 @@ void MemEditor::BookMarkPopup()
         m_add_bookmark = false;
     }
 
-    if (m_gui_font != NULL)
-        ImGui::PushFont(m_gui_font);
+    PushGuiFont();
 
     if (ImGui::BeginPopupModal(popup_title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -881,8 +883,7 @@ void MemEditor::BookMarkPopup()
         ImGui::EndPopup();
     }
 
-    if (m_gui_font != NULL)
-            ImGui::PopFont();
+    PopGuiFont();
 }
 
 void MemEditor::WatchPopup()
@@ -896,8 +897,7 @@ void MemEditor::WatchPopup()
         m_add_watch = false;
     }
 
-    if (m_gui_font != NULL)
-        ImGui::PushFont(m_gui_font);
+    PushGuiFont();
 
     if (ImGui::BeginPopupModal(popup_title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -958,8 +958,7 @@ void MemEditor::WatchPopup()
         ImGui::EndPopup();
     }
 
-    if (m_gui_font != NULL)
-            ImGui::PopFont();
+    PopGuiFont();
 }
 
 void MemEditor::SearchCapture()
@@ -990,8 +989,7 @@ void MemEditor::WatchWindow()
     ImVec4 normal_color = white;
     ImVec4 gray_color = mid_gray;
 
-    if (m_gui_font != NULL)
-        ImGui::PushFont(m_gui_font);
+    PushGuiFont();
 
     ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
     char window_title[64];
@@ -1012,8 +1010,7 @@ void MemEditor::WatchWindow()
 
     ImGui::Separator();
 
-    if (m_gui_font != NULL)
-        ImGui::PopFont();
+    PopGuiFont();
 
     ImVec2 character_size = ImGui::CalcTextSize("0");
 
@@ -1107,8 +1104,7 @@ void MemEditor::SearchWindow()
     ImVec4 value_color = white;
     ImVec4 prev_color = orange;
 
-    if (m_gui_font != NULL)
-        ImGui::PushFont(m_gui_font);
+    PushGuiFont();
 
     ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
     char window_title[64];
@@ -1230,8 +1226,7 @@ void MemEditor::SearchWindow()
 
     ImGui::Separator();
 
-    if (m_gui_font != NULL)
-        ImGui::PopFont();
+    PopGuiFont();
 
     CalculateSearchResults();
 
@@ -1415,7 +1410,19 @@ void MemEditor::DrawSearchValue(int value, ImVec4 color)
     }
 }
 
-void MemEditor::Copy()
+void MemEditor::PushGuiFont()
+{
+    if (m_gui_font != NULL)
+        ImGui::PushFont(m_gui_font);
+}
+
+void MemEditor::PopGuiFont()
+{
+    if (m_gui_font != NULL)
+        ImGui::PopFont();
+}
+
+void MemEditor::Copy(bool as_decimal)
 {
     int size = (m_selection_end - m_selection_start + 1) * m_mem_word;
     uint8_t* data = m_mem_data + (m_selection_start * m_mem_word);
@@ -1424,8 +1431,13 @@ void MemEditor::Copy()
 
     for (int i = 0; i < size; i++)
     {
-        char byte[4];
-        snprintf(byte, 4, "%02X", data[i]);
+        char byte[8];
+
+        if (as_decimal)
+            snprintf(byte, 8, "%d", data[i]);
+        else
+            snprintf(byte, 8, m_uppercase_hex ? "%02X" : "%02x", data[i]);
+
         if (i > 0)
             text += " ";
         text += byte;
