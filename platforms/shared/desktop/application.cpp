@@ -49,9 +49,10 @@ static bool sdl_init(void);
 static void sdl_destroy(void);
 static void sdl_load_gamepad_mappings(void);
 static void sdl_events(void);
+static void sdl_events_quit(const SDL_Event* event);
 static void sdl_events_app(const SDL_Event* event);
+static void sdl_events_shortcuts_gui(const SDL_Event* event);
 static void sdl_events_emu(const SDL_Event* event);
-static void sdl_shortcuts_gui(const SDL_Event* event);
 static void sdl_add_gamepads(void);
 static void sdl_remove_gamepad(SDL_JoystickID instance_id);
 static void handle_mouse_cursor(void);
@@ -467,13 +468,15 @@ static void handle_menu(void)
 static void sdl_events(void)
 {
     SDL_Event event;
-        
+
     while (SDL_PollEvent(&event))
     {
-        sdl_events_app(&event);
+        sdl_events_quit(&event);
 
         if (running)
         {
+            sdl_events_app(&event);
+
             ImGui_ImplSDL2_ProcessEvent(&event);
 
             if (!gui_in_use)
@@ -485,7 +488,7 @@ static void sdl_events(void)
     }
 }
 
-static void sdl_events_app(const SDL_Event* event)
+static void sdl_events_quit(const SDL_Event* event)
 {
     if (event->type == SDL_QUIT)
     {
@@ -498,9 +501,44 @@ static void sdl_events_app(const SDL_Event* event)
         running = false;
         return;
     }
+}
 
+static void sdl_events_app(const SDL_Event* event)
+{
     switch (event->type)
     {
+        case (SDL_DROPFILE):
+        {
+            char* dropped_filedir = event->drop.file;
+            gui_load_rom(dropped_filedir);
+            SDL_free(dropped_filedir);
+            SDL_SetWindowInputFocus(application_sdl_window);
+            break;
+        }
+        case SDL_WINDOWEVENT:
+        {
+            switch (event->window.event)
+            {
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                {
+                    if (!paused_when_focus_lost)
+                        emu_resume();
+                    break;
+                }
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                {
+                    paused_when_focus_lost = emu_is_paused();
+                    emu_pause();
+                    break;
+                }
+            }
+            break;
+        }
+        case (SDL_MOUSEMOTION):
+        {
+            mouse_last_motion_time = SDL_GetTicks();
+            break;
+        }
         case SDL_CONTROLLERDEVICEADDED:
         {
             sdl_add_gamepads();
@@ -514,46 +552,139 @@ static void sdl_events_app(const SDL_Event* event)
     }
 }
 
+static void sdl_events_shortcuts_gui(const SDL_Event* event)
+{
+    if (event->type == SDL_KEYDOWN)
+    {
+        int key = event->key.keysym.scancode;
+
+        switch (key)
+        {
+            case SDL_SCANCODE_Q:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    application_trigger_quit();
+                break;
+            case SDL_SCANCODE_A:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutDebugSelectAll);
+                break;
+            case SDL_SCANCODE_C:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutDebugCopy);
+                break;
+            case SDL_SCANCODE_V:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutDebugPaste);
+                break;
+            case SDL_SCANCODE_O:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutOpenROM);
+                break;
+            case SDL_SCANCODE_R:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutReset);
+                break;
+            case SDL_SCANCODE_P:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutPause);
+                break;
+            case SDL_SCANCODE_F:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutFFWD);
+                break;
+            case SDL_SCANCODE_L:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutLoadState);
+                break;
+            case SDL_SCANCODE_S:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutSaveState);
+                break;
+            case SDL_SCANCODE_X:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutScreenshot);
+                break;
+            case SDL_SCANCODE_M:
+                if (event->key.repeat != 0)
+                    break;
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutShowMainMenu);
+                break;
+            case SDL_SCANCODE_F5:
+                gui_shortcut(gui_ShortcutDebugContinue);
+                break;
+            case SDL_SCANCODE_F6:
+                gui_shortcut(gui_ShortcutDebugStepFrame);
+                break;
+            case SDL_SCANCODE_F7:
+                gui_shortcut(gui_ShortcutDebugBreak);
+                break;
+            case SDL_SCANCODE_F8:
+                gui_shortcut(gui_ShortcutDebugRuntocursor);
+                break;
+            case SDL_SCANCODE_F9:
+                if (event->key.repeat != 0)
+                    break;
+                gui_shortcut(gui_ShortcutDebugBreakpoint);
+                break;
+            case SDL_SCANCODE_F10:
+                gui_shortcut(gui_ShortcutDebugStepOver);
+                break;
+            case SDL_SCANCODE_F11:
+                if (event->key.keysym.mod & KMOD_SHIFT)
+                    gui_shortcut(gui_ShortcutDebugStepOut);
+                else
+                    gui_shortcut(gui_ShortcutDebugStepInto);
+                break;
+            case SDL_SCANCODE_F12:
+                if (event->key.repeat != 0)
+                    break;
+                config_emulator.fullscreen = !config_emulator.fullscreen;
+                application_trigger_fullscreen(config_emulator.fullscreen);
+                break;
+            case SDL_SCANCODE_BACKSPACE:
+                if (event->key.keysym.mod & KMOD_CTRL)
+                    gui_shortcut(gui_ShortcutDebugGoBack);
+                break;
+            case SDL_SCANCODE_ESCAPE:
+                if (event->key.repeat != 0)
+                    break;
+                if (config_emulator.fullscreen && !config_emulator.always_show_menu)
+                {
+                    config_emulator.fullscreen = false;
+                    application_trigger_fullscreen(false);
+                }
+                break;
+        }
+    }
+}
+
 static void sdl_events_emu(const SDL_Event* event)
 {
     switch(event->type)
     {
-        case (SDL_DROPFILE):
-        {
-            char* dropped_filedir = event->drop.file;
-            gui_load_rom(dropped_filedir);
-            SDL_free(dropped_filedir);
-            SDL_SetWindowInputFocus(application_sdl_window);
-        }
-        break;
-
-        case SDL_WINDOWEVENT:
-        {
-            switch (event->window.event)
-            {
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                {
-                    if (!paused_when_focus_lost)
-                        emu_resume();
-                }
-                break;
-
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                {
-                    paused_when_focus_lost = emu_is_paused();
-                    emu_pause();
-                }
-                break;
-            }
-        }
-        break;
-
-        case (SDL_MOUSEMOTION):
-        {
-            mouse_last_motion_time = SDL_GetTicks();
-        }
-        break;
-
         case SDL_CONTROLLERBUTTONDOWN:
         {
             if (!IsValidPointer(application_gamepad))
@@ -733,13 +864,6 @@ static void sdl_events_emu(const SDL_Event* event)
 
             int key = event->key.keysym.scancode;
 
-            if (key == SDL_SCANCODE_ESCAPE)
-            {
-                config_emulator.fullscreen = false;
-                application_trigger_fullscreen(false);
-                break;
-            }
-
             if (key == config_input.key_left)
                 emu_key_pressed(GLYNX_KEY_LEFT);
             else if (key == config_input.key_right)
@@ -785,98 +909,6 @@ static void sdl_events_emu(const SDL_Event* event)
                 emu_key_released(GLYNX_KEY_OPTION2);
         }
         break;
-    }
-}
-
-static void sdl_shortcuts_gui(const SDL_Event* event)
-{
-    if (event->type == SDL_KEYDOWN)
-    {
-        int key = event->key.keysym.scancode;
-
-        switch (key)
-        {
-            case SDL_SCANCODE_Q:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    application_trigger_quit();
-                break;
-            case SDL_SCANCODE_A:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutDebugSelectAll);
-                break;
-            case SDL_SCANCODE_C:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutDebugCopy);
-                break;
-            case SDL_SCANCODE_V:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutDebugPaste);
-                break;
-            case SDL_SCANCODE_O:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutOpenROM);
-                break;
-            case SDL_SCANCODE_R:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutReset);
-                break;
-            case SDL_SCANCODE_P:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutPause);
-                break;
-            case SDL_SCANCODE_F:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutFFWD);
-                break;
-            case SDL_SCANCODE_L:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutLoadState);
-                break;
-            case SDL_SCANCODE_S:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutSaveState);
-                break;
-            case SDL_SCANCODE_X:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutScreenshot);
-                break;
-            case SDL_SCANCODE_M:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutShowMainMenu);
-                break;
-            case SDL_SCANCODE_F5:
-                gui_shortcut(gui_ShortcutDebugContinue);
-                break;
-            case SDL_SCANCODE_F6:
-                gui_shortcut(gui_ShortcutDebugStepFrame);
-                break;
-            case SDL_SCANCODE_F7:
-                gui_shortcut(gui_ShortcutDebugBreak);
-                break;
-            case SDL_SCANCODE_F8:
-                gui_shortcut(gui_ShortcutDebugRuntocursor);
-                break;
-            case SDL_SCANCODE_F9:
-                gui_shortcut(gui_ShortcutDebugBreakpoint);
-                break;
-            case SDL_SCANCODE_F10:
-                gui_shortcut(gui_ShortcutDebugStepOver);
-                break;
-            case SDL_SCANCODE_F11:
-                if (event->key.keysym.mod & KMOD_SHIFT)
-                    gui_shortcut(gui_ShortcutDebugStepOut);
-                else
-                    gui_shortcut(gui_ShortcutDebugStepInto);
-                break;
-            case SDL_SCANCODE_F12:
-                config_emulator.fullscreen = !config_emulator.fullscreen;
-                application_trigger_fullscreen(config_emulator.fullscreen);
-                break;
-            case SDL_SCANCODE_BACKSPACE:
-                if (event->key.keysym.mod & KMOD_CTRL)
-                    gui_shortcut(gui_ShortcutDebugGoBack);
-                break;
-        }
     }
 }
 
