@@ -149,9 +149,9 @@ inline void Memory::RebuildMemoryMap()
     {
         Debug("BIOS visible");
         m_read_page[0xFE] = NULL;
-        m_write_page[0xFE] = NULL;
+        m_write_page[0xFE] = m_state.ram + 0xFE00;
         m_read_fn[0xFE] = &Memory::BiosRead;
-        m_write_fn[0xFE] = &Memory::BiosWrite;
+        m_write_fn[0xFE] = NULL;
     }
 }
 

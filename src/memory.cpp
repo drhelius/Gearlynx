@@ -183,20 +183,6 @@ u8 Memory::BiosRead(u16 address)
     }
 }
 
-void Memory::BiosWrite(u16 address, u8 value)
-{
-    // BIOS not visible
-    if (IS_SET_BIT(m_state.MAPCTL, 2))
-    {
-        m_state.ram[address] = value;
-    }
-    // BIOS visible
-    else
-    {
-        Debug("Writing to BIOS address %04X with value %02X is not allowed", address, value);
-    }
-}
-
 u8 Memory::LastPageRead(u16 address)
 {
     if (address < 0xFFF8)
@@ -240,46 +226,14 @@ u8 Memory::LastPageRead(u16 address)
 
 void Memory::LastPageWrite(u16 address, u8 value)
 {
-    if (address < 0xFFF8)
-    {
-        // BIOS not visible
-        if (IS_SET_BIT(m_state.MAPCTL, 2))
-        {
-            m_state.ram[address] = value;
-            return;
-        }
-        // BIOS visible
-        else
-        {
-            Debug("Writing to BIOS address %04X with value %02X is not allowed", address, value);
-            return;
-        }
-    }
-    else if (address > 0xFFF9)
-    {
-        // VECTORS not visible
-        if (IS_SET_BIT(m_state.MAPCTL, 3))
-        {
-            m_state.ram[address] = value;
-            return;
-        }
-        // VECTORS visible
-        else
-        {
-            Debug("Writing to VECTORS address %04X with value %02X is not allowed", address, value);
-            return;
-        }
-    }
-    else if (unlikely(address == 0xFFF8))
+    if (unlikely(address == 0xFFF8))
     {
         Debug("Writing to address 0xFFF8 with value %02X", value);
         m_state.ram[address] = value;
-        return;
     }
     else
     {
-        Error("LastPageWrite called with invalid address: %04X", address);
-        return;
+        m_state.ram[address] = value;
     }
 }
 

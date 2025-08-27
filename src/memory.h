@@ -64,7 +64,6 @@ private:
     u8 MikeyRead(u16 address);
     void MikeyWrite(u16 address, u8 value);
     u8 BiosRead(u16 address);
-    void BiosWrite(u16 address, u8 value);
     u8 LastPageRead(u16 address);
     void LastPageWrite(u16 address, u8 value);
 
