@@ -51,6 +51,8 @@ void Suzy::Init(Mikey* mikey, Memory* memory, GLYNX_Pixel_Format pixel_format)
 
 void Suzy::Reset()
 {
+    m_frame_ready = false;
+    m_render_line = 0;
     memset(&m_state, 0, sizeof(Suzy_State));
 }
 
@@ -72,37 +74,6 @@ void Suzy::InitPalettes()
         u16 rgb565 = (red << 11) | (green << 5) | blue;
         m_rgb565_palette[i][0] = rgb565 & 0xFF;
         m_rgb565_palette[i][1] = (rgb565 >> 8) & 0xFF;
-    }
-}
-
-template <int bytes_per_pixel>
-void Suzy::RenderLineTemplate(int line)
-{
-    u8* ram = m_memory->GetRAM();
-    u8* src_line_ptr = ram + m_state.VIDBAS.value + (line * (GLYNX_SCREEN_WIDTH / 2));
-    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
-
-    for (int i = 0; i < GLYNX_SCREEN_WIDTH; ++i)
-    {
-        int byte_index = i / 2;
-        u8 byte = src_line_ptr[byte_index];
-        u8 color_index = (i % 2 == 0) ? (byte >> 4) : (byte & 0x0F);
-        u16 lut_index = m_mikey->GetPalette()[color_index];
-
-        int idx = i * bytes_per_pixel;
-
-        if (bytes_per_pixel == 2)
-        {
-            dst_line_ptr[idx + 0] = m_rgb565_palette[lut_index][0];
-            dst_line_ptr[idx + 1] = m_rgb565_palette[lut_index][1];
-        }
-        else
-        {
-            dst_line_ptr[idx + 0] = m_rgba888_palette[lut_index][0];
-            dst_line_ptr[idx + 1] = m_rgba888_palette[lut_index][1];
-            dst_line_ptr[idx + 2] = m_rgba888_palette[lut_index][2];
-            dst_line_ptr[idx + 3] = m_rgba888_palette[lut_index][3];
-        }
     }
 }
 

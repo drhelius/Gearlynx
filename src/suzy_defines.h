@@ -22,7 +22,7 @@
 
 #include "m6502.h"
 
-#define DebugSuzy(fmt, ...) Debug("SUZY [PC=%04X]: " fmt, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)
+#define DebugSuzy(fmt, ...) Debug("+ SUZY  [PC=%04X]: " fmt, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)
 
 #define SUZY_TMPADRL     0xFC00
 #define SUZY_TMPADRH     0xFC01

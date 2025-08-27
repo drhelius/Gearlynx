@@ -72,9 +72,11 @@ public:
     ~Suzy();
     void Init(Mikey* mikey, Memory* memory, GLYNX_Pixel_Format pixel_format);
     void Reset();
-    void Clock(u32 cycles);
+    bool Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
+    void Timer0Tick();
+    void Timer2Tick();
     Suzy_State* GetState();
     void SetBuffer(u8* frame_buffer);
     u8* GetBuffer();
@@ -97,6 +99,8 @@ private:
     GLYNX_Pixel_Format m_pixel_format;
     u8 m_rgba888_palette[4096][4] = {};
     u8 m_rgb565_palette[4096][2] = {};
+    bool m_frame_ready;
+    u8 m_render_line;
 };
 
 #include "suzy_inline.h"

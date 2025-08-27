@@ -21,6 +21,7 @@
 #define MIKEY_INLINE_H
 
 #include "mikey.h"
+#include "suzy.h"
 #include "cartridge.h"
 #include "m6502.h"
 
@@ -427,17 +428,21 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
         {
             t->internal_cycles += cycles;
 
-            bool borrow_in = false;
+            bool decrement = false;
 
             while (t->internal_cycles >= t->internal_period_cycles)
             {
                 t->internal_cycles -= t->internal_period_cycles;
                 DecrementTimerCounter(i);
-                borrow_in = true;
+                decrement = true;
             }
 
             // set borrow in flag
-            t->control_b = borrow_in ? SET_BIT(t->control_b, 1) : UNSET_BIT(t->control_b, 1);
+            t->control_b = decrement ? SET_BIT(t->control_b, 1) : UNSET_BIT(t->control_b, 1);
+
+            // clear borrow out flag if not decremented
+            if (!decrement)
+                t->control_b = UNSET_BIT(t->control_b, 0);
         }
         // linked mode and borrow out from linked timer
         else if (IS_SET_BIT(m_state.timers[t->internal_linked_to].control_b, 0))
@@ -477,11 +482,13 @@ INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
 
         if (timer_index == 0)
         {
-            Debug("Render line");
+            DebugMikey("---> TIMER 0 TICK (HBLANK)");
+            m_suzy->Timer0Tick();
         }
         else if (timer_index == 2)
         {
-            Debug("VBLANK frame done");
+            DebugMikey("---> TIMER 2 TICK (VBLANK)");
+            m_suzy->Timer2Tick();
         }
     }
     else
@@ -490,7 +497,11 @@ INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
         t->control_b = UNSET_BIT(t->control_b, 0);
         t->counter--;
     }
-
+    
+    // if (timer_index == 0 || timer_index == 2)
+    // {
+    //     DebugMikey("Timer %d decremented to %02X", timer_index, t->counter);
+    // }
 }
 
 INLINE void Mikey::UpdateIRQs()

@@ -21,11 +21,20 @@
 #define SUZY_INLINE_H
 
 #include "suzy.h"
+#include "mikey.h"
 #include "cartridge.h"
 #include "m6502.h"
 
-INLINE void Suzy::Clock(u32 cycles)
+INLINE bool Suzy::Clock(u32 cycles)
 {
+    bool ret = m_frame_ready;
+
+    if (m_frame_ready)
+    {
+        m_frame_ready = false;
+        DebugSuzy("*************** FRAME READY ****************");
+    }
+    return ret;
 }
 
 INLINE u8 Suzy::Read(u16 address)
@@ -238,10 +247,14 @@ INLINE void Suzy::Write(u16 address, u8 value)
         m_state.VOFF.high = value;
         break;
     case SUZY_VIDBASL:     // 0xFC08
+        DebugSuzy("Setting VIDBAS low to %02X (was %04X)", value, m_state.VIDBAS.value);
         m_state.VIDBAS.value = value;
+        DebugSuzy("VIDBAS = %04X", m_state.VIDBAS.value);
         break;
     case SUZY_VIDBASH:     // 0xFC09
+        DebugSuzy("Setting VIDBAS high to %02X (was %04X)", value, m_state.VIDBAS.value);
         m_state.VIDBAS.high = value;
+        DebugSuzy("VIDBAS = %04X", m_state.VIDBAS.value);
         break;
     case SUZY_COLLBASL:    // 0xFC0A
         m_state.COLLBAS.value = value;
@@ -250,10 +263,14 @@ INLINE void Suzy::Write(u16 address, u8 value)
         m_state.COLLBAS.high = value;
         break;
     case SUZY_VIDADRL:     // 0xFC0C
+        DebugSuzy("Setting VIDADR low to %02X (was %04X)", value, m_state.VIDADR.value);
         m_state.VIDADR.value = value;
+        DebugSuzy("VIDADR = %04X", m_state.VIDADR.value);
         break;
     case SUZY_VIDADRH:     // 0xFC0D
+        DebugSuzy("Setting VIDADR high to %02X (was %04X)", value, m_state.VIDADR.value);
         m_state.VIDADR.high = value;
+        DebugSuzy("VIDADR = %04X", m_state.VIDADR.value);
         break;
     case SUZY_COLLADRL:    // 0xFC0E
         m_state.COLLADR.value = value;
@@ -425,9 +442,11 @@ INLINE void Suzy::Write(u16 address, u8 value)
         DebugSuzy("Writing to read-only SUZYSREV: %02X", value);
         break;
     case SUZY_SUZYBUSEN:   // 0xFC90
+        DebugSuzy("Setting SUZYBUSEN to %02X (was %02X)", value, m_state.SUZYBUSEN);
         m_state.SUZYBUSEN = value;
         break;
     case SUZY_SPRGO:       // 0xFC91
+        DebugSuzy("Setting SPRGO to %02X (was %02X)", value, m_state.SPRGO);
         m_state.SPRGO = value;
         break;
     case SUZY_SPRSYS:      // 0xFC92
@@ -463,6 +482,30 @@ INLINE void Suzy::Write(u16 address, u8 value)
     }
 }
 
+INLINE void Suzy::Timer0Tick()
+{
+    if (m_render_line >= 0 && m_render_line < 102)
+        RenderLine(m_render_line);
+    else
+        DebugSuzy("===> Skiping line %d: VIDBAS %04X", m_render_line, m_state.VIDBAS.value);
+
+    m_render_line++;
+
+    //assert(m_render_line < 105);
+
+    // if (m_render_line > 104)
+    // {
+    //     DebugSuzy("Suzy::Timer0Tick: m_render_line > 104");
+    //     m_render_line = 0;
+    // }
+}
+
+INLINE void Suzy::Timer2Tick()
+{
+    m_frame_ready = true;
+    m_render_line = 0;
+}
+
 INLINE Suzy::Suzy_State* Suzy::GetState()
 {
     return &m_state;
@@ -482,8 +525,70 @@ INLINE void Suzy::RenderLine(int line)
 {
     if (m_pixel_format == GLYNX_PIXEL_RGB565)
         RenderLineTemplate<2>(line);
-    else
+    else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
         RenderLineTemplate<4>(line);
+}
+
+template <int bytes_per_pixel>
+inline void Suzy::RenderLineTemplate(int line)
+{
+    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
+
+    DebugSuzy("===> Rendering line %d: VIDBAS %04X", line, m_state.VIDBAS.value);
+
+    u8* ram = m_memory->GetRAM();
+    u16 line_offset = (u16)(m_state.VIDBAS.value + (line * (GLYNX_SCREEN_WIDTH / 2)));
+    u8* src_line_ptr = ram + line_offset;
+    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
+    u16* palette = m_mikey->GetPalette();
+
+    u8* src = src_line_ptr;
+    u8* dst = dst_line_ptr;
+
+    // RGB565
+    if (bytes_per_pixel == 2)
+    {
+        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+        {
+            u8 byte = *src++;
+            u8 color0 = byte >> 4;
+            u8 color1 = byte & 0x0F;
+            u16 idx0 = palette[color0] & 0x0FFF;
+            u16 idx1 = palette[color1] & 0x0FFF;
+
+            dst[0] = m_rgb565_palette[idx0][0];
+            dst[1] = m_rgb565_palette[idx0][1];
+
+            dst[2] = m_rgb565_palette[idx1][0];
+            dst[3] = m_rgb565_palette[idx1][1];
+
+            dst += 4;
+        }
+    }
+    // RGBA8888
+    else
+    {
+        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+        {
+            u8 byte = *src++;
+            u8 color0 = byte >> 4;
+            u8 color1 = byte & 0x0F;
+            u16 idx0 = palette[color0] & 0x0FFF;
+            u16 idx1 = palette[color1] & 0x0FFF;
+
+            dst[0] = m_rgba888_palette[idx0][0];
+            dst[1] = m_rgba888_palette[idx0][1];
+            dst[2] = m_rgba888_palette[idx0][2];
+            dst[3] = m_rgba888_palette[idx0][3];
+
+            dst[4] = m_rgba888_palette[idx1][0];
+            dst[5] = m_rgba888_palette[idx1][1];
+            dst[6] = m_rgba888_palette[idx1][2];
+            dst[7] = m_rgba888_palette[idx1][3];
+
+            dst += 8;
+        }
+    }
 }
 
 #endif /* SUZY_INLINE_H */

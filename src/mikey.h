@@ -92,7 +92,7 @@ private:
     u16 m_palette[16] = {};
 };
 
-static const u32 k_mikey_timer_period_cycles[8] = { 16, 32, 64, 128, 256, 512, 1024, 0 };
+static const u32 k_mikey_timer_period_cycles[8] = { 4, 8, 16, 32, 64, 128, 512, 0 };
 
 #include "mikey_inline.h"
 
