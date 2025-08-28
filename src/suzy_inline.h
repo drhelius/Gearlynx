@@ -548,6 +548,8 @@ inline void Suzy::RenderLineTemplate(int line)
     // RGB565
     if (bytes_per_pixel == 2)
     {
+        u16* dst16 = (u16*)(dst_line_ptr);
+
         for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
         {
             u8 byte = *src++;
@@ -556,18 +558,16 @@ inline void Suzy::RenderLineTemplate(int line)
             u16 idx0 = palette[color0] & 0x0FFF;
             u16 idx1 = palette[color1] & 0x0FFF;
 
-            dst[0] = m_rgb565_palette[idx0][0];
-            dst[1] = m_rgb565_palette[idx0][1];
-
-            dst[2] = m_rgb565_palette[idx1][0];
-            dst[3] = m_rgb565_palette[idx1][1];
-
-            dst += 4;
+            dst16[0] = m_rgb565_palette[idx0];
+            dst16[1] = m_rgb565_palette[idx1];
+            dst16 += 2;
         }
     }
     // RGBA8888
     else
     {
+        u32* dst32 = (u32*)(dst_line_ptr);
+
         for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
         {
             u8 byte = *src++;
@@ -576,17 +576,9 @@ inline void Suzy::RenderLineTemplate(int line)
             u16 idx0 = palette[color0] & 0x0FFF;
             u16 idx1 = palette[color1] & 0x0FFF;
 
-            dst[0] = m_rgba888_palette[idx0][0];
-            dst[1] = m_rgba888_palette[idx0][1];
-            dst[2] = m_rgba888_palette[idx0][2];
-            dst[3] = m_rgba888_palette[idx0][3];
-
-            dst[4] = m_rgba888_palette[idx1][0];
-            dst[5] = m_rgba888_palette[idx1][1];
-            dst[6] = m_rgba888_palette[idx1][2];
-            dst[7] = m_rgba888_palette[idx1][3];
-
-            dst += 8;
+            dst32[0] = m_rgba8888_palette[idx0];
+            dst32[1] = m_rgba8888_palette[idx1];
+            dst32 += 2;
         }
     }
 }

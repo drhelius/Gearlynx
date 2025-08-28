@@ -63,17 +63,23 @@ void Suzy::InitPalettes()
         u8 green = ((i >> 8) & 0x0F) * 255 / 15;
         u8 blue = ((i >> 4) & 0x0F) * 255 / 15;
         u8 red = (i & 0x0F) * 255 / 15;
-        m_rgba888_palette[i][0] = red;
-        m_rgba888_palette[i][1] = green;
-        m_rgba888_palette[i][2] = blue;
-        m_rgba888_palette[i][3] = 255;
+
+        #ifdef GLYNX_LITTLE_ENDIAN
+        m_rgba8888_palette[i] = (u32)red | ((u32)green << 8) | ((u32)blue << 16) | ((u32)255 << 24);
+        #else
+        m_rgba8888_palette[i] = ((u32)255) | ((u32)blue << 8) | ((u32)green << 16) | ((u32)red << 24);
+        #endif
 
         green  = ((i >> 8) & 0x0F) * 63 / 15;
         blue   = ((i >> 4) & 0x0F) * 31 / 15;
         red    = (i & 0x0F) * 31 / 15;
         u16 rgb565 = (red << 11) | (green << 5) | blue;
-        m_rgb565_palette[i][0] = rgb565 & 0xFF;
-        m_rgb565_palette[i][1] = (rgb565 >> 8) & 0xFF;
+
+        #ifdef GLYNX_LITTLE_ENDIAN
+        m_rgb565_palette[i] = rgb565;
+        #else
+        m_rgb565_palette[i] = (rgb565 >> 8) | ((rgb565 & 0xFF) << 8);
+        #endif
     }
 }
 

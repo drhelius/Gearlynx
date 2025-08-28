@@ -97,8 +97,8 @@ private:
     Suzy_State m_state;
     u8* m_frame_buffer;
     GLYNX_Pixel_Format m_pixel_format;
-    u8 m_rgba888_palette[4096][4] = {};
-    u8 m_rgb565_palette[4096][2] = {};
+    u32 m_rgba8888_palette[4096] = {};
+    u16 m_rgb565_palette[4096] = {};
     bool m_frame_ready;
     u8 m_render_line;
 };
