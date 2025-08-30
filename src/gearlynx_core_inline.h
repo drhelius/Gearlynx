@@ -54,7 +54,7 @@ INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int*
 template<bool debugger>
 bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
-    m_suzy->SetBuffer(frame_buffer);
+    m_mikey->SetBuffer(frame_buffer);
 
     if (debugger)
     {
@@ -76,8 +76,8 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
                 m_debug_callback();
 
             u32 cycles = m_m6502->RunInstruction(&instruction_completed);
-            m_mikey->Clock(cycles);
-            stop = m_suzy->Clock(cycles);
+            m_suzy->Clock(cycles);
+            stop = m_mikey->Clock(cycles);
 
             temp_max_cycles += cycles;
             if (temp_max_cycles > 90000)

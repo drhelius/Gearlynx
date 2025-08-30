@@ -25,38 +25,32 @@
 #include "cartridge.h"
 #include "m6502.h"
 
-INLINE void Mikey::Clock(u32 cycles)
+INLINE bool Mikey::Clock(u32 cycles)
 {
     UpdateTimers(cycles);
     UpdateIRQs();
+
+    bool ret = m_state.frame_ready;
+
+    if (m_state.frame_ready)
+    {
+        m_state.frame_ready = false;
+        DebugMikey("*************** FRAME READY ****************");
+    }
+
+    return ret;
 }
 
 INLINE u8 Mikey::Read(u16 address)
 {
     if (address < 0xFD20)
-    {
-        u8 reg = address & 0x0003;
-        u8 timer_index = (address >> 2) & 0x0007;
-        return ReadTimer(timer_index, reg);
-    }
+        return ReadTimer(address);
     else if (address < 0xFD40)
-    {
-        u8 reg = address & 0x0007;
-        u8 channel = (address >> 7) & 0x0003;
-        return ReadAudio(channel, reg);
-    }
-    else if (address < 0xFD80)
-    {
+        return ReadAudio(address);
+    else if (address <= 0xFD50)
         return ReadAudioExtra(address);
-    }
     else if (address >= 0xFDA0 && address < 0xFDC0)
-    {
-        u8 color_index = address & 0x000F;
-        if (address < MIKEY_BLUERED0)
-            return m_state.colors[color_index].green;
-        else
-            return m_state.colors[color_index].bluered;
-    }
+        return ReadColor(address);
     else
     {
         switch (address)
@@ -120,6 +114,7 @@ INLINE u8 Mikey::Read(u16 address)
             DebugMikey("Reading MTEST2 (unused)");
             return 0xFF;
         default:
+            assert(false && "Unhandled Mikey Read Address");
             DebugMikey("Register READ called with unknown address: %04X", address);
             return 0xFF;
         }
@@ -132,39 +127,23 @@ INLINE u8 Mikey::Read(u16 address)
 INLINE void Mikey::Write(u16 address, u8 value)
 {
     if (address < 0xFD20)
-    {
-        u8 reg = address & 0x0003;
-        u8 timer_index = (address >> 2) & 0x0007;
-        WriteTimer(timer_index, reg, value);
-    }
+        WriteTimer(address, value);
     else if (address < 0xFD40)
-    {
-        u8 reg = address & 0x0007;
-        u8 channel = (address >> 7) & 0x0003;
-        WriteAudio(channel, reg, value);
-    }
-    else if (address < 0xFD80)
-    {
+        WriteAudio(address, value);
+    else if (address <= 0xFD50)
         WriteAudioExtra(address, value);
-    }
     else if (address >= 0xFDA0 && address < 0xFDC0)
-    {
-        u8 color_index = address & 0x000F;
-        if (address < MIKEY_BLUERED0)
-            m_state.colors[color_index].green = value;
-        else
-            m_state.colors[color_index].bluered = value;
-
-        m_palette[color_index] = ((m_state.colors[color_index].green & 0x0F) << 8) | (m_state.colors[color_index].bluered & 0xFF);
-    }
+        WriteColor(address, value);
     else
     {
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
+            DebugMikey("Clearing IRQs: %02X (was %02X)", m_state.irq_pending & ~value, m_state.irq_pending);
             m_state.irq_pending &= ~value;
             break;
         case MIKEY_INTSET:        // 0xFD81
+            DebugMikey("Setting IRQs: %02X (was %02X)", m_state.irq_pending | value, m_state.irq_pending);
             m_state.irq_pending |= value;
             break;
         case MIKEY_MAGRDY0:       // 0xFD84
@@ -177,7 +156,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing AUDIN (unused): %02X", value);
             break;
         case MIKEY_SYSCTL1:       // 0xFD87
-            DebugMikey("Writing SYSCTL1, value: %02X", value);
+            DebugMikey("Setting SYSCTL1 to %02X (was %02X)", value, m_state.SYSCTL1);
             m_cartridge->ShiftRegisterStrobe(value & 0x01);
             m_state.SYSCTL1 = value;
             break;
@@ -188,11 +167,11 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing MIKEYSREV (unused): %02X", value);
             break;
         case MIKEY_IODIR:         // 0xFD8A
-            DebugMikey("Writing IODIR, value: %02X", value);
+            DebugMikey("Setting IODIR to %02X (was %04X)", value, m_state.IODIR);
             m_state.IODIR = value;
             break;
         case MIKEY_IODAT:         // 0xFD8B
-            DebugMikey("Writing IODAT, value: %02X", value);
+            DebugMikey("Setting IODAT to %02X (was %04X)", value, m_state.IODAT);
             m_cartridge->ShiftRegisterBit(value & 0x02);
             m_state.IODAT = value;
             break;
@@ -203,22 +182,27 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.SERDAT = value;
             break;
         case MIKEY_SDONEACK:      // 0xFD90
+            DebugMikey("Setting SDONEACK to %02X (was %04X)", value, m_state.SDONEACK);
             m_state.SDONEACK = value;
             break;
         case MIKEY_CPUSLEEP:      // 0xFD91
-            DebugMikey("Writing to CPUSLEEP: %02X", value);
+            DebugMikey("Setting CPUSLEEP to %02X (was %02X)", value, m_state.CPUSLEEP);
             m_state.CPUSLEEP = value;
             break;
         case MIKEY_DISPCTL:       // 0xFD92
+            DebugMikey("Setting DISPCTL to %02X (was %04X)", value, m_state.DISPCTL);
             m_state.DISPCTL = value;
             break;
         case MIKEY_PBKUP:         // 0xFD93
+            DebugMikey("Setting PBKUP to %02X (was %02X)", value, m_state.PBKUP);
             m_state.PBKUP = value;
             break;
         case MIKEY_DISPADRL:      // 0xFD94
+            DebugMikey("Setting DISPADR low to %02X (was %02X)", value, m_state.DISPADR.low);
             m_state.DISPADR.low = value;
             break;
         case MIKEY_DISPADRH:      // 0xFD95
+            DebugMikey("Setting DISPADR high to %02X (was %02X)", value, m_state.DISPADR.high);
             m_state.DISPADR.high = value;
             break;
         case MIKEY_MTEST0:        // 0xFD9C
@@ -231,6 +215,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing MTEST2 (unused): %02X", value);
             break;
         default:
+            //assert(false && "Unhandled Mikey Write Address");
             DebugMikey("Register WRITE called with unknown address: %04X, value: %02X", address, value);
             break;
         }
@@ -242,14 +227,49 @@ INLINE Mikey::Mikey_State* Mikey::GetState()
     return &m_state;
 }
 
-INLINE u16* Mikey::GetPalette()
+INLINE void Mikey::SetBuffer(u8* frame_buffer)
 {
-    return m_palette;
+    m_frame_buffer = frame_buffer;
 }
 
-INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)
+INLINE u8* Mikey::GetBuffer()
 {
-    assert(timer_index < 8 && reg < 4 && "Invalid timer index or register");
+    return m_frame_buffer;
+}
+
+INLINE u8 Mikey::ReadColor(u16 address)
+{
+    assert(address >= MIKEY_GREEN0 || address <= MIKEY_BLUEREDF);
+
+    int color_index = address & 0xF;
+
+    if (address < MIKEY_BLUERED0)
+        return m_state.colors[color_index].green;
+    else
+        return m_state.colors[color_index].bluered;
+}
+
+INLINE void Mikey::WriteColor(u16 address, u8 value)
+{
+    assert(address >= MIKEY_GREEN0 || address <= MIKEY_BLUEREDF);
+
+    int color_index = address & 0xF;
+
+    if (address < MIKEY_BLUERED0)
+        m_state.colors[color_index].green = value;
+    else
+        m_state.colors[color_index].bluered = value;
+
+    m_host_palette[color_index] = ((m_state.colors[color_index].green & 0x0F) << 8) | (m_state.colors[color_index].bluered & 0xFF);
+}
+
+
+INLINE u8 Mikey::ReadTimer(u16 address)
+{
+    assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
+
+    int reg = address & 3;
+    int timer_index = (address >> 2) & 7;
 
     switch (reg)
     {
@@ -262,14 +282,16 @@ INLINE u8 Mikey::ReadTimer(u8 timer_index, u8 reg)
     case 3:
         return m_state.timers[timer_index].control_b;
     default:
-        DebugMikey("Timer READ called with unknown register: %02X, index: %02X", reg, timer_index);
         return 0xFF;
     }
 }
 
-INLINE void Mikey::WriteTimer(u8 timer_index, u8 reg, u8 value)
+INLINE void Mikey::WriteTimer(u16 address, u8 value)
 {
-    assert(timer_index < 8 && reg < 4 && "Invalid timer index or register");
+    assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
+
+    int reg = address & 3;
+    int timer_index = (address >> 2) & 7;
 
     switch (reg)
     {
@@ -294,14 +316,16 @@ INLINE void Mikey::WriteTimer(u8 timer_index, u8 reg, u8 value)
         m_state.timers[timer_index].control_b = value;
         break;
     default:
-        DebugMikey("Timer WRITE called with unknown register: %02X, index: %02X, value: %02X", reg, timer_index, value);
         break;
     }
 }
 
-INLINE u8 Mikey::ReadAudio(u8 channel, u8 reg)
+INLINE u8 Mikey::ReadAudio(u16 address)
 {
-    assert(channel < 4 && reg < 8 && "Invalid audio channel or register");
+    assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
+
+    int reg = address & 7;
+    int channel = (address >> 7) & 3;
 
     switch (reg)
     {
@@ -322,14 +346,16 @@ INLINE u8 Mikey::ReadAudio(u8 channel, u8 reg)
     case 7:
         return m_state.audio[channel].misc;
     default:
-        DebugMikey("Audio READ called with unknown register: %02X, channel: %02X", reg, channel);
         return 0xFF;
     }
 }
 
-INLINE void Mikey::WriteAudio(u8 channel, u8 reg, u8 value)
+INLINE void Mikey::WriteAudio(u16 address, u8 value)
 {
-    assert(channel < 4 && reg < 8 && "Invalid audio channel or register");
+    assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
+
+    int reg = address & 7;
+    int channel = (address >> 7) & 3;
 
     switch (reg)
     {
@@ -358,13 +384,14 @@ INLINE void Mikey::WriteAudio(u8 channel, u8 reg, u8 value)
         m_state.audio[channel].misc = value;
         break;
     default:
-        DebugMikey("Audio WRITE called with unknown register: %02X, channel: %02X, value: %02X", reg, channel, value);
         break;
     }
 }
 
 INLINE u8 Mikey::ReadAudioExtra(u16 address)
 {
+    assert(address >= MIKEY_ATTEN_A || address <= MIKEY_MSTEREO);
+
     switch (address)
     {
     case MIKEY_ATTEN_A:       // 0xFD40
@@ -387,6 +414,8 @@ INLINE u8 Mikey::ReadAudioExtra(u16 address)
 
 INLINE void Mikey::WriteAudioExtra(u16 address, u8 value)
 {
+    assert(address >= MIKEY_ATTEN_A || address <= MIKEY_MSTEREO);
+
     switch (address)
     {
     case MIKEY_ATTEN_A:       // 0xFD40
@@ -483,12 +512,12 @@ INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
         if (timer_index == 0)
         {
             DebugMikey("---> TIMER 0 TICK (HBLANK)");
-            m_suzy->Timer0Tick();
+            HorizontalBlank();
         }
         else if (timer_index == 2)
         {
             DebugMikey("---> TIMER 2 TICK (VBLANK)");
-            m_suzy->Timer2Tick();
+            VerticalBlank();
         }
     }
     else
@@ -497,7 +526,7 @@ INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
         t->control_b = UNSET_BIT(t->control_b, 0);
         t->counter--;
     }
-    
+
     // if (timer_index == 0 || timer_index == 2)
     // {
     //     DebugMikey("Timer %d decremented to %02X", timer_index, t->counter);
@@ -507,6 +536,82 @@ INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
 INLINE void Mikey::UpdateIRQs()
 {
     m_m6502->AssertIRQ((m_state.irq_pending && m_state.irq_mask) != 0);
+}
+
+INLINE void Mikey::HorizontalBlank()
+{
+    if (m_state.render_line >= 0 && m_state.render_line < 102)
+        LineDMA(m_state.render_line);
+    else
+        DebugMikey("===> Skiping line %d: DISPADR %04X", m_state.render_line, m_state.DISPADR.value);
+
+    m_state.render_line++;
+}
+
+INLINE void Mikey::VerticalBlank()
+{
+    m_state.frame_ready = true;
+    m_state.render_line = 0;
+}
+
+INLINE void Mikey::LineDMA(int line)
+{
+    if (m_pixel_format == GLYNX_PIXEL_RGB565)
+        LineDMATemplate<2>(line);
+    else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
+        LineDMATemplate<4>(line);
+}
+
+template <int bytes_per_pixel>
+inline void Mikey::LineDMATemplate(int line)
+{
+    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
+
+    DebugMikey("===> Rendering line %d: DISPADR %04X", line, m_state.DISPADR.value);
+
+    u8* ram = m_memory->GetRAM();
+    u16 line_offset = (u16)(m_state.DISPADR.value + (line * (GLYNX_SCREEN_WIDTH / 2)));
+    u8* src_line_ptr = ram + line_offset;
+    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
+    u16* palette = m_host_palette;
+    u8* src = src_line_ptr;
+
+    // RGB565
+    if (bytes_per_pixel == 2)
+    {
+        u16* dst16 = (u16*)(dst_line_ptr);
+
+        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+        {
+            u8 byte = *src++;
+            u8 color0 = byte >> 4;
+            u8 color1 = byte & 0x0F;
+            u16 idx0 = palette[color0] & 0x0FFF;
+            u16 idx1 = palette[color1] & 0x0FFF;
+
+            dst16[0] = m_rgb565_palette[idx0];
+            dst16[1] = m_rgb565_palette[idx1];
+            dst16 += 2;
+        }
+    }
+    // RGBA8888
+    else
+    {
+        u32* dst32 = (u32*)(dst_line_ptr);
+
+        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+        {
+            u8 byte = *src++;
+            u8 color0 = byte >> 4;
+            u8 color1 = byte & 0x0F;
+            u16 idx0 = palette[color0] & 0x0FFF;
+            u16 idx1 = palette[color1] & 0x0FFF;
+
+            dst32[0] = m_rgba8888_palette[idx0];
+            dst32[1] = m_rgba8888_palette[idx1];
+            dst32 += 2;
+        }
+    }
 }
 
 #endif /* MIKEY_INLINE_H */

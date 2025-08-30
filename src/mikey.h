@@ -56,32 +56,43 @@ public:
         u16_union DISPADR;
         u8 irq_pending;
         u8 irq_mask;
+        bool frame_ready;
+        u32 render_line;
     };
 
 public:
     Mikey(Cartridge* cartridge, M6502* m6502);
     ~Mikey();
-    void Init(Suzy* suzy, Memory* memory);
+    void Init(Suzy* suzy, Memory* memory, GLYNX_Pixel_Format pixel_format);
     void Reset();
-    void Clock(u32 cycles);
+    bool Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
     Mikey_State* GetState();
-    u16* GetPalette();
+    void SetBuffer(u8* frame_buffer);
+    u8* GetBuffer();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
+    void InitPalettes();
     void InitTimers();
-    u8 ReadTimer(u8 timer_index, u8 reg);
-    void WriteTimer(u8 timer_index, u8 reg, u8 value);
-    u8 ReadAudio(u8 channel, u8 reg);
-    void WriteAudio(u8 channel, u8 reg, u8 value);
+    u8 ReadColor(u16 address);
+    void WriteColor(u16 address, u8 value);
+    u8 ReadTimer(u16 address);
+    void WriteTimer(u16 address, u8 value);
+    u8 ReadAudio(u16 address);
+    void WriteAudio(u16 address, u8 value);
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
     void UpdateTimers(u32 cycles);
     void DecrementTimerCounter(u8 timer_index);
     void UpdateIRQs();
+    void HorizontalBlank();
+    void VerticalBlank();
+    void LineDMA(int line);
+    template <int bytes_per_pixel>
+    void LineDMATemplate(int line);
 
 private:
     Cartridge* m_cartridge;
@@ -89,7 +100,12 @@ private:
     Memory* m_memory;
     M6502* m_m6502;
     Mikey_State m_state;
-    u16 m_palette[16] = {};
+    u8* m_ram;
+    u16 m_host_palette[16] = {};
+    u8* m_frame_buffer;
+    GLYNX_Pixel_Format m_pixel_format;
+    u32 m_rgba8888_palette[4096] = {};
+    u16 m_rgb565_palette[4096] = {};
 };
 
 static const u32 k_mikey_timer_period_cycles[8] = { 4, 8, 16, 32, 64, 128, 512, 0 };

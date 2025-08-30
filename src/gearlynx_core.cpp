@@ -77,8 +77,8 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_memory->Init();
     m_audio->Init();
     m_input->Init();
-    m_suzy->Init(m_mikey, m_memory, pixel_format);
-    m_mikey->Init(m_suzy, m_memory);
+    m_suzy->Init(m_mikey, m_memory);
+    m_mikey->Init(m_suzy, m_memory, pixel_format);
     m_m6502->Init(m_memory);
 }
 

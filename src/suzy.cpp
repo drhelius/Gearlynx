@@ -31,8 +31,7 @@ Suzy::Suzy(Cartridge* cartridge, M6502* m6502)
     m_m6502 = m6502;
     InitPointer(m_mikey);
     InitPointer(m_memory);
-    InitPointer(m_frame_buffer);
-    m_pixel_format = GLYNX_PIXEL_RGBA8888;
+    InitPointer(m_ram);
     Reset();
 }
 
@@ -40,47 +39,20 @@ Suzy::~Suzy()
 {
 }
 
-void Suzy::Init(Mikey* mikey, Memory* memory, GLYNX_Pixel_Format pixel_format)
+void Suzy::Init(Mikey* mikey, Memory* memory)
 {
     m_mikey = mikey;
     m_memory = memory;
-    m_pixel_format = pixel_format;
-    InitPalettes();
+    m_ram = m_memory->GetRAM();
     Reset();
 }
 
 void Suzy::Reset()
 {
-    m_frame_ready = false;
-    m_render_line = 0;
+    m_shift_register_address = 0;
+    m_shift_register_current = 0;
+    m_shift_register_bit = -1;
     memset(&m_state, 0, sizeof(Suzy_State));
-}
-
-void Suzy::InitPalettes()
-{
-    for (int i = 0; i < 4096; ++i)
-    {
-        u8 green = ((i >> 8) & 0x0F) * 255 / 15;
-        u8 blue = ((i >> 4) & 0x0F) * 255 / 15;
-        u8 red = (i & 0x0F) * 255 / 15;
-
-        #ifdef GLYNX_LITTLE_ENDIAN
-        m_rgba8888_palette[i] = (u32)red | ((u32)green << 8) | ((u32)blue << 16) | ((u32)255 << 24);
-        #else
-        m_rgba8888_palette[i] = ((u32)255) | ((u32)blue << 8) | ((u32)green << 16) | ((u32)red << 24);
-        #endif
-
-        green  = ((i >> 8) & 0x0F) * 63 / 15;
-        blue   = ((i >> 4) & 0x0F) * 31 / 15;
-        red    = (i & 0x0F) * 31 / 15;
-        u16 rgb565 = (red << 11) | (green << 5) | blue;
-
-        #ifdef GLYNX_LITTLE_ENDIAN
-        m_rgb565_palette[i] = rgb565;
-        #else
-        m_rgb565_palette[i] = (rgb565 >> 8) | ((rgb565 & 0xFF) << 8);
-        #endif
-    }
 }
 
 void Suzy::SaveState(std::ostream& stream)

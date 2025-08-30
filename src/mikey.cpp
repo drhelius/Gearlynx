@@ -29,6 +29,9 @@ Mikey::Mikey(Cartridge* cartridge, M6502* m6502)
     m_m6502 = m6502;
     InitPointer(m_suzy);
     InitPointer(m_memory);
+    InitPointer(m_frame_buffer);
+    InitPointer(m_ram);
+    m_pixel_format = GLYNX_PIXEL_RGBA8888;
     Reset();
 }
 
@@ -36,10 +39,13 @@ Mikey::~Mikey()
 {
 }
 
-void Mikey::Init(Suzy* suzy, Memory* memory)
+void Mikey::Init(Suzy* suzy, Memory* memory, GLYNX_Pixel_Format pixel_format)
 {
     m_suzy = suzy;
     m_memory = memory;
+    m_pixel_format = pixel_format;
+    m_ram = m_memory->GetRAM();
+    InitPalettes();
     InitTimers();
     Reset();
 }
@@ -47,7 +53,34 @@ void Mikey::Init(Suzy* suzy, Memory* memory)
 void Mikey::Reset()
 {
     memset(&m_state, 0, sizeof(Mikey_State));
-    memset(m_palette, 0, sizeof(m_palette));
+    memset(m_host_palette, 0, sizeof(m_host_palette));
+}
+
+void Mikey::InitPalettes()
+{
+    for (int i = 0; i < 4096; ++i)
+    {
+        u8 green = ((i >> 8) & 0x0F) * 255 / 15;
+        u8 blue = ((i >> 4) & 0x0F) * 255 / 15;
+        u8 red = (i & 0x0F) * 255 / 15;
+
+        #ifdef GLYNX_LITTLE_ENDIAN
+        m_rgba8888_palette[i] = (u32)red | ((u32)green << 8) | ((u32)blue << 16) | ((u32)255 << 24);
+        #else
+        m_rgba8888_palette[i] = ((u32)255) | ((u32)blue << 8) | ((u32)green << 16) | ((u32)red << 24);
+        #endif
+
+        green  = ((i >> 8) & 0x0F) * 63 / 15;
+        blue   = ((i >> 4) & 0x0F) * 31 / 15;
+        red    = (i & 0x0F) * 31 / 15;
+        u16 rgb565 = (red << 11) | (green << 5) | blue;
+
+        #ifdef GLYNX_LITTLE_ENDIAN
+        m_rgb565_palette[i] = rgb565;
+        #else
+        m_rgb565_palette[i] = (rgb565 >> 8) | ((rgb565 & 0xFF) << 8);
+        #endif
+    }
 }
 
 void Mikey::InitTimers()

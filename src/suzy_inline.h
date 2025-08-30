@@ -25,16 +25,9 @@
 #include "cartridge.h"
 #include "m6502.h"
 
-INLINE bool Suzy::Clock(u32 cycles)
+INLINE void Suzy::Clock(u32 cycles)
 {
-    bool ret = m_frame_ready;
 
-    if (m_frame_ready)
-    {
-        m_frame_ready = false;
-        DebugSuzy("*************** FRAME READY ****************");
-    }
-    return ret;
 }
 
 INLINE u8 Suzy::Read(u16 address)
@@ -191,12 +184,16 @@ INLINE u8 Suzy::Read(u16 address)
         DebugSuzy("Reading SPRSYS: %02X", m_state.SPRSYS);
         return 0;
     case SUZY_JOYSTICK:    // 0xFCB0
+        DebugSuzy("Reading JOYSTICK: %02X", m_state.JOYSTICK);
         return m_state.JOYSTICK;
     case SUZY_SWITCHES:    // 0xFCB1
+        DebugSuzy("Reading SWITCHES: %02X", m_state.SWITCHES);
         return m_state.SWITCHES;
     case SUZY_RCART0:      // 0xFCB2
+        DebugSuzy("Reading RCART0");
         return m_cartridge->ReadBank0();
     case SUZY_RCART1:      // 0xFCB3
+        DebugSuzy("Reading RCART1");
         return m_cartridge->ReadBank1();
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Reading LEDS (unused)");
@@ -303,15 +300,19 @@ INLINE void Suzy::Write(u16 address, u8 value)
         m_state.VPOSSTRT.high = value;
         break;
     case SUZY_SPRHSIZL:    // 0xFC18
+        DebugSuzy("Setting SPRHSIZ low to %02X (was %04X)", value, m_state.SPRHSIZ.value);
         m_state.SPRHSIZ.value = value;
         break;
     case SUZY_SPRHSIZH:    // 0xFC19
+        DebugSuzy("Setting SPRHSIZ high to %02X (was %04X)", value, m_state.SPRHSIZ.value);
         m_state.SPRHSIZ.high = value;
         break;
     case SUZY_SPRVSIZL:    // 0xFC1A
+        DebugSuzy("Setting SPRVSIZ low to %02X (was %04X)", value, m_state.SPRVSIZ.value);
         m_state.SPRVSIZ.value = value;
         break;
     case SUZY_SPRVSIZH:    // 0xFC1B
+        DebugSuzy("Setting SPRVSIZ high to %02X (was %04X)", value, m_state.SPRVSIZ.value);
         m_state.SPRVSIZ.high = value;
         break;
     case SUZY_STRETCHL:    // 0xFC1C
@@ -424,15 +425,19 @@ INLINE void Suzy::Write(u16 address, u8 value)
         m_state.MATHJ = value;
         break;
     case SUZY_SPRCTL0:     // 0xFC80
+        DebugSuzy("Setting SPRCTL0 to %02X (was %02X)", value, m_state.SPRCTL0);
         m_state.SPRCTL0 = value;
         break;
     case SUZY_SPRCTL1:     // 0xFC81
+        DebugSuzy("Setting SPRCTL1 to %02X (was %02X)", value, m_state.SPRCTL1);
         m_state.SPRCTL1 = value;
         break;
     case SUZY_SPRCOLL:     // 0xFC82
+        DebugSuzy("Setting SPRCOLL to %02X (was %02X)", value, m_state.SPRCOLL);
         m_state.SPRCOLL = value;
         break;
     case SUZY_SPRINIT:     // 0xFC83
+        DebugSuzy("Setting SPRINIT to %02X (was %02X)", value, m_state.SPRINIT);
         m_state.SPRINIT = value;
         break;
     case SUZY_SUZYHREV:    // 0xFC88
@@ -448,8 +453,11 @@ INLINE void Suzy::Write(u16 address, u8 value)
     case SUZY_SPRGO:       // 0xFC91
         DebugSuzy("Setting SPRGO to %02X (was %02X)", value, m_state.SPRGO);
         m_state.SPRGO = value;
+        if (value & 0x01)
+            SpritesGo();
         break;
     case SUZY_SPRSYS:      // 0xFC92
+        DebugSuzy("Setting SPRSYS to %02X (was %02X)", value, m_state.SPRSYS);
         m_state.SPRSYS = value;
         break;
     case SUZY_JOYSTICK:    // 0xFCB0
@@ -459,9 +467,11 @@ INLINE void Suzy::Write(u16 address, u8 value)
         DebugSuzy("Writing to read-only SWITCHES: %02X", value);
         break;
     case SUZY_RCART0:      // 0xFCB2
+        DebugSuzy("Writing to RCART0: %02X", value);
         m_cartridge->WriteBank0(value);
         break;
     case SUZY_RCART1:      // 0xFCB3
+        DebugSuzy("Writing to RCART1: %02X", value);
         m_cartridge->WriteBank1(value);
         break;
     case SUZY_LEDS:        // 0xFCC0
@@ -482,105 +492,280 @@ INLINE void Suzy::Write(u16 address, u8 value)
     }
 }
 
-INLINE void Suzy::Timer0Tick()
-{
-    if (m_render_line >= 0 && m_render_line < 102)
-        RenderLine(m_render_line);
-    else
-        DebugSuzy("===> Skiping line %d: VIDBAS %04X", m_render_line, m_state.VIDBAS.value);
-
-    m_render_line++;
-
-    //assert(m_render_line < 105);
-
-    // if (m_render_line > 104)
-    // {
-    //     DebugSuzy("Suzy::Timer0Tick: m_render_line > 104");
-    //     m_render_line = 0;
-    // }
-}
-
-INLINE void Suzy::Timer2Tick()
-{
-    m_frame_ready = true;
-    m_render_line = 0;
-}
-
 INLINE Suzy::Suzy_State* Suzy::GetState()
 {
     return &m_state;
 }
 
-INLINE void Suzy::SetBuffer(u8* frame_buffer)
+INLINE void Suzy::SpritesGo()
 {
-    m_frame_buffer = frame_buffer;
-}
+    DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X, SPRSYS=%02X",
+              m_state.SPRCTL0, m_state.SPRCTL1, m_state.SPRCOLL, m_state.SPRINIT, m_state.SPRSYS);
 
-INLINE u8* Suzy::GetBuffer()
-{
-    return m_frame_buffer;
-}
+    u16 scb = m_state.SCBNEXT.value;
+    int index = 0;
 
-INLINE void Suzy::RenderLine(int line)
-{
-    if (m_pixel_format == GLYNX_PIXEL_RGB565)
-        RenderLineTemplate<2>(line);
-    else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
-        RenderLineTemplate<4>(line);
-}
-
-template <int bytes_per_pixel>
-inline void Suzy::RenderLineTemplate(int line)
-{
-    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
-
-    DebugSuzy("===> Rendering line %d: VIDBAS %04X", line, m_state.VIDBAS.value);
-
-    u8* ram = m_memory->GetRAM();
-    u16 line_offset = (u16)(m_state.VIDBAS.value + (line * (GLYNX_SCREEN_WIDTH / 2)));
-    u8* src_line_ptr = ram + line_offset;
-    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
-    u16* palette = m_mikey->GetPalette();
-
-    u8* src = src_line_ptr;
-    u8* dst = dst_line_ptr;
-
-    // RGB565
-    if (bytes_per_pixel == 2)
+    while ((scb & 0xFF00) != 0)
     {
-        u16* dst16 = (u16*)(dst_line_ptr);
+        DebugSuzy("Drawing sprite %d at SCB %04X", index++, scb);
+        u16 next_in_list = RamReadWord(scb + 3);
+        DrawSprite(scb);
+        scb = next_in_list;
+    }
 
-        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+    m_state.SPRGO = 0x00;
+}
+
+INLINE void Suzy::DrawSprite(u16 scb_address)
+{
+    u16 scb = scb_address;
+
+    u8 sprctl0 = RamRead(scb + 0);
+    u8 sprctl1 = RamRead(scb + 1);
+    // u8 sprcoll = RamRead(scb + 2);
+
+    u16 data_ptr = RamReadWord(scb + 5);
+    s32 hpos = (s32)RamReadWord(scb + 7);
+    s32 vpos = (s32)RamReadWord(scb + 9);
+    // u16 sprhsiz = RamReadWord(scb + 11);
+    // u16 sprvsiz = RamReadWord(scb + 13);
+    // u16 stretch = RamReadWord(scb + 15);
+    // u16 tilt = RamReadWord(scb + 17);
+
+    // Pen index palette: 8 bytes -> 16 nibbles
+    u8 penmap[16];
+
+    for (int i = 0; i < 8; ++i)
+    {
+        u8 b = RamRead(scb + 19 + i);
+        penmap[(i << 1) + 0] = (b >> 4) & 0x0F;
+        penmap[(i << 1) + 1] = b & 0x0F;
+    }
+
+    int bpp = ((sprctl0 >> 6) & 0x03) + 1;
+
+    const bool literal_only = (sprctl1 & 0x80) != 0;
+
+    // SE
+    s32 dx = +1;
+    s32 dy = +1;
+
+    s32 cur_y = (dy < 0) ? vpos - 1 : vpos;
+
+    int quad_rotations = 0;
+
+    while (data_ptr != 0)
+    {
+        u16 line_base = data_ptr;
+        u8  offset = RamRead(line_base);
+        u16 next_ptr = (u16)(line_base + (u16)offset);
+
+        // avoid infinite loops on malformed data
+        if (next_ptr == line_base)
         {
-            u8 byte = *src++;
-            u8 color0 = byte >> 4;
-            u8 color1 = byte & 0x0F;
-            u16 idx0 = palette[color0] & 0x0FFF;
-            u16 idx1 = palette[color1] & 0x0FFF;
+            break;
+        }
 
-            dst16[0] = m_rgb565_palette[idx0];
-            dst16[1] = m_rgb565_palette[idx1];
-            dst16 += 2;
+        s32 cur_x = (dx < 0) ? hpos - 1 : hpos;
+
+        u16 data_begin = line_base + 1;
+        u16 data_end = next_ptr;
+
+        if (literal_only)
+        {
+            DrawSpriteLineLiteral(data_begin, data_end, cur_x, cur_y, dx, penmap, bpp);
+        }
+        else
+        {
+            DrawSpriteLinePacked(data_begin, data_end, cur_x, cur_y, dx, penmap, bpp);
+        }
+
+        if (offset == 0)
+        {
+            // End of sprite
+            break;
+        }
+        else if (offset == 1)
+        {
+            // Next quadrant
+            // SE -> NE -> NW -> SW
+            if ((quad_rotations & 1) == 0)
+                dy = -dy; // 0,2 -> flip Y
+            else
+                dx = -dx; // 1,3 -> flip X
+
+            quad_rotations++;
+            cur_y = (dy < 0) ? vpos - 1 : vpos;
+        }
+        else
+        {
+            // Same quadrant, next scanline
+            cur_y += dy;
+        }
+
+        data_ptr = next_ptr;
+    }
+}
+
+INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, u8* penmap, int bpp)
+{
+    ShiftRegisterReset(data_begin);
+    s32 x = x0;
+
+    while (m_shift_register_address < data_end)
+    {
+        u32 pi = ShiftRegisterGetBits(bpp, data_end);
+        u8 pen = penmap[pi & 0x0F];
+        DrawPixel(x, y, pen);
+        x += dx;
+    }
+}
+
+INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, u8* penmap, int bpp)
+{
+    ShiftRegisterReset(data_begin);
+    s32 x = x0;
+
+    while (m_shift_register_address < data_end)
+    {
+        // Early EOL detector: 00000 header (type=0,len-1=0)
+        if (ShiftRegisterPeek5(data_end) == 0)
+        {
+            // consume it and end the line
+            (void)ShiftRegisterGetBits(5, data_end);
+            break;
+        }
+
+        u32 is_lit = ShiftRegisterGetBits(1, data_end);
+        u32 cnt    = ShiftRegisterGetBits(4, data_end) + 1;
+
+        if (is_lit)
+        {
+            // literal: cnt pixels follow, each bpp bits
+            while (cnt--)
+            {
+                u32 pi = ShiftRegisterGetBits(bpp, data_end);
+                u8 pen = penmap[pi & 0x0F];
+                DrawPixel(x, y, pen);
+                x += dx;
+            }
+        }
+        else
+        {
+            // RLE: one color index, repeated cnt times
+            u32 pi = ShiftRegisterGetBits(bpp, data_end);
+            u8 pen = penmap[pi & 0x0F];
+            while (cnt--)
+            {
+                DrawPixel(x, y, pen);
+                x += dx;
+            }
         }
     }
-    // RGBA8888
+}
+
+INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen)
+{
+    if ((pen & 0x0F) == 0)
+        return; // color 0 is transparent
+
+    // HOFF/VOFF define the offset from virtual origin (0,0) to the visible top-left.
+    // Therefore convert world/virtual coords -> VRAM coords by subtracting offsets.
+    const s32 hoff = (s32)m_state.HOFF.value;
+    const s32 voff = (s32)m_state.VOFF.value;
+    const s32 eff_x = x - hoff;
+    const s32 eff_y = y - voff;
+
+    if ((u32)eff_x >= (u32)GLYNX_SCREEN_WIDTH)
+        return;
+    if ((u32)eff_y >= (u32)GLYNX_SCREEN_HEIGHT)
+        return;
+
+
+    u16 base = m_state.VIDBAS.value;
+    u16 addr = base + (u16)(eff_y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(eff_x >> 1);
+    u8  old  = RamRead(addr);
+
+    if ((eff_x & 1) == 0)
+    {
+        // left pixel -> high nibble
+        old = (old & 0x0F) | (pen << 4);
+    }
     else
     {
-        u32* dst32 = (u32*)(dst_line_ptr);
-
-        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
-        {
-            u8 byte = *src++;
-            u8 color0 = byte >> 4;
-            u8 color1 = byte & 0x0F;
-            u16 idx0 = palette[color0] & 0x0FFF;
-            u16 idx1 = palette[color1] & 0x0FFF;
-
-            dst32[0] = m_rgba8888_palette[idx0];
-            dst32[1] = m_rgba8888_palette[idx1];
-            dst32 += 2;
-        }
+        // right pixel -> low nibble
+        old = (old & 0xF0) | (pen & 0x0F);
     }
+
+    RamWrite(addr, old);
+}
+
+INLINE u8 Suzy::RamRead(u16 address)
+{
+    return m_ram[address];
+}
+
+INLINE u16 Suzy::RamReadWord(u16 address)
+{
+    return (u16)(m_ram[address] | (m_ram[(u16)(address + 1)] << 8));
+}
+
+INLINE void Suzy::RamWrite(u16 address, u8 value)
+{
+    m_ram[address] = value;
+}
+
+INLINE void Suzy::ShiftRegisterReset(u16 address)
+{
+    m_shift_register_address = address;
+    m_shift_register_current = RamRead(address);
+    m_shift_register_bit = 7;
+}
+
+INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
+{
+    // MSB-first
+    u32 value = 0;
+
+    while (n > 0)
+    {
+        if (m_shift_register_bit < 0)
+        {
+            m_shift_register_address++;
+
+            if (m_shift_register_address >= stop_addr)
+            {
+                // Clamp: further reads would overrun. Return what we have
+                break;
+            }
+
+            m_shift_register_current = RamRead(m_shift_register_address);
+            m_shift_register_bit = 7;
+        }
+
+        value = (value << 1) | ((m_shift_register_current >> m_shift_register_bit) & 1);
+        m_shift_register_bit--;
+        n--;
+    }
+
+    return value;
+}
+
+INLINE u32 Suzy::ShiftRegisterPeek5(u16 stop_addr)
+{
+    // Save state, read 5 bits, then restore
+
+    u16 prev_address = m_shift_register_address;
+    u8  prev_current  = m_shift_register_current;
+    int prev_bit  = m_shift_register_bit;
+
+    u32 value = ShiftRegisterGetBits(5, stop_addr);
+
+    m_shift_register_address = prev_address;
+    m_shift_register_current  = prev_current;
+    m_shift_register_bit  = prev_bit;
+
+    return value;
 }
 
 #endif /* SUZY_INLINE_H */

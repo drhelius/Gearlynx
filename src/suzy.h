@@ -59,35 +59,35 @@ public:
         u16_union VSIZOFF;
         u16_union SCBADR;
         u16_union PROCADR;
-
         u8 MATHD, MATHC, MATHB, MATHA, MATHP, MATHN, MATHH, MATHG, MATHF, MATHE, MATHM, MATHL, MATHK, MATHJ;
-
         u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO, SPRSYS;
-
         u8 JOYSTICK, SWITCHES;
     };
 
 public:
     Suzy(Cartridge* cartridge, M6502* m6502);
     ~Suzy();
-    void Init(Mikey* mikey, Memory* memory, GLYNX_Pixel_Format pixel_format);
+    void Init(Mikey* mikey, Memory* memory);
     void Reset();
-    bool Clock(u32 cycles);
+    void Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
-    void Timer0Tick();
-    void Timer2Tick();
     Suzy_State* GetState();
-    void SetBuffer(u8* frame_buffer);
-    u8* GetBuffer();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
-    void InitPalettes();
-    void RenderLine(int line);
-    template <int bytes_per_pixel>
-    void RenderLineTemplate(int line);
+    void SpritesGo();
+    void DrawSprite(u16 scb_address);
+    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, u8* penmap, int bpp);
+    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, u8* penmap, int bpp);
+    void DrawPixel(s32 x, s32 y, u8 pen);
+    u8 RamRead(u16 address);
+    u16 RamReadWord(u16 address);
+    void RamWrite(u16 address, u8 value);
+    void ShiftRegisterReset(u16 address);
+    u32 ShiftRegisterGetBits(int n, u16 stop_addr);
+    u32 ShiftRegisterPeek5(u16 stop_addr);
 
 private:
     Cartridge* m_cartridge;
@@ -95,12 +95,11 @@ private:
     Memory* m_memory;
     M6502* m_m6502;
     Suzy_State m_state;
-    u8* m_frame_buffer;
-    GLYNX_Pixel_Format m_pixel_format;
-    u32 m_rgba8888_palette[4096] = {};
-    u16 m_rgb565_palette[4096] = {};
-    bool m_frame_ready;
-    u8 m_render_line;
+    u8* m_ram;
+
+    u16 m_shift_register_address;
+    u8 m_shift_register_current;
+    int m_shift_register_bit;
 };
 
 #include "suzy_inline.h"
