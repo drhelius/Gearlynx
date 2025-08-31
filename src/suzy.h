@@ -84,15 +84,15 @@ public:
 private:
     void SpritesGo();
     void DrawSprite(u16 scb_address);
-    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, int bpp);
-    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, int bpp);
-    void DrawPixel(s32 x, s32 y, u8 pen);
+    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type);
+    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type);
+    void DrawPixel(s32 x, s32 y, u8 pen, u8 type);
+    bool IsPixelTransparent(u8 pen, u8 type);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
     void RamWrite(u16 address, u8 value);
     void ShiftRegisterReset(u16 address);
     u32 ShiftRegisterGetBits(int n, u16 stop_addr);
-    u32 ShiftRegisterPeek5(u16 stop_addr);
 
 private:
     Cartridge* m_cartridge;

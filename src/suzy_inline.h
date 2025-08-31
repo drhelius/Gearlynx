@@ -536,7 +536,7 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
     int bpp = ((sprctl0 >> 6) & 0x03) + 1;
     bool h_flip = IS_SET_BIT(sprctl0, 5);
     bool v_flip = IS_SET_BIT(sprctl0, 4);
-    int type = sprctl0& 0x07;
+    int type = sprctl0 & 0x07;
 
     bool literal_only = IS_SET_BIT(sprctl1, 7);
     int reload_depth = (sprctl1 >> 4) & 0x03;
@@ -625,11 +625,11 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
 
         if (literal_only)
         {
-            DrawSpriteLineLiteral(data_begin, data_end, cur_x, cur_y, dx, bpp);
+            DrawSpriteLineLiteral(data_begin, data_end, cur_x, cur_y, dx, bpp, type);
         }
         else
         {
-            DrawSpriteLinePacked(data_begin, data_end, cur_x, cur_y, dx, bpp);
+            DrawSpriteLinePacked(data_begin, data_end, cur_x, cur_y, dx, bpp, type);
         }
 
         if (offset == 0)
@@ -659,67 +659,65 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
     }
 }
 
-INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, int bpp)
+INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type)
 {
     ShiftRegisterReset(data_begin);
-    s32 x = x0;
 
     while (m_shift_register_address < data_end)
     {
         u32 pi = ShiftRegisterGetBits(bpp, data_end);
         u8 pen = m_state.penmap[pi & 0x0F];
-        DrawPixel(x, y, pen);
+        DrawPixel(x, y, pen, type);
         x += dx;
     }
 }
 
-INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, int bpp)
+INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type)
 {
     ShiftRegisterReset(data_begin);
-    s32 x = x0;
 
     while (m_shift_register_address < data_end)
     {
-        // Early EOL detector: 00000 header (type=0,len-1=0)
-        if (ShiftRegisterPeek5(data_end) == 0)
+        u32 header = ShiftRegisterGetBits(5, data_end);
+
+        if (header == 0)
         {
-            // consume it and end the line
-            (void)ShiftRegisterGetBits(5, data_end);
+            // early EOL
             break;
         }
 
-        u32 is_lit = ShiftRegisterGetBits(1, data_end);
-        u32 cnt    = ShiftRegisterGetBits(4, data_end) + 1;
+        u32 is_literal = header >> 4;
+        u32 count = (header & 0x0F) + 1;
 
-        if (is_lit)
+        if (is_literal)
         {
-            // literal: cnt pixels follow, each bpp bits
-            while (cnt--)
+            while (count--)
             {
                 u32 pi = ShiftRegisterGetBits(bpp, data_end);
                 u8 pen = m_state.penmap[pi & 0x0F];
-                DrawPixel(x, y, pen);
+                DrawPixel(x, y, pen, type);
                 x += dx;
             }
         }
         else
         {
-            // RLE: one color index, repeated cnt times
-            u32 pi = ShiftRegisterGetBits(bpp, data_end);
-            u8 pen = m_state.penmap[pi & 0x0F];
-            while (cnt--)
+            // RLE: one color index, repeated "count" times
+            u32 pixel_index = ShiftRegisterGetBits(bpp, data_end);
+            u8 pen = m_state.penmap[pixel_index & 0x0F];
+
+            while (count--)
             {
-                DrawPixel(x, y, pen);
+                DrawPixel(x, y, pen, type);
                 x += dx;
             }
         }
     }
 }
 
-INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen)
+INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, u8 type)
 {
-    if ((pen & 0x0F) == 0)
-        return; // color 0 is transparent
+    if (IsPixelTransparent(pen, type))
+        return;
 
     // HOFF/VOFF define the offset from virtual origin (0,0) to the visible top-left.
     // Therefore convert world/virtual coords -> VRAM coords by subtracting offsets.
@@ -733,23 +731,51 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen)
     if ((u32)eff_y >= (u32)GLYNX_SCREEN_HEIGHT)
         return;
 
-
     u16 base = m_state.VIDBAS.value;
     u16 addr = base + (u16)(eff_y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(eff_x >> 1);
-    u8  old  = RamRead(addr);
+    u8 byte = RamRead(addr);
+
+    bool is_xor = (type == 6);
 
     if ((eff_x & 1) == 0)
     {
         // left pixel -> high nibble
-        old = (old & 0x0F) | (pen << 4);
+        u8 new_byte = pen;
+        if (is_xor)
+            new_byte ^= (byte >> 4) & 0x0F;
+        byte = (byte & 0x0F) | (new_byte << 4);
     }
     else
     {
         // right pixel -> low nibble
-        old = (old & 0xF0) | (pen & 0x0F);
+        u8 new_byte = pen;
+        if (is_xor)
+            new_byte ^= byte & 0x0F;
+        byte = (byte & 0xF0) | (new_byte & 0x0F);
     }
 
-    RamWrite(addr, old);
+    RamWrite(addr, byte);
+}
+
+INLINE bool Suzy::IsPixelTransparent(u8 pen, u8 type)
+{
+    switch (type & 0x07)
+    {
+        case 0: // BACKGROUND
+        case 1: // BACKGROUND NON-COLLIDING
+            return false;
+        case 2: // BOUNDARY-SHADOW
+            return (pen == 0x00) || (pen == 0x0E) || (pen == 0x0F);
+        case 3: // BOUNDARY
+            return (pen == 0x00) || (pen == 0x0F);
+        case 4: // NORMAL
+        case 5: // NON-COLLIDABLE
+        case 6: // XOR
+        case 7: // SHADOW
+            return (pen == 0x00);
+        default:
+            return false; // should not happen
+    }
 }
 
 INLINE u8 Suzy::RamRead(u16 address)
@@ -799,23 +825,6 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
         m_shift_register_bit--;
         n--;
     }
-
-    return value;
-}
-
-INLINE u32 Suzy::ShiftRegisterPeek5(u16 stop_addr)
-{
-    // Save state, read 5 bits, then restore
-
-    u16 prev_address = m_shift_register_address;
-    u8  prev_current  = m_shift_register_current;
-    int prev_bit  = m_shift_register_bit;
-
-    u32 value = ShiftRegisterGetBits(5, stop_addr);
-
-    m_shift_register_address = prev_address;
-    m_shift_register_current  = prev_current;
-    m_shift_register_bit  = prev_bit;
 
     return value;
 }
