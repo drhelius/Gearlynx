@@ -597,6 +597,11 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
     s32 dx = start_left ? -1 : +1;
     s32 dy = start_up ? -1 : +1;
 
+    if (h_flip)
+        dx = -dx;
+    if (v_flip)
+        dy = -dy;
+
     s32 cur_y = (dy < 0) ? vpos - 1 : vpos;
 
     int quad_rotations = 0;
