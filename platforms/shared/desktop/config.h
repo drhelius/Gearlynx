@@ -68,9 +68,9 @@ struct config_Video
     bool bilinear = false;
     bool mix_frames = true;
     float mix_frames_intensity = 0.60f;
-    bool scanlines = true;
-    bool scanlines_filter = true;
-    float scanlines_intensity = 0.10f;
+    int scanlines_type = 2;
+    bool scanlines_filter = false;
+    float scanlines_intensity = 0.80f;
     bool sync = true;
 };
 

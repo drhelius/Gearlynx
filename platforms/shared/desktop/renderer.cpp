@@ -36,14 +36,27 @@
 #include "renderer.h"
 
 static uint32_t system_texture;
-static uint32_t scanlines_texture;
+static uint32_t scanlines_horizontal_texture;
+static uint32_t scanlines_vertical_texture;
+static uint32_t scanlines_grid_texture;
 static uint32_t frame_buffer_object;
 static GLYNX_Runtime_Info current_runtime;
 static bool first_frame;
-static u32 scanlines[16] = {
+
+static u32 scanlines_horizontal[16] = {
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
-    0x000000FF, 0x000000FF, 0x000000FF, 0x000000FF,
+    0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x000000FF, 0x000000FF, 0x000000FF, 0x000000FF};
+static u32 scanlines_vertical[16] = {
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF,
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF,
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF,
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF};
+static u32 scanlines_grid[16] = {
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF,
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF,
+    0x00000000, 0x00000000, 0x00000000, 0x000000FF,
     0x000000FF, 0x000000FF, 0x000000FF, 0x000000FF};
 
 static void init_ogl_gui(void);
@@ -92,7 +105,9 @@ void renderer_destroy(void)
     glDeleteFramebuffers(1, &frame_buffer_object); 
     glDeleteTextures(1, &renderer_emu_texture);
     glDeleteTextures(1, &system_texture);
-    glDeleteTextures(1, &scanlines_texture);
+    glDeleteTextures(1, &scanlines_horizontal_texture);
+    glDeleteTextures(1, &scanlines_vertical_texture);
+    glDeleteTextures(1, &scanlines_grid_texture);
 
     for (int s = 0; s < 64; s++)
     {
@@ -125,7 +140,7 @@ void renderer_render(void)
     else
         render_emu_normal();
 
-    if (config_video.scanlines)
+    if (config_video.scanlines_type > 0)
         render_scanlines();
 
     update_emu_texture();
@@ -207,9 +222,25 @@ static void init_ogl_savestates(void)
 
 static void init_scanlines_texture(void)
 {
-    glGenTextures(1, &scanlines_texture);
-    glBindTexture(GL_TEXTURE_2D, scanlines_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, (GLvoid*) scanlines);
+    glGenTextures(1, &scanlines_horizontal_texture);
+    glBindTexture(GL_TEXTURE_2D, scanlines_horizontal_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, (GLvoid*) scanlines_horizontal);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glGenTextures(1, &scanlines_vertical_texture);
+    glBindTexture(GL_TEXTURE_2D, scanlines_vertical_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, (GLvoid*) scanlines_vertical);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glGenTextures(1, &scanlines_grid_texture);
+    glBindTexture(GL_TEXTURE_2D, scanlines_grid_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, (GLvoid*) scanlines_grid);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -317,7 +348,7 @@ static void update_emu_texture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    if (config_video.scanlines && config_video.scanlines_filter)
+    if ((config_video.scanlines_type > 0) && config_video.scanlines_filter)
     {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -359,7 +390,14 @@ static void render_scanlines(void)
     glColor4f(1.0f, 1.0f, 1.0f, config_video.scanlines_intensity);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glBindTexture(GL_TEXTURE_2D, scanlines_texture);
+    if (config_video.scanlines_type == 1)
+        glBindTexture(GL_TEXTURE_2D, scanlines_horizontal_texture);
+    else if (config_video.scanlines_type == 2)
+        glBindTexture(GL_TEXTURE_2D, scanlines_vertical_texture);
+    else if (config_video.scanlines_type == 3)
+        glBindTexture(GL_TEXTURE_2D, scanlines_grid_texture);
+    else
+        glBindTexture(GL_TEXTURE_2D, scanlines_vertical_texture);
 
     int viewportWidth = current_runtime.screen_width * FRAME_BUFFER_SCALE;
     int viewportHeight = current_runtime.screen_height * FRAME_BUFFER_SCALE;
@@ -372,14 +410,15 @@ static void render_scanlines(void)
     glMatrixMode(GL_MODELVIEW);
     glViewport(0, 0, viewportWidth, viewportHeight);
 
+    float tex_h = (float)current_runtime.screen_width;
     float tex_v = (float)current_runtime.screen_height;
 
     glBegin(GL_QUADS);
     glTexCoord2d(0.0, 0.0);
     glVertex2d(0.0, 0.0);
-    glTexCoord2d(1.0, 0.0);
+    glTexCoord2d(tex_h, 0.0);
     glVertex2d(viewportWidth, 0.0);
-    glTexCoord2d(1.0, tex_v);
+    glTexCoord2d(tex_h, tex_v);
     glVertex2d(viewportWidth, viewportHeight);
     glTexCoord2d(0.0, tex_v);
     glVertex2d(0.0, viewportHeight);
