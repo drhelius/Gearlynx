@@ -1454,7 +1454,7 @@ void gui_debug_window_call_stack(void)
     ImGui::SetNextWindowPos(ImVec2(340, 168), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(330, 240), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("Suzy 65C02 Call Stack", &config_debug.show_call_stack);
+    ImGui::Begin("Mikey 65C02 Call Stack", &config_debug.show_call_stack);
 
     GearlynxCore* core = emu_get_core();
     Memory* memory = core->GetMemory();

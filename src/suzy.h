@@ -62,11 +62,7 @@ public:
         u8 MATHD, MATHC, MATHB, MATHA, MATHP, MATHN, MATHH, MATHG, MATHF, MATHE, MATHM, MATHL, MATHK, MATHJ;
         u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO, SPRSYS;
         u8 JOYSTICK, SWITCHES;
-        u8 penmap[16];
-        u8 sprhsiz;
-        u8 sprvsiz;
-        u8 stretch;
-        u8 tilt;
+        u8 pen_map[16];
     };
 
 public:
@@ -83,9 +79,9 @@ public:
 
 private:
     void SpritesGo();
-    void DrawSprite(u16 scb_address);
-    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type);
-    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type);
+    void DrawSprite();
+    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type, u16 hsiz);
+    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type, u16 hsiz);
     void DrawPixel(s32 x, s32 y, u8 pen, u8 type);
     bool IsPixelTransparent(u8 pen, u8 type);
     u8 RamRead(u16 address);

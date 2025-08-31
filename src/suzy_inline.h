@@ -502,97 +502,121 @@ INLINE void Suzy::SpritesGo()
     DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X, SPRSYS=%02X",
               m_state.SPRCTL0, m_state.SPRCTL1, m_state.SPRCOLL, m_state.SPRINIT, m_state.SPRSYS);
 
-    u16 scb = m_state.SCBNEXT.value;
     int index = 0;
 
-    while ((scb & 0xFF00) != 0)
+    while ((m_state.SCBNEXT.value & 0xFF00) != 0)
     {
-        DebugSuzy("Drawing sprite %d at SCB %04X", index++, scb);
-        u16 next_in_list = RamReadWord(scb + 3);
-        DrawSprite(scb);
-        scb = next_in_list;
+        DrawSprite();
     }
 
     m_state.SPRGO = 0x00;
 }
 
-INLINE void Suzy::DrawSprite(u16 scb_address)
+INLINE void Suzy::DrawSprite()
 {
-    u16 scb = scb_address;
+    DebugSuzy("Drawing sprite at SCB %04X", m_state.SCBNEXT.value);
 
-    u8 sprctl0 = RamRead(scb);
-    scb++;
-    u8 sprctl1 = RamRead(scb);
-    scb++;
+    m_state.SCBADR.value = m_state.SCBNEXT.value;
+    m_state.TMPADR.value = m_state.SCBADR.value;
 
-    bool skip = IS_SET_BIT(sprctl1, 2);
+    m_state.SPRCTL0 = RamRead(m_state.TMPADR.value++);
+    m_state.SPRCTL1 = RamRead(m_state.TMPADR.value++);
+    m_state.SPRCOLL = RamRead(m_state.TMPADR.value++);
+    m_state.SCBNEXT.value = RamReadWord(m_state.TMPADR.value);
+    m_state.TMPADR.value += 2;
 
-    if (skip)
+    // Skip sprite
+    if (IS_SET_BIT(m_state.SPRCTL1, 2))
     {
-        DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", scb);
+        DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", m_state.SCBADR.value);
         return;
     }
 
-    int bpp = ((sprctl0 >> 6) & 0x03) + 1;
-    bool h_flip = IS_SET_BIT(sprctl0, 5);
-    bool v_flip = IS_SET_BIT(sprctl0, 4);
-    int type = sprctl0 & 0x07;
+    // SPRCTL0 flags
+    int bpp = ((m_state.SPRCTL0 >> 6) & 0x03) + 1;
+    bool h_flip = IS_SET_BIT(m_state.SPRCTL0, 5);
+    bool v_flip = IS_SET_BIT(m_state.SPRCTL0, 4);
+    int type = m_state.SPRCTL0 & 0x07;
 
-    bool literal_only = IS_SET_BIT(sprctl1, 7);
-    int reload_depth = (sprctl1 >> 4) & 0x03;
-    bool reload_palette = IS_NOT_SET_BIT(sprctl1, 3);
-    bool start_up = IS_SET_BIT(sprctl1, 1);
-    bool start_left = IS_SET_BIT(sprctl1, 0);
+    DebugSuzy("  SPRCTL0: BPP=%d, HFLIP=%d, VFLIP=%d, TYPE=%d", bpp, h_flip ? 1 : 0, v_flip ? 1 : 0, type);
 
-    u8 sprcoll = RamRead(scb);
-    scb++;
+    // SPRCTL1 flags
+    bool literal_only = IS_SET_BIT(m_state.SPRCTL1, 7);
+    int reload_depth = (m_state.SPRCTL1 >> 4) & 0x03;
+    bool reload_palette = IS_NOT_SET_BIT(m_state.SPRCTL1, 3);
+    bool start_up = IS_SET_BIT(m_state.SPRCTL1, 1);
+    bool start_left = IS_SET_BIT(m_state.SPRCTL1, 0);
 
-    scb += 2; //SCBNEXT
+    DebugSuzy("  SPRCTL1: LITERAL=%d, RDEPTH=%d, RPALETTE=%d, STARTUP=%d, STARTLEFT=%d",
+              literal_only ? 1 : 0,
+              reload_depth,
+              reload_palette ? 1 : 0,
+              start_up ? 1 : 0,
+              start_left ? 1 : 0);
 
-    u16 data_ptr = RamReadWord(scb);
-    scb += 2;
-    s32 hpos = (s32)RamReadWord(scb);
-    scb += 2;
-    s32 vpos = (s32)RamReadWord(scb);
-    scb += 2;
+    m_state.SPRDLINE.value = RamReadWord(m_state.TMPADR.value);
+    m_state.TMPADR.value += 2;
+
+    m_state.HPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
+    m_state.TMPADR.value += 2;
+    m_state.VPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
+    m_state.TMPADR.value += 2;
 
     if (reload_depth == 1)
     {
-        m_state.sprhsiz = RamReadWord(scb);
-        scb += 2;
-        m_state.sprvsiz = RamReadWord(scb);
-        scb += 2;
+        m_state.SPRHSIZ.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
+        m_state.SPRVSIZ.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
     }
     else if (reload_depth == 2)
     {
-        m_state.sprhsiz = RamReadWord(scb);
-        scb += 2;
-        m_state.sprvsiz = RamReadWord(scb);
-        scb += 2;
-        m_state.stretch = RamReadWord(scb);
-        scb += 2;
+        m_state.SPRHSIZ.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
+        m_state.SPRVSIZ.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
+        m_state.STRETCH.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
     }
     else if (reload_depth == 3)
     {
-        m_state.sprhsiz = RamReadWord(scb);
-        scb += 2;
-        m_state.sprvsiz = RamReadWord(scb);
-        scb += 2;
-        m_state.stretch = RamReadWord(scb);
-        scb += 2;
-        m_state.tilt = RamReadWord(scb);
-        scb += 2;
+        m_state.SPRHSIZ.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
+        m_state.SPRVSIZ.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
+        m_state.STRETCH.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
+        m_state.TILT.value = RamReadWord(m_state.TMPADR.value);
+        m_state.TMPADR.value += 2;
     }
 
     if (reload_palette)
     {
         for (int i = 0; i < 8; ++i)
         {
-            u8 byte = RamRead(scb + i);
-            m_state.penmap[(i << 1) + 0] = (byte >> 4) & 0x0F;
-            m_state.penmap[(i << 1) + 1] = byte & 0x0F;
+            u8 byte = RamRead(m_state.TMPADR.value++);
+            m_state.pen_map[(i << 1) + 0] = (byte >> 4) & 0x0F;
+            m_state.pen_map[(i << 1) + 1] = byte & 0x0F;
         }
     }
+
+    s32 hsiz_cur = (s32)m_state.SPRHSIZ.value;   // 0x0100 = 1:1
+    s32 vsiz_cur = (s32)m_state.SPRVSIZ.value;   // 0x0100 = 1:1
+    s32 stretch   = (s16)m_state.STRETCH.value;  // signed 8.8 per scanline
+    s32 tilt_step = (s16)m_state.TILT.value;     // signed 8.8 per scanline
+
+    s32 tilt_acc  = (s32)m_state.TILTACUM.value; // start from HW accumulator
+    u32 v_accum   = 0;                            // +0x100 emits one screen line
+
+    const bool v_stretch = (m_state.SPRSYS & 0x10) != 0;
+
+    // Fix: may be zero (warbirds) but breaks blue lightning
+    if (hsiz_cur == 0) hsiz_cur = 0x0100;
+    if (vsiz_cur == 0) vsiz_cur = 0x0100;
+
+    // Prevent stall/negative after stretch arithmetic
+    if (hsiz_cur < 1) hsiz_cur = 1;
+    if (vsiz_cur < 1) vsiz_cur = 1;
 
     s32 dx = start_left ? -1 : +1;
     s32 dy = start_up ? -1 : +1;
@@ -602,34 +626,57 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
     if (v_flip)
         dy = -dy;
 
-    s32 cur_y = (dy < 0) ? vpos - 1 : vpos;
+    s32 cur_y = (dy < 0) ? (s16)m_state.VPOSSTRT.value - 1 : (s16)m_state.VPOSSTRT.value;
 
     int quad_rotations = 0;
 
-    while (data_ptr != 0)
+    while (m_state.SPRDLINE.value != 0)
     {
-        u16 line_base = data_ptr;
-        u8  offset = RamRead(line_base);
-        u16 next_ptr = (u16)(line_base + (u16)offset);
+        u8  offset = RamRead(m_state.SPRDLINE.value);
+        u16 next_ptr = (u16)(m_state.SPRDLINE.value + (u16)offset);
 
         // avoid infinite loops on malformed data
-        if (next_ptr == line_base)
+        if (next_ptr == m_state.SPRDLINE.value)
         {
             break;
         }
 
-        s32 cur_x = (dx < 0) ? hpos - 1 : hpos;
+        // Decode range of this source scanline
+        u16 data_begin = m_state.SPRDLINE.value + 1;
+        u16 data_end   = next_ptr;
 
-        u16 data_begin = line_base + 1;
-        u16 data_end = next_ptr;
+        // Accumulate vertical size (8.8). Each +0x100 emits one screen scanline
+        v_accum += (u32)vsiz_cur;
+        while (v_accum >= 0x100)
+        {
+            s32 start_x = ((dx < 0) ? (s16)m_state.HPOSSTRT.value - 1 : (s16)m_state.HPOSSTRT.value) + (tilt_acc >> 8);
 
-        if (literal_only)
-        {
-            DrawSpriteLineLiteral(data_begin, data_end, cur_x, cur_y, dx, bpp, type);
-        }
-        else
-        {
-            DrawSpriteLinePacked(data_begin, data_end, cur_x, cur_y, dx, bpp, type);
+            if (literal_only)
+            {
+                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, type, (u16)hsiz_cur);
+            }
+            else
+            {
+                DrawSpriteLinePacked (data_begin, data_end, start_x, cur_y, dx, bpp, type, (u16)hsiz_cur);
+            }
+
+            // Advance one screen scanline
+            cur_y   += dy;
+            v_accum -= 0x100;
+
+            // Per-scanline effects
+            tilt_acc += tilt_step;   // next line starts tilted
+            hsiz_cur += stretch;     // horizontal stretch always
+
+            if (v_stretch)
+            {
+                vsiz_cur += stretch; // vertical stretch if enabled
+                if (vsiz_cur < 1)
+                    vsiz_cur = 1;
+            }
+
+            if (hsiz_cur < 1)
+                hsiz_cur = 1;
         }
 
         if (offset == 0)
@@ -639,42 +686,58 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
         }
         else if (offset == 1)
         {
-            // Next quadrant
-            // SE -> NE -> NW -> SW
+            // Next quadrant: SE -> NE -> NW -> SW
             if ((quad_rotations & 1) == 0)
                 dy = -dy; // 0,2 -> flip Y
             else
                 dx = -dx; // 1,3 -> flip X
 
             quad_rotations++;
-            cur_y = (dy < 0) ? vpos - 1 : vpos;
+            cur_y = (dy < 0) ? (s16)m_state.VPOSSTRT.value - 1 : (s16)m_state.VPOSSTRT.value;
+            v_accum = 0; // restart vertical emission alignment for new quadrant
         }
         else
         {
-            // Same quadrant, next scanline
-            cur_y += dy;
+            // Same quadrant, next line
+            // VSIZ loop already advanced cur_y by emitted screen lines
+            // Do not add extra cur_y += dy here
         }
 
-        data_ptr = next_ptr;
+        m_state.SPRDLINE.value = next_ptr;
     }
 }
 
-INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type)
+INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
+                                        s32 x, s32 y, s32 dx,
+                                        int bpp, u8 type, u16 hsiz)
 {
     ShiftRegisterReset(data_begin);
+
+    u32 h_accum = 0;
 
     while (m_shift_register_address < data_end)
     {
         u32 pi = ShiftRegisterGetBits(bpp, data_end);
-        u8 pen = m_state.penmap[pi & 0x0F];
-        DrawPixel(x, y, pen, type);
-        x += dx;
+        u8 pen = m_state.pen_map[pi & 0x0F];
+
+        h_accum += (u32)hsiz;
+
+        while (h_accum >= 0x100)
+        {
+            DrawPixel(x, y, pen, type);
+            x += dx;
+            h_accum -= 0x100;
+        }
     }
 }
 
-INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type)
+INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
+                                       s32 x, s32 y, s32 dx,
+                                       int bpp, u8 type, u16 hsiz)
 {
     ShiftRegisterReset(data_begin);
+
+    u32 h_accum = 0;
 
     while (m_shift_register_address < data_end)
     {
@@ -694,21 +757,31 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 
             while (count--)
             {
                 u32 pi = ShiftRegisterGetBits(bpp, data_end);
-                u8 pen = m_state.penmap[pi & 0x0F];
-                DrawPixel(x, y, pen, type);
-                x += dx;
+                u8 pen = m_state.pen_map[pi & 0x0F];
+
+                h_accum += (u32)hsiz;
+                while (h_accum >= 0x100)
+                {
+                    DrawPixel(x, y, pen, type);
+                    x += dx;
+                    h_accum -= 0x100;
+                }
             }
         }
-        else
+        else // RLE
         {
-            // RLE: one color index, repeated "count" times
             u32 pixel_index = ShiftRegisterGetBits(bpp, data_end);
-            u8 pen = m_state.penmap[pixel_index & 0x0F];
+            u8 pen = m_state.pen_map[pixel_index & 0x0F];
 
             while (count--)
             {
-                DrawPixel(x, y, pen, type);
-                x += dx;
+                h_accum += (u32)hsiz;
+                while (h_accum >= 0x100)
+                {
+                    DrawPixel(x, y, pen, type);
+                    x += dx;
+                    h_accum -= 0x100;
+                }
             }
         }
     }
@@ -719,12 +792,10 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, u8 type)
     if (IsPixelTransparent(pen, type))
         return;
 
-    // HOFF/VOFF define the offset from virtual origin (0,0) to the visible top-left.
-    // Therefore convert world/virtual coords -> VRAM coords by subtracting offsets.
-    const s32 hoff = (s32)m_state.HOFF.value;
-    const s32 voff = (s32)m_state.VOFF.value;
-    const s32 eff_x = x - hoff;
-    const s32 eff_y = y - voff;
+    s32 hoff = (s32)m_state.HOFF.value;
+    s32 voff = (s32)m_state.VOFF.value;
+    s32 eff_x = x - hoff;
+    s32 eff_y = y - voff;
 
     if ((u32)eff_x >= (u32)GLYNX_SCREEN_WIDTH)
         return;

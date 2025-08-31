@@ -106,6 +106,7 @@ private:
     GLYNX_Pixel_Format m_pixel_format;
     u32 m_rgba8888_palette[4096] = {};
     u16 m_rgb565_palette[4096] = {};
+    u16 m_dispadr_latch;
 };
 
 static const u32 k_mikey_timer_period_cycles[8] = { 4, 8, 16, 32, 64, 128, 512, 0 };

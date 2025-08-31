@@ -20,7 +20,7 @@
 #ifndef MIKEY_DEFINES_H
 #define MIKEY_DEFINES_H
 
-#define DebugMikey(fmt, ...) Debug("- MIKEY [PC=%04X]: " fmt, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)
+#define DebugMikey(fmt, ...) Debug("· MIKEY [PC=%04X]: " fmt, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)
 
 #define MIKEY_TIM0BKUP      0xFD00
 #define MIKEY_TIM0CTLA      0xFD01

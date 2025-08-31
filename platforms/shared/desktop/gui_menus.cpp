@@ -600,17 +600,25 @@ static void menu_debug(void)
 
         ImGui::MenuItem("Show Output Screen", "", &config_debug.show_screen, config_debug.debug);
         ImGui::MenuItem("Show Disassembler", "", &config_debug.show_disassembler, config_debug.debug);
-        ImGui::MenuItem("Show Suzy 65C02", "", &config_debug.show_processor, config_debug.debug);
-        ImGui::MenuItem("Show Suzy 65C02 Call Stack", "", &config_debug.show_call_stack, config_debug.debug);
-        ImGui::MenuItem("Show Suzy Registers", "", &config_debug.show_suzy_regs, config_debug.debug);
-        ImGui::MenuItem("Show Suzy Math Registers", "", &config_debug.show_suzy_math_regs, config_debug.debug);
+        ImGui::MenuItem("Show Memory Editor", "", &config_debug.show_memory, config_debug.debug);
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Show Mikey 65C02", "", &config_debug.show_processor, config_debug.debug);
+        ImGui::MenuItem("Show Mikey 65C02 Call Stack", "", &config_debug.show_call_stack, config_debug.debug);
         ImGui::MenuItem("Show Mikey Registers", "", &config_debug.show_mikey_regs, config_debug.debug);
         ImGui::MenuItem("Show Mikey Timers", "", &config_debug.show_mikey_timers, config_debug.debug);
         ImGui::MenuItem("Show Mikey Timer Registers", "", &config_debug.show_mikey_timer_regs, config_debug.debug);
         ImGui::MenuItem("Show Mikey Audio Registers", "", &config_debug.show_mikey_audio, config_debug.debug);
         ImGui::MenuItem("Show Mikey Color Registers", "", &config_debug.show_mikey_colors, config_debug.debug);
-        ImGui::MenuItem("Show Lynx Memory Map", "", &config_debug.show_memory);
-        ImGui::MenuItem("Show Memory Editor", "", &config_debug.show_memory, config_debug.debug);
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Show Suzy Registers", "", &config_debug.show_suzy_regs, config_debug.debug);
+        ImGui::MenuItem("Show Suzy Math Registers", "", &config_debug.show_suzy_math_regs, config_debug.debug);
+
+        ImGui::Separator();
+
         ImGui::MenuItem("Show PSG", "", &config_debug.show_psg, config_debug.debug);
         ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
 

@@ -34,7 +34,7 @@ void gui_debug_window_m6502(void)
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(3, 26), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("Suzy 65C02", &config_debug.show_processor, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Mikey 65C02", &config_debug.show_processor, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
 
     ImGui::PushFont(gui_default_font);
 

@@ -55,7 +55,7 @@ void Suzy::Reset()
     memset(&m_state, 0, sizeof(Suzy_State));
 
     for (int i = 0; i < 16; ++i)
-        m_state.penmap[i] = i;
+        m_state.pen_map[i] = i;
 }
 
 void Suzy::SaveState(std::ostream& stream)

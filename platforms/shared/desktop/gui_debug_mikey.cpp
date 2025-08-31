@@ -105,7 +105,7 @@ void gui_debug_window_mikey_timer_regs(void)
     ImGui::SetNextWindowPos(ImVec2(400, 79), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(284, 400), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("Mikey Timer Registers", &config_debug.show_mikey_timers);
+    ImGui::Begin("Mikey Timer Registers", &config_debug.show_mikey_timer_regs);
     ImGui::PushFont(gui_default_font);
 
     GearlynxCore* core = emu_get_core();

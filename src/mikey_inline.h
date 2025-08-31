@@ -200,6 +200,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_DISPADRL:      // 0xFD94
             DebugMikey("Setting DISPADR low to %02X (was %02X)", value, m_state.DISPADR.low);
             m_state.DISPADR.low = value;
+            m_state.DISPADR.value &= 0xFFFC;
             break;
         case MIKEY_DISPADRH:      // 0xFD95
             DebugMikey("Setting DISPADR high to %02X (was %02X)", value, m_state.DISPADR.high);
@@ -543,7 +544,15 @@ INLINE void Mikey::HorizontalBlank()
     if (m_state.render_line >= 0 && m_state.render_line < 102)
         LineDMA(m_state.render_line);
     else
-        DebugMikey("===> Skiping line %d: DISPADR %04X", m_state.render_line, m_state.DISPADR.value);
+    {
+        DebugMikey("===> Skiping VBLANK line %d: DISPADR %04X", m_state.render_line, m_dispadr_latch);
+
+        if (m_state.render_line == 104)
+        {
+            DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
+            m_dispadr_latch = m_state.DISPADR.value;
+        }
+    }
 
     m_state.render_line++;
 }
@@ -567,10 +576,10 @@ inline void Mikey::LineDMATemplate(int line)
 {
     assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
 
-    DebugMikey("===> Rendering line %d: DISPADR %04X", line, m_state.DISPADR.value);
+    DebugMikey("===> Rendering line %d: DISPADR %04X", line, m_dispadr_latch);
 
     u8* ram = m_memory->GetRAM();
-    u16 line_offset = (u16)(m_state.DISPADR.value + (line * (GLYNX_SCREEN_WIDTH / 2)));
+    u16 line_offset = (u16)(m_dispadr_latch + (line * (GLYNX_SCREEN_WIDTH / 2)));
     u8* src_line_ptr = ram + line_offset;
     u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
     u16* palette = m_host_palette;
