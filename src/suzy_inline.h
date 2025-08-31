@@ -520,35 +520,82 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
 {
     u16 scb = scb_address;
 
-    u8 sprctl0 = RamRead(scb + 0);
-    u8 sprctl1 = RamRead(scb + 1);
-    // u8 sprcoll = RamRead(scb + 2);
+    u8 sprctl0 = RamRead(scb);
+    scb++;
+    u8 sprctl1 = RamRead(scb);
+    scb++;
 
-    u16 data_ptr = RamReadWord(scb + 5);
-    s32 hpos = (s32)RamReadWord(scb + 7);
-    s32 vpos = (s32)RamReadWord(scb + 9);
-    // u16 sprhsiz = RamReadWord(scb + 11);
-    // u16 sprvsiz = RamReadWord(scb + 13);
-    // u16 stretch = RamReadWord(scb + 15);
-    // u16 tilt = RamReadWord(scb + 17);
+    bool skip = IS_SET_BIT(sprctl1, 2);
 
-    // Pen index palette: 8 bytes -> 16 nibbles
-    u8 penmap[16];
-
-    for (int i = 0; i < 8; ++i)
+    if (skip)
     {
-        u8 b = RamRead(scb + 19 + i);
-        penmap[(i << 1) + 0] = (b >> 4) & 0x0F;
-        penmap[(i << 1) + 1] = b & 0x0F;
+        DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", scb);
+        return;
     }
 
     int bpp = ((sprctl0 >> 6) & 0x03) + 1;
+    bool h_flip = IS_SET_BIT(sprctl0, 5);
+    bool v_flip = IS_SET_BIT(sprctl0, 4);
+    int type = sprctl0& 0x07;
 
-    const bool literal_only = (sprctl1 & 0x80) != 0;
+    bool literal_only = IS_SET_BIT(sprctl1, 7);
+    int reload_depth = (sprctl1 >> 4) & 0x03;
+    bool reload_palette = IS_NOT_SET_BIT(sprctl1, 3);
+    bool start_up = IS_SET_BIT(sprctl1, 1);
+    bool start_left = IS_SET_BIT(sprctl1, 0);
 
-    // SE
-    s32 dx = +1;
-    s32 dy = +1;
+    u8 sprcoll = RamRead(scb);
+    scb++;
+
+    scb += 2; //SCBNEXT
+
+    u16 data_ptr = RamReadWord(scb);
+    scb += 2;
+    s32 hpos = (s32)RamReadWord(scb);
+    scb += 2;
+    s32 vpos = (s32)RamReadWord(scb);
+    scb += 2;
+
+    if (reload_depth == 1)
+    {
+        m_state.sprhsiz = RamReadWord(scb);
+        scb += 2;
+        m_state.sprvsiz = RamReadWord(scb);
+        scb += 2;
+    }
+    else if (reload_depth == 2)
+    {
+        m_state.sprhsiz = RamReadWord(scb);
+        scb += 2;
+        m_state.sprvsiz = RamReadWord(scb);
+        scb += 2;
+        m_state.stretch = RamReadWord(scb);
+        scb += 2;
+    }
+    else if (reload_depth == 3)
+    {
+        m_state.sprhsiz = RamReadWord(scb);
+        scb += 2;
+        m_state.sprvsiz = RamReadWord(scb);
+        scb += 2;
+        m_state.stretch = RamReadWord(scb);
+        scb += 2;
+        m_state.tilt = RamReadWord(scb);
+        scb += 2;
+    }
+
+    if (reload_palette)
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            u8 byte = RamRead(scb + i);
+            m_state.penmap[(i << 1) + 0] = (byte >> 4) & 0x0F;
+            m_state.penmap[(i << 1) + 1] = byte & 0x0F;
+        }
+    }
+
+    s32 dx = start_left ? -1 : +1;
+    s32 dy = start_up ? -1 : +1;
 
     s32 cur_y = (dy < 0) ? vpos - 1 : vpos;
 
@@ -573,11 +620,11 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
 
         if (literal_only)
         {
-            DrawSpriteLineLiteral(data_begin, data_end, cur_x, cur_y, dx, penmap, bpp);
+            DrawSpriteLineLiteral(data_begin, data_end, cur_x, cur_y, dx, bpp);
         }
         else
         {
-            DrawSpriteLinePacked(data_begin, data_end, cur_x, cur_y, dx, penmap, bpp);
+            DrawSpriteLinePacked(data_begin, data_end, cur_x, cur_y, dx, bpp);
         }
 
         if (offset == 0)
@@ -607,7 +654,7 @@ INLINE void Suzy::DrawSprite(u16 scb_address)
     }
 }
 
-INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, u8* penmap, int bpp)
+INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, int bpp)
 {
     ShiftRegisterReset(data_begin);
     s32 x = x0;
@@ -615,13 +662,13 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x0, s3
     while (m_shift_register_address < data_end)
     {
         u32 pi = ShiftRegisterGetBits(bpp, data_end);
-        u8 pen = penmap[pi & 0x0F];
+        u8 pen = m_state.penmap[pi & 0x0F];
         DrawPixel(x, y, pen);
         x += dx;
     }
 }
 
-INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, u8* penmap, int bpp)
+INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32 y, s32 dx, int bpp)
 {
     ShiftRegisterReset(data_begin);
     s32 x = x0;
@@ -645,7 +692,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32
             while (cnt--)
             {
                 u32 pi = ShiftRegisterGetBits(bpp, data_end);
-                u8 pen = penmap[pi & 0x0F];
+                u8 pen = m_state.penmap[pi & 0x0F];
                 DrawPixel(x, y, pen);
                 x += dx;
             }
@@ -654,7 +701,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x0, s32
         {
             // RLE: one color index, repeated cnt times
             u32 pi = ShiftRegisterGetBits(bpp, data_end);
-            u8 pen = penmap[pi & 0x0F];
+            u8 pen = m_state.penmap[pi & 0x0F];
             while (cnt--)
             {
                 DrawPixel(x, y, pen);

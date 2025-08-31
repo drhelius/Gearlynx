@@ -53,6 +53,9 @@ void Suzy::Reset()
     m_shift_register_current = 0;
     m_shift_register_bit = -1;
     memset(&m_state, 0, sizeof(Suzy_State));
+
+    for (int i = 0; i < 16; ++i)
+        m_state.penmap[i] = i;
 }
 
 void Suzy::SaveState(std::ostream& stream)
