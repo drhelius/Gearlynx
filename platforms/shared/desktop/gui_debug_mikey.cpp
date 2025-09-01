@@ -29,6 +29,8 @@
 #include "emu.h"
 #include "utils.h"
 
+static ImVec4 color_444_to_float(u16 color);
+
 void gui_debug_window_mikey_regs(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
@@ -271,41 +273,103 @@ void gui_debug_window_mikey_colors(void)
     GearlynxCore* core = emu_get_core();
     Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
 
-    struct {
-        const char* name;
-        const char* addr_g;
-        const char* addr_br;
-        u8* green;
-        u8* bluered;
-    } color_regs[] = {
-        {"COLOR0",  "FDA0", "FDB0", &mikey_state->colors[0].green,  &mikey_state->colors[0].bluered},
-        {"COLOR1",  "FDA1", "FDB1", &mikey_state->colors[1].green,  &mikey_state->colors[1].bluered},
-        {"COLOR2",  "FDA2", "FDB2", &mikey_state->colors[2].green,  &mikey_state->colors[2].bluered},
-        {"COLOR3",  "FDA3", "FDB3", &mikey_state->colors[3].green,  &mikey_state->colors[3].bluered},
-        {"COLOR4",  "FDA4", "FDB4", &mikey_state->colors[4].green,  &mikey_state->colors[4].bluered},
-        {"COLOR5",  "FDA5", "FDB5", &mikey_state->colors[5].green,  &mikey_state->colors[5].bluered},
-        {"COLOR6",  "FDA6", "FDB6", &mikey_state->colors[6].green,  &mikey_state->colors[6].bluered},
-        {"COLOR7",  "FDA7", "FDB7", &mikey_state->colors[7].green,  &mikey_state->colors[7].bluered},
-        {"COLOR8",  "FDA8", "FDB8", &mikey_state->colors[8].green,  &mikey_state->colors[8].bluered},
-        {"COLOR9",  "FDA9", "FDB9", &mikey_state->colors[9].green,  &mikey_state->colors[9].bluered},
-        {"COLORA",  "FDAA", "FDBA", &mikey_state->colors[10].green, &mikey_state->colors[10].bluered},
-        {"COLORB",  "FDAB", "FDBB", &mikey_state->colors[11].green, &mikey_state->colors[11].bluered},
-        {"COLORC",  "FDAC", "FDBC", &mikey_state->colors[12].green, &mikey_state->colors[12].bluered},
-        {"COLORD",  "FDAD", "FDBD", &mikey_state->colors[13].green, &mikey_state->colors[13].bluered},
-        {"COLORE",  "FDAE", "FDBE", &mikey_state->colors[14].green, &mikey_state->colors[14].bluered},
-        {"COLORF",  "FDAF", "FDBF", &mikey_state->colors[15].green, &mikey_state->colors[15].bluered},
-        {0, 0, 0, 0, 0}
-    };
-    int i = 0;
-    while (color_regs[i].name != 0)
+    const u16 base = 0xFDA0;
+
+    for (int line = 0; line < 4; line++)
     {
-        ImGui::TextColored(cyan, "%s ", color_regs[i].name); ImGui::SameLine();
-        ImGui::Text("G: %s = $%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", color_regs[i].addr_g, *color_regs[i].green, BYTE_TO_BINARY(*color_regs[i].green)); ImGui::SameLine();
-        ImGui::Text("BR: %s = $%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", color_regs[i].addr_br, *color_regs[i].bluered, BYTE_TO_BINARY(*color_regs[i].bluered));
-    
-        i++;
+        for (int c = 0; c < 4; c++)
+        {
+            int idx = (line * 4) + c;
+            ImGui::TextColored(violet, "COLOR  %02d  ", idx);
+
+            if (c < 3)
+            {
+                ImGui::SameLine();
+                ImGui::SameLine();
+            }
+        }
+
+        for (int c = 0; c < 4; c++)
+        {
+            u16 addr = (line * 4) + c + base;
+            ImGui::TextColored(cyan, "%04X,%04X  ", addr , addr + 0x10);
+
+            if (c < 3)
+            {
+                ImGui::SameLine();
+                ImGui::SameLine();
+            }
+        }
+
+        ImGui::Text("   "); ImGui::SameLine(0,0);
+
+        for (int c = 0; c < 4; c++)
+        {
+            int idx = (line * 4) + c;
+            u16 green = mikey_state->colors[idx].green;
+            u16 bluered = mikey_state->colors[idx].bluered;
+            u16 color = (green << 8) | bluered;
+            ImVec4 float_color = color_444_to_float(color);
+
+            if (c > 0)
+            ImGui::Text("      "); ImGui::SameLine(0,0);
+
+            char id[16];
+            snprintf(id, sizeof(id), "##pal_%d_%d", line, c);
+
+            ImGui::ColorEdit3(id, (float*)&float_color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoPicker);
+
+            if (c < 3)
+            {
+                ImGui::SameLine(); ImGui::Dummy(ImVec2(8.0f, 0.0f));
+                ImGui::SameLine();
+            }
+        }
+
+        ImGui::Text("  "); ImGui::SameLine(0,0);
+
+        for (int c = 0; c < 4; c++)
+        {
+            int idx = (line * 4) + c;
+
+            u8 color_green = mikey_state->colors[idx].green;
+            u8 color_blue = (mikey_state->colors[idx].bluered >> 4) & 0x0F;
+            u8 color_red = mikey_state->colors[idx].bluered & 0x0F;
+
+            ImGui::TextColored(gray, "0"); ImGui::SameLine(0,0);
+            ImGui::TextColored(green, "%01X", color_green); ImGui::SameLine(0,0);
+            ImGui::TextColored(blue, "%01X", color_blue); ImGui::SameLine(0,0);
+            ImGui::TextColored(red, "%01X       ", color_red);
+
+            if (c < 3)
+            {   
+                ImGui::SameLine();
+                ImGui::SameLine();
+            }
+        }
+
+        if (line < 3)
+        {
+            ImGui::NewLine();
+            ImGui::Separator();
+
+        }
+
+        //ImGui::Text("     "); ImGui::SameLine(0,0);
+
     }
+
     ImGui::PopFont();
     ImGui::End();
     ImGui::PopStyleVar();
+}
+
+static ImVec4 color_444_to_float(u16 color)
+{
+    ImVec4 ret;
+    ret.w = 0;
+    ret.x = (1.0f / 15.0f) * (color & 0xF);
+    ret.z = (1.0f / 15.0f) * ((color >> 4) & 0xF);
+    ret.y = (1.0f / 15.0f) * ((color >> 8) & 0xF);
+    return ret;
 }
