@@ -108,6 +108,7 @@ void config_read(void)
     config_debug.show_mikey_colors = read_bool("Debug", "MikeyColors", false);
     config_debug.show_suzy_regs = read_bool("Debug", "SuzyRegs", false);
     config_debug.show_suzy_math_regs = read_bool("Debug", "SuzyMathRegs", false);
+    config_debug.show_frame_buffers = read_bool("Debug", "FrameBuffers", false);
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
@@ -223,6 +224,7 @@ void config_write(void)
     write_bool("Debug", "SuzyRegs", config_debug.show_suzy_regs);
     write_bool("Debug", "SuzyMathRegs", config_debug.show_suzy_math_regs);
     write_bool("Debug", "TraceLogger", config_debug.show_trace_logger);
+    write_bool("Debug", "FrameBuffers", config_debug.show_frame_buffers);
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);
     write_bool("Debug", "TraceFlags", config_debug.trace_flags);

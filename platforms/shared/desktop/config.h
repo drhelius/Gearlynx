@@ -121,6 +121,7 @@ struct config_Debug
     bool show_mikey_colors = false;
     bool show_suzy_regs = false;
     bool show_suzy_math_regs = false;
+    bool show_frame_buffers = false;
     bool trace_counter = true;
     bool trace_registers = true;
     bool trace_flags = true;

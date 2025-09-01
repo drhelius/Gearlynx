@@ -92,6 +92,9 @@ void gui_debug_windows(void)
             gui_debug_window_suzy_regs();
         if (config_debug.show_suzy_math_regs)
             gui_debug_window_suzy_math_regs();
+        if (config_debug.show_frame_buffers)
+            gui_debug_window_frame_buffers();
+
         gui_debug_memory_watches_window();
         gui_debug_memory_search_window();
     }

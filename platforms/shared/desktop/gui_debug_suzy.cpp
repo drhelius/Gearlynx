@@ -27,6 +27,7 @@
 #include "gui.h"
 #include "config.h"
 #include "emu.h"
+#include "renderer.h"
 #include "utils.h"
 
 void gui_debug_window_suzy_regs(void)
@@ -161,6 +162,48 @@ void gui_debug_window_suzy_math_regs(void)
     }
 
     ImGui::PopFont();
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
+void gui_debug_window_frame_buffers(void)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::SetNextWindowPos(ImVec2(59, 70), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(526, 400), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Framebuffers", &config_debug.show_frame_buffers);
+
+    ImGui::PushFont(gui_default_font);
+
+    u32 scanline = emu_get_core()->GetMikey()->GetState()->render_line;
+    ImGui::TextColored(violet, "SCAN LINE "); ImGui::SameLine();
+    ImGui::TextColored(white, "%02X (%03d)", scanline, scanline);
+
+    ImGui::NewLine();
+
+    ImGui::PopFont();
+
+    const float scale = 3.0f;
+
+    if (ImGui::BeginTabBar("##frame_tabs", ImGuiTabBarFlags_None))
+    {
+        if (ImGui::BeginTabItem("Suzy VIDBAS", NULL, ImGuiTabItemFlags_None))
+        {
+            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[0], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Mikey DISPADR", NULL, ImGuiTabItemFlags_None))
+        {
+            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[1], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
 
     ImGui::End();
     ImGui::PopStyleVar();

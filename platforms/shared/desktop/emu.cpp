@@ -41,7 +41,7 @@ static const char* get_configurated_dir(int option, const char* path);
 static void init_debug(void);
 static void destroy_debug(void);
 static void update_debug(void);
-static void update_debug_background(void);
+static void update_debug_framebuffers(void);
 static void update_debug_sprites(void);
 
 bool emu_init(void)
@@ -463,6 +463,11 @@ static const char* get_configurated_dir(int location, const char* path)
 
 static void init_debug(void)
 {
+    for (int i = 0; i < 2; i++)
+    {
+        emu_debug_framebuffer[i] = new u8[256 * 128 * 4];
+        memset(emu_debug_framebuffer[i], 0, 256 * 128 * 4);
+    }
     // emu_debug_background_buffer = new u8[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4];
     // for (int i = 0; i < GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4; i++)
     //     emu_debug_background_buffer[i] = 0;
@@ -477,6 +482,8 @@ static void init_debug(void)
 
 static void destroy_debug(void) 
 {
+    for (int i = 0; i < 2; i++)
+        SafeDeleteArray(emu_debug_framebuffer[i]);
     // SafeDeleteArray(emu_debug_background_buffer);
 
     // for (int i = 0; i < 64; i++)
@@ -485,13 +492,41 @@ static void destroy_debug(void)
 
 static void update_debug(void)
 {
-    update_debug_background();
+    update_debug_framebuffers();
     update_debug_sprites();
 }
 
-static void update_debug_background(void)
+static void update_debug_framebuffers(void)
 {
+    u16 vidbas = core->GetSuzy()->GetState()->VIDBAS.value;
+    u16 dispadr = core->GetMikey()->GetState()->DISPADR.value;
+    u8* ram = core->GetMemory()->GetRAM();
+    u32* palette = core->GetMikey()->GetRGBA8888Palette();
+
+    int count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT;
     
+    u32* frame_buffer_vidbas = (u32*)emu_debug_framebuffer[0];
+    u32* frame_buffer_dispadr = (u32*)emu_debug_framebuffer[1];
+
+    for (int i = 0; i < count; i++)
+    {
+        u16 src_vidbas = vidbas + (i / 2);
+        u16 src_dispadr = dispadr + (i / 2);
+
+        int color_idx_vidbas = i & 1 ? (ram[src_vidbas] & 0x0F) : (ram[src_vidbas] >> 4);
+        int color_idx_dispadr = i & 1 ? (ram[src_dispadr] & 0x0F) : (ram[src_dispadr] >> 4);
+
+        u16 green_vidbas = core->GetMikey()->GetState()->colors[color_idx_vidbas].green;
+        u16 bluered_vidbas = core->GetMikey()->GetState()->colors[color_idx_vidbas].bluered;
+        u16 green_dispadr = core->GetMikey()->GetState()->colors[color_idx_dispadr].green;
+        u16 bluered_dispadr = core->GetMikey()->GetState()->colors[color_idx_dispadr].bluered;
+
+        u32 final_color_vidbas = palette[green_vidbas << 8 | bluered_vidbas];
+        u32 final_color_dispadr = palette[green_dispadr << 8 | bluered_dispadr];
+
+        frame_buffer_vidbas[i] = final_color_vidbas;
+        frame_buffer_dispadr[i] = final_color_dispadr;
+    }
 }
 
 static void update_debug_sprites(void)

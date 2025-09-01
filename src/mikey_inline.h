@@ -238,6 +238,16 @@ INLINE u8* Mikey::GetBuffer()
     return m_frame_buffer;
 }
 
+INLINE u32* Mikey::GetRGBA8888Palette()
+{
+    return m_rgba8888_palette;
+}
+
+INLINE u16* Mikey::GetRGB565Palette()
+{
+    return m_rgb565_palette;
+}
+
 INLINE u8 Mikey::ReadColor(u16 address)
 {
     assert(address >= MIKEY_GREEN0 || address <= MIKEY_BLUEREDF);

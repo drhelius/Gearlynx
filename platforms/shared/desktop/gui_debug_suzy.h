@@ -28,6 +28,7 @@
 
 EXTERN void gui_debug_window_suzy_regs(void);
 EXTERN void gui_debug_window_suzy_math_regs(void);
+EXTERN void gui_debug_window_frame_buffers(void);
 
 #undef GUI_DEBUG_SUZY_IMPORT
 #undef EXTERN

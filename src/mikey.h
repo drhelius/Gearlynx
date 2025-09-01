@@ -71,6 +71,8 @@ public:
     Mikey_State* GetState();
     void SetBuffer(u8* frame_buffer);
     u8* GetBuffer();
+    u32* GetRGBA8888Palette();
+    u16* GetRGB565Palette();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
