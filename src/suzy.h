@@ -89,6 +89,14 @@ private:
     void RamWrite(u16 address, u8 value);
     void ShiftRegisterReset(u16 address);
     u32 ShiftRegisterGetBits(int n, u16 stop_addr);
+    void ComputeQuadLUT();
+
+private:
+    struct QuadPos
+    {
+        bool left;
+        bool up;
+    };
 
 private:
     Cartridge* m_cartridge;
@@ -97,6 +105,7 @@ private:
     M6502* m_m6502;
     Suzy_State m_state;
     u8* m_ram;
+    QuadInfo m_quad_lut[4][4][4] = {};
 
     u16 m_shift_register_address;
     u8 m_shift_register_current;

@@ -44,6 +44,7 @@ void Suzy::Init(Mikey* mikey, Memory* memory)
     m_mikey = mikey;
     m_memory = memory;
     m_ram = m_memory->GetRAM();
+    ComputeQuadLUT();
     Reset();
 }
 
@@ -56,6 +57,30 @@ void Suzy::Reset()
 
     for (int i = 0; i < 16; ++i)
         m_state.pen_map[i] = i;
+}
+
+void Suzy::ComputeQuadLUT()
+{
+    static const int DR = 0;
+    static const int DL = 1;
+    static const int UR = 2;
+    static const int UL = 3;
+
+    static const int k_quad_sequence[4][4] = {
+        { DR, UR, UL, DL },
+        { DL, DR, UR, UL },
+        { UR, UL, DL, DR },
+        { UL, DL, DR, UR }
+    };
+
+    for (int quad = 0; quad < 4; quad++)
+        for (int start = 0; start < 4; start++)
+            for (int flip  = 0; flip  < 4; flip++)  // 0=none, 1=H, 2=V, 3=HV (bit0=H, bit1=V)
+            {
+                int final_quad = k_quad_sequence[start][quad] ^ flip;
+                m_quad_lut[quad][start][flip].left = IS_SET_BIT(final_quad, 0);
+                m_quad_lut[quad][start][flip].up = IS_SET_BIT(final_quad, 1);
+            }
 }
 
 void Suzy::SaveState(std::ostream& stream)

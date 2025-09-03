@@ -536,6 +536,7 @@ INLINE void Suzy::DrawSprite()
     int bpp = ((m_state.SPRCTL0 >> 6) & 0x03) + 1;
     bool h_flip = IS_SET_BIT(m_state.SPRCTL0, 5);
     bool v_flip = IS_SET_BIT(m_state.SPRCTL0, 4);
+    int flip = (h_flip ? 1 : 0) | (v_flip ? 2 : 0);
     int type = (m_state.SPRCTL0 & 0x07);
 
     DebugSuzy("  SPRCTL0: BPP=%d, HFLIP=%d, VFLIP=%d, TYPE=%d", bpp, h_flip ? 1 : 0, v_flip ? 1 : 0, type);
@@ -546,6 +547,7 @@ INLINE void Suzy::DrawSprite()
     bool reload_palette = IS_NOT_SET_BIT(m_state.SPRCTL1, 3);
     bool start_up = IS_SET_BIT(m_state.SPRCTL1, 1);
     bool start_left = IS_SET_BIT(m_state.SPRCTL1, 0);
+    int start_quad = (start_left ? 1 : 0) | (start_up ? 2 : 0);
 
     DebugSuzy("  SPRCTL1: LITERAL=%d, RDEPTH=%d, RPALETTE=%d, STARTUP=%d, STARTLEFT=%d",
               literal_only ? 1 : 0, reload_depth, reload_palette ? 1 : 0, start_up ? 1 : 0, start_left ? 1 : 0);
@@ -602,79 +604,33 @@ INLINE void Suzy::DrawSprite()
     s32 stretch = (s16)m_state.STRETCH.value;   // signed 8.8 per output scanline
     s16 tilt_step = (s16)m_state.TILT.value;    // signed 8.8 per output scanline
 
-    // if (hsiz_cur == 0) hsiz_cur = 0x0100;
-    // if (vsiz_cur == 0) vsiz_cur = 0x0100;
-
     // Hardware accumulators
     s16 tilt_acc = (s16)m_state.TILTACUM.value;  // keep fractional low byte between lines
-    u16 v_accum = 0;                             // 8.8 accumulator for vertical emission
 
-    // Virtual window offsets (super-clip window). We work in screen coords directly.
-    const s32 hoff = (s16)m_state.HOFF.value;
-    const s32 voff = (s16)m_state.VOFF.value;
+    // Virtual window offsets (super-clip window)
+    s32 hoff = (s16)m_state.HOFF.value;
+    s32 voff = (s16)m_state.VOFF.value;
 
     // Base positions in screen coordinates
-    const s32 base_hpos = (s16)m_state.HPOSSTRT.value - hoff;
-    const s32 base_vpos = (s16)m_state.VPOSSTRT.value - voff;
-
-    // Orden de cuadrantes:
-    //   { DR, UR, UL, DL },
-    //   { DL, DR, UR, UL }
-    //   { UR, UL, DL, DR }
-    //   { UL, DL, DR, UR }
-
-    // Codificamos LEFT/UP por fila
-    // DR=(L=0,U=0), DL=(1,0), UR=(0,1), UL=(1,1)
-    static const u8 LEFT_MAP[4][4] = {
-        {0, 0, 1, 1}, // start DR
-        {1, 0, 0, 1}, // start DL
-        {0, 1, 1, 0}, // start UR
-        {1, 1, 0, 0}  // start UL
-    };
-    static const u8 UP_MAP[4][4] = {
-        {0, 1, 1, 0}, // start DR
-        {0, 0, 1, 1}, // start DL
-        {1, 1, 0, 0}, // start UR
-        {1, 0, 0, 1}  // start UL
-    };
-
-    // Determinar fila por cuadrante de inicio (SIN aplicar flips)
-    // Index de filas: 0=DR, 1=DL, 2=UR, 3=UL
-    int row = 0;
-    if (!start_up &&  start_left)
-        row = 1; // DL
-    else if ( start_up && !start_left)
-        row = 2; // UR
-    else if ( start_up &&  start_left)
-        row = 3; // UL
+    s32 base_hpos = (s16)m_state.HPOSSTRT.value - hoff;
+    s32 base_vpos = (s16)m_state.VPOSSTRT.value - voff;
 
     int quadrant = 0;
-    bool left = LEFT_MAP[row][quadrant] != 0;
-    bool up = UP_MAP[row][quadrant]   != 0;
+    QuadPos pos = m_quad_lut[quadrant][start_quad][flip];
+    QuadPos start_pos = pos;
 
-    // Aplicar flips por cuadrante
-    if (h_flip)
-        left = !left;
-    if (v_flip)
-        up = !up;
-
-    s32 dx = left ? -1 : +1;
-    s32 dy = up ? -1 : +1;
-
-    const bool first_left = left;
-    const bool first_up   = up;
+    s32 dx = pos.left ? -1 : +1;
+    s32 dy = pos.up ? -1 : +1;
 
     // Reset per-quadrant vertical accumulator/position
     s32 cur_y = base_vpos;
-    v_accum = up ? 0 : (u16)m_state.VSIZOFF.value;
+    u16 v_accum = pos.up ? 0 : (u16)m_state.VSIZOFF.value; // 8.8 accumulator for vertical emission
 
     while (m_state.SPRDLINE.value != 0)
     {
         // Fetch chunk size ("sprdoff") and compute next pointer
-        u8  sprdoff  = RamRead(m_state.SPRDLINE.value);
+        u8 sprdoff  = RamRead(m_state.SPRDLINE.value);
         u16 next_ptr = (u16)(m_state.SPRDLINE.value + (u16)sprdoff);
-       // if (next_ptr == m_state.SPRDLINE.value)
-       //     break; // safety on malformed data
 
         // Begin/end of encoded source scanline data for this chunk
         u16 data_begin = (u16)(m_state.SPRDLINE.value + 1);
@@ -694,12 +650,11 @@ INLINE void Suzy::DrawSprite()
             start_x += tilt_delta;
             tilt_acc &= 0x00FF;
 
-            // Handy/Mednafen quirk: if LEFT differs from first quad, nudge by dx
-            if (left != first_left)
+            if (pos.left != start_pos.left)
                 start_x += dx;
 
             // Initial horizontal accumulator uses HSIZOFF when drawing right
-            u32 haccum_init = left ? 0u : (u16)m_state.HSIZOFF.value;
+            u32 haccum_init = pos.left ? 0u : (u16)m_state.HSIZOFF.value;
 
             if (literal_only)
             {
@@ -719,8 +674,8 @@ INLINE void Suzy::DrawSprite()
                 hsiz_cur = 1;
         }
 
-        // Vertical stretch applies once per *source* line, scaled by how many screen lines were emitted
-        if ((m_state.SPRSYS & 0x10) != 0) // VStretch enable
+        // VStretch enable
+        if (IS_SET_BIT(m_state.SPRSYS, 4)) 
         {
             s32 add = (s32)stretch * (s32)pixel_height;
             vsiz_cur += add;
@@ -728,41 +683,29 @@ INLINE void Suzy::DrawSprite()
                 vsiz_cur = 1;
         }
 
-        // Advance to next chunk or quadrant
+        // end of sprite
         if (sprdoff == 0)
         {
-            break; // end of sprite
+            break; 
         }
+        // advance to next quadrant
         else if (sprdoff == 1)
         {
             quadrant = (quadrant + 1) & 3;
+            pos = m_quad_lut[quadrant][start_quad][flip];
 
-            left = LEFT_MAP[row][quadrant] != 0;
-            up   = UP_MAP[row][quadrant] != 0;
+            dx = pos.left ? -1 : +1;
+            dy = pos.up   ? -1 : +1;
 
-            // Aplicar flips por cuadrante
-            if (h_flip)
-                left = !left;
-            if (v_flip)
-                up = !up;
-
-            dx = left ? -1 : +1;
-            dy = up   ? -1 : +1;
-
-            // Reset de estado por-cuadrante:
             cur_y  = base_vpos;
-            v_accum = up ? 0 : (u16)m_state.VSIZOFF.value;
+            v_accum = pos.up ? 0 : (u16)m_state.VSIZOFF.value;
 
-            // Compensación vertical si difiere del primer cuadrante
-            if (up != first_up)
+            if (pos.up != start_pos.up)
                 cur_y += dy;
         }
 
         m_state.SPRDLINE.value = next_ptr;
     }
-
-    // Clear GO bit when sprite list is done
-    m_state.SPRGO = 0x00;
 }
 
 INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
