@@ -105,7 +105,7 @@ private:
     M6502* m_m6502;
     Suzy_State m_state;
     u8* m_ram;
-    QuadInfo m_quad_lut[4][4][4] = {};
+    QuadPos m_quad_lut[4][4][4] = {};
 
     u16 m_shift_register_address;
     u8 m_shift_register_current;
