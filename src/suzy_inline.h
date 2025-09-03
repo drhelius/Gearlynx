@@ -532,15 +532,15 @@ INLINE void Suzy::DrawSprite()
         return;
     }
 
-    // SPRCTL0 flags
+    // SPRCTL0
     int bpp = ((m_state.SPRCTL0 >> 6) & 0x03) + 1;
     bool h_flip = IS_SET_BIT(m_state.SPRCTL0, 5);
     bool v_flip = IS_SET_BIT(m_state.SPRCTL0, 4);
-    int type = m_state.SPRCTL0 & 0x07;
+    int type = (m_state.SPRCTL0 & 0x07);
 
     DebugSuzy("  SPRCTL0: BPP=%d, HFLIP=%d, VFLIP=%d, TYPE=%d", bpp, h_flip ? 1 : 0, v_flip ? 1 : 0, type);
 
-    // SPRCTL1 flags
+    // SPRCTL1
     bool literal_only = IS_SET_BIT(m_state.SPRCTL1, 7);
     int reload_depth = (m_state.SPRCTL1 >> 4) & 0x03;
     bool reload_palette = IS_NOT_SET_BIT(m_state.SPRCTL1, 3);
@@ -548,11 +548,7 @@ INLINE void Suzy::DrawSprite()
     bool start_left = IS_SET_BIT(m_state.SPRCTL1, 0);
 
     DebugSuzy("  SPRCTL1: LITERAL=%d, RDEPTH=%d, RPALETTE=%d, STARTUP=%d, STARTLEFT=%d",
-              literal_only ? 1 : 0,
-              reload_depth,
-              reload_palette ? 1 : 0,
-              start_up ? 1 : 0,
-              start_left ? 1 : 0);
+              literal_only ? 1 : 0, reload_depth, reload_palette ? 1 : 0, start_up ? 1 : 0, start_left ? 1 : 0);
 
     m_state.SPRDLINE.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
@@ -596,124 +592,186 @@ INLINE void Suzy::DrawSprite()
         {
             u8 byte = RamRead(m_state.TMPADR.value++);
             m_state.pen_map[(i << 1) + 0] = (byte >> 4) & 0x0F;
-            m_state.pen_map[(i << 1) + 1] = byte & 0x0F;
+            m_state.pen_map[(i << 1) + 1] = (byte & 0x0F);
         }
     }
 
-    s32 hsiz_cur = (s32)m_state.SPRHSIZ.value;   // 0x0100 = 1:1
-    s32 vsiz_cur = (s32)m_state.SPRVSIZ.value;   // 0x0100 = 1:1
-    s32 stretch   = (s16)m_state.STRETCH.value;  // signed 8.8 per scanline
-    s32 tilt_step = (s16)m_state.TILT.value;     // signed 8.8 per scanline
+    // Fixed-point parameters (8.8)
+    s32 hsiz_cur = (s32)m_state.SPRHSIZ.value;
+    s32 vsiz_cur = (s32)m_state.SPRVSIZ.value;
+    s32 stretch = (s16)m_state.STRETCH.value;   // signed 8.8 per output scanline
+    s16 tilt_step = (s16)m_state.TILT.value;    // signed 8.8 per output scanline
 
-    s32 tilt_acc  = (s32)m_state.TILTACUM.value; // start from HW accumulator
-    u32 v_accum   = 0;                            // +0x100 emits one screen line
+    // if (hsiz_cur == 0) hsiz_cur = 0x0100;
+    // if (vsiz_cur == 0) vsiz_cur = 0x0100;
 
-    const bool v_stretch = (m_state.SPRSYS & 0x10) != 0;
+    // Hardware accumulators
+    s16 tilt_acc = (s16)m_state.TILTACUM.value;  // keep fractional low byte between lines
+    u16 v_accum = 0;                             // 8.8 accumulator for vertical emission
 
-    // Fix: may be zero (warbirds) but breaks blue lightning
-    if (hsiz_cur == 0) hsiz_cur = 0x0100;
-    if (vsiz_cur == 0) vsiz_cur = 0x0100;
+    // Virtual window offsets (super-clip window). We work in screen coords directly.
+    const s32 hoff = (s16)m_state.HOFF.value;
+    const s32 voff = (s16)m_state.VOFF.value;
 
-    // Prevent stall/negative after stretch arithmetic
-    if (hsiz_cur < 1) hsiz_cur = 1;
-    if (vsiz_cur < 1) vsiz_cur = 1;
+    // Base positions in screen coordinates
+    const s32 base_hpos = (s16)m_state.HPOSSTRT.value - hoff;
+    const s32 base_vpos = (s16)m_state.VPOSSTRT.value - voff;
 
-    s32 dx = start_left ? -1 : +1;
-    s32 dy = start_up ? -1 : +1;
+    // Orden de cuadrantes:
+    //   { DR, UR, UL, DL },
+    //   { DL, DR, UR, UL }
+    //   { UR, UL, DL, DR }
+    //   { UL, DL, DR, UR }
 
+    // Codificamos LEFT/UP por fila
+    // DR=(L=0,U=0), DL=(1,0), UR=(0,1), UL=(1,1)
+    static const u8 LEFT_MAP[4][4] = {
+        {0, 0, 1, 1}, // start DR
+        {1, 0, 0, 1}, // start DL
+        {0, 1, 1, 0}, // start UR
+        {1, 1, 0, 0}  // start UL
+    };
+    static const u8 UP_MAP[4][4] = {
+        {0, 1, 1, 0}, // start DR
+        {0, 0, 1, 1}, // start DL
+        {1, 1, 0, 0}, // start UR
+        {1, 0, 0, 1}  // start UL
+    };
+
+    // Determinar fila por cuadrante de inicio (SIN aplicar flips)
+    // Index de filas: 0=DR, 1=DL, 2=UR, 3=UL
+    int row = 0;
+    if (!start_up &&  start_left)
+        row = 1; // DL
+    else if ( start_up && !start_left)
+        row = 2; // UR
+    else if ( start_up &&  start_left)
+        row = 3; // UL
+
+    int quadrant = 0;
+    bool left = LEFT_MAP[row][quadrant] != 0;
+    bool up = UP_MAP[row][quadrant]   != 0;
+
+    // Aplicar flips por cuadrante
     if (h_flip)
-        dx = -dx;
+        left = !left;
     if (v_flip)
-        dy = -dy;
+        up = !up;
 
-    s32 cur_y = (dy < 0) ? (s16)m_state.VPOSSTRT.value - 1 : (s16)m_state.VPOSSTRT.value;
+    s32 dx = left ? -1 : +1;
+    s32 dy = up ? -1 : +1;
 
-    int quad_rotations = 0;
+    const bool first_left = left;
+    const bool first_up   = up;
+
+    // Reset per-quadrant vertical accumulator/position
+    s32 cur_y = base_vpos;
+    v_accum = up ? 0 : (u16)m_state.VSIZOFF.value;
 
     while (m_state.SPRDLINE.value != 0)
     {
-        u8  offset = RamRead(m_state.SPRDLINE.value);
-        u16 next_ptr = (u16)(m_state.SPRDLINE.value + (u16)offset);
+        // Fetch chunk size ("sprdoff") and compute next pointer
+        u8  sprdoff  = RamRead(m_state.SPRDLINE.value);
+        u16 next_ptr = (u16)(m_state.SPRDLINE.value + (u16)sprdoff);
+       // if (next_ptr == m_state.SPRDLINE.value)
+       //     break; // safety on malformed data
 
-        // avoid infinite loops on malformed data
-        if (next_ptr == m_state.SPRDLINE.value)
-        {
-            break;
-        }
-
-        // Decode range of this source scanline
-        u16 data_begin = m_state.SPRDLINE.value + 1;
+        // Begin/end of encoded source scanline data for this chunk
+        u16 data_begin = (u16)(m_state.SPRDLINE.value + 1);
         u16 data_end   = next_ptr;
 
-        // Accumulate vertical size (8.8). Each +0x100 emits one screen scanline
-        v_accum += (u32)vsiz_cur;
-        while (v_accum >= 0x100)
+        // Vertical expansion: accumulate and determine how many output lines to emit
+        v_accum = (u16)(v_accum + (u16)vsiz_cur);
+        int pixel_height = (int)(v_accum >> 8);   // integer part
+        v_accum &= 0x00FF;                        // keep fraction
+
+        // Emit pixel_height screen lines from this encoded source line
+        for (int row = 0; row < pixel_height; ++row)
         {
-            s32 start_x = ((dx < 0) ? (s16)m_state.HPOSSTRT.value - 1 : (s16)m_state.HPOSSTRT.value) + (tilt_acc >> 8);
+            // Cuando dibujamos hacia la izquierda, el arranque real es base_hpos - 1
+            s32 start_x = base_hpos;
+            s32 tilt_delta = (s8)((tilt_acc >> 8) & 0xFF);
+            start_x += tilt_delta;
+            tilt_acc &= 0x00FF;
+
+            // Handy/Mednafen quirk: if LEFT differs from first quad, nudge by dx
+            if (left != first_left)
+                start_x += dx;
+
+            // Initial horizontal accumulator uses HSIZOFF when drawing right
+            u32 haccum_init = left ? 0u : (u16)m_state.HSIZOFF.value;
 
             if (literal_only)
             {
-                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, type, (u16)hsiz_cur);
+                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, (u8)type, (u16)hsiz_cur, haccum_init);
             }
             else
             {
-                DrawSpriteLinePacked (data_begin, data_end, start_x, cur_y, dx, bpp, type, (u16)hsiz_cur);
+                DrawSpriteLinePacked (data_begin, data_end, start_x, cur_y, dx, bpp, (u8)type, (u16)hsiz_cur, haccum_init);
             }
 
-            // Advance one screen scanline
-            cur_y   += dy;
-            v_accum -= 0x100;
-
-            // Per-scanline effects
-            tilt_acc += tilt_step;   // next line starts tilted
-            hsiz_cur += stretch;     // horizontal stretch always
-
-            if (v_stretch)
-            {
-                vsiz_cur += stretch; // vertical stretch if enabled
-                if (vsiz_cur < 1)
-                    vsiz_cur = 1;
-            }
+            // Advance one output scanline
+            cur_y += dy;
+            tilt_acc = (s16)(tilt_acc + tilt_step);
+            hsiz_cur += stretch;
 
             if (hsiz_cur < 1)
                 hsiz_cur = 1;
         }
 
-        if (offset == 0)
+        // Vertical stretch applies once per *source* line, scaled by how many screen lines were emitted
+        if ((m_state.SPRSYS & 0x10) != 0) // VStretch enable
         {
-            // End of sprite
-            break;
+            s32 add = (s32)stretch * (s32)pixel_height;
+            vsiz_cur += add;
+            if (vsiz_cur < 1)
+                vsiz_cur = 1;
         }
-        else if (offset == 1)
-        {
-            // Next quadrant: SE -> NE -> NW -> SW
-            if ((quad_rotations & 1) == 0)
-                dy = -dy; // 0,2 -> flip Y
-            else
-                dx = -dx; // 1,3 -> flip X
 
-            quad_rotations++;
-            cur_y = (dy < 0) ? (s16)m_state.VPOSSTRT.value - 1 : (s16)m_state.VPOSSTRT.value;
-            v_accum = 0; // restart vertical emission alignment for new quadrant
-        }
-        else
+        // Advance to next chunk or quadrant
+        if (sprdoff == 0)
         {
-            // Same quadrant, next line
-            // VSIZ loop already advanced cur_y by emitted screen lines
-            // Do not add extra cur_y += dy here
+            break; // end of sprite
+        }
+        else if (sprdoff == 1)
+        {
+            quadrant = (quadrant + 1) & 3;
+
+            left = LEFT_MAP[row][quadrant] != 0;
+            up   = UP_MAP[row][quadrant] != 0;
+
+            // Aplicar flips por cuadrante
+            if (h_flip)
+                left = !left;
+            if (v_flip)
+                up = !up;
+
+            dx = left ? -1 : +1;
+            dy = up   ? -1 : +1;
+
+            // Reset de estado por-cuadrante:
+            cur_y  = base_vpos;
+            v_accum = up ? 0 : (u16)m_state.VSIZOFF.value;
+
+            // Compensación vertical si difiere del primer cuadrante
+            if (up != first_up)
+                cur_y += dy;
         }
 
         m_state.SPRDLINE.value = next_ptr;
     }
+
+    // Clear GO bit when sprite list is done
+    m_state.SPRGO = 0x00;
 }
 
 INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
                                         s32 x, s32 y, s32 dx,
-                                        int bpp, u8 type, u16 hsiz)
+                                        int bpp, u8 type, u16 hsiz, u32 haccum_init)
 {
     ShiftRegisterReset(data_begin);
 
-    u32 h_accum = 0;
+    u32 h_accum = haccum_init; // start with HSIZOFF when drawing right
 
     while (m_shift_register_address < data_end)
     {
@@ -733,21 +791,17 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 
 INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                                        s32 x, s32 y, s32 dx,
-                                       int bpp, u8 type, u16 hsiz)
+                                       int bpp, u8 type, u16 hsiz, u32 haccum_init)
 {
     ShiftRegisterReset(data_begin);
 
-    u32 h_accum = 0;
+    u32 h_accum = haccum_init; // start with HSIZOFF when drawing right
 
     while (m_shift_register_address < data_end)
     {
         u32 header = ShiftRegisterGetBits(5, data_end);
-
         if (header == 0)
-        {
-            // early EOL
-            break;
-        }
+            break; // early EOL
 
         u32 is_literal = header >> 4;
         u32 count = (header & 0x0F) + 1;
@@ -792,37 +846,33 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, u8 type)
     if (IsPixelTransparent(pen, type))
         return;
 
-    s32 hoff = (s32)m_state.HOFF.value;
-    s32 voff = (s32)m_state.VOFF.value;
-    s32 eff_x = x - hoff;
-    s32 eff_y = y - voff;
-
-    if ((u32)eff_x >= (u32)GLYNX_SCREEN_WIDTH)
+    // Screen-space clip (super-clip window already applied in callers via HOFF/VOFF)
+    if ((u32)x >= (u32)GLYNX_SCREEN_WIDTH)
         return;
-    if ((u32)eff_y >= (u32)GLYNX_SCREEN_HEIGHT)
+    if ((u32)y >= (u32)GLYNX_SCREEN_HEIGHT)
         return;
 
     u16 base = m_state.VIDBAS.value;
-    u16 addr = base + (u16)(eff_y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(eff_x >> 1);
+    u16 addr = (u16)(base + (u16)(y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(x >> 1));
     u8 byte = RamRead(addr);
 
-    bool is_xor = (type == 6);
+    const bool is_xor = (type == 6);
 
-    if ((eff_x & 1) == 0)
+    if ((x & 1) == 0)
     {
         // left pixel -> high nibble
-        u8 new_byte = pen;
+        u8 new_nib = pen;
         if (is_xor)
-            new_byte ^= (byte >> 4) & 0x0F;
-        byte = (byte & 0x0F) | (new_byte << 4);
+            new_nib ^= (byte >> 4) & 0x0F;
+        byte = (u8)((byte & 0x0F) | (new_nib << 4));
     }
     else
     {
         // right pixel -> low nibble
-        u8 new_byte = pen;
+        u8 new_nib = pen;
         if (is_xor)
-            new_byte ^= byte & 0x0F;
-        byte = (byte & 0xF0) | (new_byte & 0x0F);
+            new_nib ^= (byte & 0x0F);
+        byte = (u8)((byte & 0xF0) | (new_nib & 0x0F));
     }
 
     RamWrite(addr, byte);
