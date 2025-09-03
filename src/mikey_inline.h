@@ -167,11 +167,11 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing MIKEYSREV (unused): %02X", value);
             break;
         case MIKEY_IODIR:         // 0xFD8A
-            DebugMikey("Setting IODIR to %02X (was %04X)", value, m_state.IODIR);
+            DebugMikey("Setting IODIR to %02X (was %02X)", value, m_state.IODIR);
             m_state.IODIR = value;
             break;
         case MIKEY_IODAT:         // 0xFD8B
-            DebugMikey("Setting IODAT to %02X (was %04X)", value, m_state.IODAT);
+            DebugMikey("Setting IODAT to %02X (was %02X)", value, m_state.IODAT);
             m_cartridge->ShiftRegisterBit(value & 0x02);
             m_state.IODAT = value;
             break;
@@ -182,7 +182,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.SERDAT = value;
             break;
         case MIKEY_SDONEACK:      // 0xFD90
-            DebugMikey("Setting SDONEACK to %02X (was %04X)", value, m_state.SDONEACK);
+            DebugMikey("Setting SDONEACK to %02X (was %02X)", value, m_state.SDONEACK);
             m_state.SDONEACK = value;
             break;
         case MIKEY_CPUSLEEP:      // 0xFD91
@@ -190,7 +190,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.CPUSLEEP = value;
             break;
         case MIKEY_DISPCTL:       // 0xFD92
-            DebugMikey("Setting DISPCTL to %02X (was %04X)", value, m_state.DISPCTL);
+            DebugMikey("Setting DISPCTL to %02X (was %02X)", value, m_state.DISPCTL);
             m_state.DISPCTL = value;
             break;
         case MIKEY_PBKUP:         // 0xFD93
