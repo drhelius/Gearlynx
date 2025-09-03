@@ -32,15 +32,13 @@ public:
     void Reset();
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);
-    u8 ReadK();
-    void WriteO(u8 value);
-    u8 GetIORegister();
-    void EndFrame();
+    u8 ReadJoystick();
+    u8 ReadSwitches();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
-    u8 m_joypad;
+    u16 m_input;
 
 };
 

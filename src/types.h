@@ -67,15 +67,15 @@ enum GLYNX_Pixel_Format
 
 enum GLYNX_Keys
 {
-    GLYNX_KEY_A,
-    GLYNX_KEY_B,
-    GLYNX_KEY_START,
-    GLYNX_KEY_OPTION1,
-    GLYNX_KEY_OPTION2,
-    GLYNX_KEY_UP,
-    GLYNX_KEY_RIGHT,
-    GLYNX_KEY_DOWN,
-    GLYNX_KEY_LEFT
+    GLYNX_KEY_A         = 0x0001,
+    GLYNX_KEY_B         = 0x0002,
+    GLYNX_KEY_OPTION2   = 0x0004,
+    GLYNX_KEY_OPTION1   = 0x0008,
+    GLYNX_KEY_LEFT      = 0x0010,
+    GLYNX_KEY_RIGHT     = 0x0020,
+    GLYNX_KEY_UP        = 0x0040,
+    GLYNX_KEY_DOWN      = 0x0080,
+    GLYNX_KEY_PAUSE     = 0x0100,
 };
 
 struct GLYNX_Cartridge_Header

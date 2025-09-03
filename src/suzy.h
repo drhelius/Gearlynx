@@ -28,6 +28,7 @@
 class Cartridge;
 class Memory;
 class M6502;
+class Input;
 class Mikey;
 
 class Suzy
@@ -61,12 +62,11 @@ public:
         u16_union PROCADR;
         u8 MATHD, MATHC, MATHB, MATHA, MATHP, MATHN, MATHH, MATHG, MATHF, MATHE, MATHM, MATHL, MATHK, MATHJ;
         u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO, SPRSYS;
-        u8 JOYSTICK, SWITCHES;
         u8 pen_map[16];
     };
 
 public:
-    Suzy(Cartridge* cartridge, M6502* m6502);
+    Suzy(Cartridge* cartridge, M6502* m6502, Input* input);
     ~Suzy();
     void Init(Mikey* mikey, Memory* memory);
     void Reset();
@@ -103,6 +103,7 @@ private:
     Mikey* m_mikey;
     Memory* m_memory;
     M6502* m_m6502;
+    Input* m_input;
     Suzy_State m_state;
     u8* m_ram;
     QuadPos m_quad_lut[4][4][4] = {};

@@ -24,11 +24,13 @@
 #include "memory.h"
 #include "m6502.h"
 #include "mikey.h"
+#include "input.h"
 
-Suzy::Suzy(Cartridge* cartridge, M6502* m6502)
+Suzy::Suzy(Cartridge* cartridge, M6502* m6502, Input* input)
 {
     m_cartridge = cartridge;
     m_m6502 = m6502;
+    m_input = input;
     InitPointer(m_mikey);
     InitPointer(m_memory);
     InitPointer(m_ram);

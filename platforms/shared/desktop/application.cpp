@@ -702,8 +702,8 @@ static void sdl_events_emu(const SDL_Event* event)
                 emu_key_pressed(GLYNX_KEY_A);
             else if (event->cbutton.button == config_input.gamepad_B)
                 emu_key_pressed(GLYNX_KEY_B);
-            else if (event->cbutton.button == config_input.gamepad_start)
-                emu_key_pressed(GLYNX_KEY_START);
+            else if (event->cbutton.button == config_input.gamepad_pause)
+                emu_key_pressed(GLYNX_KEY_PAUSE);
             else if (event->cbutton.button == config_input.gamepad_option1)
                 emu_key_pressed(GLYNX_KEY_OPTION1);
             else if (event->cbutton.button == config_input.gamepad_option2)
@@ -740,8 +740,8 @@ static void sdl_events_emu(const SDL_Event* event)
                 emu_key_released(GLYNX_KEY_A);
             else if (event->cbutton.button == config_input.gamepad_B)
                 emu_key_released(GLYNX_KEY_B);
-            else if (event->cbutton.button == config_input.gamepad_start)
-                emu_key_released(GLYNX_KEY_START);
+            else if (event->cbutton.button == config_input.gamepad_pause)
+                emu_key_released(GLYNX_KEY_PAUSE);
             else if (event->cbutton.button == config_input.gamepad_option1)
                 emu_key_released(GLYNX_KEY_OPTION1);
             else if (event->cbutton.button == config_input.gamepad_option2)
@@ -827,12 +827,12 @@ static void sdl_events_emu(const SDL_Event* event)
                     else
                         emu_key_released(GLYNX_KEY_B);
                 }
-                else if (config_input.gamepad_start == vbtn)
+                else if (config_input.gamepad_pause == vbtn)
                 {
                     if (pressed)
-                        emu_key_pressed(GLYNX_KEY_START);
+                        emu_key_pressed(GLYNX_KEY_PAUSE);
                     else
-                        emu_key_released(GLYNX_KEY_START);
+                        emu_key_released(GLYNX_KEY_PAUSE);
                 }
                 else if (config_input.gamepad_option1 == vbtn)
                 {
@@ -876,8 +876,8 @@ static void sdl_events_emu(const SDL_Event* event)
                 emu_key_pressed(GLYNX_KEY_A);
             else if (key == config_input.key_B)
                 emu_key_pressed(GLYNX_KEY_B);
-            else if (key == config_input.key_start)
-                emu_key_pressed(GLYNX_KEY_START);
+            else if (key == config_input.key_pause)
+                emu_key_pressed(GLYNX_KEY_PAUSE);
             else if (key == config_input.key_option1)
                 emu_key_pressed(GLYNX_KEY_OPTION1);
             else if (key == config_input.key_option2)
@@ -901,8 +901,8 @@ static void sdl_events_emu(const SDL_Event* event)
                 emu_key_released(GLYNX_KEY_A);
             else if (key == config_input.key_B)
                 emu_key_released(GLYNX_KEY_B);
-            else if (key == config_input.key_start)
-                emu_key_released(GLYNX_KEY_START);
+            else if (key == config_input.key_pause)
+                emu_key_released(GLYNX_KEY_PAUSE);
             else if (key == config_input.key_option1)
                 emu_key_released(GLYNX_KEY_OPTION1);
             else if (key == config_input.key_option2)

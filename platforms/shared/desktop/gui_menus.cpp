@@ -512,11 +512,11 @@ static void menu_input(void)
             keyboard_configuration_item("Right:", &config_input.key_right);
             keyboard_configuration_item("Up:", &config_input.key_up);
             keyboard_configuration_item("Down:", &config_input.key_down);
-            keyboard_configuration_item("Start:", &config_input.key_start);
-            keyboard_configuration_item("Option 1:", &config_input.key_option1);
-            keyboard_configuration_item("Option 2:", &config_input.key_option2);
             keyboard_configuration_item("A:", &config_input.key_A);
             keyboard_configuration_item("B:", &config_input.key_B);
+            keyboard_configuration_item("Pause:", &config_input.key_pause);
+            keyboard_configuration_item("Option 1:", &config_input.key_option1);
+            keyboard_configuration_item("Option 2:", &config_input.key_option2);
 
             gui_popup_modal_keyboard();
 
@@ -543,11 +543,11 @@ static void menu_input(void)
 
             if (ImGui::BeginMenu("Button Configuration"))
             {
-                gamepad_configuration_item("Start:", &config_input.gamepad_start);
-                gamepad_configuration_item("Option 1:", &config_input.gamepad_option1);
-                gamepad_configuration_item("Option 2:", &config_input.gamepad_option2);
                 gamepad_configuration_item("A:", &config_input.gamepad_A);
                 gamepad_configuration_item("B:", &config_input.gamepad_B);
+                gamepad_configuration_item("Pause:", &config_input.gamepad_pause);
+                gamepad_configuration_item("Option 1:", &config_input.gamepad_option1);
+                gamepad_configuration_item("Option 2:", &config_input.gamepad_option2);
 
                 gui_popup_modal_gamepad();
 

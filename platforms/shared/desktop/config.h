@@ -86,7 +86,7 @@ struct config_Input
     SDL_Scancode key_right;
     SDL_Scancode key_up;
     SDL_Scancode key_down;
-    SDL_Scancode key_start;
+    SDL_Scancode key_pause;
     SDL_Scancode key_option1;
     SDL_Scancode key_option2;
     SDL_Scancode key_A;
@@ -95,7 +95,7 @@ struct config_Input
     int gamepad_directional;
     bool gamepad_invert_x_axis;
     bool gamepad_invert_y_axis;
-    int gamepad_start;
+    int gamepad_pause;
     int gamepad_option1;
     int gamepad_option2;
     int gamepad_A;

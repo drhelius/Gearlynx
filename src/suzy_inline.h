@@ -184,11 +184,11 @@ INLINE u8 Suzy::Read(u16 address)
         DebugSuzy("Reading SPRSYS: %02X", m_state.SPRSYS);
         return 0;
     case SUZY_JOYSTICK:    // 0xFCB0
-        DebugSuzy("Reading JOYSTICK: %02X", m_state.JOYSTICK);
-        return m_state.JOYSTICK;
+        DebugSuzy("Reading JOYSTICK: %02X", m_input->ReadJoystick());
+        return m_input->ReadJoystick();
     case SUZY_SWITCHES:    // 0xFCB1
-        DebugSuzy("Reading SWITCHES: %02X", m_state.SWITCHES);
-        return m_state.SWITCHES;
+        DebugSuzy("Reading SWITCHES: %02X", m_input->ReadSwitches());
+        return m_input->ReadSwitches();
     case SUZY_RCART0:      // 0xFCB2
         DebugSuzy("Reading RCART0");
         return m_cartridge->ReadBank0();
@@ -501,8 +501,6 @@ INLINE void Suzy::SpritesGo()
 {
     DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X, SPRSYS=%02X",
               m_state.SPRCTL0, m_state.SPRCTL1, m_state.SPRCOLL, m_state.SPRINIT, m_state.SPRSYS);
-
-    int index = 0;
 
     while ((m_state.SCBNEXT.value & 0xFF00) != 0)
     {

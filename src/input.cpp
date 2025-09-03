@@ -22,7 +22,7 @@
 
 Input::Input()
 {
-    m_joypad = 0xFF;
+    m_input = 0x0000;
 }
 
 void Input::Init()
@@ -32,22 +32,7 @@ void Input::Init()
 
 void Input::Reset()
 {
-    m_joypad = 0XFF;
-}
-
-void Input::KeyPressed(GLYNX_Keys key)
-{
-    m_joypad &= ~key;
-}
-
-void Input::KeyReleased(GLYNX_Keys key)
-{
-    m_joypad |= key;
-}
-
-void Input::EndFrame()
-{
-    
+    m_input = 0x0000;
 }
 
 void Input::SaveState(std::ostream& stream)

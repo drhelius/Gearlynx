@@ -22,14 +22,24 @@
 
 #include "input.h"
 
-inline u8 Input::ReadK()
+INLINE void Input::KeyPressed(GLYNX_Keys key)
 {
-    return 0;
+    m_input |= key;
 }
 
-inline void Input::WriteO(u8 value)
+INLINE void Input::KeyReleased(GLYNX_Keys key)
 {
-    UNUSED(value);
+    m_input &= ~key;
+}
+
+INLINE u8 Input::ReadJoystick()
+{
+    return (u8)(m_input & 0xFF);
+}
+
+INLINE u8 Input::ReadSwitches()
+{
+    return (u8)(m_input >> 8);
 }
 
 #endif /* INPUT_INLINE_H */

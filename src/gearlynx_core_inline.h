@@ -108,7 +108,6 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         Debug("RunToVBlankTemplate: Exiting after %u cycles", temp_max_cycles);
 
         m_audio->EndFrame(sample_buffer, sample_count);
-        m_input->EndFrame();
 
         return m_m6502->BreakpointHit() || m_m6502->RunToBreakpointHit();
     }
@@ -130,7 +129,6 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         while (!stop);
 
         m_audio->EndFrame(sample_buffer, sample_count);
-        m_input->EndFrame();
 
         return false;
     }
