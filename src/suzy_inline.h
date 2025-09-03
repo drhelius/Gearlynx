@@ -559,6 +559,9 @@ INLINE void Suzy::DrawSprite()
     m_state.VPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
 
+    m_state.STRETCH.value = 0;
+    m_state.TILT.value = 0;
+
     if (reload_depth == 1)
     {
         m_state.SPRHSIZ.value = RamReadWord(m_state.TMPADR.value);
@@ -606,6 +609,8 @@ INLINE void Suzy::DrawSprite()
     int quadrant = 0;
     QuadPos pos = m_quad_lut[quadrant][start_quad][flip];
     QuadPos start_pos = pos;
+
+    m_state.TILTACUM.value = 0;
 
     s32 dx = pos.left ? -1 : +1;
     s32 dy = pos.up ? -1 : +1;
@@ -671,6 +676,8 @@ INLINE void Suzy::DrawSprite()
 
             dx = pos.left ? -1 : +1;
             dy = pos.up   ? -1 : +1;
+
+            m_state.TILTACUM.value = 0;
 
             cur_y  = base_vpos;
             m_state.VSIZACUM.value = pos.up ? 0 : m_state.VSIZOFF.value;
