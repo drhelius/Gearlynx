@@ -80,10 +80,10 @@ public:
 private:
     void SpritesGo();
     void DrawSprite();
-    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type, u16 hsiz, u32 haccum_init);
-    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, u8 type, u16 hsiz, u32 haccum_init);
-    void DrawPixel(s32 x, s32 y, u8 pen, u8 type);
-    bool IsPixelTransparent(u8 pen, u8 type);
+    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init);
+    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init);
+    void DrawPixel(s32 x, s32 y, u8 pen, int type);
+    bool IsPixelTransparent(u8 pen, int type);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
     void RamWrite(u16 address, u8 value);
