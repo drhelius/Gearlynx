@@ -95,12 +95,12 @@ inline void Memory::SetMapCtl(u8 MAPCTL)
 
 inline void Memory::RebuildMemoryMap()
 {
-    Debug("Rebuilding memory map with MAPCTL: %02X", m_state.MAPCTL);
+    //Debug("Rebuilding memory map with MAPCTL: %02X", m_state.MAPCTL);
 
     // SUZY not visible
     if (IS_SET_BIT(m_state.MAPCTL, 0))
     {
-        Debug("SUZY not visible");
+        //Debug("SUZY not visible");
         m_read_page[0xFC] = m_state.ram + 0xFC00;
         m_write_page[0xFC] = m_state.ram + 0xFC00;
         m_read_fn[0xFC] = NULL;
@@ -109,7 +109,7 @@ inline void Memory::RebuildMemoryMap()
     // SUZY visible
     else
     {
-        Debug("SUZY visible");
+        //Debug("SUZY visible");
         m_read_page[0xFC] = NULL;
         m_write_page[0xFC] = NULL;
         m_read_fn[0xFC] = &Memory::SuzyRead;
@@ -119,7 +119,7 @@ inline void Memory::RebuildMemoryMap()
     // MIKEY not visible
     if (IS_SET_BIT(m_state.MAPCTL, 1))
     {
-        Debug("MIKEY not visible");
+        //Debug("MIKEY not visible");
         m_read_page[0xFD] = m_state.ram + 0xFD00;
         m_write_page[0xFD] = m_state.ram + 0xFD00;
         m_read_fn[0xFD] = NULL;
@@ -128,7 +128,7 @@ inline void Memory::RebuildMemoryMap()
     // MIKEY visible
     else
     {
-        Debug("MIKEY visible");
+        //Debug("MIKEY visible");
         m_read_page[0xFD] = NULL;
         m_write_page[0xFD] = NULL;
         m_read_fn[0xFD] = &Memory::MikeyRead;
@@ -138,7 +138,7 @@ inline void Memory::RebuildMemoryMap()
     // BIOS not visible
     if (IS_SET_BIT(m_state.MAPCTL, 2))
     {
-        Debug("BIOS not visible");
+        //Debug("BIOS not visible");
         m_read_page[0xFE] = m_state.ram + 0xFE00;
         m_write_page[0xFE] = m_state.ram + 0xFE00;
         m_read_fn[0xFE] = NULL;
@@ -147,7 +147,7 @@ inline void Memory::RebuildMemoryMap()
     // BIOS visible
     else
     {
-        Debug("BIOS visible");
+        //Debug("BIOS visible");
         m_read_page[0xFE] = NULL;
         m_write_page[0xFE] = m_state.ram + 0xFE00;
         m_read_fn[0xFE] = &Memory::BiosRead;
