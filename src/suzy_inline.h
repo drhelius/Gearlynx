@@ -809,7 +809,6 @@ INLINE bool Suzy::IsPixelTransparent(u8 pen, int type)
         case 1: // BACKGROUND NON-COLLIDING
             return false;
         case 2: // BOUNDARY-SHADOW
-            return (pen == 0x00) || (pen == 0x0E) || (pen == 0x0F);
         case 3: // BOUNDARY
             return (pen == 0x00) || (pen == 0x0F);
         case 4: // NORMAL
