@@ -58,6 +58,8 @@ public:
         u8 irq_mask;
         bool frame_ready;
         u32 render_line;
+        u16 dispadr_latch;
+        bool rest;
     };
 
 public:
@@ -78,7 +80,7 @@ public:
 
 private:
     void InitPalettes();
-    void InitTimers();
+    void ResetTimers();
     u8 ReadColor(u16 address);
     void WriteColor(u16 address, u8 value);
     u8 ReadTimer(u16 address);
@@ -88,7 +90,7 @@ private:
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
     void UpdateTimers(u32 cycles);
-    void DecrementTimerCounter(u8 timer_index);
+    void DecrementTimerCounter(int timer_index);
     void UpdateIRQs();
     void HorizontalBlank();
     void VerticalBlank();
@@ -108,10 +110,13 @@ private:
     GLYNX_Pixel_Format m_pixel_format;
     u32 m_rgba8888_palette[4096] = {};
     u16 m_rgb565_palette[4096] = {};
-    u16 m_dispadr_latch;
+
+    u32 m_debug_cycles;
 };
 
 static const u32 k_mikey_timer_period_cycles[8] = { 4, 8, 16, 32, 64, 128, 512, 0 };
+static const int k_mikey_timer_forward_links[8] = { 2, 3, 4, 5, -1, 7, -1, -1 };
+static const int k_mikey_timer_backward_links[8] = { -1, -1, 0, 1, 2, 3, -1, 5 };
 
 #include "mikey_inline.h"
 

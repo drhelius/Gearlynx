@@ -46,7 +46,6 @@ void Mikey::Init(Suzy* suzy, Memory* memory, GLYNX_Pixel_Format pixel_format)
     m_pixel_format = pixel_format;
     m_ram = m_memory->GetRAM();
     InitPalettes();
-    InitTimers();
     Reset();
 }
 
@@ -54,6 +53,10 @@ void Mikey::Reset()
 {
     memset(&m_state, 0, sizeof(Mikey_State));
     memset(m_host_palette, 0, sizeof(m_host_palette));
+    ResetTimers();
+
+
+    m_debug_cycles = 0;
 }
 
 void Mikey::InitPalettes()
@@ -83,21 +86,15 @@ void Mikey::InitPalettes()
     }
 }
 
-void Mikey::InitTimers()
+void Mikey::ResetTimers()
 {
-    m_state.timers[0].internal_linked_to = -1;
-    m_state.timers[2].internal_linked_to = 0;
-    m_state.timers[4].internal_linked_to = 2;
-
-    m_state.timers[1].internal_linked_to = -1;
-    m_state.timers[3].internal_linked_to = 1;
-    m_state.timers[5].internal_linked_to = 3;
-    m_state.timers[7].internal_linked_to = 5;
-
-    m_state.timers[6].internal_linked_to = -1;
-
     for (int i = 0; i < 8; i++)
     {
+        m_state.timers[i].backup = 0;
+        m_state.timers[i].counter = 0;
+        m_state.timers[i].control_a = 0;
+        m_state.timers[i].control_b = 0;
+        m_state.timers[i].internal_cycles = 0;
         m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
     }
 }

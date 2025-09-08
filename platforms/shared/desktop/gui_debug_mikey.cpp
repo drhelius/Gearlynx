@@ -42,7 +42,9 @@ void gui_debug_window_mikey_regs(void)
     ImGui::PushFont(gui_default_font);
 
     GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+    Mikey* mikey = core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
+    u8 iodat = mikey->Read(MIKEY_IODAT);
 
     struct {
         const char* name;
@@ -59,7 +61,7 @@ void gui_debug_window_mikey_regs(void)
         {"INTSET  ", "FD81", &mikey_state->irq_pending},
         {"SYSCTL1 ", "FD87", &mikey_state->SYSCTL1},
         {"IODIR   ", "FD8A", &mikey_state->IODIR},
-        {"IODAT   ", "FD8B", &mikey_state->IODAT},
+        {"IODAT   ", "FD8B", &iodat},
         {"SERCTL  ", "FD8C", &mikey_state->SERCTL},
         {"SERDAT  ", "FD8D", &mikey_state->SERDAT},
         {"SDONEACK", "FD90", &mikey_state->SDONEACK},

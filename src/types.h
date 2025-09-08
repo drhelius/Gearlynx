@@ -142,7 +142,6 @@ struct GLYNX_Mikey_Timer
     u8 control_b;
     u8 counter;
 
-    s8 internal_linked_to;
     u32 internal_cycles;
     u32 internal_period_cycles;
 };

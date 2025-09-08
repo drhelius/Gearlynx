@@ -27,6 +27,7 @@
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
+    m_debug_cycles += cycles;
     UpdateTimers(cycles);
     UpdateIRQs();
 
@@ -80,8 +81,23 @@ INLINE u8 Mikey::Read(u16 address)
             DebugMikey("Reading write-only IODIR: %02X", m_state.IODIR);
             return 0xFF;
         case MIKEY_IODAT:         // 0xFD8B
-            DebugMikey("READ IODATA");
-            return m_state.IODAT;
+        {
+            u8 ret = 0x00;
+            if (IS_SET_BIT(m_state.IODIR, 0))
+                ret |= IS_SET_BIT(m_state.IODAT, 0) ? 0x01 : 0x00;
+            if (IS_SET_BIT(m_state.IODIR, 1))
+                ret |= IS_SET_BIT(m_state.IODAT, 1) ? 0x02 : 0x00;
+            if (IS_SET_BIT(m_state.IODIR, 2))
+                ret |= IS_SET_BIT(m_state.IODAT, 2) ? 0x04 : 0x00;
+            if (IS_SET_BIT(m_state.IODIR, 3))
+                ret |= (IS_SET_BIT(m_state.IODAT, 3) && m_state.rest) ? 0x08 : 0x00;
+            if (IS_SET_BIT(m_state.IODIR, 4))
+                ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
+
+            ret |= 0x04;
+
+            return ret;
+        }
         case MIKEY_SERCTL:        // 0xFD8C
             return m_state.SERCTL;
         case MIKEY_SERDAT:        // 0xFD8D
@@ -141,10 +157,14 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_INTRST:        // 0xFD80
             DebugMikey("Clearing IRQs: %02X (was %02X)", m_state.irq_pending & ~value, m_state.irq_pending);
             m_state.irq_pending &= ~value;
+            if (m_state.irq_pending != 0)
+                UpdateIRQs();
             break;
         case MIKEY_INTSET:        // 0xFD81
             DebugMikey("Setting IRQs: %02X (was %02X)", m_state.irq_pending | value, m_state.irq_pending);
             m_state.irq_pending |= value;
+            if (m_state.irq_pending != 0)
+                UpdateIRQs();
             break;
         case MIKEY_MAGRDY0:       // 0xFD84
             DebugMikey("Writing MAGRDY0 (unused): %02X", value);
@@ -200,7 +220,6 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_DISPADRL:      // 0xFD94
             DebugMikey("Setting DISPADR low to %02X (was %02X)", value, m_state.DISPADR.low);
             m_state.DISPADR.low = value;
-            m_state.DISPADR.value &= 0xFFFC;
             break;
         case MIKEY_DISPADRH:      // 0xFD95
             DebugMikey("Setting DISPADR high to %02X (was %02X)", value, m_state.DISPADR.high);
@@ -250,7 +269,7 @@ INLINE u16* Mikey::GetRGB565Palette()
 
 INLINE u8 Mikey::ReadColor(u16 address)
 {
-    assert(address >= MIKEY_GREEN0 || address <= MIKEY_BLUEREDF);
+    assert(address >= MIKEY_GREEN0 && address <= MIKEY_BLUEREDF);
 
     int color_index = address & 0xF;
 
@@ -262,7 +281,7 @@ INLINE u8 Mikey::ReadColor(u16 address)
 
 INLINE void Mikey::WriteColor(u16 address, u8 value)
 {
-    assert(address >= MIKEY_GREEN0 || address <= MIKEY_BLUEREDF);
+    assert(address >= MIKEY_GREEN0 && address <= MIKEY_BLUEREDF);
 
     int color_index = address & 0xF;
 
@@ -280,18 +299,18 @@ INLINE u8 Mikey::ReadTimer(u16 address)
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
     int reg = address & 3;
-    int timer_index = (address >> 2) & 7;
+    int i = (address >> 2) & 7;
 
     switch (reg)
     {
     case 0:
-        return m_state.timers[timer_index].backup;
+        return m_state.timers[i].backup;
     case 1:
-        return m_state.timers[timer_index].control_a;
+        return m_state.timers[i].control_a;
     case 2:
-        return m_state.timers[timer_index].counter;
+        return m_state.timers[i].counter;
     case 3:
-        return m_state.timers[timer_index].control_b;
+        return m_state.timers[i].control_b;
     default:
         return 0xFF;
     }
@@ -302,29 +321,39 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
     int reg = address & 3;
-    int timer_index = (address >> 2) & 7;
+    int i = (address >> 2) & 7;
 
     switch (reg)
     {
     case 0:
-        m_state.timers[timer_index].backup = value;
+        DebugMikey("Setting Timer %d Backup to %02X (was %02X)", i, value, m_state.timers[i].backup);
+        m_state.timers[i].backup = value;
         break;
     case 1:
-        m_state.timers[timer_index].control_a = value;
-        m_state.timers[timer_index].internal_period_cycles = k_mikey_timer_period_cycles[value & 0x07];
+        DebugMikey("Setting Timer %d Control A to %02X (was %02X)", i, value, m_state.timers[i].control_a);
+        m_state.timers[i].control_a = value;
+
+        m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[value & 0x07];
+
         if (IS_SET_BIT(value, 7))
-            m_state.irq_mask = (m_state.irq_mask | (1 << timer_index));
+            m_state.irq_mask = SET_BIT(m_state.irq_mask, i);
         else
-            m_state.irq_mask = (m_state.irq_mask & ~(1 << timer_index));
+            m_state.irq_mask = UNSET_BIT(m_state.irq_mask, i);
+
         if (IS_SET_BIT(value, 6))
-            // clear timer done bit
-            m_state.timers[timer_index].control_b = UNSET_BIT(m_state.timers[timer_index].control_b, 3); 
+            m_state.timers[i].control_b = UNSET_BIT(m_state.timers[i].control_b, 3);
         break;
     case 2:
-        m_state.timers[timer_index].counter = value;
+        DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
+        m_state.timers[i].counter = value;
         break;
     case 3:
-        m_state.timers[timer_index].control_b = value;
+        DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
+
+        if (IS_SET_BIT(value, 3))
+            m_state.timers[i].control_b = SET_BIT(m_state.timers[i].control_b, 3);
+        else
+            m_state.timers[i].control_b = UNSET_BIT(m_state.timers[i].control_b, 3);
         break;
     default:
         break;
@@ -401,7 +430,7 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
 
 INLINE u8 Mikey::ReadAudioExtra(u16 address)
 {
-    assert(address >= MIKEY_ATTEN_A || address <= MIKEY_MSTEREO);
+    assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
 
     switch (address)
     {
@@ -425,7 +454,7 @@ INLINE u8 Mikey::ReadAudioExtra(u16 address)
 
 INLINE void Mikey::WriteAudioExtra(u16 address, u8 value)
 {
-    assert(address >= MIKEY_ATTEN_A || address <= MIKEY_MSTEREO);
+    assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
 
     switch (address)
     {
@@ -463,114 +492,138 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
         if (IS_NOT_SET_BIT(t->control_a, 3))
             continue;
 
+        // reset timer done bit
+        if (IS_SET_BIT(t->control_a, 6))
+           t->control_b = UNSET_BIT(t->control_b, 3);
+
+        // if reload is disabled and timer is done
+        // if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
+        //     continue;
+
         // independent mode
         if (t->internal_period_cycles != 0)
         {
             t->internal_cycles += cycles;
 
-            bool decrement = false;
-
             while (t->internal_cycles >= t->internal_period_cycles)
             {
                 t->internal_cycles -= t->internal_period_cycles;
                 DecrementTimerCounter(i);
-                decrement = true;
             }
-
-            // set borrow in flag
-            t->control_b = decrement ? SET_BIT(t->control_b, 1) : UNSET_BIT(t->control_b, 1);
-
-            // clear borrow out flag if not decremented
-            if (!decrement)
-                t->control_b = UNSET_BIT(t->control_b, 0);
-        }
-        // linked mode and borrow out from linked timer
-        else if (IS_SET_BIT(m_state.timers[t->internal_linked_to].control_b, 0))
-        {
-            DecrementTimerCounter(i);
-            t->control_b = SET_BIT(t->control_b, 1);
-        }
-        else
-        {
-            // clear borrow in flag
-            t->control_b = UNSET_BIT(t->control_b, 1);
-            // clear borrow out flag
-            t->control_b = UNSET_BIT(t->control_b, 0);
         }
     }
 }
 
-INLINE void Mikey::DecrementTimerCounter(u8 timer_index)
+INLINE void Mikey::DecrementTimerCounter(int timer)
 {
-    GLYNX_Mikey_Timer* t = &m_state.timers[timer_index];
+    assert((timer >= 0) && (timer < 8));
 
-    if (t->counter == 0x00)
+    GLYNX_Mikey_Timer* t = &m_state.timers[timer];
+
+    // if timer is disabled, skip it
+    if (IS_NOT_SET_BIT(t->control_a, 3))
+        return;
+
+    // if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
+    //     return;
+
+    if (t->counter > 0)
     {
-        // if reload on underflow is set
+        t->counter--;
+    }
+    else
+    {
+        // if reload is set
         if (IS_SET_BIT(t->control_a, 4))
+        {
             t->counter = t->backup;
+        }
 
-        // set irq status even if irq is disabled?
         if (IS_SET_BIT(t->control_a, 7))
-            m_state.irq_pending = SET_BIT(m_state.irq_pending, timer_index);
+            m_state.irq_pending = SET_BIT(m_state.irq_pending, timer);
 
         // set timer done bit
         t->control_b = SET_BIT(t->control_b, 3);
 
-        // set borrow out flag
-        t->control_b = SET_BIT(t->control_b, 0);
-
-        if (timer_index == 0)
+        if (timer == 0)
         {
-            DebugMikey("---> TIMER 0 TICK (HBLANK)");
             HorizontalBlank();
         }
-        else if (timer_index == 2)
+        else if (timer == 2)
         {
-            DebugMikey("---> TIMER 2 TICK (VBLANK)");
             VerticalBlank();
         }
-    }
-    else
-    {
-        // clear borrow out flag
-        t->control_b = UNSET_BIT(t->control_b, 0);
-        t->counter--;
-    }
+        // else if (timer == 5 || timer == 1)
+        // {
+        //     DebugMikey("Timer %d undefrlow: %d . IRQ: %s. CTRLA: %02X, CTRLB: %02X", timer, t->counter, IS_SET_BIT(m_state.irq_pending, timer) ? "YES" : "NO", t->control_a, t->control_b);
+        // }
 
-    // if (timer_index == 0 || timer_index == 2)
-    // {
-    //     DebugMikey("Timer %d decremented to %02X", timer_index, t->counter);
-    // }
+        // if timer has linked timer in linked mode, trigger it
+        int link = k_mikey_timer_forward_links[timer];
+
+        if ((link >= 0) && (m_state.timers[link].internal_period_cycles == 0))
+        {
+            DebugMikey("Timer %d triggering link to Timer %d", timer, link);
+            DecrementTimerCounter(link);
+        }
+    }
 }
 
 INLINE void Mikey::UpdateIRQs()
 {
-    m_m6502->AssertIRQ((m_state.irq_pending && m_state.irq_mask) != 0);
+    m_m6502->AssertIRQ((m_state.irq_pending & m_state.irq_mask) != 0);
 }
 
 INLINE void Mikey::HorizontalBlank()
 {
-    if (m_state.render_line >= 0 && m_state.render_line < 102)
-        LineDMA(m_state.render_line);
+    u8 timer_2_counter = m_state.timers[2].counter;
+    u8 timer_2_backup = m_state.timers[2].backup;
+    int line = 101 - timer_2_counter;
+
+    if (line >= 0 && line < 102)
+    {
+        DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
+        LineDMA(line);
+    }
     else
     {
-        DebugMikey("===> Skiping VBLANK line %d: DISPADR %04X", m_state.render_line, m_dispadr_latch);
-
-        if (m_state.render_line == 104)
-        {
-            DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
-            m_dispadr_latch = m_state.DISPADR.value;
-        }
+        DebugMikey("===> Skiping VBLANK line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
     }
 
-    m_state.render_line++;
+    // Typically end of hcount 104
+    if (timer_2_counter == timer_2_backup)
+    {
+        DebugMikey("===> Rest signal goes low");
+        m_state.rest = false;
+    }
+    // Typically end of hcount 102
+    else if (timer_2_counter == (timer_2_backup - 2))
+    {
+        DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
+        m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;
+    }
+    // Typically end of hcount 101
+    else if (timer_2_counter == (timer_2_backup - 3))
+    {
+        DebugMikey("===> Rest signal goes high");
+        m_state.rest = true;
+    }
+
+    // At the end of the last vblank line
+    if (timer_2_counter == (timer_2_backup - 2))
+    {
+        m_state.render_line = 0;
+    }
+    else
+        m_state.render_line++;
 }
 
 INLINE void Mikey::VerticalBlank()
 {
+    Debug("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
     m_state.frame_ready = true;
-    m_state.render_line = 0;
+    //m_state.render_line = 0;
+    m_debug_cycles = 0;
 }
 
 INLINE void Mikey::LineDMA(int line)
@@ -586,10 +639,8 @@ inline void Mikey::LineDMATemplate(int line)
 {
     assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
 
-    DebugMikey("===> Rendering line %d: DISPADR %04X", line, m_dispadr_latch);
-
     u8* ram = m_memory->GetRAM();
-    u16 line_offset = (u16)(m_dispadr_latch + (line * (GLYNX_SCREEN_WIDTH / 2)));
+    u16 line_offset = (u16)(m_state.dispadr_latch + (line * (GLYNX_SCREEN_WIDTH / 2)));
     u8* src_line_ptr = ram + line_offset;
     u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
     u16* palette = m_host_palette;

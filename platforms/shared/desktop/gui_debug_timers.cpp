@@ -82,7 +82,7 @@ void gui_debug_window_timers(void)
         {
             GLYNX_Mikey_Timer* timer = &mikey_state->timers[t];
             u8 period = (timer->control_a & 0x07);
-            bool is_linked = (period == 7) && (timer->internal_linked_to != -1);
+            bool is_linked = (period == 7) && (k_mikey_timer_backward_links[t] != -1);
             bool enabled = IS_SET_BIT(timer->control_a, 3);
             bool reload = IS_SET_BIT(timer->control_a, 4);
             bool interrupt = IS_SET_BIT(timer->control_a, 7);
@@ -134,7 +134,7 @@ void gui_debug_window_timers(void)
 
                 ImGui::TextColored(violet, "LINKED TO  "); ImGui::SameLine();
                 if (is_linked)
-                    ImGui::TextColored(blue, "TIMER %d", timer->internal_linked_to);
+                    ImGui::TextColored(blue, "TIMER %d", k_mikey_timer_backward_links[t]);
                 else
                     ImGui::TextColored(gray, "NONE");
 
