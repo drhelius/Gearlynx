@@ -425,6 +425,9 @@ static void load_ram(void)
 
 static void reset_buffers(void)
 {
+    for (int i = 0; i < 1024 * 512 * 4; i++)
+        emu_frame_buffer[i] = 0;
+
     // emu_debug_background_buffer_width = 32;
     // emu_debug_background_buffer_height = 32;
 
