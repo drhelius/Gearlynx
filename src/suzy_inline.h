@@ -590,7 +590,10 @@ INLINE void Suzy::DrawSprite()
 
     if (reload_palette)
     {
-        for (int i = 0; i < 8; ++i)
+        int colors = 1 << bpp;
+        int bytes_to_read = colors >> 1;
+
+        for (int i = 0; i < bytes_to_read; ++i)
         {
             u8 byte = RamRead(m_state.TMPADR.value++);
             m_state.pen_map[(i << 1) + 0] = (byte >> 4) & 0x0F;
@@ -631,9 +634,6 @@ INLINE void Suzy::DrawSprite()
         for (int row = 0; row < pixel_height; ++row)
         {
             s32 start_x = base_hpos;
-            s32 tilt_delta = (s8)((m_state.TILTACUM.value >> 8) & 0xFF);
-            start_x += tilt_delta;
-            m_state.TILTACUM.value &= 0x00FF;
 
             if (pos.left != start_pos.left)
                 start_x += dx;
@@ -646,12 +646,16 @@ INLINE void Suzy::DrawSprite()
             }
             else
             {
-                DrawSpriteLinePacked (data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init);
+                DrawSpriteLinePacked(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init);
             }
 
             cur_y += dy;
 
-            m_state.TILTACUM.value += m_state.TILT.value;
+            m_state.TILTACUM.value = (u16)(m_state.TILTACUM.value + m_state.TILT.value);
+            s32 tilt_carry = (s16)m_state.TILTACUM.value >> 8; // desplazamiento aritmético (tilt con signo)
+            base_hpos += tilt_carry;
+            m_state.TILTACUM.value &= 0x00FF;
+
             m_state.SPRHSIZ.value += m_state.STRETCH.value;
         }
 
@@ -674,8 +678,6 @@ INLINE void Suzy::DrawSprite()
 
             dx = pos.left ? -1 : +1;
             dy = pos.up   ? -1 : +1;
-
-            m_state.TILTACUM.value = 0;
 
             cur_y  = base_vpos;
             m_state.VSIZACUM.value = pos.up ? 0 : m_state.VSIZOFF.value;
