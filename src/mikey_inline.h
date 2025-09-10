@@ -596,8 +596,8 @@ INLINE void Mikey::HorizontalBlank()
         DebugMikey("===> Rest signal goes low");
         m_state.rest = false;
     }
-    // Typically end of hcount 102
-    else if (timer_2_counter == (timer_2_backup - 2))
+    // Typically end of hcount 103, start of 3rd vblank line
+    else if (timer_2_counter == (timer_2_backup - 1))
     {
         DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
         m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;

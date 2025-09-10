@@ -701,6 +701,9 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
     while (m_shift_register_address < data_end)
     {
         u32 pi = ShiftRegisterGetBits(bpp, data_end);
+        if (pi == SHIFTREG_EOF)
+            break;
+
         u8 pen = m_state.pen_map[pi & 0x0F];
 
         h_accum += (u32)hsiz;
@@ -725,8 +728,8 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
     while (m_shift_register_address < data_end)
     {
         u32 header = ShiftRegisterGetBits(5, data_end);
-        if (header == 0)
-            break; // early EOL
+        if (header == 0 || header == SHIFTREG_EOF)
+            break;
 
         u32 is_literal = header >> 4;
         u32 count = (header & 0x0F) + 1;
@@ -736,6 +739,9 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
             while (count--)
             {
                 u32 pi = ShiftRegisterGetBits(bpp, data_end);
+                if (pi == SHIFTREG_EOF)
+                    return;
+
                 u8 pen = m_state.pen_map[pi & 0x0F];
 
                 h_accum += (u32)hsiz;
@@ -750,6 +756,9 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
         else // RLE
         {
             u32 pixel_index = ShiftRegisterGetBits(bpp, data_end);
+            if (pixel_index == SHIFTREG_EOF)
+                return;
+
             u8 pen = m_state.pen_map[pixel_index & 0x0F];
 
             while (count--)
@@ -847,28 +856,32 @@ INLINE void Suzy::ShiftRegisterReset(u16 address)
 
 INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
 {
+    if (m_shift_register_address >= stop_addr)
+        return SHIFTREG_EOF;
+
+    int bits_in_current_byte = (m_shift_register_bit + 1);
+    u16 bytes_remaining_after_current = (u16)((stop_addr - 1) - m_shift_register_address);
+    int remaining_bits = bits_in_current_byte + (int)bytes_remaining_after_current * 8;
+
+    if (n > remaining_bits)
+        return SHIFTREG_EOF;
+
     // MSB-first
     u32 value = 0;
+    int need = n;
 
-    while (n > 0)
+    while (need > 0)
     {
         if (m_shift_register_bit < 0)
         {
             m_shift_register_address++;
-
-            if (m_shift_register_address >= stop_addr)
-            {
-                // Clamp: further reads would overrun. Return what we have
-                break;
-            }
-
             m_shift_register_current = RamRead(m_shift_register_address);
             m_shift_register_bit = 7;
         }
 
         value = (value << 1) | ((m_shift_register_current >> m_shift_register_bit) & 1);
         m_shift_register_bit--;
-        n--;
+        need--;
     }
 
     return value;
