@@ -61,6 +61,79 @@ void Suzy::Reset()
         m_state.pen_map[i] = i;
 }
 
+void Suzy::MathRunMultiply()
+{
+    DebugSuzy("MathRunMultiply called");
+
+    u16 ab = (u16(m_state.MATHA) << 8) | m_state.MATHB;
+    u16 cd = (u16(m_state.MATHC) << 8) | m_state.MATHD;
+
+    u32 result = (u32)ab * (u32)cd;
+
+    bool negative_result = m_state.sprsys_sign && (m_state.math_sign_A ^ m_state.math_sign_C);
+    if (negative_result && result != 0)
+        result = (u32)(-((s32)result));
+
+    m_state.MATHE = (result >> 24) & 0xFF;
+    m_state.MATHF = (result >> 16) & 0xFF;
+    m_state.MATHG = (result >> 8) & 0xFF;
+    m_state.MATHH = result & 0xFF;
+
+    if (m_state.sprsys_accumulate)
+    {
+        u32 acc = m_state.MATHJ << 24 | m_state.MATHK << 16 | m_state.MATHL << 8 | m_state.MATHM;
+        u64 sum = u64(acc) + u64(result);
+        m_state.sprsys_carrybit = (sum > 0xFFFFFFFF);
+        m_state.MATHJ = (sum >> 24) & 0xFF;
+        m_state.MATHK = (sum >> 16) & 0xFF;
+        m_state.MATHL = (sum >> 8) & 0xFF;
+        m_state.MATHM = sum & 0xFF;
+    }
+
+    m_state.sprsys_mathbusy = true;
+    m_state.math_cycles = 44 + ((m_state.sprsys_accumulate || m_state.sprsys_sign) ? 10 : 0);
+}
+
+void Suzy::MathRunDivide()
+{
+    DebugSuzy("MathRunDivide called");
+
+    u32 dividend = (u32(m_state.MATHE) << 24) | (u32(m_state.MATHF) << 16) | (u32(m_state.MATHG) << 8) | u32(m_state.MATHH);
+    u16 divisor = (u16(m_state.MATHN) << 8) | m_state.MATHP;
+    bool zero_divisor = (divisor == 0);
+    u32 quotient = 0;
+    u16 remainder = 0;
+
+    if (zero_divisor)
+    {
+        quotient = 0xFFFFFFFF;
+    }
+    else
+    {
+        quotient = dividend / divisor;
+        remainder = (u16)(dividend % divisor);
+
+        // remainder bug
+        if (remainder & 0x8000)
+            remainder &= 0x7FFF;
+        else if (remainder & 0x4000)
+            remainder ^= 0x8000;
+
+        m_state.sprsys_carrybit = (quotient > 0xFFFF);
+    }
+
+    m_state.MATHA = (quotient >> 24) & 0xFF;
+    m_state.MATHB = (quotient >> 16) & 0xFF;
+    m_state.MATHC = (quotient >> 8) & 0xFF;
+    m_state.MATHD = quotient & 0xFF;
+
+    m_state.MATHL = (remainder >> 8) & 0xFF;
+    m_state.MATHM = remainder & 0xFF;
+
+    m_state.sprsys_mathbusy = true;
+    m_state.math_cycles = 176 + (14 * l_zero16(divisor));
+}
+
 void Suzy::ComputeQuadLUT()
 {
     static const int DR = 0;

@@ -67,8 +67,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
 
         bool stop = false;
-
-        u32 temp_max_cycles = 0;
+        u32 cycle_count = 0;
 
         do
         {
@@ -76,11 +75,11 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
                 m_debug_callback();
 
             u32 cycles = m_m6502->RunInstruction(&instruction_completed);
-            m_suzy->Clock(cycles);
+            m_suzy->Clock(cycles << 2);
             stop = m_mikey->Clock(cycles);
 
-            temp_max_cycles += cycles;
-            if (temp_max_cycles > 90000)
+            cycle_count += cycles;
+            if (cycle_count > 90000)
             {
                 Debug("Exceeded max cycles in RunToVBlankTemplate");
                 stop = true;
@@ -105,7 +104,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
         while (!stop);
 
-        Debug("RunToVBlankTemplate: Exiting after %u cycles", temp_max_cycles);
+        Debug("RunToVBlankTemplate: Exiting after %u cycles", cycle_count);
 
         m_audio->EndFrame(sample_buffer, sample_count);
 
@@ -116,13 +115,20 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         UNUSED(debug);
 
         bool stop = false;
+        u32 cycle_count = 0;
 
         do
         {
             u32 cycles = m_m6502->RunInstruction();
+            m_suzy->Clock(cycles << 2);
+            stop = m_mikey->Clock(cycles);
 
-            //TODO: implement video
-            stop = true;
+            cycle_count += cycles;
+            if (cycle_count > 90000)
+            {
+                Debug("Exceeded max cycles in RunToVBlankTemplate");
+                stop = true;
+            }
 
             m_audio->Clock(cycles);
         }

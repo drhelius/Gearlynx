@@ -41,10 +41,12 @@ void gui_debug_window_suzy_regs(void)
     ImGui::PushFont(gui_default_font);
 
     GearlynxCore* core = emu_get_core();
-    Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
+    Suzy* suzy = core->GetSuzy();
+    Suzy::Suzy_State* suzy_state = suzy->GetState();
     Input* input = core->GetInput();
     u8 joystick = input->ReadJoystick();
     u8 switches = input->ReadSwitches();
+    u8 sprsys = suzy->Read(SUZY_SPRSYS);
 
     struct
     {
@@ -99,7 +101,7 @@ void gui_debug_window_suzy_regs(void)
         {"SPRINIT  ", "FC83", &suzy_state->SPRINIT},
         {"SUZYBUSEN", "FC90", &suzy_state->SUZYBUSEN},
         {"SPRGO    ", "FC91", &suzy_state->SPRGO},
-        {"SPRSYS   ", "FC92", &suzy_state->SPRSYS},
+        {"SPRSYS   ", "FC92", &sprsys},
         {"JOYSTICK ", "FCB0", &joystick},
         {"SWITCHES ", "FCB1", &switches},
         { 0, 0, 0 }

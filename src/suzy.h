@@ -61,8 +61,22 @@ public:
         u16_union SCBADR;
         u16_union PROCADR;
         u8 MATHD, MATHC, MATHB, MATHA, MATHP, MATHN, MATHH, MATHG, MATHF, MATHE, MATHM, MATHL, MATHK, MATHJ;
-        u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO, SPRSYS;
+        u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO;
+        bool sprsys_sign;
+        bool sprsys_accumulate;
+        bool sprsys_dontcollide;
+        bool sprsys_vstrech;
+        bool sprsys_lefthand;
+        bool sprsys_unsafe;
+        bool sprsys_stopsprites;
+        bool sprsys_mathbusy;
+        bool sprsys_mathbit;
+        bool sprsys_carrybit;
+        bool sprsys_spritesbusy;
         u8 pen_map[16];
+        u32 math_cycles;
+        bool math_sign_A;
+        bool math_sign_C;
     };
 
 public:
@@ -89,6 +103,10 @@ private:
     void RamWrite(u16 address, u8 value);
     void ShiftRegisterReset(u16 address);
     u32 ShiftRegisterGetBits(int n, u16 stop_addr);
+    void UpdateMath(u32 cycles);
+    void MathRunMultiply();
+    void MathRunDivide();
+    bool MathIsNegative(u16 value);
     void ComputeQuadLUT();
 
 private:

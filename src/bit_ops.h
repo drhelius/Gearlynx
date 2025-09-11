@@ -35,9 +35,25 @@ static const u8 k_bitops_reverse_lut[16] = {
     0x1, 0x9, 0x5, 0xD, 0x3, 0xB, 0x7, 0xF
 };
 
-INLINE u8 ReverseBits(const u8 value)
+INLINE u8 reverse_bits(const u8 value)
 {
     return (k_bitops_reverse_lut[value & 0xF] << 4) | k_bitops_reverse_lut[value >> 4];
+}
+
+INLINE u32 l_zero16(u16 value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return (u32)(value ? __builtin_clz((unsigned)value) - (int)(sizeof(unsigned) * 8 - 16) : 16);
+#else
+    u32 n = 0;
+    u16 m = 0x8000;
+    while(m && !(value & m))
+    {
+        n++;
+        m >>= 1;
+    }
+    return value ? n : 16;
+#endif
 }
 
 #endif /* BIT_OPS_H */

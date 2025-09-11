@@ -27,7 +27,7 @@
 
 INLINE void Suzy::Clock(u32 cycles)
 {
-
+    UpdateMath(cycles);
 }
 
 INLINE u8 Suzy::Read(u16 address)
@@ -181,8 +181,18 @@ INLINE u8 Suzy::Read(u16 address)
         DebugSuzy("Reading write-only SPRGO: %02X", m_state.SPRGO);
         return 0xFF;
     case SUZY_SPRSYS:      // 0xFC92
-        DebugSuzy("Reading SPRSYS: %02X", m_state.SPRSYS);
-        return 0;
+    {
+        u8 ret = 0x00;
+        ret |= (m_state.sprsys_spritesbusy ? 0x01 : 0x00);
+        ret |= (m_state.sprsys_stopsprites ? 0x02 : 0x00);
+        ret |= (m_state.sprsys_unsafe ? 0x04 : 0x00);
+        ret |= (m_state.sprsys_lefthand ? 0x08 : 0x00);
+        ret |= (m_state.sprsys_vstrech ? 0x10 : 0x00);
+        ret |= (m_state.sprsys_carrybit ? 0x20 : 0x00);
+        ret |= (m_state.sprsys_mathbit ? 0x40 : 0x00);
+        ret |= (m_state.sprsys_mathbusy ? 0x80 : 0x00);
+        return ret;
+    }
     case SUZY_JOYSTICK:    // 0xFCB0
         DebugSuzy("Reading JOYSTICK: %02X", m_input->ReadJoystick());
         return m_input->ReadJoystick();
@@ -377,17 +387,36 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_MATHD:       // 0xFC52
         m_state.MATHD = value;
-        Write(SUZY_MATHC, 0);
+        m_state.MATHC = 0;
         break;
     case SUZY_MATHC:       // 0xFC53
         m_state.MATHC = value;
+        if (m_state.sprsys_sign)
+        {
+            u16 cd = (u16(m_state.MATHC) << 8) | m_state.MATHD;
+            m_state.math_sign_C = MathIsNegative(cd);
+            if (m_state.math_sign_C && cd != 0)
+            cd = (u16)(-((s16)cd));
+            m_state.MATHC = (cd >> 8) & 0xFF;
+            m_state.MATHD = cd & 0xFF;
+        }
         break;
     case SUZY_MATHB:       // 0xFC54
         m_state.MATHB = value;
-        Write(SUZY_MATHA, 0);
+        m_state.MATHA = 0;
         break;
     case SUZY_MATHA:       // 0xFC55
         m_state.MATHA = value;
+        if (m_state.sprsys_sign)
+        {
+            u16 ab = (u16(m_state.MATHA) << 8) | m_state.MATHB;
+            m_state.math_sign_A = MathIsNegative(ab);
+            if (m_state.math_sign_A && ab != 0)
+            ab = (u16)(-((s16)ab));
+            m_state.MATHA = (ab >> 8) & 0xFF;
+            m_state.MATHB = ab & 0xFF;
+        }
+        MathRunMultiply();
         break;
     case SUZY_MATHP:       // 0xFC56
         m_state.MATHP = value;
@@ -409,10 +438,12 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_MATHE:       // 0xFC63
         m_state.MATHE = value;
+        MathRunDivide();
         break;
     case SUZY_MATHM:       // 0xFC6C
         m_state.MATHM = value;
         m_state.MATHL = 0;
+        m_state.sprsys_carrybit = false;
         break;
     case SUZY_MATHL:       // 0xFC6D
         m_state.MATHL = value;
@@ -457,8 +488,14 @@ INLINE void Suzy::Write(u16 address, u8 value)
             SpritesGo();
         break;
     case SUZY_SPRSYS:      // 0xFC92
-        DebugSuzy("Setting SPRSYS to %02X (was %02X)", value, m_state.SPRSYS);
-        m_state.SPRSYS = value;
+        DebugSuzy("Setting SPRSYS to %02X", value);
+        m_state.sprsys_stopsprites = IS_SET_BIT(value, 1);
+        m_state.sprsys_unsafe = IS_SET_BIT(value, 2) ? false : m_state.sprsys_unsafe;
+        m_state.sprsys_lefthand = IS_SET_BIT(value, 3);
+        m_state.sprsys_vstrech = IS_SET_BIT(value, 4);
+        m_state.sprsys_dontcollide = IS_SET_BIT(value, 5);
+        m_state.sprsys_accumulate = IS_SET_BIT(value, 6);
+        m_state.sprsys_sign = IS_SET_BIT(value, 7);
         break;
     case SUZY_JOYSTICK:    // 0xFCB0
         DebugSuzy("Writing to read-only JOYSTICK: %02X", value);
@@ -499,8 +536,8 @@ INLINE Suzy::Suzy_State* Suzy::GetState()
 
 INLINE void Suzy::SpritesGo()
 {
-    DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X, SPRSYS=%02X",
-              m_state.SPRCTL0, m_state.SPRCTL1, m_state.SPRCOLL, m_state.SPRINIT, m_state.SPRSYS);
+    DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X",
+              m_state.SPRCTL0, m_state.SPRCTL1, m_state.SPRCOLL, m_state.SPRINIT);
 
     while ((m_state.SCBNEXT.value & 0xFF00) != 0)
     {
@@ -547,7 +584,7 @@ INLINE void Suzy::DrawSprite()
     DebugSuzy("  SPRCTL1: LITERAL=%d, RDEPTH=%d, RPALETTE=%d, STARTUP=%d, STARTLEFT=%d",
               literal_only ? 1 : 0, reload_depth, reload_palette ? 1 : 0, start_up ? 1 : 0, start_left ? 1 : 0);
 
-    bool vertical_stretch = IS_SET_BIT(m_state.SPRSYS, 4);
+    bool vertical_stretch = m_state.sprsys_vstrech;
 
     m_state.SPRDLINE.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
@@ -885,6 +922,32 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
     }
 
     return value;
+}
+
+INLINE void Suzy::UpdateMath(u32 cycles)
+{
+    if (m_state.math_cycles > 0)
+    {
+        if (m_state.math_cycles > cycles)
+        {
+            m_state.math_cycles -= cycles;
+        }
+        else
+        {
+            DebugSuzy("Math operation completed");
+            m_state.math_cycles = 0;
+            m_state.sprsys_mathbusy = false;
+        }
+    }
+}
+
+INLINE bool Suzy::MathIsNegative(u16 value)
+{
+    if (value == 0)
+        return true;
+    if (value == 0x8000)
+        return false;
+    return (value & 0x8000) != 0;
 }
 
 #endif /* SUZY_INLINE_H */
