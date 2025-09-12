@@ -71,7 +71,7 @@ public:
         bool sprsys_stopsprites;
         bool sprsys_mathbusy;
         bool sprsys_mathbit;
-        bool sprsys_carrybit;
+        bool sprsys_lastcarrybit;
         bool sprsys_spritesbusy;
         u8 pen_map[16];
         u32 math_cycles;

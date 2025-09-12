@@ -188,7 +188,7 @@ INLINE u8 Suzy::Read(u16 address)
         ret |= (m_state.sprsys_unsafe ? 0x04 : 0x00);
         ret |= (m_state.sprsys_lefthand ? 0x08 : 0x00);
         ret |= (m_state.sprsys_vstrech ? 0x10 : 0x00);
-        ret |= (m_state.sprsys_carrybit ? 0x20 : 0x00);
+        ret |= (m_state.sprsys_lastcarrybit ? 0x20 : 0x00);
         ret |= (m_state.sprsys_mathbit ? 0x40 : 0x00);
         ret |= (m_state.sprsys_mathbusy ? 0x80 : 0x00);
         return ret;
@@ -396,7 +396,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
             u16 cd = (u16(m_state.MATHC) << 8) | m_state.MATHD;
             m_state.math_sign_C = MathIsNegative(cd);
             if (m_state.math_sign_C && cd != 0)
-            cd = (u16)(-((s16)cd));
+                cd = (u16)(-((s16)cd));
             m_state.MATHC = (cd >> 8) & 0xFF;
             m_state.MATHD = cd & 0xFF;
         }
@@ -412,7 +412,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
             u16 ab = (u16(m_state.MATHA) << 8) | m_state.MATHB;
             m_state.math_sign_A = MathIsNegative(ab);
             if (m_state.math_sign_A && ab != 0)
-            ab = (u16)(-((s16)ab));
+                ab = (u16)(-((s16)ab));
             m_state.MATHA = (ab >> 8) & 0xFF;
             m_state.MATHB = ab & 0xFF;
         }
@@ -443,7 +443,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
     case SUZY_MATHM:       // 0xFC6C
         m_state.MATHM = value;
         m_state.MATHL = 0;
-        m_state.sprsys_carrybit = false;
+        m_state.sprsys_lastcarrybit = false;
         break;
     case SUZY_MATHL:       // 0xFC6D
         m_state.MATHL = value;

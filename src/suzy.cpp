@@ -83,7 +83,7 @@ void Suzy::MathRunMultiply()
     {
         u32 acc = m_state.MATHJ << 24 | m_state.MATHK << 16 | m_state.MATHL << 8 | m_state.MATHM;
         u64 sum = u64(acc) + u64(result);
-        m_state.sprsys_carrybit = (sum > 0xFFFFFFFF);
+        m_state.sprsys_lastcarrybit = (sum > 0xFFFFFFFF);
         m_state.MATHJ = (sum >> 24) & 0xFF;
         m_state.MATHK = (sum >> 16) & 0xFF;
         m_state.MATHL = (sum >> 8) & 0xFF;
@@ -107,19 +107,14 @@ void Suzy::MathRunDivide()
     if (zero_divisor)
     {
         quotient = 0xFFFFFFFF;
+        m_state.sprsys_mathbit = true;
+        m_state.sprsys_lastcarrybit = true;
     }
     else
     {
         quotient = dividend / divisor;
         remainder = (u16)(dividend % divisor);
-
-        // remainder bug
-        if (remainder & 0x8000)
-            remainder &= 0x7FFF;
-        else if (remainder & 0x4000)
-            remainder ^= 0x8000;
-
-        m_state.sprsys_carrybit = (quotient > 0xFFFF);
+        m_state.sprsys_mathbit = false;
     }
 
     m_state.MATHA = (quotient >> 24) & 0xFF;
@@ -127,6 +122,8 @@ void Suzy::MathRunDivide()
     m_state.MATHC = (quotient >> 8) & 0xFF;
     m_state.MATHD = quotient & 0xFF;
 
+    m_state.MATHJ = 0;
+    m_state.MATHK = 0;
     m_state.MATHL = (remainder >> 8) & 0xFF;
     m_state.MATHM = remainder & 0xFF;
 
