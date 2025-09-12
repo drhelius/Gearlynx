@@ -14,7 +14,7 @@ Gearlynx is a cross-platform Atari Lynx emulator written in C++ that runs on Win
 
 This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please consider [sponsoring](https://github.com/sponsors/drhelius).
 
-<img src="http://www.geardome.com/files/gearlynx/gearlynx_debug_05.png">
+<img src="http://www.geardome.com/files/gearlynx/gearlynx_debug_06.png">
 
 ## Downloads
 
