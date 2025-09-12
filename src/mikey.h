@@ -97,6 +97,8 @@ private:
     void LineDMA(int line);
     template <int bytes_per_pixel>
     void LineDMATemplate(int line);
+    template <int bytes_per_pixel>
+    void LineDMABlankTemplate(int line);
 
 private:
     Cartridge* m_cartridge;

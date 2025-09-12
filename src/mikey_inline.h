@@ -628,10 +628,20 @@ INLINE void Mikey::VerticalBlank()
 
 INLINE void Mikey::LineDMA(int line)
 {
-    if (m_pixel_format == GLYNX_PIXEL_RGB565)
-        LineDMATemplate<2>(line);
-    else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
-        LineDMATemplate<4>(line);
+    if (IS_SET_BIT(m_state.DISPCTL, 0))
+    {
+        if (m_pixel_format == GLYNX_PIXEL_RGB565)
+            LineDMATemplate<2>(line);
+        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
+            LineDMATemplate<4>(line);
+    }
+    else
+    {
+        if (m_pixel_format == GLYNX_PIXEL_RGB565)
+            LineDMABlankTemplate<2>(line);
+        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
+            LineDMABlankTemplate<4>(line);
+    }
 }
 
 template <int bytes_per_pixel>
@@ -682,6 +692,16 @@ inline void Mikey::LineDMATemplate(int line)
             dst32 += 2;
         }
     }
+}
+
+template <int bytes_per_pixel>
+inline void Mikey::LineDMABlankTemplate(int line)
+{
+    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
+
+    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
+    size_t line_size = GLYNX_SCREEN_WIDTH * bytes_per_pixel;
+    memset(dst_line_ptr, 0, line_size);
 }
 
 #endif /* MIKEY_INLINE_H */
