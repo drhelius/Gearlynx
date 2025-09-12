@@ -387,7 +387,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_MATHD:       // 0xFC52
         m_state.MATHD = value;
-        m_state.MATHC = 0;
+        Write(SUZY_MATHC, 0);
         break;
     case SUZY_MATHC:       // 0xFC53
         m_state.MATHC = value;
