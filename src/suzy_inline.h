@@ -584,6 +584,12 @@ INLINE void Suzy::DrawSprite()
     DebugSuzy("  SPRCTL1: LITERAL=%d, RDEPTH=%d, RPALETTE=%d, STARTUP=%d, STARTLEFT=%d",
               literal_only ? 1 : 0, reload_depth, reload_palette ? 1 : 0, start_up ? 1 : 0, start_left ? 1 : 0);
 
+    m_state.fred = 0;
+    bool collide = !m_state.sprsys_dontcollide && IS_NOT_SET_BIT(m_state.SPRCOLL, 5);
+    bool collision_id = (m_state.SPRCOLL & 0x0F);
+
+    DebugSuzy("  SPRCOLL: COLLIDE=%s, COLLISIONID=%d", collide ? "YES" : "NO", collision_id);
+
     bool vertical_stretch = m_state.sprsys_vstrech;
 
     m_state.SPRDLINE.value = RamReadWord(m_state.TMPADR.value);
@@ -679,11 +685,11 @@ INLINE void Suzy::DrawSprite()
 
             if (literal_only)
             {
-                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init);
+                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init, collide);
             }
             else
             {
-                DrawSpriteLinePacked(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init);
+                DrawSpriteLinePacked(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init, collide);
             }
 
             cur_y += dy;
@@ -729,7 +735,7 @@ INLINE void Suzy::DrawSprite()
 
 INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
                                         s32 x, s32 y, s32 dx,
-                                        int bpp, int type, u16 hsiz, u32 haccum_init)
+                                        int bpp, int type, u16 hsiz, u32 haccum_init, bool collide)
 {
     ShiftRegisterReset(data_begin);
 
@@ -747,7 +753,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 
         while (h_accum >= 0x100)
         {
-            DrawPixel(x, y, pen, type);
+            DrawPixel(x, y, pen, type, collide);
             x += dx;
             h_accum -= 0x100;
         }
@@ -756,7 +762,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 
 INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                                        s32 x, s32 y, s32 dx,
-                                       int bpp, int type, u16 hsiz, u32 haccum_init)
+                                       int bpp, int type, u16 hsiz, u32 haccum_init, bool collide)
 {
     ShiftRegisterReset(data_begin);
 
@@ -784,7 +790,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                 h_accum += (u32)hsiz;
                 while (h_accum >= 0x100)
                 {
-                    DrawPixel(x, y, pen, type);
+                    DrawPixel(x, y, pen, type, collide);
                     x += dx;
                     h_accum -= 0x100;
                 }
@@ -803,7 +809,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                 h_accum += (u32)hsiz;
                 while (h_accum >= 0x100)
                 {
-                    DrawPixel(x, y, pen, type);
+                    DrawPixel(x, y, pen, type, collide);
                     x += dx;
                     h_accum -= 0x100;
                 }
@@ -812,9 +818,46 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
     }
 }
 
-INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type)
+INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide)
 {
-    if (IsPixelTransparent(pen, type))
+    bool transparent = false;
+    bool non_collidable = false;
+
+    switch (type & 0x07)
+    {
+        case 0: // BACKGROUND
+        case 1: // BACKGROUND NON-COLLIDING
+            transparent = false;
+            non_collidable = true;
+            break;
+        case 2: // BOUNDARY-SHADOW
+            transparent = (pen == 0x00) || (pen == 0x0F);
+            non_collidable = (pen == 0x00) || (pen == 0x0E);
+            break;
+        case 3: // BOUNDARY
+            transparent = (pen == 0x00) || (pen == 0x0F);
+            non_collidable = (pen == 0x00);
+            break;
+        case 4: // NORMAL
+            transparent = (pen == 0x00);
+            non_collidable = transparent;
+            break;
+        case 5: // NON-COLLIDABLE
+            transparent = (pen == 0x00);
+            non_collidable = true;
+            break;
+        case 6: // XOR
+        case 7: // SHADOW
+            transparent = (pen == 0x00);
+            non_collidable = (pen == 0x00) || (pen == 0x0E);
+            break;
+        default:
+            transparent = true; // should not happen
+            non_collidable = true;
+            break;
+    }
+
+    if (transparent && non_collidable)
         return;
 
     // Screen-space clip (super-clip window already applied in callers via HOFF/VOFF)
@@ -823,9 +866,15 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type)
     if ((u32)y >= (u32)GLYNX_SCREEN_HEIGHT)
         return;
 
-    u16 base = m_state.VIDBAS.value;
-    u16 addr = (u16)(base + (u16)(y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(x >> 1));
-    u8 byte = RamRead(addr);
+    u16 pixel_offset = (u16)(y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(x >> 1);
+
+    u16 video_base = m_state.VIDBAS.value;
+    u16 video_addr = video_base + pixel_offset;
+    u8 video_byte = RamRead(video_addr);
+
+    u16 coll_base = m_state.COLLBAS.value;
+    u16 coll_addr = coll_base + pixel_offset;
+    u8 coll_byte = RamRead(coll_addr);
 
     const bool is_xor = (type == 6);
 
@@ -834,39 +883,19 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type)
         // left pixel -> high nibble
         u8 new_nib = pen;
         if (is_xor)
-            new_nib ^= (byte >> 4) & 0x0F;
-        byte = (u8)((byte & 0x0F) | (new_nib << 4));
+            new_nib ^= (video_byte >> 4) & 0x0F;
+        video_byte = (u8)((video_byte & 0x0F) | (new_nib << 4));
     }
     else
     {
         // right pixel -> low nibble
         u8 new_nib = pen;
         if (is_xor)
-            new_nib ^= (byte & 0x0F);
-        byte = (u8)((byte & 0xF0) | (new_nib & 0x0F));
+            new_nib ^= (video_byte & 0x0F);
+        video_byte = (u8)((video_byte & 0xF0) | (new_nib & 0x0F));
     }
 
-    RamWrite(addr, byte);
-}
-
-INLINE bool Suzy::IsPixelTransparent(u8 pen, int type)
-{
-    switch (type & 0x07)
-    {
-        case 0: // BACKGROUND
-        case 1: // BACKGROUND NON-COLLIDING
-            return false;
-        case 2: // BOUNDARY-SHADOW
-        case 3: // BOUNDARY
-            return (pen == 0x00) || (pen == 0x0F);
-        case 4: // NORMAL
-        case 5: // NON-COLLIDABLE
-        case 6: // XOR
-        case 7: // SHADOW
-            return (pen == 0x00);
-        default:
-            return false; // should not happen
-    }
+    RamWrite(video_addr, video_byte);
 }
 
 INLINE u8 Suzy::RamRead(u16 address)

@@ -80,6 +80,7 @@ public:
         u16 shift_register_address;
         u8 shift_register_current;
         s32 shift_register_bit;
+        u8 fred;
     };
 
 public:
@@ -97,10 +98,9 @@ public:
 private:
     void SpritesGo();
     void DrawSprite();
-    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init);
-    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init);
-    void DrawPixel(s32 x, s32 y, u8 pen, int type);
-    bool IsPixelTransparent(u8 pen, int type);
+    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide);
+    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide);
+    void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
     void RamWrite(u16 address, u8 value);
