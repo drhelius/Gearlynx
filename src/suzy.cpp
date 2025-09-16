@@ -52,10 +52,8 @@ void Suzy::Init(Mikey* mikey, Memory* memory)
 
 void Suzy::Reset()
 {
-    m_shift_register_address = 0;
-    m_shift_register_current = 0;
-    m_shift_register_bit = -1;
     memset(&m_state, 0, sizeof(Suzy_State));
+    m_state.shift_register_bit = -1;
 
     for (int i = 0; i < 16; ++i)
         m_state.pen_map[i] = i;

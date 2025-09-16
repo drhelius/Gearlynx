@@ -77,6 +77,9 @@ public:
         u32 math_cycles;
         bool math_sign_A;
         bool math_sign_C;
+        u16 shift_register_address;
+        u8 shift_register_current;
+        s32 shift_register_bit;
     };
 
 public:
@@ -125,10 +128,6 @@ private:
     Suzy_State m_state;
     u8* m_ram;
     QuadPos m_quad_lut[4][4][4] = {};
-
-    u16 m_shift_register_address;
-    u8 m_shift_register_current;
-    int m_shift_register_bit;
 };
 
 #include "suzy_inline.h"

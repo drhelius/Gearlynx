@@ -735,7 +735,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 
     u32 h_accum = haccum_init; // start with HSIZOFF when drawing right
 
-    while (m_shift_register_address < data_end)
+    while (m_state.shift_register_address < data_end)
     {
         u32 pi = ShiftRegisterGetBits(bpp, data_end);
         if (pi == SHIFTREG_EOF)
@@ -762,7 +762,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
 
     u32 h_accum = haccum_init; // start with HSIZOFF when drawing right
 
-    while (m_shift_register_address < data_end)
+    while (m_state.shift_register_address < data_end)
     {
         u32 header = ShiftRegisterGetBits(5, data_end);
         if (header == 0 || header == SHIFTREG_EOF)
@@ -886,18 +886,18 @@ INLINE void Suzy::RamWrite(u16 address, u8 value)
 
 INLINE void Suzy::ShiftRegisterReset(u16 address)
 {
-    m_shift_register_address = address;
-    m_shift_register_current = RamRead(address);
-    m_shift_register_bit = 7;
+    m_state.shift_register_address = address;
+    m_state.shift_register_current = RamRead(address);
+    m_state.shift_register_bit = 7;
 }
 
 INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
 {
-    if (m_shift_register_address >= stop_addr)
+    if (m_state.shift_register_address >= stop_addr)
         return SHIFTREG_EOF;
 
-    int bits_in_current_byte = (m_shift_register_bit + 1);
-    u16 bytes_remaining_after_current = (u16)((stop_addr - 1) - m_shift_register_address);
+    int bits_in_current_byte = (m_state.shift_register_bit + 1);
+    u16 bytes_remaining_after_current = (u16)((stop_addr - 1) - m_state.shift_register_address);
     int remaining_bits = bits_in_current_byte + (int)bytes_remaining_after_current * 8;
 
     if (n > remaining_bits)
@@ -909,15 +909,15 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
 
     while (need > 0)
     {
-        if (m_shift_register_bit < 0)
+        if (m_state.shift_register_bit < 0)
         {
-            m_shift_register_address++;
-            m_shift_register_current = RamRead(m_shift_register_address);
-            m_shift_register_bit = 7;
+            m_state.shift_register_address++;
+            m_state.shift_register_current = RamRead(m_state.shift_register_address);
+            m_state.shift_register_bit = 7;
         }
 
-        value = (value << 1) | ((m_shift_register_current >> m_shift_register_bit) & 1);
-        m_shift_register_bit--;
+        value = (value << 1) | ((m_state.shift_register_current >> m_state.shift_register_bit) & 1);
+        m_state.shift_register_bit--;
         need--;
     }
 
