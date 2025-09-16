@@ -90,7 +90,6 @@ private:
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
     void UpdateTimers(u32 cycles);
-    void DecrementTimerCounter(int timer_index);
     void UpdateIRQs();
     void HorizontalBlank();
     void VerticalBlank();
@@ -116,7 +115,8 @@ private:
     u32 m_debug_cycles;
 };
 
-static const u32 k_mikey_timer_period_cycles[8] = { 4, 8, 16, 32, 64, 128, 512, 0 };
+static const u32 k_mikey_timerX_period_cycles[8] = { 4, 8, 16, 32, 64, 128, 512, 0 };
+static const u32 k_mikey_timer4_period_cycles[8] = { 32, 64, 128, 256, 512, 1024, 2048, 0 };
 static const int k_mikey_timer_forward_links[8] = { 2, 3, 4, 5, -1, 7, -1, -1 };
 static const int k_mikey_timer_backward_links[8] = { -1, -1, 0, 1, 2, 3, -1, 5 };
 

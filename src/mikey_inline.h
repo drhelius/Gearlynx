@@ -322,18 +322,25 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
 
     int reg = address & 3;
     int i = (address >> 2) & 7;
+    GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
     switch (reg)
     {
     case 0:
-        DebugMikey("Setting Timer %d Backup to %02X (was %02X)", i, value, m_state.timers[i].backup);
-        m_state.timers[i].backup = value;
+        DebugMikey("Setting Timer %d Backup to %02X (was %02X)", i, value, t->backup);
+        t->backup = value;
         break;
     case 1:
-        DebugMikey("Setting Timer %d Control A to %02X (was %02X)", i, value, m_state.timers[i].control_a);
-        m_state.timers[i].control_a = value;
+        DebugMikey("Setting Timer %d Control A to %02X (was %02X)", i, value, t->control_a);
+        t->control_a = value;
 
-        m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[value & 0x07];
+        if (i == 4)
+            t->internal_period_cycles = k_mikey_timer4_period_cycles[value & 0x07];
+        else
+            t->internal_period_cycles = k_mikey_timerX_period_cycles[value & 0x07];
+
+        if (IS_SET_BIT(value, 6) || IS_SET_BIT(value, 3))
+            t->internal_cycles = 0;
 
         if (IS_SET_BIT(value, 7))
             m_state.irq_mask = SET_BIT(m_state.irq_mask, i);
@@ -341,19 +348,16 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
             m_state.irq_mask = UNSET_BIT(m_state.irq_mask, i);
 
         if (IS_SET_BIT(value, 6))
-            m_state.timers[i].control_b = UNSET_BIT(m_state.timers[i].control_b, 3);
+            t->control_b = UNSET_BIT(t->control_b, 3);
+
         break;
     case 2:
         DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
-        m_state.timers[i].counter = value;
+        t->counter = value;
         break;
     case 3:
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
-
-        if (IS_SET_BIT(value, 3))
-            m_state.timers[i].control_b = SET_BIT(m_state.timers[i].control_b, 3);
-        else
-            m_state.timers[i].control_b = UNSET_BIT(m_state.timers[i].control_b, 3);
+        t->control_b = value;
         break;
     default:
         break;
@@ -492,79 +496,82 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
         if (IS_NOT_SET_BIT(t->control_a, 3))
             continue;
 
-        // reset timer done bit
+        // If reset timer-done is enabled, clear timer-done bit
         if (IS_SET_BIT(t->control_a, 6))
-           t->control_b = UNSET_BIT(t->control_b, 3);
+            t->control_b = UNSET_BIT(t->control_b, 3);
 
-        // if reload is disabled and timer is done
+        // clear borrow out
+        t->control_b = UNSET_BIT(t->control_b, 0);
+
+        int link = k_mikey_timer_forward_links[i];
+
+        // clear borrow in to linked timer
+        if (link >= 0)
+            m_state.timers[link].control_b = UNSET_BIT(m_state.timers[link].control_b, 1); 
+
+        // if reload is disabled and timer is done, skip it
         // if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
         //     continue;
 
-        // independent mode
-        if (t->internal_period_cycles != 0)
+        int tick = 0;
+
+        // if linked timer in linked mode
+        if (t->internal_period_cycles == 0)
+        {
+            if (IS_SET_BIT(t->control_b, 1))
+                tick = 1;
+        }
+        // normal timer mode
+        else
         {
             t->internal_cycles += cycles;
 
             while (t->internal_cycles >= t->internal_period_cycles)
             {
                 t->internal_cycles -= t->internal_period_cycles;
-                DecrementTimerCounter(i);
+                tick++;
             }
         }
-    }
-}
 
-INLINE void Mikey::DecrementTimerCounter(int timer)
-{
-    assert((timer >= 0) && (timer < 8));
-
-    GLYNX_Mikey_Timer* t = &m_state.timers[timer];
-
-    // if timer is disabled, skip it
-    if (IS_NOT_SET_BIT(t->control_a, 3))
-        return;
-
-    // if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
-    //     return;
-
-    if (t->counter > 0)
-    {
-        t->counter--;
-    }
-    else
-    {
-        // if reload is set
-        if (IS_SET_BIT(t->control_a, 4))
+        for (int j = 0; j < tick; j++)
         {
-            t->counter = t->backup;
-        }
+            if (t->counter > 0)
+            {
+                t->counter--;
+            }
+            else
+            {
+                // timer done
+                t->control_b = SET_BIT(t->control_b, 3);
 
-        if (IS_SET_BIT(t->control_a, 7))
-            m_state.irq_pending = SET_BIT(m_state.irq_pending, timer);
+                // borrow out
+                t->control_b = SET_BIT(t->control_b, 0);
 
-        // set timer done bit
-        t->control_b = SET_BIT(t->control_b, 3);
+                if (link >= 0)
+                {
+                    // borrow in to linked timer
+                    m_state.timers[link].control_b = SET_BIT(m_state.timers[link].control_b, 1);
+                }
 
-        if (timer == 0)
-        {
-            HorizontalBlank();
-        }
-        else if (timer == 2)
-        {
-            VerticalBlank();
-        }
-        // else if (timer == 5 || timer == 1)
-        // {
-        //     DebugMikey("Timer %d undefrlow: %d . IRQ: %s. CTRLA: %02X, CTRLB: %02X", timer, t->counter, IS_SET_BIT(m_state.irq_pending, timer) ? "YES" : "NO", t->control_a, t->control_b);
-        // }
+                // if reload is set
+                if (IS_SET_BIT(t->control_a, 4))
+                {
+                    t->counter = t->backup;
+                }
 
-        // if timer has linked timer in linked mode, trigger it
-        int link = k_mikey_timer_forward_links[timer];
+                // irq if enabled and not timer 4
+                if (IS_SET_BIT(t->control_a, 7) && (i != 4))
+                    m_state.irq_pending = SET_BIT(m_state.irq_pending, i);
 
-        if ((link >= 0) && (m_state.timers[link].internal_period_cycles == 0))
-        {
-            DebugMikey("Timer %d triggering link to Timer %d", timer, link);
-            DecrementTimerCounter(link);
+                if (i == 0)
+                {
+                    HorizontalBlank();
+                }
+                else if (i == 2)
+                {
+                    VerticalBlank();
+                }
+            }
         }
     }
 }
