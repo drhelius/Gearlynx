@@ -81,6 +81,7 @@ public:
         u8 shift_register_current;
         s32 shift_register_bit;
         u8 fred;
+        bool everon;
     };
 
 public:
@@ -98,9 +99,9 @@ public:
 private:
     void SpritesGo();
     void DrawSprite();
-    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide);
-    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide);
-    void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide);
+    void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
+    void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
+    void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
     void RamWrite(u16 address, u8 value);

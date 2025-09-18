@@ -586,7 +586,7 @@ INLINE void Suzy::DrawSprite()
 
     m_state.fred = 0;
     bool collide = !m_state.sprsys_dontcollide && IS_NOT_SET_BIT(m_state.SPRCOLL, 5);
-    bool collision_id = (m_state.SPRCOLL & 0x0F);
+    u8 collision_id = (m_state.SPRCOLL & 0x0F);
 
     DebugSuzy("  SPRCOLL: COLLIDE=%s, COLLISIONID=%d", collide ? "YES" : "NO", collision_id);
 
@@ -644,6 +644,8 @@ INLINE void Suzy::DrawSprite()
         }
     }
 
+    m_state.everon = false;
+
     s32 hoff = (s16)m_state.HOFF.value;
     s32 voff = (s16)m_state.VOFF.value;
 
@@ -685,11 +687,11 @@ INLINE void Suzy::DrawSprite()
 
             if (literal_only)
             {
-                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init, collide);
+                DrawSpriteLineLiteral(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init, collide, collision_id);
             }
             else
             {
-                DrawSpriteLinePacked(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init, collide);
+                DrawSpriteLinePacked(data_begin, data_end, start_x, cur_y, dx, bpp, type, m_state.SPRHSIZ.value, haccum_init, collide, collision_id);
             }
 
             cur_y += dy;
@@ -731,11 +733,37 @@ INLINE void Suzy::DrawSprite()
 
         m_state.SPRDLINE.value = next_ptr;
     }
+
+    u16 colpos = m_state.SCBADR.value + m_state.COLLOFF.value;
+
+    if (collide)
+    {
+        switch (type)
+        {
+            case 2: // BOUNDARY-SHADOW
+            case 3: // BOUNDARY
+            case 4: // NORMAL
+            case 6: // XOR
+            case 7: // SHADOW
+                RamWrite(colpos, m_state.fred);
+                break;
+            default:
+                // BACKGROUND, BACKGROUND NON-COLLIDING, NON-COLLIDABLE
+                break;
+        }
+    }
+
+    if (IS_SET_BIT(m_state.SPRGO, 2))
+    {
+        u8 depository = RamRead(colpos);
+        depository = m_state.everon ? UNSET_BIT(depository, 7) : SET_BIT(depository, 7);
+        RamWrite(colpos, depository);
+    }
 }
 
 INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
                                         s32 x, s32 y, s32 dx,
-                                        int bpp, int type, u16 hsiz, u32 haccum_init, bool collide)
+                                        int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id)
 {
     ShiftRegisterReset(data_begin);
 
@@ -753,7 +781,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 
         while (h_accum >= 0x100)
         {
-            DrawPixel(x, y, pen, type, collide);
+            DrawPixel(x, y, pen, type, collide, collision_id);
             x += dx;
             h_accum -= 0x100;
         }
@@ -762,7 +790,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 
 INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                                        s32 x, s32 y, s32 dx,
-                                       int bpp, int type, u16 hsiz, u32 haccum_init, bool collide)
+                                       int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id)
 {
     ShiftRegisterReset(data_begin);
 
@@ -790,7 +818,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                 h_accum += (u32)hsiz;
                 while (h_accum >= 0x100)
                 {
-                    DrawPixel(x, y, pen, type, collide);
+                    DrawPixel(x, y, pen, type, collide, collision_id);
                     x += dx;
                     h_accum -= 0x100;
                 }
@@ -809,7 +837,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                 h_accum += (u32)hsiz;
                 while (h_accum >= 0x100)
                 {
-                    DrawPixel(x, y, pen, type, collide);
+                    DrawPixel(x, y, pen, type, collide, collision_id);
                     x += dx;
                     h_accum -= 0x100;
                 }
@@ -818,8 +846,14 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
     }
 }
 
-INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide)
+INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id)
 {
+    if ((u32)x >= (u32)GLYNX_SCREEN_WIDTH)
+        return;
+    if ((u32)y >= (u32)GLYNX_SCREEN_HEIGHT)
+        return;
+
+    m_state.everon = true;
     bool transparent = false;
     bool non_collidable = false;
 
@@ -852,7 +886,8 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide)
             non_collidable = (pen == 0x00) || (pen == 0x0E);
             break;
         default:
-            transparent = true; // should not happen
+            // should not happen
+            transparent = true;
             non_collidable = true;
             break;
     }
@@ -860,42 +895,74 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide)
     if (transparent && non_collidable)
         return;
 
-    // Screen-space clip (super-clip window already applied in callers via HOFF/VOFF)
-    if ((u32)x >= (u32)GLYNX_SCREEN_WIDTH)
-        return;
-    if ((u32)y >= (u32)GLYNX_SCREEN_HEIGHT)
-        return;
-
     u16 pixel_offset = (u16)(y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(x >> 1);
+    bool is_left = ((x & 1) == 0);
 
-    u16 video_base = m_state.VIDBAS.value;
-    u16 video_addr = video_base + pixel_offset;
-    u8 video_byte = RamRead(video_addr);
-
-    u16 coll_base = m_state.COLLBAS.value;
-    u16 coll_addr = coll_base + pixel_offset;
-    u8 coll_byte = RamRead(coll_addr);
-
-    const bool is_xor = (type == 6);
-
-    if ((x & 1) == 0)
+    if (collide)
     {
-        // left pixel -> high nibble
-        u8 new_nib = pen;
-        if (is_xor)
-            new_nib ^= (video_byte >> 4) & 0x0F;
-        video_byte = (u8)((video_byte & 0x0F) | (new_nib << 4));
-    }
-    else
-    {
-        // right pixel -> low nibble
-        u8 new_nib = pen;
-        if (is_xor)
-            new_nib ^= (video_byte & 0x0F);
-        video_byte = (u8)((video_byte & 0xF0) | (new_nib & 0x0F));
+        if (type == 0) // BACKGROUND
+        {
+            if (pen != 0x0E)
+            {
+                u16 coll_addr = m_state.COLLBAS.value + pixel_offset;
+                u8 back = RamRead(coll_addr);
+
+                if (is_left)
+                    back = (u8)((back & 0x0F) | (collision_id << 4));
+                else
+                    back = (u8)((back & 0xF0) | (collision_id & 0x0F));
+
+                RamWrite(coll_addr, back);
+            }
+        }
+        else if (!non_collidable)
+        {
+            u16 coll_addr = m_state.COLLBAS.value + pixel_offset;
+            u8 back = RamRead(coll_addr);
+            u8 back_nib = is_left ? (back >> 4) : (back & 0x0F);
+
+            if (back_nib > m_state.fred)
+                m_state.fred = back_nib;
+
+            if (is_left)
+                back = (u8)((back & 0x0F) | (collision_id << 4));
+            else
+                back = (u8)((back & 0xF0) | (collision_id & 0x0F));
+
+            RamWrite(coll_addr, back);
+        }
     }
 
-    RamWrite(video_addr, video_byte);
+    if (!transparent)
+    {
+        u16 video_addr = m_state.VIDBAS.value + pixel_offset;
+        u8 video_byte = RamRead(video_addr);
+        bool is_xor = ((type & 0x07) == 6);
+        u8 new_nib = pen;
+
+        if (unlikely(is_xor))
+        {
+            if (is_left)
+            {
+                new_nib ^= (u8)((video_byte >> 4) & 0x0F);
+                video_byte = (u8)((video_byte & 0x0F) | ((new_nib & 0x0F) << 4));
+            }
+            else
+            {
+                new_nib ^= (u8)(video_byte & 0x0F);
+                video_byte = (u8)((video_byte & 0xF0) | (new_nib & 0x0F));
+            }
+        }
+        else
+        {
+            if (is_left)
+                video_byte = (u8)((video_byte & 0x0F) | ((new_nib & 0x0F) << 4));
+            else
+                video_byte = (u8)((video_byte & 0xF0) | (new_nib & 0x0F));
+        }
+
+        RamWrite(video_addr, video_byte);
+    }
 }
 
 INLINE u8 Suzy::RamRead(u16 address)
