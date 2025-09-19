@@ -75,7 +75,7 @@ void gui_debug_window_mikey_regs(void)
     while (regs8[i].name != 0)
     {
         ImGui::TextColored(cyan, "%s ", regs8[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s ", regs8[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s ", regs8[i].name); ImGui::SameLine();
         ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *regs8[i].reg, BYTE_TO_BINARY(*regs8[i].reg));
         i++;
     }
@@ -92,7 +92,7 @@ void gui_debug_window_mikey_regs(void)
     while (regs16[i].name != 0)
     {
         ImGui::TextColored(cyan, "%s ", regs16[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s ", regs16[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s ", regs16[i].name); ImGui::SameLine();
         ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", regs16[i].reg->value, BYTE_TO_BINARY(regs16[i].reg->high), BYTE_TO_BINARY(regs16[i].reg->low));
         i++;
     }
@@ -172,14 +172,14 @@ void gui_debug_window_mikey_timer_regs(void)
         ImGui::TextColored(cyan, "TIMER %d", i); ImGui::Separator();
 
         ImGui::TextColored(cyan, "%s ", timer_regs16[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s ", timer_regs16[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s ", timer_regs16[i].name); ImGui::SameLine();
         ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", *timer_regs16[i].reg, BYTE_TO_BINARY(*timer_regs16[i].reg >> 8), BYTE_TO_BINARY(*timer_regs16[i].reg & 0xFF));
 
         for (int j = 0; j < 3; j++)
         {
             int idx = (i * 3) + j;
             ImGui::TextColored(cyan, "%s ", timer_regs8[idx].addr); ImGui::SameLine();
-            ImGui::TextColored(violet, "%s   ", timer_regs8[idx].name); ImGui::SameLine();
+            ImGui::TextColored(orange, "%s   ", timer_regs8[idx].name); ImGui::SameLine();
             ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *timer_regs8[idx].reg, BYTE_TO_BINARY(*timer_regs8[idx].reg));
         }
 
@@ -254,7 +254,7 @@ void gui_debug_window_mikey_audio(void)
         }
 
         ImGui::TextColored(cyan, "%s ", audio_regs[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s ", audio_regs[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s ", audio_regs[i].name); ImGui::SameLine();
         ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *audio_regs[i].reg, BYTE_TO_BINARY(*audio_regs[i].reg));
         i++;
     }
@@ -282,7 +282,7 @@ void gui_debug_window_mikey_colors(void)
         for (int c = 0; c < 4; c++)
         {
             int idx = (line * 4) + c;
-            ImGui::TextColored(violet, "COLOR  %02d  ", idx);
+            ImGui::TextColored(orange, "   %02d      ", idx);
 
             if (c < 3)
             {

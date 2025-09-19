@@ -101,19 +101,19 @@ void gui_debug_window_timers(void)
                 ImGui::Separator();
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 0); ImGui::SameLine();
-                ImGui::TextColored(violet, "BACKUP    "); ImGui::SameLine();
+                ImGui::TextColored(orange, "BACKUP    "); ImGui::SameLine();
                 ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->backup, BYTE_TO_BINARY(timer->backup));
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 1); ImGui::SameLine();
-                ImGui::TextColored(violet, "CONTROL A "); ImGui::SameLine();
+                ImGui::TextColored(orange, "CONTROL A "); ImGui::SameLine();
                 ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->control_a, BYTE_TO_BINARY(timer->control_a));
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 2); ImGui::SameLine();
-                ImGui::TextColored(violet, "COUNTER   "); ImGui::SameLine();
+                ImGui::TextColored(orange, "COUNTER   "); ImGui::SameLine();
                 ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->counter, BYTE_TO_BINARY(timer->counter));
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 3); ImGui::SameLine();
-                ImGui::TextColored(violet, "CONTROL B "); ImGui::SameLine();
+                ImGui::TextColored(orange, "CONTROL B "); ImGui::SameLine();
                 ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->control_b, BYTE_TO_BINARY(timer->control_b));
 
                 ImGui::Separator();

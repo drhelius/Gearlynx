@@ -85,7 +85,7 @@ void gui_debug_window_suzy_regs(void)
     while (regs16[i].name != 0)
     {
         ImGui::TextColored(cyan, "%s ", regs16[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s ", regs16[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s ", regs16[i].name); ImGui::SameLine();
         ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", regs16[i].reg->value, BYTE_TO_BINARY(regs16[i].reg->high), BYTE_TO_BINARY(regs16[i].reg->low));
         i++;
     }
@@ -111,7 +111,7 @@ void gui_debug_window_suzy_regs(void)
     while (regs8[i].name != 0)
     {
         ImGui::TextColored(cyan, "%s ", regs8[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s  ", regs8[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s  ", regs8[i].name); ImGui::SameLine();
         ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *regs8[i].reg, BYTE_TO_BINARY(*regs8[i].reg));
         i++;
     }
@@ -161,7 +161,7 @@ void gui_debug_window_suzy_math_regs(void)
     while (regs8[i].name != 0)
     {
         ImGui::TextColored(cyan, "%s ", regs8[i].addr); ImGui::SameLine();
-        ImGui::TextColored(violet, "%s ", regs8[i].name); ImGui::SameLine();
+        ImGui::TextColored(orange, "%s ", regs8[i].name); ImGui::SameLine();
         ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *regs8[i].reg, BYTE_TO_BINARY(*regs8[i].reg));
         i++;
     }
@@ -181,9 +181,19 @@ void gui_debug_window_frame_buffers(void)
 
     ImGui::PushFont(gui_default_font);
 
-    u32 scanline = emu_get_core()->GetMikey()->GetState()->render_line;
-    ImGui::TextColored(violet, "SCAN LINE "); ImGui::SameLine();
-    ImGui::TextColored(white, "%02X (%03d)", scanline, scanline);
+    GearlynxCore* core = emu_get_core();
+    Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
+    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+
+    u32 scanline = mikey_state->render_line;
+    ImGui::TextColored(orange, "SCAN LINE "); ImGui::SameLine();
+    ImGui::TextColored(white, "$%02X (%03d)", scanline, scanline);
+
+    ImGui::TextColored(orange, "VIDBAS    "); ImGui::SameLine();
+    ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", suzy_state->VIDBAS.value, BYTE_TO_BINARY(suzy_state->VIDBAS.high), BYTE_TO_BINARY(suzy_state->VIDBAS.low));
+
+    ImGui::TextColored(orange, "DISPADR   "); ImGui::SameLine();
+    ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->DISPADR.value, BYTE_TO_BINARY(mikey_state->DISPADR.high), BYTE_TO_BINARY(mikey_state->DISPADR.low));
 
     ImGui::NewLine();
 
