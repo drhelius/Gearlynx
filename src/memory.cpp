@@ -24,14 +24,16 @@
 #include "audio.h"
 #include "suzy.h"
 #include "mikey.h"
+#include "m6502.h"
 
-Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey)
+Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502)
 {
     m_cartridge = cartridge;
     m_input = input;
     m_audio = audio;
     m_suzy = suzy;
     m_mikey = mikey;
+    m_m6502 = m6502;
     InitPointer(m_disassembler);
     InitPointer(m_state.ram);
     m_state.MAPCTL = 0;
@@ -91,7 +93,6 @@ GLYNX_Disassembler_Record* Memory::GetDisassemblerRecord(u16 address)
 
 GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 address)
 {
-    //TODO: implement disassembler
     GLYNX_Disassembler_Record* record = m_disassembler[address];
 
     if (!IsValidPointer(record))
@@ -221,6 +222,7 @@ u8 Memory::LastPageRead(u16 address)
     else
     {
         Error("LastPageRead called with invalid address: %04X", address);
+        return m_state.ram[address];
     }
 }
 

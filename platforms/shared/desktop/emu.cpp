@@ -326,22 +326,22 @@ GearlynxCore* emu_get_core(void)
 
 void emu_debug_step_over(void)
 {
-    // M6502* processor = emu_get_core()->GetM6502();
-    // M6502::M6502_State* proc_state = processor->GetState();
-    // Memory* memory = emu_get_core()->GetMemory();
-    // u16 pc = proc_state->PC->GetValue();
-    // Memory::GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(proc_state->PC->GetValue());
+    M6502* processor = emu_get_core()->GetM6502();
+    M6502::M6502_State* proc_state = processor->GetState();
+    Memory* memory = emu_get_core()->GetMemory();
+    u16 pc = proc_state->PC.GetValue();
+    GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(pc);
 
-    // if (IsValidPointer(record) && record->subroutine)
-    // {
-    //     u16 return_address = pc + record->size;
-    //     processor->AddRunToBreakpoint(return_address);
-    //     emu_debug_command = Debug_Command_Continue;
-    // }
-    // else
-    //     emu_debug_command = Debug_Command_Step;
+    if (IsValidPointer(record) && record->subroutine)
+    {
+        u16 return_address = pc + record->size;
+        processor->AddRunToBreakpoint(return_address);
+        emu_debug_command = Debug_Command_Continue;
+    }
+    else
+        emu_debug_command = Debug_Command_Step;
 
-    // core->Pause(false);
+    core->Pause(false);
 }
 
 void emu_debug_step_into(void)
@@ -352,20 +352,20 @@ void emu_debug_step_into(void)
 
 void emu_debug_step_out(void)
 {
-    // M6502* processor = emu_get_core()->GetM6502();
-    // std::stack<M6502::GLYNX_CallStackEntry>* call_stack = processor->GetDisassemblerCallStack();
+    M6502* processor = emu_get_core()->GetM6502();
+    std::stack<M6502::GLYNX_CallStackEntry>* call_stack = processor->GetDisassemblerCallStack();
 
-    // if (call_stack->size() > 0)
-    // {
-    //     M6502::GLYNX_CallStackEntry entry = call_stack->top();
-    //     u16 return_address = entry.back;
-    //     processor->AddRunToBreakpoint(return_address);
-    //     emu_debug_command = Debug_Command_Continue;
-    // }
-    // else
-    //     emu_debug_command = Debug_Command_Step;
+    if (call_stack->size() > 0)
+    {
+        M6502::GLYNX_CallStackEntry entry = call_stack->top();
+        u16 return_address = entry.back;
+        processor->AddRunToBreakpoint(return_address);
+        emu_debug_command = Debug_Command_Continue;
+    }
+    else
+        emu_debug_command = Debug_Command_Step;
 
-    // core->Pause(false);
+    core->Pause(false);
 }
 
 void emu_debug_step_frame(void)

@@ -37,11 +37,8 @@ void gui_action_reset(void)
     {
         emu_pause();
 
-        // TODO: Clear frame buffer
-        // for (int i=0; i < (HUC6270_MAX_RESOLUTION_WIDTH * HUC6270_MAX_RESOLUTION_HEIGHT); i++)
-        // {
-        //     emu_frame_buffer[i] = 0;
-        // }
+        for (int i = 0; i < 1024 * 512 * 4; i++)
+            emu_frame_buffer[i] = 0;
     }
 }
 

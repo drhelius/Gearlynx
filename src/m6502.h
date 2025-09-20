@@ -58,16 +58,9 @@ public:
         s32 debug_next_irq;
     };
 
-    enum GLYNX_Breakpoint_Type
-    {
-        M6502_BREAKPOINT_TYPE_ROMRAM = 0,
-        M6502_BREAKPOINT_TYPE_COUNT
-    };
-
     struct GLYNX_Breakpoint
     {
         bool enabled;
-        int type;
         u16 address1;
         u16 address2;
         bool read;
@@ -98,15 +91,15 @@ public:
     bool BreakpointHit();
     bool RunToBreakpointHit();
     void ResetBreakpoints();
-    bool AddBreakpoint(int type, char* text, bool read, bool write, bool execute);
+    bool AddBreakpoint(char* text, bool read, bool write, bool execute);
     bool AddBreakpoint(u16 address);
     void AddRunToBreakpoint(u16 address);
-    void RemoveBreakpoint(int type, u16 address);
-    bool IsBreakpoint(int type, u16 address);
+    void RemoveBreakpoint(u16 address);
+    bool IsBreakpoint(u16 address);
     std::vector<GLYNX_Breakpoint>* GetBreakpoints();
     void ClearDisassemblerCallStack();
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
-    void CheckMemoryBreakpoints(int type, u16 address, bool read);
+    void CheckMemoryBreakpoints(u16 address, bool read);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

@@ -29,6 +29,7 @@ class Input;
 class Audio;
 class Suzy;
 class Mikey;
+class M6502;
 
 class Memory
 {
@@ -40,7 +41,7 @@ public:
     };
 
 public:
-    Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey);
+    Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502);
     ~Memory();
     void Init();
     void Reset();
@@ -73,6 +74,7 @@ private:
     Audio* m_audio;
     Suzy* m_suzy;
     Mikey* m_mikey;
+    M6502* m_m6502;
     Memory_State m_state;
     GLYNX_Disassembler_Record** m_disassembler;
     u8* m_read_page[256];

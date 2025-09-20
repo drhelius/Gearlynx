@@ -332,8 +332,6 @@ INLINE void M6502::CheckBreakpoints()
             continue;
         if (!brk->execute)
             continue;
-        if (brk->type != M6502_BREAKPOINT_TYPE_ROMRAM)
-            continue;
 
         if (brk->range)
         {

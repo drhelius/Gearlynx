@@ -114,12 +114,11 @@ void M6502::ResetBreakpoints()
     m_breakpoints.clear();
 }
 
-bool M6502::AddBreakpoint(int type, char* text, bool read, bool write, bool execute)
+bool M6502::AddBreakpoint(char* text, bool read, bool write, bool execute)
 {
     int input_len = (int)strlen(text);
     GLYNX_Breakpoint brk;
     brk.enabled = true;
-    brk.type = type;
     brk.address1 = 0;
     brk.address2 = 0;
     brk.range = false;
@@ -162,9 +161,6 @@ bool M6502::AddBreakpoint(int type, char* text, bool read, bool write, bool exec
     {
         GLYNX_Breakpoint* item = &m_breakpoints[b];
 
-        if (item->type != brk.type)
-            continue;
-
         if (brk.range)
         {
             if (item->range && (item->address1 == brk.address1) && (item->address2 == brk.address2))
@@ -193,13 +189,12 @@ bool M6502::AddBreakpoint(u16 address)
 {
     char text[6];
     snprintf(text, 6, "%04X", address);
-    return AddBreakpoint(M6502_BREAKPOINT_TYPE_ROMRAM, text, false, false, true);
+    return AddBreakpoint(text, false, false, true);
 }
 
 void M6502::AddRunToBreakpoint(u16 address)
 {
     m_run_to_breakpoint.enabled = true;
-    m_run_to_breakpoint.type = M6502_BREAKPOINT_TYPE_ROMRAM;
     m_run_to_breakpoint.address1 = address;
     m_run_to_breakpoint.address2 = 0;
     m_run_to_breakpoint.range = false;
@@ -209,13 +204,13 @@ void M6502::AddRunToBreakpoint(u16 address)
     m_run_to_breakpoint_requested = true;
 }
 
-void M6502::RemoveBreakpoint(int type, u16 address)
+void M6502::RemoveBreakpoint(u16 address)
 {
     for (long unsigned int b = 0; b < m_breakpoints.size(); b++)
     {
         GLYNX_Breakpoint* item = &m_breakpoints[b];
 
-        if (!item->range && (item->address1 == address) && (item->type == type))
+        if (!item->range && (item->address1 == address))
         {
             m_breakpoints.erase(m_breakpoints.begin() + b);
             break;
@@ -223,13 +218,13 @@ void M6502::RemoveBreakpoint(int type, u16 address)
     }
 }
 
-bool M6502::IsBreakpoint(int type, u16 address)
+bool M6502::IsBreakpoint(u16 address)
 {
     for (long unsigned int b = 0; b < m_breakpoints.size(); b++)
     {
         GLYNX_Breakpoint* item = &m_breakpoints[b];
 
-        if (!item->range && (item->address1 == address) && (item->type == type))
+        if (!item->range && (item->address1 == address))
         {
             return true;
         }
@@ -244,7 +239,7 @@ void M6502::ClearDisassemblerCallStack()
         m_disassembler_call_stack.pop();
 }
 
-void M6502::CheckMemoryBreakpoints(int type, u16 address, bool read)
+void M6502::CheckMemoryBreakpoints(u16 address, bool read)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
 
@@ -256,8 +251,6 @@ void M6502::CheckMemoryBreakpoints(int type, u16 address, bool read)
         GLYNX_Breakpoint* brk = &m_breakpoints[i];
 
         if (!brk->enabled)
-            continue;
-        if (brk->type != type)
             continue;
         if (read && !brk->read)
             continue;

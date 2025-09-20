@@ -25,6 +25,7 @@
 #include "cartridge.h"
 #include "input.h"
 #include "audio.h"
+#include "m6502.h"
 
 INLINE u8* Memory::GetRAM()
 {
@@ -38,8 +39,7 @@ INLINE u8 Memory::Read(u16 address)
 #endif
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-//TODO:
-    //m_m6502->CheckMemoryBreakpoints(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, address, true);
+    m_m6502->CheckMemoryBreakpoints(address, true);
 #endif
 
     if (unlikely(address == 0xFFF9))
@@ -61,8 +61,7 @@ INLINE void Memory::Write(u16 address, u8 value)
 #endif
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-//TODO:
-    //m_m6502->CheckMemoryBreakpoints(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, address, false);
+    m_m6502->CheckMemoryBreakpoints(address, false);
 #endif
 
     if (unlikely(address == 0xFFF9))

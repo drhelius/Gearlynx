@@ -58,7 +58,6 @@ static DebugSymbol** dynamic_symbols = NULL;
 static std::vector<DisassemblerLine> disassembler_lines(0x10000);
 static std::vector<DisassemblerBookmark> bookmarks;
 static int selected_address = -1;
-static int new_breakpoint_type = M6502::M6502_BREAKPOINT_TYPE_ROMRAM;
 static char new_breakpoint_buffer[10] = "";
 static bool new_breakpoint_read = false;
 static bool new_breakpoint_write = false;
@@ -81,7 +80,7 @@ static void draw_disassembly(void);
 static void draw_context_menu(DisassemblerLine* line);
 static void add_symbol(const char* line);
 static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address);
-static void add_breakpoint(int type);
+static void add_breakpoint();
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
 static void replace_symbols(DisassemblerLine* line, const char* color);
@@ -218,8 +217,8 @@ void gui_debug_toggle_breakpoint(void)
 {
     if (selected_address >= 0)
     {
-        if (emu_get_core()->GetM6502()->IsBreakpoint(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, selected_address))
-            emu_get_core()->GetM6502()->RemoveBreakpoint(M6502::M6502_BREAKPOINT_TYPE_ROMRAM, selected_address);
+        if (emu_get_core()->GetM6502()->IsBreakpoint(selected_address))
+            emu_get_core()->GetM6502()->RemoveBreakpoint(selected_address);
         else
             emu_get_core()->GetM6502()->AddBreakpoint(selected_address);
     }
@@ -379,8 +378,6 @@ static void draw_controls(void)
     ImGui::PopFont();
 }
 
-static const char* k_breakpoint_types[] = { "ROM/RAM ", "VRAM    ", "PALETTE ", "6270 REG", "6260 REG" };
-
 static void draw_breakpoints(void)
 {
     if (ImGui::CollapsingHeader("Breakpoints"))
@@ -398,13 +395,10 @@ static void draw_breakpoints(void)
 
         ImGui::Separator();
 
-        ImGui::PushItemWidth(120);
-        ImGui::Combo("Type##type", &new_breakpoint_type, "ROM/RAM\0VRAM\0Palette RAM\0HuC6270 Reg\0HuC6260 Reg\0");
-
         ImGui::PushItemWidth(85);
         if (ImGui::InputTextWithHint("##add_breakpoint", "XXXX-XXXX", new_breakpoint_buffer, IM_ARRAYSIZE(new_breakpoint_buffer), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
         {
-            add_breakpoint(new_breakpoint_type);
+            add_breakpoint();
         }
         ImGui::PopItemWidth();
 
@@ -413,13 +407,11 @@ static void draw_breakpoints(void)
 
         ImGui::Checkbox("Read", &new_breakpoint_read);
         ImGui::Checkbox("Write", &new_breakpoint_write);
-
-        if (new_breakpoint_type == M6502::M6502_BREAKPOINT_TYPE_ROMRAM)
-            ImGui::Checkbox("Execute", &new_breakpoint_execute);
+        ImGui::Checkbox("Execute", &new_breakpoint_execute);
 
         if (ImGui::Button("Add##add", ImVec2(85, 0)))
         {
-            add_breakpoint(new_breakpoint_type);
+            add_breakpoint();
         }
 
         ImGui::NextColumn();
@@ -465,7 +457,7 @@ static void draw_breakpoints(void)
                 ImGui::EndTooltip();
             }
 
-            ImGui::SameLine(); ImGui::TextColored(brk->enabled ? red : gray, "%s", k_breakpoint_types[brk->type]); ImGui::SameLine();
+            ImGui::SameLine();
 
             if ((*breakpoints)[b].range)
                 ImGui::TextColored(brk->enabled ? cyan : gray, "%04X-%04X", brk->address1, brk->address2);
@@ -475,10 +467,7 @@ static void draw_breakpoints(void)
             ImGui::SameLine(); ImGui::TextColored(brk->enabled && brk->read ? orange : gray, " R");
             ImGui::SameLine(0, 2); ImGui::TextColored(brk->enabled && brk->write ? orange : gray, "W");
 
-            if (brk->type == M6502::M6502_BREAKPOINT_TYPE_ROMRAM)
-            {
-                ImGui::SameLine(0, 2); ImGui::TextColored(brk->enabled && brk->execute ? orange : gray, "X");
-            }
+            ImGui::SameLine(0, 2); ImGui::TextColored(brk->enabled && brk->execute ? orange : gray, "X");
 
             GLYNX_Disassembler_Record* record = emu_get_core()->GetMemory()->GetDisassemblerRecord(brk->address1);
 
@@ -489,12 +478,6 @@ static void draw_breakpoints(void)
                 TextColoredEx(" %s", record->name);
                 ImGui::PopStyleColor();
             }
-            //TODO: Implement memory breakpoints
-            // else if (!brk->range && (brk->type == M6502::M6502_BREAKPOINT_TYPE_HUC6270_REGISTER) && (brk->address1 < 20))
-            // {
-            //     ImGui::SameLine();
-            //     ImGui::TextColored(brk->enabled ? violet : gray, " %s", k_register_names[brk->address1]);
-            // }
         }
 
         ImGui::PopFont();
@@ -940,20 +923,13 @@ static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
     }
 }
 
-static void add_breakpoint(int type)
+static void add_breakpoint()
 {
     bool read = new_breakpoint_read;
     bool write = new_breakpoint_write;
     bool execute = new_breakpoint_execute;
 
-    if (type != M6502::M6502_BREAKPOINT_TYPE_ROMRAM)
-    {
-        if (!read && !write)
-            return;
-        execute = false;
-    }
-
-    if (emu_get_core()->GetM6502()->AddBreakpoint(type, new_breakpoint_buffer, read, write, execute))
+    if (emu_get_core()->GetM6502()->AddBreakpoint(new_breakpoint_buffer, read, write, execute))
         new_breakpoint_buffer[0] = 0;
 }
 
