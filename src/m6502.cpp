@@ -277,7 +277,6 @@ void M6502::CheckMemoryBreakpoints(u16 address, bool read)
         }
     }
 #else
-    UNUSED(type);
     UNUSED(address);
     UNUSED(read);
 #endif
