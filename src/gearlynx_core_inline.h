@@ -67,25 +67,26 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
 
         bool stop = false;
-        u32 cycle_count = 0;
+        u32 failsafe_cycle_count = 0;
 
         do
         {
             if (debug_enable && (IsValidPointer(m_debug_callback)))
                 m_debug_callback();
 
-            u32 cycles = m_m6502->RunInstruction(&instruction_completed);
-            m_suzy->Clock(cycles << 2);
-            stop = m_mikey->Clock(cycles);
+            u32 cpu_cycles = m_m6502->RunInstruction(&instruction_completed);
+            u32 lynx_cycles = cpu_cycles * 5;
 
-            cycle_count += cycles;
-            if (cycle_count > 90000)
+            m_suzy->Clock(lynx_cycles);
+            stop = m_mikey->Clock(lynx_cycles);
+            m_audio->Clock(lynx_cycles);
+
+            failsafe_cycle_count += lynx_cycles;
+            if (failsafe_cycle_count > 450000)
             {
                 Debug("Exceeded max cycles in RunToVBlankTemplate");
                 stop = true;
             }
-
-            m_audio->Clock(cycles);
 
             if (debug_enable)
             {
@@ -104,7 +105,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
         while (!stop);
 
-        Debug("RunToVBlankTemplate: Exiting after %u cycles", cycle_count);
+        Debug("RunToVBlankTemplate: Exiting after %u cycles", failsafe_cycle_count);
 
         m_audio->EndFrame(sample_buffer, sample_count);
 
@@ -115,22 +116,23 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         UNUSED(debug);
 
         bool stop = false;
-        u32 cycle_count = 0;
+        u32 failsafe_cycle_count = 0;
 
         do
         {
-            u32 cycles = m_m6502->RunInstruction();
-            m_suzy->Clock(cycles << 2);
-            stop = m_mikey->Clock(cycles);
+            u32 cpu_cycles = m_m6502->RunInstruction();
+            u32 lynx_cycles = cpu_cycles * 5;
 
-            cycle_count += cycles;
-            if (cycle_count > 90000)
+            m_suzy->Clock(lynx_cycles);
+            stop = m_mikey->Clock(lynx_cycles);
+            m_audio->Clock(lynx_cycles);
+
+            failsafe_cycle_count += lynx_cycles;
+            if (failsafe_cycle_count > 450000)
             {
                 Debug("Exceeded max cycles in RunToVBlankTemplate");
                 stop = true;
             }
-
-            m_audio->Clock(cycles);
         }
         while (!stop);
 

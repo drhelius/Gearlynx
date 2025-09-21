@@ -74,6 +74,7 @@ public:
         bool sprsys_lastcarrybit;
         bool sprsys_spritesbusy;
         u8 pen_map[16];
+        u32 sprite_cycles;
         u32 math_cycles;
         bool math_sign_A;
         bool math_sign_C;
@@ -107,6 +108,7 @@ private:
     void RamWrite(u16 address, u8 value);
     void ShiftRegisterReset(u16 address);
     u32 ShiftRegisterGetBits(int n, u16 stop_addr);
+    void UpdateSprites(u32 cycles);
     void UpdateMath(u32 cycles);
     void MathRunMultiply();
     void MathRunDivide();
