@@ -157,14 +157,12 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_INTRST:        // 0xFD80
             DebugMikey("Clearing IRQs: %02X (was %02X)", m_state.irq_pending & ~value, m_state.irq_pending);
             m_state.irq_pending &= ~value;
-            if (m_state.irq_pending != 0)
-                UpdateIRQs();
+            UpdateIRQs();
             break;
         case MIKEY_INTSET:        // 0xFD81
             DebugMikey("Setting IRQs: %02X (was %02X)", m_state.irq_pending | value, m_state.irq_pending);
             m_state.irq_pending |= value;
-            if (m_state.irq_pending != 0)
-                UpdateIRQs();
+            UpdateIRQs();
             break;
         case MIKEY_MAGRDY0:       // 0xFD84
             DebugMikey("Writing MAGRDY0 (unused): %02X", value);
@@ -300,17 +298,18 @@ INLINE u8 Mikey::ReadTimer(u16 address)
 
     int reg = address & 3;
     int i = (address >> 2) & 7;
+    GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
     switch (reg)
     {
     case 0:
-        return m_state.timers[i].backup;
+        return t->backup;
     case 1:
-        return m_state.timers[i].control_a;
+        return t->control_a;
     case 2:
-        return m_state.timers[i].counter;
+        return t->counter;
     case 3:
-        return m_state.timers[i].control_b;
+        return t->control_b;
     default:
         return 0xFF;
     }
@@ -331,16 +330,24 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
         t->backup = value;
         break;
     case 1:
+    {
         DebugMikey("Setting Timer %d Control A to %02X (was %02X)", i, value, t->control_a);
+
+        u8 old_prescaler = t->control_a & 0x07;
+        u8 new_prescaler = value & 0x07;
+
         t->control_a = value;
 
         if (i == 4)
-            t->internal_period_cycles = k_mikey_timer4_period_cycles[value & 0x07];
+            t->internal_period_cycles = k_mikey_timer4_period_cycles[new_prescaler];
         else
-            t->internal_period_cycles = k_mikey_timerX_period_cycles[value & 0x07];
+            t->internal_period_cycles = k_mikey_timerX_period_cycles[new_prescaler];
 
-        if (IS_SET_BIT(value, 6) || IS_SET_BIT(value, 3))
+        if ((old_prescaler != new_prescaler) || ((value & 0x48) != 0))
+        {
             t->internal_cycles = 0;
+            t->internal_pending_ticks = 0;
+        }
 
         if (IS_SET_BIT(value, 7))
             m_state.irq_mask = SET_BIT(m_state.irq_mask, i);
@@ -348,16 +355,19 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
             m_state.irq_mask = UNSET_BIT(m_state.irq_mask, i);
 
         if (IS_SET_BIT(value, 6))
-            t->control_b = UNSET_BIT(t->control_b, 3);
+            t->control_b = UNSET_BIT(t->control_b, 3) | 0xF0;
 
         break;
+    }
     case 2:
         DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
         t->counter = value;
+        t->internal_cycles = 0;
+        t->internal_pending_ticks = 0;
         break;
     case 3:
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
-        t->control_b = value;
+        t->control_b = (t->control_b & 0x16) | (value & ~0x16);
         break;
     default:
         break;
@@ -492,85 +502,100 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
     {
         GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
-        // if timer is disabled, skip it
+        // Disabled?
         if (IS_NOT_SET_BIT(t->control_a, 3))
             continue;
 
-        // If reset timer-done is enabled, clear timer-done bit
+        // reset timer-done ?
         if (IS_SET_BIT(t->control_a, 6))
-            t->control_b = UNSET_BIT(t->control_b, 3);
+            t->control_b = UNSET_BIT(t->control_b, 3); 
 
-        // clear borrow out
-        t->control_b = UNSET_BIT(t->control_b, 0);
+        const bool one_shot = IS_NOT_SET_BIT(t->control_a, 4);
+
+        // One-shot already done?
+        if (one_shot && IS_SET_BIT(t->control_b, 3))
+            continue;
+
+        // Clear transient status bits for this update (do NOT touch DONE)
+        t->control_b = UNSET_BIT(t->control_b, 0); // Borrow Out
+        t->control_b = UNSET_BIT(t->control_b, 1); // Borrow In
+        t->control_b = UNSET_BIT(t->control_b, 2); // Last Clock
 
         int link = k_mikey_timer_forward_links[i];
-
-        // clear borrow in to linked timer
-        if (link >= 0)
-            m_state.timers[link].control_b = UNSET_BIT(m_state.timers[link].control_b, 1); 
-
-        // if reload is disabled and timer is done, skip it
-        // if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
-        //     continue;
-
         int tick = 0;
 
-        // if linked timer in linked mode
+        // Linked mode: consume pending ticks queued by the previous timer
         if (t->internal_period_cycles == 0)
         {
-            if (IS_SET_BIT(t->control_b, 1))
-                tick = 1;
+            tick = t->internal_pending_ticks;
+            t->internal_pending_ticks = 0;
         }
-        // normal timer mode
+        // Prescaled/free-running mode
         else
         {
             t->internal_cycles += cycles;
 
-            while (t->internal_cycles >= t->internal_period_cycles)
+            if (t->internal_cycles >= t->internal_period_cycles)
             {
-                t->internal_cycles -= t->internal_period_cycles;
-                tick++;
+                tick = t->internal_cycles / t->internal_period_cycles;
+                t->internal_cycles -= tick * t->internal_period_cycles;
             }
         }
 
-        for (int j = 0; j < tick; j++)
+        // Any clocks this update? Reflect it on BORROW-IN
+        if (tick > 0)
+        {
+            t->control_b = SET_BIT(t->control_b, 1);
+
+            if (i == 7)
+                DebugMikey("----->>>>> Timer 7 ticked %d times", tick);
+        }
+
+        while (tick-- > 0)
         {
             if (t->counter > 0)
             {
                 t->counter--;
+                if (t->counter == 0)
+                    t->control_b = SET_BIT(t->control_b, 2); // Last clock (pre-borrow)
             }
             else
             {
-                // timer done
-                t->control_b = SET_BIT(t->control_b, 3);
-
-                // borrow out
+                // Borrow out on the tick after LAST-CLOCK
                 t->control_b = SET_BIT(t->control_b, 0);
 
+                // Propagate link tick to next timer
                 if (link >= 0)
                 {
-                    // borrow in to linked timer
+                    m_state.timers[link].internal_pending_ticks++;
                     m_state.timers[link].control_b = SET_BIT(m_state.timers[link].control_b, 1);
                 }
 
-                // if reload is set
-                if (IS_SET_BIT(t->control_a, 4))
+                if (!one_shot)
                 {
+                    // Reload: hardware period is backup+1; reloading to backup is correct per tick
                     t->counter = t->backup;
                 }
+                else
+                {
+                    // One-shot: latch DONE and stop; keep counter at 0
+                    t->control_b = SET_BIT(t->control_b, 3); // Timer Done
+                    t->counter = 0;
+                    DebugMikey("----->>>>> Timer %d ONE-SHOT DONE", i);
+                }
 
-                // irq if enabled and not timer 4
+                // IRQ on borrow attempt (except timer 4 / UART baud)
                 if (IS_SET_BIT(t->control_a, 7) && (i != 4))
                     m_state.irq_pending = SET_BIT(m_state.irq_pending, i);
 
                 if (i == 0)
-                {
                     HorizontalBlank();
-                }
                 else if (i == 2)
-                {
                     VerticalBlank();
-                }
+
+                // In one-shot, after DONE we must not consume more clocks
+                if (one_shot && IS_SET_BIT(t->control_b, 3))
+                    break;
             }
         }
     }
@@ -589,7 +614,7 @@ INLINE void Mikey::HorizontalBlank()
 
     if (line >= 0 && line < 102)
     {
-        //DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
+        DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
         LineDMA(line);
     }
     // else

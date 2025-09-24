@@ -55,7 +55,6 @@ void Mikey::Reset()
     memset(m_host_palette, 0, sizeof(m_host_palette));
     ResetTimers();
 
-
     m_debug_cycles = 0;
 }
 
@@ -96,6 +95,7 @@ void Mikey::ResetTimers()
         m_state.timers[i].control_b = 0;
         m_state.timers[i].internal_cycles = 0;
         m_state.timers[i].internal_period_cycles = ((i == 4) ? k_mikey_timer4_period_cycles[0] : k_mikey_timerX_period_cycles[0]);
+        m_state.timers[i].internal_pending_ticks = 0;
     }
 }
 

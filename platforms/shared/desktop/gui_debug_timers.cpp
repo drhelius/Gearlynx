@@ -86,6 +86,7 @@ void gui_debug_window_timers(void)
             bool enabled = IS_SET_BIT(timer->control_a, 3);
             bool reload = IS_SET_BIT(timer->control_a, 4);
             bool interrupt = IS_SET_BIT(timer->control_a, 7);
+            bool reset_timer_done = IS_SET_BIT(timer->control_a, 6);
             bool timer_done = IS_SET_BIT(timer->control_b, 3);
             bool borrow_in = IS_SET_BIT(timer->control_b, 1);
             bool borrow_out = IS_SET_BIT(timer->control_b, 0);
@@ -124,9 +125,11 @@ void gui_debug_window_timers(void)
                 ImGui::TextColored(violet, "RELOAD     "); ImGui::SameLine();
                 ImGui::TextColored(reload ? green : gray, "%s", reload ? "YES" : "NO");
 
-
                 ImGui::TextColored(violet, "INTERRUPT  "); ImGui::SameLine();
                 ImGui::TextColored(interrupt ? green : gray, "%s", interrupt ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "RESET DONE "); ImGui::SameLine();
+                ImGui::TextColored(reset_timer_done ? green : gray, "%s", reset_timer_done ? "YES" : "NO");
 
                 ImGui::TextColored(violet, "FREQUENCY  "); ImGui::SameLine();
                 ImGui::TextColored(period != 7 ? white : gray, "%s", k_period_strs[period]);

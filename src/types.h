@@ -144,6 +144,7 @@ struct GLYNX_Mikey_Timer
 
     u32 internal_cycles;
     u32 internal_period_cycles;
+    u32 internal_pending_ticks;
 };
 
 struct GLYNX_Mikey_Audio
