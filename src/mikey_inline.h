@@ -333,7 +333,8 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
     {
         DebugMikey("Setting Timer %d Control A to %02X (was %02X)", i, value, t->control_a);
 
-        u8 old_prescaler = t->control_a & 0x07;
+        u8 old_control_a = t->control_a;
+        u8 old_prescaler = old_control_a & 0x07;
         u8 new_prescaler = value & 0x07;
 
         t->control_a = value;
@@ -343,17 +344,23 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
         else
             t->internal_period_cycles = k_mikey_timerX_period_cycles[new_prescaler];
 
-        if ((old_prescaler != new_prescaler) || ((value & 0x48) != 0))
+        // Re-sync ONLY when clock source changes or when enabling counting from disabled
+        bool prescaler_changed = (old_prescaler != new_prescaler);
+        bool enable_count_rising = IS_NOT_SET_BIT(old_control_a, 3) && IS_SET_BIT(value, 3);
+
+        if (prescaler_changed || enable_count_rising)
         {
             t->internal_cycles = 0;
             t->internal_pending_ticks = 0;
         }
 
+        // IRQ enable mask
         if (IS_SET_BIT(value, 7))
             m_state.irq_mask = SET_BIT(m_state.irq_mask, i);
         else
             m_state.irq_mask = UNSET_BIT(m_state.irq_mask, i);
 
+        // RESET TIMER DONE is level-triggered
         if (IS_SET_BIT(value, 6))
             t->control_b = UNSET_BIT(t->control_b, 3) | 0xF0;
 
@@ -502,24 +509,24 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
     {
         GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
-        // Disabled?
+        // Is not enabled?
         if (IS_NOT_SET_BIT(t->control_a, 3))
             continue;
 
-        // reset timer-done ?
+        // Clear transient status bits for this update
+        t->control_b = UNSET_BIT(t->control_b, 0); // Borrow Out
+        t->control_b = UNSET_BIT(t->control_b, 1); // Borrow In
+        t->control_b = UNSET_BIT(t->control_b, 2); // Last Clock
+
+        // Reset Timer Done is level-triggered
         if (IS_SET_BIT(t->control_a, 6))
-            t->control_b = UNSET_BIT(t->control_b, 3); 
+            t->control_b = UNSET_BIT(t->control_b, 3);
 
         const bool one_shot = IS_NOT_SET_BIT(t->control_a, 4);
 
         // One-shot already done?
         if (one_shot && IS_SET_BIT(t->control_b, 3))
             continue;
-
-        // Clear transient status bits for this update (do NOT touch DONE)
-        t->control_b = UNSET_BIT(t->control_b, 0); // Borrow Out
-        t->control_b = UNSET_BIT(t->control_b, 1); // Borrow In
-        t->control_b = UNSET_BIT(t->control_b, 2); // Last Clock
 
         int link = k_mikey_timer_forward_links[i];
         int tick = 0;
