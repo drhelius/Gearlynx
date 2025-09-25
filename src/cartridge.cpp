@@ -219,11 +219,6 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     GatherDataFromPath(path);
 
-    if (size & 0x40)
-    {
-        Debug("Header expected");
-    }
-
     m_rom_size = size;
 
     if (GatherHeader(buffer))
@@ -332,7 +327,7 @@ u8 Cartridge::ReadBank1()
 {
     assert(m_bank_data[1] != NULL && m_bank_size[1] > 0);
 
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
+    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
     u8 data = m_bank_data[1][address & m_bank_mask[1]];
 
     if (!m_shift_register_strobe)
