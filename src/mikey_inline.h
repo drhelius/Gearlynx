@@ -579,17 +579,10 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
                 }
 
                 if (!one_shot)
-                {
-                    // Reload: hardware period is backup+1; reloading to backup is correct per tick
                     t->counter = t->backup;
-                }
-                else
-                {
-                    // One-shot: latch DONE and stop; keep counter at 0
-                    t->control_b = SET_BIT(t->control_b, 3); // Timer Done
-                    t->counter = 0;
-                    DebugMikey("----->>>>> Timer %d ONE-SHOT DONE", i);
-                }
+
+
+                t->control_b = SET_BIT(t->control_b, 3); // Timer Done
 
                 // IRQ on borrow attempt (except timer 4 / UART baud)
                 if (IS_SET_BIT(t->control_a, 7) && (i != 4))
