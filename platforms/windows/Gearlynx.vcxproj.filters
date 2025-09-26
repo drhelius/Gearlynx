@@ -165,7 +165,7 @@
     <ClInclude Include="..\..\src\bit_ops.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\cartridge.h">
+    <ClInclude Include="..\..\src\media.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\common.h">
@@ -338,7 +338,7 @@
     <ClCompile Include="..\..\src\audio.cpp">
       <Filter>core</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\cartridge.cpp">
+    <ClCompile Include="..\..\src\media.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\gearlynx_core.cpp">

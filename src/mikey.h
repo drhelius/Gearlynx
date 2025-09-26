@@ -25,7 +25,7 @@
 #include "common.h"
 #include "mikey_defines.h"
 
-class Cartridge;
+class Media;
 class Memory;
 class M6502;
 class Suzy;
@@ -63,7 +63,7 @@ public:
     };
 
 public:
-    Mikey(Cartridge* cartridge, M6502* m6502);
+    Mikey(Media* media, M6502* m6502);
     ~Mikey();
     void Init(Suzy* suzy, Memory* memory, GLYNX_Pixel_Format pixel_format);
     void Reset();
@@ -100,7 +100,7 @@ private:
     void LineDMABlankTemplate(int line);
 
 private:
-    Cartridge* m_cartridge;
+    Media* m_media;
     Suzy* m_suzy;
     Memory* m_memory;
     M6502* m_m6502;

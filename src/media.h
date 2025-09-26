@@ -17,22 +17,22 @@
  *
  */
 
-#ifndef CARTRIDGE_H
-#define CARTRIDGE_H
+#ifndef MEDIA_H
+#define MEDIA_H
 
 #include "common.h"
 
-class Cartridge
+class Media
 {
 public:
-    enum GLYNX_Cartridge_Rotation
+    enum GLYNX_Media_Rotation
     {
         NO_ROTATION = 0,
         ROTATE_LEFT = 1,
         ROTATE_RIGHT = 2
     };
 
-    enum GLYNX_Cartridge_EEPROM
+    enum GLYNX_Media_EEPROM
     {
         NO_EEPROM = 0,
         EEPROM_93C46 = 1,
@@ -44,9 +44,15 @@ public:
         EEPROM_8BIT = 0x80
     };
 
+    enum GLYNX_Media_Type
+    {
+        MEDIA_LYNX = 0,
+        MEDIA_HOMEBREW = 1
+    };
+
 public:
-    Cartridge();
-    ~Cartridge();
+    Media();
+    ~Media();
     void Init();
     void Reset();
     u8* GetROM();
@@ -56,9 +62,11 @@ public:
     bool IsBiosValid();
     int GetROMSize();
     u32 GetCRC();
-    GLYNX_Cartridge_Header* GetHeader();
-    GLYNX_Cartridge_Rotation GetRotation();
-    GLYNX_Cartridge_EEPROM GetEEPROM();
+    GLYNX_Media_Rotation GetRotation();
+    GLYNX_Media_EEPROM GetEEPROM();
+    GLYNX_Media_Type GetType();
+    bool GetAudin();
+    u16 GetHomebrewBootAddress();
     const char* GetFilePath();
     const char* GetFileDirectory();
     const char* GetFileName();
@@ -75,13 +83,14 @@ public:
 
 private:
     bool LoadFromZipFile(const u8* buffer, int size);
-    void GatherCartridgeInfoFromDB();
-    bool GatherHeader(const u8* buffer);
-    void DefaultHeader();
+    void GatherInfoFromDB();
+    bool GatherLynxHeader(const u8* buffer);
+    bool GatherBS93Header(const u8* buffer);
+    void DefaultLynxHeader();
     void SetupBanks();
     void GatherDataFromPath(const char* path);
-    GLYNX_Cartridge_Rotation ReadHeaderRotation(u8 rotation);
-    GLYNX_Cartridge_EEPROM ReadHeaderEEPROM(u8 eeprom);
+    GLYNX_Media_Rotation ReadHeaderRotation(u8 rotation);
+    GLYNX_Media_EEPROM ReadHeaderEEPROM(u8 eeprom);
     bool IsValidFile(const char* path);
 
 private:
@@ -95,19 +104,23 @@ private:
     char m_file_directory[512];
     char m_file_name[512];
     char m_file_extension[512];
-    GLYNX_Cartridge_Header m_header;
     u8* m_bank_data[2];
     u32 m_bank_size[2];
     u32 m_bank_mask[2];
+    u32 m_bank_page_size[2];
     u32 m_address_shift;
     u32 m_address_shift_bits[2];
     u32 m_page_offset;
     u32 m_page_offset_mask[2];
     bool m_shift_register_strobe;
     bool m_shift_register_bit;
-    GLYNX_Cartridge_Rotation m_rotation;
-    GLYNX_Cartridge_EEPROM m_eeprom;
+    GLYNX_Media_Rotation m_rotation;
+    GLYNX_Media_EEPROM m_eeprom;
+    GLYNX_Media_Type m_type;
+    bool m_audin;
+    u16 m_homebrew_boot_address;
+    u16 m_homebrew_size;
     u32 m_crc;
 };
 
-#endif /* CARTRIDGE_H */
+#endif /* MEDIA_H */

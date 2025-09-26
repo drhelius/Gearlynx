@@ -24,7 +24,7 @@
 #include <fstream>
 #include "common.h"
 
-class Cartridge;
+class Media;
 class Input;
 class Audio;
 class Suzy;
@@ -41,7 +41,7 @@ public:
     };
 
 public:
-    Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502);
+    Memory(Media* media, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502);
     ~Memory();
     void Init();
     void Reset();
@@ -69,7 +69,7 @@ private:
     void LastPageWrite(u16 address, u8 value);
 
 private:
-    Cartridge* m_cartridge;
+    Media* m_media;
     Input* m_input;
     Audio* m_audio;
     Suzy* m_suzy;

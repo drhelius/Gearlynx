@@ -22,7 +22,7 @@
 
 #include <assert.h>
 #include "memory.h"
-#include "cartridge.h"
+#include "media.h"
 #include "input.h"
 #include "audio.h"
 #include "m6502.h"

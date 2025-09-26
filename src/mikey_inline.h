@@ -22,7 +22,7 @@
 
 #include "mikey.h"
 #include "suzy.h"
-#include "cartridge.h"
+#include "media.h"
 #include "m6502.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
@@ -175,7 +175,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             break;
         case MIKEY_SYSCTL1:       // 0xFD87
             DebugMikey("Setting SYSCTL1 to %02X (was %02X)", value, m_state.SYSCTL1);
-            m_cartridge->ShiftRegisterStrobe(value & 0x01);
+            m_media->ShiftRegisterStrobe(value & 0x01);
             m_state.SYSCTL1 = value;
             break;
         case MIKEY_MIKEYHREV:     // 0xFD88
@@ -190,7 +190,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             break;
         case MIKEY_IODAT:         // 0xFD8B
             DebugMikey("Setting IODAT to %02X (was %02X)", value, m_state.IODAT);
-            m_cartridge->ShiftRegisterBit(value & 0x02);
+            m_media->ShiftRegisterBit(value & 0x02);
             m_state.IODAT = value;
             break;
         case MIKEY_SERCTL:        // 0xFD8C

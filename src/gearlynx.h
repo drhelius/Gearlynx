@@ -24,7 +24,7 @@
 #include "gearlynx_core.h"
 #include "input.h"
 #include "audio.h"
-#include "cartridge.h"
+#include "media.h"
 #include "m6502.h"
 #include "memory.h"
 #include "suzy.h"

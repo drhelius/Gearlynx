@@ -20,15 +20,15 @@
 #include <istream>
 #include <ostream>
 #include "suzy.h"
-#include "cartridge.h"
+#include "media.h"
 #include "memory.h"
 #include "m6502.h"
 #include "mikey.h"
 #include "input.h"
 
-Suzy::Suzy(Cartridge* cartridge, M6502* m6502, Input* input)
+Suzy::Suzy(Media* media, M6502* m6502, Input* input)
 {
-    m_cartridge = cartridge;
+    m_media = media;
     m_m6502 = m6502;
     m_input = input;
     InitPointer(m_mikey);

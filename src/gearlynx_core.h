@@ -27,7 +27,7 @@
 class Audio;
 class Input;
 class Memory;
-class Cartridge;
+class Media;
 class M6502;
 class Suzy;
 class Mikey;
@@ -72,7 +72,7 @@ public:
     void ResetSound();
     bool GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info);
     Memory* GetMemory();
-    Cartridge* GetCartridge();
+    Media* GetMedia();
     Audio* GetAudio();
     Input* GetInput();
     M6502* GetM6502();
@@ -84,6 +84,7 @@ private:
     void Reset();
     template<bool debugger>
     bool RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug);
+    void PrepareForHomebrew();
     bool SaveState(std::ostream& stream, size_t& size, bool screenshot);
     bool LoadState(std::istream& stream);
     std::string GetSaveStatePath(const char* path, int index);
@@ -92,7 +93,7 @@ private:
     Memory* m_memory;
     Audio* m_audio;
     Input* m_input;
-    Cartridge* m_cartridge;
+    Media* m_media;
     M6502* m_m6502;
     Suzy* m_suzy;
     Mikey* m_mikey;

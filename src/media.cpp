@@ -21,12 +21,12 @@
 #include <fstream>
 #include <algorithm>
 #include <assert.h>
-#include "cartridge.h"
+#include "media.h"
 #include "miniz.h"
 #include "crc.h"
 #include "game_db.h"
 
-Cartridge::Cartridge()
+Media::Media()
 {
     InitPointer(m_rom);
     InitPointer(m_bank_data[0]);
@@ -36,17 +36,17 @@ Cartridge::Cartridge()
     Reset();
 }
 
-Cartridge::~Cartridge()
+Media::~Media()
 {
     SafeDeleteArray(m_rom);
 }
 
-void Cartridge::Init()
+void Media::Init()
 {
     Reset();
 }
 
-void Cartridge::Reset()
+void Media::Reset()
 {
     SafeDeleteArray(m_rom);
     m_rom_size = 0;
@@ -55,13 +55,14 @@ void Cartridge::Reset()
     m_file_directory[0] = 0;
     m_file_name[0] = 0;
     m_file_extension[0] = 0;
-    memset(&m_header, 0, sizeof(m_header));
     InitPointer(m_bank_data[0]);
     InitPointer(m_bank_data[1]);
     m_bank_size[0] = 0;
     m_bank_size[1] = 0;
     m_bank_mask[0] = 0;
     m_bank_mask[1] = 0;
+    m_bank_page_size[0] = 0;
+    m_bank_page_size[1] = 0;
     m_address_shift = 0;
     m_address_shift_bits[0] = 0;
     m_address_shift_bits[1] = 0;
@@ -72,80 +73,94 @@ void Cartridge::Reset()
     m_shift_register_bit = false;
     m_rotation = NO_ROTATION;
     m_eeprom = NO_EEPROM;
+    m_type = MEDIA_LYNX;
+    m_audin = false;
+    m_homebrew_boot_address = 0;
+    m_homebrew_size = 0;
     m_crc = 0;
 }
 
-u32 Cartridge::GetCRC()
+u32 Media::GetCRC()
 {
     return m_crc;
 }
 
-bool Cartridge::IsReady()
+bool Media::IsReady()
 {
     return m_ready;
 }
 
-bool Cartridge::IsBiosLoaded()
+bool Media::IsBiosLoaded()
 {
     return m_is_bios_loaded;
 }
 
-bool Cartridge::IsBiosValid()
+bool Media::IsBiosValid()
 {
     return m_is_bios_valid;
 }
 
-int Cartridge::GetROMSize()
+int Media::GetROMSize()
 {
     return m_rom_size;
 }
 
-const char* Cartridge::GetFilePath()
+const char* Media::GetFilePath()
 {
     return m_file_path;
 }
 
-const char* Cartridge::GetFileDirectory()
+const char* Media::GetFileDirectory()
 {
     return m_file_directory;
 }
 
-const char* Cartridge::GetFileName()
+const char* Media::GetFileName()
 {
     return m_file_name;
 }
 
-const char* Cartridge::GetFileExtension()
+const char* Media::GetFileExtension()
 {
     return m_file_extension;
 }
 
-u8* Cartridge::GetROM()
+u8* Media::GetROM()
 {
     return m_rom;
 }
 
-u8* Cartridge::GetBIOS()
+u8* Media::GetBIOS()
 {
     return m_bios;
 }
 
-GLYNX_Cartridge_Header* Cartridge::GetHeader()
-{
-    return &m_header;
-}
-
-Cartridge::GLYNX_Cartridge_Rotation Cartridge::GetRotation()
+Media::GLYNX_Media_Rotation Media::GetRotation()
 {
     return m_rotation;
 }
 
-Cartridge::GLYNX_Cartridge_EEPROM Cartridge::GetEEPROM()
+Media::GLYNX_Media_EEPROM Media::GetEEPROM()
 {
     return m_eeprom;
 }
 
-bool Cartridge::LoadFromFile(const char* path)
+Media::GLYNX_Media_Type Media::GetType()
+{
+    return m_type;
+}
+
+bool Media::GetAudin()
+{
+    return m_audin;
+}
+
+u16 Media::GetHomebrewBootAddress()
+{
+    return m_homebrew_boot_address;
+}
+
+bool Media::LoadFromFile(const char* path)
 {
     using namespace std;
 
@@ -205,7 +220,7 @@ bool Cartridge::LoadFromFile(const char* path)
     return m_ready;
 }
 
-bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
+bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 {
     Log("Loading ROM from buffer... Size: %d", size);
 
@@ -221,29 +236,38 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     m_rom_size = size;
 
-    if (GatherHeader(buffer))
+    if ((m_rom_size > 0x40) && GatherLynxHeader(buffer))
     {
         m_rom_size -= 0x40;
         buffer += 0x40;
+        m_type = MEDIA_LYNX;
+    }
+    else if ((m_rom_size > 10) && GatherBS93Header(buffer))
+    {
+        m_rom_size -= 10;
+        buffer += 10;
+        m_rom_size = MIN(m_rom_size, m_homebrew_size);
+        m_type = MEDIA_HOMEBREW;
     }
     else
     {
         Debug("WARNING: Unable to gather ROM header");
-        DefaultHeader();
+        m_type = MEDIA_LYNX;
+        DefaultLynxHeader();
     }
 
-    Debug("Header magic: %c%c%c%c", m_header.magic[0], m_header.magic[1], m_header.magic[2], m_header.magic[3]);
-    Debug("Header bank0 page size: %d", m_header.bank0_page_size);
-    Debug("Header bank1 page size: %d", m_header.bank1_page_size);
-    Debug("Header version: %d", m_header.version);
-    Debug("Header name: %s", m_header.name);
-    Debug("Header manufacturer: %s", m_header.manufacturer);
-    Debug("Header rotation: %d", m_header.rotation);
-    Debug("Header audin: %d", m_header.audin);
-    Debug("Header EEPROM: %d", m_header.eeprom);
+    // Debug("Header magic: %c%c%c%c", m_header.magic[0], m_header.magic[1], m_header.magic[2], m_header.magic[3]);
+    // Debug("Header bank0 page size: %d", m_header.bank0_page_size);
+    // Debug("Header bank1 page size: %d", m_header.bank1_page_size);
+    // Debug("Header version: %d", m_header.version);
+    // Debug("Header name: %s", m_header.name);
+    // Debug("Header manufacturer: %s", m_header.manufacturer);
+    // Debug("Header rotation: %d", m_header.rotation);
+    // Debug("Header audin: %d", m_header.audin);
+    // Debug("Header EEPROM: %d", m_header.eeprom);
 
-    m_rotation = ReadHeaderRotation(m_header.rotation);
-    m_eeprom = ReadHeaderEEPROM(m_header.eeprom);
+    // m_rotation = ReadHeaderRotation(m_header.rotation);
+    // m_eeprom = ReadHeaderEEPROM(m_header.eeprom);
 
     Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
 
@@ -253,8 +277,10 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
     m_crc = CalculateCRC32(0, m_rom, m_rom_size);
     Log("ROM CRC32: %08X", m_crc);
 
-    GatherCartridgeInfoFromDB();
-    SetupBanks();
+    GatherInfoFromDB();
+
+    if (m_type == MEDIA_LYNX)
+        SetupBanks();
 
     m_ready = true;
 
@@ -266,7 +292,7 @@ bool Cartridge::LoadFromBuffer(const u8* buffer, int size, const char* path)
     return m_ready;
 }
 
-bool Cartridge::LoadBios(const char* path)
+bool Media::LoadBios(const char* path)
 {
     using namespace std;
 
@@ -310,7 +336,7 @@ bool Cartridge::LoadBios(const char* path)
     return m_is_bios_loaded;
 }
 
-u8 Cartridge::ReadBank0()
+u8 Media::ReadBank0()
 {
     assert(m_bank_data[0] != NULL && m_bank_size[0] > 0);
 
@@ -323,7 +349,7 @@ u8 Cartridge::ReadBank0()
     return data;
 }
 
-u8 Cartridge::ReadBank1()
+u8 Media::ReadBank1()
 {
     assert(m_bank_data[1] != NULL && m_bank_size[1] > 0);
 
@@ -336,17 +362,17 @@ u8 Cartridge::ReadBank1()
     return data;
 }
 
-void Cartridge::WriteBank0(u8 value)
+void Media::WriteBank0(u8 value)
 {
     Debug("WARNING: WriteBank0 called with value: %02X", value);
 }
 
-void Cartridge::WriteBank1(u8 value)
+void Media::WriteBank1(u8 value)
 {
     Debug("WARNING: WriteBank1 called with value: %02X", value);
 }
 
-void Cartridge::ShiftRegisterStrobe(bool strobe)
+void Media::ShiftRegisterStrobe(bool strobe)
 {
     if (strobe)
         m_page_offset = 0;
@@ -363,12 +389,12 @@ void Cartridge::ShiftRegisterStrobe(bool strobe)
     m_shift_register_strobe = strobe;
 }
 
-void Cartridge::ShiftRegisterBit(bool bit)
+void Media::ShiftRegisterBit(bool bit)
 {
     m_shift_register_bit = bit;
 }
 
-bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
+bool Media::LoadFromZipFile(const u8* buffer, int size)
 {
     Debug("Loading from ZIP file... Size: %d", size);
 
@@ -426,7 +452,7 @@ bool Cartridge::LoadFromZipFile(const u8* buffer, int size)
     return false;
 }
 
-void Cartridge::GatherCartridgeInfoFromDB()
+void Media::GatherInfoFromDB()
 {
     int i = 0;
     bool found = false;
@@ -446,7 +472,7 @@ void Cartridge::GatherCartridgeInfoFromDB()
             }
             else
             {
-                Debug("WARNING: ROM size mismatch. Database: %d bytes, ROM: %d bytes", k_game_database[i].file_size, m_rom_size);
+                Log("WARNING: ROM size mismatch. Database: %d bytes, ROM: %d bytes", k_game_database[i].file_size, m_rom_size);
                 Debug("Forcing ROM size to database value");
                 m_rom_size = k_game_database[i].file_size;
             }
@@ -454,38 +480,35 @@ void Cartridge::GatherCartridgeInfoFromDB()
             if (k_game_database[i].bank0_page_size != 0)
             {
                 Debug("Forcing bank0 page size to database value: %d", k_game_database[i].bank0_page_size);
-                m_header.bank0_page_size = k_game_database[i].bank0_page_size;
+                m_bank_page_size[0] = k_game_database[i].bank0_page_size;
             }
 
             if (k_game_database[i].bank1_page_size != 0)
             {
                 Debug("Forcing bank1 page size to database value: %d", k_game_database[i].bank1_page_size);
-                m_header.bank1_page_size = k_game_database[i].bank1_page_size;
+                m_bank_page_size[1] = k_game_database[i].bank1_page_size;
             }
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
             {
                 Debug("Forcing rotation to database value: Rotate LEFT");
-                m_header.rotation = ROTATE_LEFT;
                 m_rotation = ROTATE_LEFT;
             }
             else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT)
             {
                 Debug("Forcing rotation to database value: Rotate RIGHT");
-                m_header.rotation = ROTATE_RIGHT;
                 m_rotation = ROTATE_RIGHT;
             }
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN)
             {
                 Debug("Forcing AUDIN to database value: TRUE");
-                m_header.audin = 1;
+                m_audin = true;
             }
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46)
             {
                 Debug("Forcing EEPROM to database value: 93C46");
-                m_header.eeprom = EEPROM_93C46;
                 m_eeprom = EEPROM_93C46;
             }
         }
@@ -499,80 +522,120 @@ void Cartridge::GatherCartridgeInfoFromDB()
     }
 }
 
-bool Cartridge::GatherHeader(const u8* buffer)
+bool Media::GatherLynxHeader(const u8* buffer)
 {
     const u8* p = buffer;
-    memset(&m_header, 0, sizeof(m_header));
+    GLYNX_Cartridge_Header header;
+
+    memset(&header, 0, sizeof(header));
 
     if (p[0] != 'L' || p[1] != 'Y' || p[2] != 'N' || p[3] != 'X')
     {
-        Error("Invalid header magic: %c%c%c%c", p[0], p[1], p[2], p[3]);
+        Error("Invalid LYNX header magic: %c%c%c%c", p[0], p[1], p[2], p[3]);
         return false;
     }
 
-    Debug("Header found");
+    Debug("LYNX Header found");
 
-    memcpy(m_header.magic, p, 4);
+    memcpy(header.magic, p, 4);
     p += 4;
 
-    m_header.bank0_page_size = read_u16_le(p);
+    header.bank0_page_size = read_u16_le(p);
     p += 2;
-    m_header.bank1_page_size = read_u16_le(p);
-    p += 2;
-
-    m_header.version = read_u16_le(p);
+    header.bank1_page_size = read_u16_le(p);
     p += 2;
 
-    if (m_header.version != 1)
+    header.version = read_u16_le(p);
+    p += 2;
+
+    if (header.version != 1)
     {
-        Error("Invalid header version: %d", m_header.version);
+        Error("Invalid LYNX header version: %d", header.version);
         return false;
     }
 
-    memcpy(m_header.name, p, 32);
-    m_header.name[31] = 0;
+    memcpy(header.name, p, 32);
+    header.name[31] = 0;
     p += 32;
 
-    memcpy(m_header.manufacturer, p, 16);
-    m_header.manufacturer[15] = 0;
+    memcpy(header.manufacturer, p, 16);
+    header.manufacturer[15] = 0;
     p += 16;
 
-    m_header.rotation = *p;
+    header.rotation = *p;
     p++;
 
-    m_header.audin = (*p & 0x01) != 0;
+    header.audin = (*p & 0x01) != 0;
     p++;
 
-    m_header.eeprom = *p;
+    header.eeprom = *p;
+
+    m_bank_page_size[0] = header.bank0_page_size;
+    m_bank_page_size[1] = header.bank1_page_size;
+    m_rotation = ReadHeaderRotation(header.rotation);
+    m_audin = (header.audin == 1);
+    m_eeprom = ReadHeaderEEPROM(header.eeprom);
 
     return true;
 }
 
-void Cartridge::DefaultHeader()
+bool Media::GatherBS93Header(const u8* buffer)
 {
-    Debug("Using default header values");
-    m_header.magic[0] = 'L';
-    m_header.magic[1] = 'Y';
-    m_header.magic[2] = 'N';
-    m_header.magic[3] = 'X';
-    m_header.bank0_page_size = m_rom_size >> 8;
-    m_header.bank1_page_size = 0;
-    m_header.version = 1;
-    strncpy_fit(m_header.name, "Unknown", sizeof(m_header.name));
-    strncpy_fit(m_header.manufacturer, "Unknown", sizeof(m_header.manufacturer));
-    m_header.rotation = NO_ROTATION;
-    m_header.audin = 0;
-    m_header.eeprom = NO_EEPROM;
+    const u8* p = buffer;
+    GLYNX_BS93_Header header;
+
+    memset(&header, 0, sizeof(header));
+
+    memcpy(header.magic, p, 2);
+    p += 2;
+
+    if (header.magic[0] != 0x80 || header.magic[1] != 0x08)
+    {
+        Log("WARNING: Invalid BS93 header magic: %c%c", p[0], p[1]);
+    }
+
+    header.boot_address = read_u16_be(p);
+    p += 2;
+
+    header.size = read_u16_be(p);
+    p += 2;
+
+    memcpy(header.bs93, p, 4);
+    p += 4;
+
+    if (header.bs93[0] != 'B' || header.bs93[1] != 'S' 
+        || header.bs93[2] != '9' || header.bs93[3] != '3')
+    {
+        Error("Invalid BS93 header string: %c%c%c%c", p[0], p[1], p[2], p[3]);
+        return false;
+    }
+
+    Debug("BS93 Header found");
+
+    m_homebrew_boot_address = header.boot_address;
+    m_homebrew_size = header.size - 10;
+
+    return true;
 }
 
-void Cartridge::SetupBanks()
+void Media::DefaultLynxHeader()
+{
+    Debug("Using default header values");
+
+    m_bank_page_size[0] = (m_rom_size + 255) >> 8;
+    m_bank_page_size[1] = 0;
+    m_rotation = NO_ROTATION;
+    m_audin = false;
+    m_eeprom = NO_EEPROM;
+}
+
+void Media::SetupBanks()
 {
     // Calculate page size and number of pages for each bank
     for (int bank = 0; bank < 2; bank++)
     {
-        u16 page_size = (bank == 0) ? m_header.bank0_page_size : m_header.bank1_page_size;
+        u16 page_size = m_bank_page_size[bank];
 
-        // If bank1 is not used, allocate shadow RAM/EEPROM as in Mednafen
         if (bank == 1 && page_size == 0)
         {
             Debug("Using shadow RAM for bank1");
@@ -630,7 +693,7 @@ void Cartridge::SetupBanks()
     }
 }
 
-void Cartridge::GatherDataFromPath(const char* path)
+void Media::GatherDataFromPath(const char* path)
 {
     if (!IsValidPointer(path))
     {
@@ -669,7 +732,7 @@ void Cartridge::GatherDataFromPath(const char* path)
     snprintf(m_file_extension, sizeof(m_file_extension), "%s", extension.c_str());
 }
 
-Cartridge::GLYNX_Cartridge_Rotation Cartridge::ReadHeaderRotation(u8 rotation)
+Media::GLYNX_Media_Rotation Media::ReadHeaderRotation(u8 rotation)
 {
     switch (rotation)
     {
@@ -688,7 +751,7 @@ Cartridge::GLYNX_Cartridge_Rotation Cartridge::ReadHeaderRotation(u8 rotation)
     }
 }
 
-Cartridge::GLYNX_Cartridge_EEPROM Cartridge::ReadHeaderEEPROM(u8 eeprom)
+Media::GLYNX_Media_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
 {
     switch (eeprom)
     {
@@ -722,7 +785,7 @@ Cartridge::GLYNX_Cartridge_EEPROM Cartridge::ReadHeaderEEPROM(u8 eeprom)
     }
 }
 
-bool Cartridge::IsValidFile(const char* path)
+bool Media::IsValidFile(const char* path)
 {
     using namespace std;
 

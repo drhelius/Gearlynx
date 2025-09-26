@@ -49,14 +49,14 @@ void gui_debug_memory_reset(void)
 {
     GearlynxCore* core = emu_get_core();
     Memory* memory = core->GetMemory();
-    Cartridge* cart = core->GetCartridge();
+    Media* media = core->GetMedia();
     u8* ram = memory->GetRAM();
 
     mem_edit[MEMORY_EDITOR_RAM].Reset("RAM", ram, 0x10000);
     mem_edit[MEMORY_EDITOR_ZERO_PAGE].Reset("ZP", ram, 0x100);
     mem_edit[MEMORY_EDITOR_STACK].Reset("STACK", ram + 0x100, 0x100, 0x100);
-    mem_edit[MEMORY_EDITOR_CART].Reset("CART", cart->GetROM(), cart->GetROMSize());
-    mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", cart->GetBIOS(), 0x200, 0xFE00);
+    mem_edit[MEMORY_EDITOR_CART].Reset("CART", media->GetROM(), media->GetROMSize());
+    mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", media->GetBIOS(), 0x200, 0xFE00);
 }
 
 void gui_debug_window_memory(void)
@@ -146,11 +146,11 @@ void gui_debug_memory_save_dump(const char* file_path, bool binary)
 static void draw_tabs(void)
 {
     GearlynxCore* core = emu_get_core();
-    Cartridge* cart = core->GetCartridge();
+    Media* media = core->GetMedia();
 
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
-        if (i == MEMORY_EDITOR_CART && !IsValidPointer(cart->GetROM()))
+        if (i == MEMORY_EDITOR_CART && !IsValidPointer(media->GetROM()))
             continue;
 
         if (ImGui::BeginTabItem(mem_edit[i].GetTitle(), NULL, mem_edit_select == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))

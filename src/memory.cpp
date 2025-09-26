@@ -19,16 +19,16 @@
 
 #include <stdlib.h>
 #include "memory.h"
-#include "cartridge.h"
+#include "media.h"
 #include "input.h"
 #include "audio.h"
 #include "suzy.h"
 #include "mikey.h"
 #include "m6502.h"
 
-Memory::Memory(Cartridge* cartridge, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502)
+Memory::Memory(Media* media, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502)
 {
-    m_cartridge = cartridge;
+    m_media = media;
     m_input = input;
     m_audio = audio;
     m_suzy = suzy;
@@ -179,7 +179,7 @@ u8 Memory::BiosRead(u16 address)
     // BIOS visible
     else
     {
-        u8* bios = m_cartridge->GetBIOS();
+        u8* bios = m_media->GetBIOS();
         return bios[address & 0x1FF];
     }
 }
@@ -196,7 +196,7 @@ u8 Memory::LastPageRead(u16 address)
         // BIOS visible
         else
         {
-            u8* bios = m_cartridge->GetBIOS();
+            u8* bios = m_media->GetBIOS();
             return bios[address & 0x1FF];
         }
     }
@@ -210,7 +210,7 @@ u8 Memory::LastPageRead(u16 address)
         // VECTORS visible
         else
         {
-            u8* bios = m_cartridge->GetBIOS();
+            u8* bios = m_media->GetBIOS();
             return bios[address & 0x1FF];
         }
     }

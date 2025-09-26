@@ -172,17 +172,17 @@ bool emu_is_debug_idle(void)
 
 bool emu_is_empty(void)
 {
-    return !core->GetCartridge()->IsReady();
+    return !core->GetMedia()->IsReady();
 }
 
 bool emu_is_bios_loaded(void)
 {
-    return core->GetCartridge()->IsBiosLoaded();
+    return core->GetMedia()->IsBiosLoaded();
 }
 
 bool emu_load_bios(const char* file_path)
 {
-    return core->GetCartridge()->LoadBios(file_path);
+    return core->GetMedia()->LoadBios(file_path);
 }
 
 void emu_reset(void)
@@ -302,14 +302,14 @@ void emu_get_info(char* info, int buffer_size)
 {
     if (!emu_is_empty())
     {
-        Cartridge* cart = core->GetCartridge();
+        Media* media = core->GetMedia();
         GLYNX_Runtime_Info runtime;
         core->GetRuntimeInfo(runtime);
 
-        const char* filename = cart->GetFileName();
-        u32 crc = cart->GetCRC();
-        int rom_size = cart->GetROMSize();
-        int rom_banks = 0;// TODO: cart->GetROMBankCount();
+        const char* filename = media->GetFileName();
+        u32 crc = media->GetCRC();
+        int rom_size = media->GetROMSize();
+        int rom_banks = 0;// TODO: media->GetROMBankCount();
 
         snprintf(info, buffer_size, "File Name: %s\nCRC: %08X\nROM Size: %d bytes, %d KB\nROM Banks: %d\nScreen Resolution: %dx%d", filename, crc, rom_size, rom_size / 1024, rom_banks, runtime.screen_width, runtime.screen_height);
     }
@@ -394,7 +394,7 @@ void emu_debug_set_callback(GearlynxCore::GLYNX_Debug_Callback callback)
 
 void emu_save_screenshot(const char* file_path)
 {
-    if (!core->GetCartridge()->IsReady())
+    if (!core->GetMedia()->IsReady())
         return;
 
     GLYNX_Runtime_Info runtime;

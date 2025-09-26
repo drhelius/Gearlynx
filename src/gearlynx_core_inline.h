@@ -21,7 +21,7 @@
 #define GEARLYNX_CORE_INLINE_H
 
 #include "gearlynx_core.h"
-#include "cartridge.h"
+#include "media.h"
 #include "m6502.h"
 #include "audio.h"
 #include "mikey.h"
@@ -29,10 +29,10 @@
 
 INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
-    if (m_paused || !m_cartridge->IsReady())
+    if (m_paused || !m_media->IsReady())
         return false;
 
-    if (!m_cartridge->IsBiosLoaded())
+    if (!m_media->IsBiosLoaded())
     {
         //TODO: implement bios missing message
         //RenderFrameBuffer(pFrameBuffer);
@@ -147,9 +147,9 @@ INLINE Memory* GearlynxCore::GetMemory()
     return m_memory;
 }
 
-INLINE Cartridge* GearlynxCore::GetCartridge()
+INLINE Media* GearlynxCore::GetMedia()
 {
-    return m_cartridge;
+    return m_media;
 }
 
 INLINE Audio* GearlynxCore::GetAudio()

@@ -22,7 +22,7 @@
 
 #include "suzy.h"
 #include "mikey.h"
-#include "cartridge.h"
+#include "media.h"
 #include "m6502.h"
 
 INLINE void Suzy::Clock(u32 cycles)
@@ -202,10 +202,10 @@ INLINE u8 Suzy::Read(u16 address)
         return m_input->ReadSwitches();
     case SUZY_RCART0:      // 0xFCB2
         //DebugSuzy("Reading RCART0");
-        return m_cartridge->ReadBank0();
+        return m_media->ReadBank0();
     case SUZY_RCART1:      // 0xFCB3
         DebugSuzy("Reading RCART1");
-        return m_cartridge->ReadBank1();
+        return m_media->ReadBank1();
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Reading LEDS (unused)");
         return 0xFF;
@@ -506,11 +506,11 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_RCART0:      // 0xFCB2
         DebugSuzy("Writing to RCART0: %02X", value);
-        m_cartridge->WriteBank0(value);
+        m_media->WriteBank0(value);
         break;
     case SUZY_RCART1:      // 0xFCB3
         DebugSuzy("Writing to RCART1: %02X", value);
-        m_cartridge->WriteBank1(value);
+        m_media->WriteBank1(value);
         break;
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Writing to LEDS (unused): %02X", value);

@@ -266,7 +266,7 @@ static void menu_emulator(void)
             ImGui::PopItemWidth();
 
             ImGui::Separator();
-            if (emu_get_core()->GetCartridge()->IsBiosValid())
+            if (emu_get_core()->GetMedia()->IsBiosValid())
             {
                 ImGui::TextColored(ImVec4(0.10f, 0.90f, 0.10f, 1.0f), "Valid BIOS");
             }
@@ -299,7 +299,7 @@ static void menu_emulator(void)
                 case Directory_Location_ROM:
                 {
                     if (!emu_is_empty())
-                        ImGui::Text("%s", emu_get_core()->GetCartridge()->GetFileDirectory());
+                        ImGui::Text("%s", emu_get_core()->GetMedia()->GetFileDirectory());
                     break;
                 }
                 case Directory_Location_Custom:
@@ -339,7 +339,7 @@ static void menu_emulator(void)
                 case Directory_Location_ROM:
                 {
                     if (!emu_is_empty())
-                        ImGui::Text("%s", emu_get_core()->GetCartridge()->GetFileDirectory());
+                        ImGui::Text("%s", emu_get_core()->GetMedia()->GetFileDirectory());
                     break;
                 }
                 case Directory_Location_Custom:
@@ -377,7 +377,7 @@ static void menu_emulator(void)
                 case Directory_Location_ROM:
                 {
                     if (!emu_is_empty())
-                        ImGui::Text("%s", emu_get_core()->GetCartridge()->GetFileDirectory());
+                        ImGui::Text("%s", emu_get_core()->GetMedia()->GetFileDirectory());
                     break;
                 }
                 case Directory_Location_Custom:

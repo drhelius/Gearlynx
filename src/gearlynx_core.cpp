@@ -25,7 +25,7 @@
 #include <sstream>
 #include "gearlynx_core.h"
 #include "common.h"
-#include "cartridge.h"
+#include "media.h"
 #include "memory.h"
 #include "audio.h"
 #include "input.h"
@@ -39,7 +39,7 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_memory);
     InitPointer(m_audio);
     InitPointer(m_input);
-    InitPointer(m_cartridge);
+    InitPointer(m_media);
     InitPointer(m_m6502);
     InitPointer(m_suzy);
     InitPointer(m_mikey);
@@ -51,7 +51,7 @@ GearlynxCore::GearlynxCore()
 GearlynxCore::~GearlynxCore()
 {
     SafeDelete(m_m6502);
-    SafeDelete(m_cartridge);
+    SafeDelete(m_media);
     SafeDelete(m_input);
     SafeDelete(m_audio);
     SafeDelete(m_memory);
@@ -65,15 +65,15 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
 
     srand((unsigned int)time(NULL));
 
-    m_cartridge = new Cartridge();
+    m_media = new Media();
     m_input = new Input();
     m_audio = new Audio();
     m_m6502 = new M6502();
-    m_suzy = new Suzy(m_cartridge, m_m6502, m_input);
-    m_mikey = new Mikey(m_cartridge, m_m6502);
-    m_memory = new Memory(m_cartridge, m_input, m_audio, m_suzy, m_mikey, m_m6502);
+    m_suzy = new Suzy(m_media, m_m6502, m_input);
+    m_mikey = new Mikey(m_media, m_m6502);
+    m_memory = new Memory(m_media, m_input, m_audio, m_suzy, m_mikey, m_m6502);
 
-    m_cartridge->Init();
+    m_media->Init();
     m_memory->Init();
     m_audio->Init();
     m_input->Init();
@@ -84,7 +84,7 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
 
 bool GearlynxCore::LoadROM(const char* file_path)
 {
-    if (m_cartridge->LoadFromFile(file_path))
+    if (m_media->LoadFromFile(file_path))
     {
         m_memory->ResetDisassemblerRecords();
         Reset();
@@ -96,7 +96,7 @@ bool GearlynxCore::LoadROM(const char* file_path)
 
 bool GearlynxCore::LoadROMFromBuffer(const u8* buffer, int size, const char* file_path)
 {
-    if (m_cartridge->LoadFromBuffer(buffer, size, file_path))
+    if (m_media->LoadFromBuffer(buffer, size, file_path))
     {
         m_memory->ResetDisassemblerRecords();
         Reset();
@@ -108,7 +108,7 @@ bool GearlynxCore::LoadROMFromBuffer(const u8* buffer, int size, const char* fil
 
 bool GearlynxCore::LoadBios(const char* file_path)
 {
-    return m_cartridge->LoadBios(file_path);
+    return m_media->LoadBios(file_path);
 }
 
 bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
@@ -116,7 +116,7 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     runtime_info.screen_width = GLYNX_SCREEN_WIDTH;
     runtime_info.screen_height = GLYNX_SCREEN_HEIGHT;
 
-    return m_cartridge->IsReady();
+    return m_media->IsReady();
 }
 
 void GearlynxCore::SetDebugCallback(GLYNX_Debug_Callback callback)
@@ -157,7 +157,7 @@ void GearlynxCore::ResetROM(bool preserve_ram)
 {
     UNUSED(preserve_ram);
 
-    if (!m_cartridge->IsReady())
+    if (!m_media->IsReady())
         return;
 
     Log("Gearlynx RESET");
@@ -202,10 +202,10 @@ std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
     {
         full_path = path;
         full_path += "/";
-        full_path += m_cartridge->GetFileName();
+        full_path += m_media->GetFileName();
     }
     else
-        full_path = m_cartridge->GetFilePath();
+        full_path = m_media->GetFilePath();
 
     string::size_type dot_index = full_path.rfind('.');
 
@@ -243,9 +243,9 @@ bool GearlynxCore::SaveState(u8* buffer, size_t& size, bool screenshot)
 
     Debug("Saving state to buffer [%d bytes]...", size);
 
-    if (!m_cartridge->IsReady())
+    if (!m_media->IsReady())
     {
-        Error("Cartridge is not ready when trying to save state");
+        Error("Media is not ready when trying to save state");
         return false;
     }
 
@@ -278,9 +278,9 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
 {
     using namespace std;
 
-    if (!m_cartridge->IsReady())
+    if (!m_media->IsReady())
     {
-        Error("Cartridge is not ready when trying to save state");
+        Error("Media is not ready when trying to save state");
         return false;
     }
 
@@ -306,8 +306,8 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
     header.version = GLYNX_SAVESTATE_VERSION;
 
     header.timestamp = time(NULL);
-    strncpy_fit(header.rom_name, m_cartridge->GetFileName(), sizeof(header.rom_name));
-    header.rom_crc = m_cartridge->GetCRC();
+    strncpy_fit(header.rom_name, m_media->GetFileName(), sizeof(header.rom_name));
+    header.rom_crc = m_media->GetCRC();
     strncpy_fit(header.emu_build, GLYNX_VERSION, sizeof(header.emu_build));
 
     Debug("Save state header magic: 0x%08x", header.magic);
@@ -394,9 +394,9 @@ bool GearlynxCore::LoadState(const u8* buffer, size_t size)
 
     Debug("Loading state to buffer [%d bytes]...", size);
 
-    if (!m_cartridge->IsReady())
+    if (!m_media->IsReady())
     {
-        Error("Cartridge is not ready when trying to load state");
+        Error("Media is not ready when trying to load state");
         return false;
     }
 
@@ -414,9 +414,9 @@ bool GearlynxCore::LoadState(std::istream& stream)
 {
     using namespace std;
 
-    if (!m_cartridge->IsReady())
+    if (!m_media->IsReady())
     {
-        Error("Cartridge is not ready when trying to load state");
+        Error("Media is not ready when trying to load state");
         return false;
     }
 
@@ -477,7 +477,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
         return false;
     }
 
-    if (header.rom_crc != m_cartridge->GetCRC())
+    if (header.rom_crc != m_media->GetCRC())
     {
         Error("Invalid save state rom crc: 0x%08x", header.rom_crc);
         return false;
@@ -591,4 +591,41 @@ void GearlynxCore::Reset()
     m_m6502->Reset();
     m_audio->Reset();
     m_input->Reset();
+
+    if (m_media->GetType() == Media::MEDIA_HOMEBREW)
+        PrepareForHomebrew();
+}
+
+void GearlynxCore::PrepareForHomebrew()
+{
+    u16 boot_address = m_media->GetHomebrewBootAddress();
+    int size = m_media->GetROMSize();
+
+    if (size <= 0)
+        return;
+
+    u8* ram = m_memory->GetRAM();
+    u8* rom = m_media->GetROM();
+
+    const int ram_size = 0x10000;
+    const int start = (int)boot_address;
+    const int first = MIN(size, ram_size - start);
+    const int left  = size - first;
+
+    memset(ram, 0, ram_size);
+
+    if (first > 0)
+        memcpy(ram + start, rom, first);
+    if (left  > 0)
+        memcpy(ram, rom + first, MIN(left, ram_size));
+
+    m_m6502->GetState()->PC.SetValue(boot_address);
+    m_m6502->DisassembleNextOPCode();
+
+    m_mikey->GetState()->timers[0].backup = 0x9E;
+    m_mikey->GetState()->timers[0].control_a = 0x18;
+    m_mikey->GetState()->timers[2].backup = 0x68;
+    m_mikey->GetState()->timers[2].control_a = 0x1F;
+
+    m_mikey->GetState()->DISPCTL = 0x09;
 }

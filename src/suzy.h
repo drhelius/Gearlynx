@@ -25,7 +25,7 @@
 #include "common.h"
 #include "suzy_defines.h"
 
-class Cartridge;
+class Media;
 class Memory;
 class M6502;
 class Input;
@@ -86,7 +86,7 @@ public:
     };
 
 public:
-    Suzy(Cartridge* cartridge, M6502* m6502, Input* input);
+    Suzy(Media* media, M6502* m6502, Input* input);
     ~Suzy();
     void Init(Mikey* mikey, Memory* memory);
     void Reset();
@@ -123,7 +123,7 @@ private:
     };
 
 private:
-    Cartridge* m_cartridge;
+    Media* m_media;
     Mikey* m_mikey;
     Memory* m_memory;
     M6502* m_m6502;

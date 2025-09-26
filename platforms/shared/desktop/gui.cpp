@@ -267,19 +267,19 @@ void gui_load_rom(const char* path)
         message += path;
         gui_set_error_message(message.c_str());
 
-        emu_get_core()->GetCartridge()->Reset();
+        emu_get_core()->GetMedia()->Reset();
         gui_action_reset();
         return;
     }
 
-    if (!emu_get_core()->GetCartridge()->IsBiosLoaded())
+    if (!emu_get_core()->GetMedia()->IsBiosLoaded())
     {
         std::string message;
         message += "BIOS is required to run ROMs!!\n";
         message += "Make sure you have a valid BIOS file in 'Menu->Emulator->BIOS'.";
         gui_set_error_message(message.c_str());
 
-        emu_get_core()->GetCartridge()->Reset();
+        emu_get_core()->GetMedia()->Reset();
         gui_action_reset();
         return;
     }
@@ -300,7 +300,7 @@ void gui_load_rom(const char* path)
     }
 
     if (!emu_is_empty())
-        application_update_title_with_rom(emu_get_core()->GetCartridge()->GetFileName());
+        application_update_title_with_rom(emu_get_core()->GetMedia()->GetFileName());
 }
 
 void gui_load_bios(const char* path)
@@ -324,7 +324,7 @@ void gui_load_bios(const char* path)
         return;
     }
 
-    if (!emu_get_core()->GetCartridge()->IsBiosValid())
+    if (!emu_get_core()->GetMedia()->IsBiosValid())
     {
         std::string message("Invalid BIOS file:\n");
         message += filename;

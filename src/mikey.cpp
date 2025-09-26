@@ -23,9 +23,9 @@
 #include "memory.h"
 #include "suzy.h"
 
-Mikey::Mikey(Cartridge* cartridge, M6502* m6502)
+Mikey::Mikey(Media* media, M6502* m6502)
 {
-    m_cartridge = cartridge;
+    m_media = media;
     m_m6502 = m6502;
     InitPointer(m_suzy);
     InitPointer(m_memory);

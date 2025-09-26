@@ -80,7 +80,7 @@ enum GLYNX_Keys
 
 struct GLYNX_Cartridge_Header
 {
-    u8  magic[4];
+    u8 magic[4];
     u16 bank0_page_size;
     u16 bank1_page_size;
     u16 version;
@@ -90,6 +90,14 @@ struct GLYNX_Cartridge_Header
     u8 audin;
     u8 eeprom;
     u8 reserved[3];
+};
+
+struct GLYNX_BS93_Header
+{
+    u8 magic[2];
+    u16 boot_address;
+    u16 size;
+    u8 bs93[4];
 };
 
 struct GLYNX_SaveState_Header
