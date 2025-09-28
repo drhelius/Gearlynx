@@ -97,7 +97,7 @@ void gui_debug_window_psg(void)
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 2); ImGui::SameLine();
                 ImGui::TextColored(orange, "OUTPUT    "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->output, BYTE_TO_BINARY(channel->output));
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", (u8)channel->output, BYTE_TO_BINARY(channel->output));
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 3); ImGui::SameLine();
                 ImGui::TextColored(orange, "LFSR LOW  "); ImGui::SameLine();

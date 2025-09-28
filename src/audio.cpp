@@ -72,7 +72,7 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
                 sample_buffer[i] = 0;
             else
             {
-                s32 mix = (s32)(m_buffer[i] * 5);
+                s32 mix = (s32)(m_buffer[i] * 10);
 
                 if (mix > 32767)
                     mix = 32767;

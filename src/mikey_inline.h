@@ -727,27 +727,24 @@ INLINE void Mikey::AdvanceLFSR(u8 channel)
 {
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
+    s8 vol = (s8)c->volume;
     u16 x = (u16)(c->lfsr & c->taps_mask);
     u8 xorbit = parity16(x);
     u8 data_in = (u8)(xorbit ^ 1u);
 
     c->lfsr = (u16)(((c->lfsr << 1) & 0x0FFE) | (u16)data_in);
 
-    u8 sr0 = (u8)(c->lfsr & 1u);
-
-    const s8 vol = (s8)c->volume;
-
     if (IS_SET_BIT(c->control, 5))
     {
         int acc = (int)c->output;
-        int delta = sr0 ? (int)vol : -(int)vol;
+        int delta = data_in ? (int)vol : -(int)vol;
         acc += delta;
         acc = CLAMP(acc, -128, 127);
         c->output = (s8)acc;
     }
     else
     {
-        int v = sr0 ? (int)vol : -(int)vol;
+        int v = data_in ? (int)vol : -(int)vol;
         v = CLAMP(v, -128, 127);
         c->output = (s8)v;
     }
