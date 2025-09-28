@@ -24,14 +24,12 @@
 #include <fstream>
 #include "common.h"
 
-#define GLYNX_AUDIO_SAMPLE_RATE 44100
-#define GLYNX_AUDIO_BUFFER_SIZE 2048
-#define GLYNX_AUDIO_BUFFER_COUNT 3
+class Mikey;
 
 class Audio
 {
 public:
-    Audio();
+    Audio(Mikey* mikey);
     ~Audio();
     void Init();
     void Reset();
@@ -42,8 +40,13 @@ public:
     void LoadState(std::istream& stream);
 
 private:
+    Mikey* m_mikey;
+    u32 m_cycles;
     bool m_mute;
-    s16* m_psg_buffer;
+    s16 m_sample_left;
+    s16 m_sample_right;
+    u32 m_buffer_pos;
+    s16* m_buffer;
 };
 
 #include "audio_inline.h"

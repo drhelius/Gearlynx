@@ -26,11 +26,10 @@
 #include "mikey.h"
 #include "m6502.h"
 
-Memory::Memory(Media* media, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502)
+Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502)
 {
     m_media = media;
     m_input = input;
-    m_audio = audio;
     m_suzy = suzy;
     m_mikey = mikey;
     m_m6502 = m6502;

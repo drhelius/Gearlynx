@@ -20,28 +20,36 @@
 #include <istream>
 #include <ostream>
 #include "audio.h"
+#include "mikey.h"
 
-Audio::Audio()
+Audio::Audio(Mikey* mikey)
 {
+    m_mikey = mikey;
+    m_cycles = 0;
     m_mute = false;
+    m_buffer_pos = 0;
+    m_sample_left = 0;
+    m_sample_right = 0;
+    InitPointer(m_buffer);
 }
 
 Audio::~Audio()
 {
-    SafeDeleteArray(m_psg_buffer);
+    SafeDeleteArray(m_buffer);
 }
 
 void Audio::Init()
 {
-    m_psg_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
+    m_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
 }
 
 void Audio::Reset()
 {
-    for (int i = 0; i < GLYNX_AUDIO_BUFFER_SIZE; i++)
-    {
-        m_psg_buffer[i] = 0;
-    }
+    m_cycles = 0;
+    m_buffer_pos = 0;
+    m_sample_left = 0;
+    m_sample_right = 0;
+    memset(m_buffer, 0, sizeof(s16) * GLYNX_AUDIO_BUFFER_SIZE);
 }
 
 void Audio::Mute(bool mute)
@@ -53,20 +61,30 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 {
     *sample_count = 0;
 
-    int count = 0;
-
     if (IsValidPointer(sample_buffer) && IsValidPointer(sample_count))
     {
-        *sample_count = count;
+        int samples = m_buffer_pos;
+        *sample_count = samples;
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < samples; i++)
         {
             if (m_mute)
                 sample_buffer[i] = 0;
             else
-                sample_buffer[i] = m_psg_buffer[i];
+            {
+                s32 mix = (s32)(m_buffer[i] * 10);
+
+                if (mix > 32767)
+                    mix = 32767;
+                else if (mix < -32768)
+                    mix = -32768;
+
+                sample_buffer[i] = (s16)mix;
+            }
         }
     }
+
+    m_buffer_pos = 0;
 }
 
 void Audio::SaveState(std::ostream& stream)

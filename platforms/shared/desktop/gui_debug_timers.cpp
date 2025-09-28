@@ -46,27 +46,7 @@ void gui_debug_window_timers(void)
     GearlynxCore* core = emu_get_core();
     Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
 
-    ImGui::PushFont(gui_default_font);
-
-    ImGui::TextColored(yellow, "TIM 0"); ImGui::SameLine();
-    ImGui::TextColored(orange, "->"); ImGui::SameLine();
-    ImGui::TextColored(yellow, "TIM 2"); ImGui::SameLine();
-    ImGui::TextColored(orange, "->"); ImGui::SameLine();
-    ImGui::TextColored(yellow, "TIM 4");
-
-    ImGui::TextColored(yellow, "TIM 1"); ImGui::SameLine();
-    ImGui::TextColored(orange, "->"); ImGui::SameLine();
-    ImGui::TextColored(yellow, "TIM 3"); ImGui::SameLine();
-    ImGui::TextColored(orange, "->"); ImGui::SameLine();
-    ImGui::TextColored(yellow, "TIM 5"); ImGui::SameLine();
-    ImGui::TextColored(orange, "->"); ImGui::SameLine();
-    ImGui::TextColored(yellow, "TIM 7");
-
-    ImGui::NewLine();
-
-    ImGui::PopFont();
-
-    if (ImGui::BeginTabBar("##memory_tabs", ImGuiTabBarFlags_None))
+    if (ImGui::BeginTabBar("##timer_tabs", ImGuiTabBarFlags_None))
     {
         static const int k_base_addr = 0xFD00;
         static const char* k_timer_names[8] = {
@@ -134,10 +114,15 @@ void gui_debug_window_timers(void)
                 ImGui::TextColored(violet, "FREQUENCY  "); ImGui::SameLine();
                 ImGui::TextColored(period != 7 ? white : gray, "%s", k_period_strs[period]);
 
-
                 ImGui::TextColored(violet, "LINKED TO  "); ImGui::SameLine();
                 if (is_linked)
-                    ImGui::TextColored(blue, "TIMER %d", k_mikey_timer_backward_links[t]);
+                {
+                    int link = k_mikey_timer_backward_links[t];
+                    if (link < 8)
+                        ImGui::TextColored(blue, "TIMER %d", link);
+                    else
+                        ImGui::TextColored(blue, "AUDIO CH %d", link - 8);
+                }
                 else
                     ImGui::TextColored(gray, "NONE");
 

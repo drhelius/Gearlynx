@@ -29,6 +29,7 @@ INLINE bool Mikey::Clock(u32 cycles)
 {
     m_debug_cycles += cycles;
     UpdateTimers(cycles);
+    UpdateAudio(cycles);
     UpdateIRQs();
 
     bool ret = m_state.frame_ready;
@@ -386,26 +387,27 @@ INLINE u8 Mikey::ReadAudio(u16 address)
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
     int reg = address & 7;
-    int channel = (address >> 7) & 3;
+    int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
+    GLYNX_Mikey_Audio* c = &m_state.audio[i];
 
     switch (reg)
     {
     case 0:
-        return m_state.audio[channel].volume;
+        return c->volume;
     case 1:
-        return m_state.audio[channel].shift_feedback;
+        return c->feedback;
     case 2:
-        return m_state.audio[channel].output_value;
+        return c->output;
     case 3:
-        return m_state.audio[channel].left_shift;
+        return c->lfsr_low;
     case 4:
-        return m_state.audio[channel].timer_backup;
+        return c->backup;
     case 5:
-        return m_state.audio[channel].control;
+        return c->control;
     case 6:
-        return m_state.audio[channel].count;
+        return c->counter;
     case 7:
-        return m_state.audio[channel].misc;
+        return c->other;
     default:
         return 0xFF;
     }
@@ -416,33 +418,60 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
     int reg = address & 7;
-    int channel = (address >> 7) & 3;
+    int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
+    GLYNX_Mikey_Audio* c = &m_state.audio[i];
 
     switch (reg)
     {
     case 0:
-        m_state.audio[channel].volume = value;
+        c->volume = value;
         break;
     case 1:
-        m_state.audio[channel].shift_feedback = value;
+        c->feedback = value;
+        RebuildTapsMask(c);
         break;
     case 2:
-        m_state.audio[channel].output_value = value;
+        c->output = value;
         break;
     case 3:
-        m_state.audio[channel].left_shift = value;
+        c->lfsr_low = value;
+        RebuildLFSR(c);
         break;
     case 4:
-        m_state.audio[channel].timer_backup = value;
+        c->backup = value;
         break;
     case 5:
-        m_state.audio[channel].control = value;
+    {
+        u8 old_control = c->control;
+        u8 old_prescaler = old_control & 0x07;
+        u8 new_prescaler = value & 0x07;
+
+        c->control = value;
+        c->internal_period_cycles = k_mikey_timerX_period_cycles[new_prescaler];
+
+        bool prescaler_changed = (old_prescaler != new_prescaler);
+        bool enable_count_rising = IS_NOT_SET_BIT(old_control, 3) && IS_SET_BIT(value, 3);
+
+        if (prescaler_changed || enable_count_rising)
+        {
+            c->internal_cycles = 0;
+            c->internal_pending_ticks = 0;
+        }
+
+        if (IS_SET_BIT(value, 6))
+            c->other = UNSET_BIT(c->other, 3);
+
+        RebuildTapsMask(c);
         break;
+    }
     case 6:
-        m_state.audio[channel].count = value;
+        c->counter = value;
+        c->internal_cycles = 0;
+        c->internal_pending_ticks = 0;
         break;
     case 7:
-        m_state.audio[channel].misc = value;
+        c->other = value;
+        RebuildLFSR(c);
         break;
     default:
         break;
@@ -551,12 +580,7 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
 
         // Any clocks this update? Reflect it on BORROW-IN
         if (tick > 0)
-        {
             t->control_b = SET_BIT(t->control_b, 1);
-
-            if (i == 7)
-                DebugMikey("----->>>>> Timer 7 ticked %d times", tick);
-        }
 
         while (tick-- > 0)
         {
@@ -574,8 +598,16 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
                 // Propagate link tick to next timer
                 if (link >= 0)
                 {
-                    m_state.timers[link].internal_pending_ticks++;
-                    m_state.timers[link].control_b = SET_BIT(m_state.timers[link].control_b, 1);
+                    if (link < 8)
+                    {
+                        m_state.timers[link].internal_pending_ticks++;
+                        m_state.timers[link].control_b = SET_BIT(m_state.timers[link].control_b, 1);
+                    }
+                    else 
+                    {
+                        m_state.audio[0].internal_pending_ticks++;
+                        m_state.audio[0].other = SET_BIT(m_state.audio[0].other, 1);
+                    }
                 }
 
                 if (!one_shot)
@@ -599,6 +631,148 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
             }
         }
     }
+}
+
+INLINE void Mikey::UpdateAudio(u32 cycles)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        GLYNX_Mikey_Audio* t = &m_state.audio[i];
+
+        // Is not enabled?
+        if (IS_NOT_SET_BIT(t->control, 3))
+            continue;
+
+        // Clear transient status bits for this update
+        t->other = UNSET_BIT(t->other, 0); // Borrow Out
+        t->other = UNSET_BIT(t->other, 1); // Borrow In
+        t->other = UNSET_BIT(t->other, 2); // Last Clock
+
+        // Reset Timer Done is level-triggered
+        if (IS_SET_BIT(t->control, 6))
+            t->other = UNSET_BIT(t->other, 3);
+
+        const bool one_shot = IS_NOT_SET_BIT(t->control, 4);
+
+        // One-shot already done?
+        if (one_shot && IS_SET_BIT(t->other, 3))
+            continue;
+
+        int link = k_mikey_audio_forward_links[i];
+        int tick = 0;
+
+        // Linked mode: consume pending ticks queued by the previous timer
+        if (t->internal_period_cycles == 0)
+        {
+            tick = t->internal_pending_ticks;
+            t->internal_pending_ticks = 0;
+        }
+        // Prescaled/free-running mode
+        else
+        {
+            t->internal_cycles += cycles;
+
+            if (t->internal_cycles >= t->internal_period_cycles)
+            {
+                tick = t->internal_cycles / t->internal_period_cycles;
+                t->internal_cycles -= tick * t->internal_period_cycles;
+            }
+        }
+
+        // Any clocks this update? Reflect it on BORROW-IN
+        if (tick > 0)
+            t->other = SET_BIT(t->other, 1);
+
+        while (tick-- > 0)
+        {
+            if (t->counter > 0)
+            {
+                t->counter--;
+                if (t->counter == 0)
+                    t->other = SET_BIT(t->other, 2); // Last clock (pre-borrow)
+            }
+            else
+            {
+                // Borrow out on the tick after LAST-CLOCK
+                t->other = SET_BIT(t->other, 0);
+
+                // Propagate link tick to next timer
+                if (link >= 0)
+                {
+                    m_state.audio[link].internal_pending_ticks++;
+                    m_state.audio[link].other = SET_BIT(m_state.audio[link].other, 1);
+                }
+                else // audio ch 3 links to timer 1
+                {
+                    m_state.timers[1].internal_pending_ticks++;
+                    m_state.timers[1].control_b = SET_BIT(m_state.timers[1].control_b, 1);
+                }
+
+                if (!one_shot)
+                    t->counter = t->backup;
+
+                t->other = SET_BIT(t->other, 3); // Timer Done
+
+                AdvanceLFSR(i);
+
+                // In one-shot, after DONE we must not consume more clocks
+                if (one_shot && IS_SET_BIT(t->other, 3))
+                    break;
+            }
+        }
+    }
+}
+
+INLINE void Mikey::AdvanceLFSR(u8 channel)
+{
+    GLYNX_Mikey_Audio* c = &m_state.audio[channel];
+
+    u16 tapped = c->lfsr & c->taps_mask;
+    u8 parity = parity16(tapped);
+    u8 polybit = (u8)(parity ^ 1u);
+
+    // integrate mode
+    if (IS_SET_BIT(c->control, 5))
+    {
+        int accumulator = (int)c->output;
+        int delta = (int)(polybit ? c->volume : -c->volume);
+
+        accumulator += delta;
+
+        if (accumulator < -128)
+            accumulator = -128;
+        else if (accumulator > 127)
+            accumulator = 127;
+
+        c->output = (s8)accumulator;
+    }
+    // normal mode
+    else
+    {
+        c->output = polybit ? c->volume : -c->volume;
+    }
+
+    c->lfsr = (u16)((c->lfsr >> 1) | ((u16)polybit << 11));
+
+    c->lfsr_low = (u8)(c->lfsr & 0xFF);
+    c->other = (c->other & 0x0F) | (u8)((c->lfsr >> 4) & 0xF0);
+}
+
+INLINE void Mikey::RebuildTapsMask(GLYNX_Mikey_Audio* channel)
+{
+    u8 feedback = channel->feedback;
+    u8 control = channel->control;
+    u16 mask = (u16)(feedback & 0x3F);
+    mask |= ((u16)(feedback & 0xC0)) << 4;
+    mask |= (u16)(control & 0x80);
+    channel->taps_mask = mask;
+}
+
+INLINE void Mikey::RebuildLFSR(GLYNX_Mikey_Audio* channel)
+{
+    u16 lfsr = (u16)(channel->lfsr_low);
+    lfsr |= ((u16)(channel->other & 0xF0)) << 4;
+    channel->lfsr = lfsr;
 }
 
 INLINE void Mikey::UpdateIRQs()

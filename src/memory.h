@@ -41,7 +41,7 @@ public:
     };
 
 public:
-    Memory(Media* media, Input* input, Audio* audio, Suzy* suzy, Mikey* mikey, M6502* m6502);
+    Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502);
     ~Memory();
     void Init();
     void Reset();
@@ -71,7 +71,6 @@ private:
 private:
     Media* m_media;
     Input* m_input;
-    Audio* m_audio;
     Suzy* m_suzy;
     Mikey* m_mikey;
     M6502* m_m6502;

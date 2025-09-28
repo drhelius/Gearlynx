@@ -31,7 +31,6 @@
 #include "emu.h"
 #include "utils.h"
 
-static MemEditor mem_edit[6];
 static float plot_x[32];
 static float plot_y[32];
 static bool exclusive_channel[6] = { false, false, false, false, false, false };
@@ -52,18 +51,119 @@ void gui_debug_psg_destroy(void)
 
 void gui_debug_window_psg(void)
 {
-    for (int i = 0; i < 6; i++)
-    {
-        mem_edit[i].SetGuiFont(gui_roboto_font);
-    }
-
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(444, 400), ImGuiCond_FirstUseEver);
-    ImGui::Begin("PSG", &config_debug.show_psg);
+    ImGui::Begin("Mikey Audio", &config_debug.show_mikey_timers);
 
     GearlynxCore* core = emu_get_core();
+    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
 
+    if (ImGui::BeginTabBar("##audio_tabs", ImGuiTabBarFlags_None))
+    {
+        static const int k_base_addr = 0xFD20;
+        static const char* k_period_strs[8] = {
+            "1 MHz (1us)", "512 KHz (2us)", "256 KHz (4us)", "128 KHz (8us)",
+            "64 KHz (16us)", "32 KHz (32us)", "16 KHz (64us)", "N/A"
+        };
+
+        for (int c = 0; c < 4; c++)
+        {
+            GLYNX_Mikey_Audio* channel = &mikey_state->audio[c];
+            u8 period = (channel->control & 0x07);
+            bool is_linked = (period == 7) && (k_mikey_audio_backward_links[c] != -1);
+            bool enabled = IS_SET_BIT(channel->control, 3);
+            bool reload = IS_SET_BIT(channel->control, 4);
+            bool integrate = IS_SET_BIT(channel->control, 5);
+            bool reset_timer_done = IS_SET_BIT(channel->control, 6);
+            bool timer_done = IS_SET_BIT(channel->other, 3);
+            bool borrow_in = IS_SET_BIT(channel->other, 1);
+            bool borrow_out = IS_SET_BIT(channel->other, 0);
+
+            char tab_name[32];
+            snprintf(tab_name, 32, "%d", c);
+
+            if (ImGui::BeginTabItem(tab_name))
+            {
+                ImGui::PushFont(gui_default_font);
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 0); ImGui::SameLine();
+                ImGui::TextColored(orange, "VOLUME    "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->volume, BYTE_TO_BINARY(channel->volume));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 1); ImGui::SameLine();
+                ImGui::TextColored(orange, "FEEDBACK  "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->feedback, BYTE_TO_BINARY(channel->feedback));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 2); ImGui::SameLine();
+                ImGui::TextColored(orange, "OUTPUT    "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->output, BYTE_TO_BINARY(channel->output));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 3); ImGui::SameLine();
+                ImGui::TextColored(orange, "LFSR LOW  "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->lfsr_low, BYTE_TO_BINARY(channel->lfsr_low));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 4); ImGui::SameLine();
+                ImGui::TextColored(orange, "BACKUP    "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->backup, BYTE_TO_BINARY(channel->backup));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 5); ImGui::SameLine();
+                ImGui::TextColored(orange, "CONTROL   "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->control, BYTE_TO_BINARY(channel->control));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 6); ImGui::SameLine();
+                ImGui::TextColored(orange, "COUNTER   "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->counter, BYTE_TO_BINARY(channel->counter));
+
+                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 7); ImGui::SameLine();
+                ImGui::TextColored(orange, "OTHER     "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->other, BYTE_TO_BINARY(channel->other));
+
+                ImGui::Separator();
+
+                ImGui::TextColored(violet, "ENABLED    "); ImGui::SameLine();
+                ImGui::TextColored(enabled ? green : gray, "%s", enabled ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "RELOAD     "); ImGui::SameLine();
+                ImGui::TextColored(reload ? green : gray, "%s", reload ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "INTEGRATE  "); ImGui::SameLine();
+                ImGui::TextColored(integrate ? green : gray, "%s", integrate ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "RESET DONE "); ImGui::SameLine();
+                ImGui::TextColored(reset_timer_done ? green : gray, "%s", reset_timer_done ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "FREQUENCY  "); ImGui::SameLine();
+                ImGui::TextColored(period != 7 ? white : gray, "%s", k_period_strs[period]);
+
+                ImGui::TextColored(violet, "LINKED TO  "); ImGui::SameLine();
+                if (is_linked)
+                {
+                    int link = k_mikey_audio_backward_links[c];
+                    if (link < 0)
+                        ImGui::TextColored(blue, "TIMER 7");
+                    else
+                        ImGui::TextColored(blue, "AUDIO CH %d", link);
+                }
+                else
+                    ImGui::TextColored(gray, "NONE");
+
+                ImGui::TextColored(violet, "TIMER DONE "); ImGui::SameLine();
+                ImGui::TextColored(timer_done ? green : gray, "%s", timer_done ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "BORROW IN  "); ImGui::SameLine();
+                ImGui::TextColored(borrow_in ? green : gray, "%s", borrow_in ? "YES" : "NO");
+
+                ImGui::TextColored(violet, "BORROW OUT "); ImGui::SameLine();
+                ImGui::TextColored(borrow_out ? green : gray, "%s", borrow_out ? "YES" : "NO");
+
+                ImGui::PopFont();
+                ImGui::EndTabItem();
+            }
+        }
+
+        ImGui::EndTabBar();
+    }
 
     ImGui::End();
     ImGui::PopStyleVar();

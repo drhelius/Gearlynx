@@ -158,13 +158,19 @@ struct GLYNX_Mikey_Timer
 struct GLYNX_Mikey_Audio
 {
     u8 volume;
-    u8 shift_feedback;
-    u8 output_value;
-    u8 left_shift;
-    u8 timer_backup;
+    u8 feedback;
+    s8 output;
+    u8 lfsr_low;
+    u8 backup;
     u8 control;
-    u8 count;
-    u8 misc;
+    u8 counter;
+    u8 other;
+
+    u32 internal_cycles;
+    u32 internal_period_cycles;
+    u32 internal_pending_ticks;
+    u16 lfsr;
+    u16 taps_mask;
 };
 
 struct GLYNX_Mikey_Color
