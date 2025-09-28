@@ -229,7 +229,7 @@ void retro_get_system_info(struct retro_system_info *info)
     info->library_name     = "Gearlynx";
     info->library_version  = GLYNX_VERSION;
     info->need_fullpath    = false;
-    info->valid_extensions = "lnx|lyx|bin|rom";
+    info->valid_extensions = "lnx|lyx|o";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)

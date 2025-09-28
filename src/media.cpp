@@ -256,19 +256,6 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
         DefaultLynxHeader();
     }
 
-    // Debug("Header magic: %c%c%c%c", m_header.magic[0], m_header.magic[1], m_header.magic[2], m_header.magic[3]);
-    // Debug("Header bank0 page size: %d", m_header.bank0_page_size);
-    // Debug("Header bank1 page size: %d", m_header.bank1_page_size);
-    // Debug("Header version: %d", m_header.version);
-    // Debug("Header name: %s", m_header.name);
-    // Debug("Header manufacturer: %s", m_header.manufacturer);
-    // Debug("Header rotation: %d", m_header.rotation);
-    // Debug("Header audin: %d", m_header.audin);
-    // Debug("Header EEPROM: %d", m_header.eeprom);
-
-    // m_rotation = ReadHeaderRotation(m_header.rotation);
-    // m_eeprom = ReadHeaderEEPROM(m_header.eeprom);
-
     Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
 
     m_rom = new u8[m_rom_size];
@@ -427,7 +414,7 @@ bool Media::LoadFromZipFile(const u8* buffer, int size)
         string extension = fn.substr(fn.find_last_of(".") + 1);
         transform(extension.begin(), extension.end(), extension.begin(), (int(*)(int)) tolower);
 
-        if ((extension == "lnx") || (extension == "lyx"))
+        if ((extension == "lnx") || (extension == "lyx") || (extension == "o"))
         {
             void *p;
             size_t uncomp_size;
