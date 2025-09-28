@@ -22,7 +22,13 @@
 
 #include "m6502.h"
 
-#define DebugSuzy(fmt, ...) Debug("* SUZY  [PC=%04X]: " fmt, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)
+#define GLYNX_DEBUG_SUZY
+
+#if defined(GLYNX_DEBUG_SUZY)
+    #define DebugSuzy(msg, ...) Debug("* SUZY  [PC=%04X]: " msg, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)
+#else
+    #define DebugSuzy(msg, ...)
+#endif
 
 #define SHIFTREG_EOF 0xFFFFFFFFu
 

@@ -614,7 +614,7 @@ INLINE void Mikey::HorizontalBlank()
 
     if (line >= 0 && line < 102)
     {
-        DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
+        //DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
         LineDMA(line);
     }
     // else
@@ -652,7 +652,7 @@ INLINE void Mikey::HorizontalBlank()
 
 INLINE void Mikey::VerticalBlank()
 {
-    Debug("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
+    DebugMikey("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
     m_state.frame_ready = true;
     //m_state.render_line = 0;
     m_debug_cycles = 0;
