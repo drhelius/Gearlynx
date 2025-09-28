@@ -22,7 +22,7 @@
 
 #include "m6502.h"
 
-#define GLYNX_DEBUG_SUZY
+//#define GLYNX_DEBUG_SUZY
 
 #if defined(GLYNX_DEBUG_SUZY)
     #define DebugSuzy(msg, ...) Debug("* SUZY  [PC=%04X]: " msg, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)

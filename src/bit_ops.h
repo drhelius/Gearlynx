@@ -62,9 +62,8 @@ INLINE u8 parity16(u16 x) {
 #else
     x ^= x >> 8;
     x ^= x >> 4;
-    x ^= x >> 2;
-    x ^= x >> 1;
-    return (u8)(x & 1);
+    x &= 0x000F;
+    return (u8)((0x6996 >> x) & 1);
 #endif
 }
 

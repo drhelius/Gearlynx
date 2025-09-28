@@ -20,7 +20,7 @@
 #ifndef MIKEY_DEFINES_H
 #define MIKEY_DEFINES_H
 
-#define GLYNX_DEBUG_MIKEY
+//#define GLYNX_DEBUG_MIKEY
 
 #if defined(GLYNX_DEBUG_MIKEY)
     #define DebugMikey(msg, ...) Debug("· MIKEY [PC=%04X]: " msg, m_m6502->GetState()->PC.GetValue(), ##__VA_ARGS__)

@@ -727,35 +727,33 @@ INLINE void Mikey::AdvanceLFSR(u8 channel)
 {
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
-    u16 tapped = c->lfsr & c->taps_mask;
-    u8 parity = parity16(tapped);
-    u8 polybit = (u8)(parity ^ 1u);
+    u16 x = (u16)(c->lfsr & c->taps_mask);
+    u8 xorbit = parity16(x);
+    u8 data_in = (u8)(xorbit ^ 1u);
 
-    // integrate mode
+    c->lfsr = (u16)(((c->lfsr << 1) & 0x0FFE) | (u16)data_in);
+
+    u8 sr0 = (u8)(c->lfsr & 1u);
+
+    const s8 vol = (s8)c->volume;
+
     if (IS_SET_BIT(c->control, 5))
     {
-        int accumulator = (int)c->output;
-        int delta = (int)(polybit ? c->volume : -c->volume);
-
-        accumulator += delta;
-
-        if (accumulator < -128)
-            accumulator = -128;
-        else if (accumulator > 127)
-            accumulator = 127;
-
-        c->output = (s8)accumulator;
+        int acc = (int)c->output;
+        int delta = sr0 ? (int)vol : -(int)vol;
+        acc += delta;
+        acc = CLAMP(acc, -128, 127);
+        c->output = (s8)acc;
     }
-    // normal mode
     else
     {
-        c->output = polybit ? c->volume : -c->volume;
+        int v = sr0 ? (int)vol : -(int)vol;
+        v = CLAMP(v, -128, 127);
+        c->output = (s8)v;
     }
 
-    c->lfsr = (u16)((c->lfsr >> 1) | ((u16)polybit << 11));
-
-    c->lfsr_low = (u8)(c->lfsr & 0xFF);
-    c->other = (c->other & 0x0F) | (u8)((c->lfsr >> 4) & 0xF0);
+    c->lfsr_low = (u8)(c->lfsr & 0x00FF);
+    c->other = (u8)((c->other & 0x0F) | ((c->lfsr >> 4) & 0xF0));
 }
 
 INLINE void Mikey::RebuildTapsMask(GLYNX_Mikey_Audio* channel)
