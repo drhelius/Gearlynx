@@ -63,8 +63,8 @@ void gui_debug_window_psg(void)
     {
         static const int k_base_addr = 0xFD20;
         static const char* k_period_strs[8] = {
-            "1 MHz (1us)", "512 KHz (2us)", "256 KHz (4us)", "128 KHz (8us)",
-            "64 KHz (16us)", "32 KHz (32us)", "16 KHz (64us)", "N/A"
+            "1 MHz (1us)", "500 KHz (2us)", "250 KHz (4us)", "125 KHz (8us)",
+            "62.5 KHz (16us)", "31.25 KHz (32us)", "15.625 KHz (64us)", "N/A"
         };
 
         for (int c = 0; c < 4; c++)

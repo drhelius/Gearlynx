@@ -463,17 +463,6 @@ static void menu_video(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Vertical Sync", "", &config_video.sync))
-        {
-            SDL_GL_SetSwapInterval(config_video.sync ? 1 : 0);
-
-            if (config_video.sync)
-            {
-                config_audio.sync = true;
-                emu_audio_reset();
-            }
-        }
-
         ImGui::MenuItem("Show FPS", "", &config_video.fps);
 
         ImGui::Separator();
@@ -570,17 +559,6 @@ static void menu_audio(void)
         if (ImGui::MenuItem("Enable Audio", "", &config_audio.enable))
         {
             emu_audio_mute(!config_audio.enable);
-        }
-
-        if (ImGui::MenuItem("Sync With Emulator", "", &config_audio.sync))
-        {
-            config_emulator.ffwd = false;
-
-            if (!config_audio.sync)
-            {
-                config_video.sync = false;
-                SDL_GL_SetSwapInterval(0);
-            }
         }
 
         ImGui::EndMenu();

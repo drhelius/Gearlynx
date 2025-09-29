@@ -50,6 +50,7 @@ struct GLYNX_Runtime_Info
 {
     int screen_width;
     int screen_height;
+    float frame_time;
 };
 
 struct GLYNX_Color

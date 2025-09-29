@@ -116,6 +116,18 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     runtime_info.screen_width = GLYNX_SCREEN_WIDTH;
     runtime_info.screen_height = GLYNX_SCREEN_HEIGHT;
 
+    Mikey::Mikey_State* mikey_state = m_mikey->GetState();
+    float t0_backup = (float)mikey_state->timers[0].backup;
+    float t2_backup = (float)mikey_state->timers[2].backup;
+
+    u8 t0_prescaler = mikey_state->timers[0].control_a & 0x07;
+    float tick_T0_us = (float)k_mikey_timerX_period_us[t0_prescaler];
+
+    float frame_time_ms = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
+
+    // Clamp to (50, 80) FPS range
+    runtime_info.frame_time = CLAMP(frame_time_ms, 12.5f, 20.0f);
+
     return m_media->IsReady();
 }
 

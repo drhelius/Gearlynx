@@ -71,7 +71,6 @@ struct config_Video
     int scanlines_type = 2;
     bool scanlines_filter = false;
     float scanlines_intensity = 0.80f;
-    bool sync = true;
 };
 
 struct config_Audio

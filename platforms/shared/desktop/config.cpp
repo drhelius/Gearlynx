@@ -172,8 +172,6 @@ void config_read(void)
     config_video.scanlines_filter = read_bool("Video", "ScanlinesFilter", false);
     config_video.scanlines_intensity = read_float("Video", "ScanlinesIntensity", 0.80f);
 
-    config_video.sync = read_bool("Video", "Sync", true);
-    
     config_audio.enable = read_bool("Audio", "Enable", true);
     config_audio.sync = read_bool("Audio", "Sync", true);
 
@@ -272,7 +270,6 @@ void config_write(void)
     write_int("Video", "ScanlinesType", config_video.scanlines_type);
     write_bool("Video", "ScanlinesFilter", config_video.scanlines_filter);
     write_float("Video", "ScanlinesIntensity", config_video.scanlines_intensity);
-    write_bool("Video", "Sync", config_video.sync);
 
     write_bool("Audio", "Enable", config_audio.enable);
     write_bool("Audio", "Sync", config_audio.sync);

@@ -62,7 +62,7 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 
     if (IsValidPointer(sample_buffer) && IsValidPointer(sample_count))
     {
-        const int samples = m_buffer_pos; // interleaved L,R count
+        const int samples = m_buffer_pos;
         *sample_count = samples;
 
         for (int i = 0; i + 1 < samples; i += 2)
@@ -76,8 +76,8 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
             xL = m_lpfL;
             xR = m_lpfR;
 
-            s32 outL = m_mute ? 0 : (xL * 30);
-            s32 outR = m_mute ? 0 : (xR * 30);
+            s32 outL = m_mute ? 0 : (xL * 40);
+            s32 outR = m_mute ? 0 : (xR * 40);
 
             outL = CLAMP(outL, -32768, 32767);
             outR = CLAMP(outR, -32768, 32767);

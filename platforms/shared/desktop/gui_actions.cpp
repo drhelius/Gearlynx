@@ -63,12 +63,10 @@ void gui_action_ffwd(void)
     if (config_emulator.ffwd)
     {
         gui_set_status_message("Fast Forward ON", 3000);
-        SDL_GL_SetSwapInterval(0);
     }
     else
     {
         gui_set_status_message("Fast Forward OFF", 3000);
-        SDL_GL_SetSwapInterval(config_video.sync ? 1 : 0);
         emu_audio_reset();
     }
 }

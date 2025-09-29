@@ -122,8 +122,6 @@ int application_init(const char* rom_file, const char* symbol_file, bool force_f
         return 5;
     }
 
-    SDL_GL_SetSwapInterval(config_video.sync ? 1 : 0);
-
     if (config_emulator.fullscreen)
         application_trigger_fullscreen(true);
 
@@ -1002,6 +1000,13 @@ static void frame_throttle(void)
         elapsed *= 1000.0f;
 
         float min = 16.666f;
+
+        if (!emu_is_audio_open())
+        {
+            GLYNX_Runtime_Info runtime;
+        emu_get_runtime(runtime);
+            min = runtime.frame_time;
+        }
 
         if (config_emulator.ffwd)
         {
