@@ -116,8 +116,9 @@ void Mikey::ResetAudio()
         m_state.audio[i].internal_cycles = 0;
         m_state.audio[i].internal_period_cycles = k_mikey_timerX_period_cycles[0];
         m_state.audio[i].internal_pending_ticks = 0;
-        m_state.audio[i].lfsr = 0;
-        m_state.audio[i].taps_mask = 0;
+        m_state.audio[i].internal_lfsr = 0;
+        m_state.audio[i].internal_taps_mask = 0;
+        m_state.audio[i].mix = false;
     }
 }
 

@@ -45,8 +45,11 @@ private:
     bool m_mute;
     s16 m_sample_left;
     s16 m_sample_right;
+    s32 m_lpfL;
+    s32 m_lpfR;
+    u16 m_lpf_alpha_q15;
     u32 m_buffer_pos;
-    s16* m_buffer;
+    s16 m_buffer[GLYNX_AUDIO_BUFFER_SIZE] = { 0 };
 };
 
 #include "audio_inline.h"

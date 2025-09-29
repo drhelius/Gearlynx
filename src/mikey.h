@@ -95,6 +95,7 @@ private:
     void AdvanceLFSR(u8 channel);
     void RebuildTapsMask(GLYNX_Mikey_Audio* channel);
     void RebuildLFSR(GLYNX_Mikey_Audio* channel);
+    void CalculateCutoff(u8 channel);
     void UpdateIRQs();
     void HorizontalBlank();
     void VerticalBlank();

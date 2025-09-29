@@ -439,6 +439,7 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
         break;
     case 4:
         c->backup = value;
+        CalculateCutoff(i);
         break;
     case 5:
     {
@@ -456,6 +457,7 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
         {
             c->internal_cycles = 0;
             c->internal_pending_ticks = 0;
+            CalculateCutoff(i);
         }
 
         if (IS_SET_BIT(value, 6))
@@ -728,11 +730,11 @@ INLINE void Mikey::AdvanceLFSR(u8 channel)
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
     s8 vol = (s8)c->volume;
-    u16 x = (u16)(c->lfsr & c->taps_mask);
+    u16 x = (u16)(c->internal_lfsr & c->internal_taps_mask);
     u8 xorbit = parity16(x);
     u8 data_in = (u8)(xorbit ^ 1u);
 
-    c->lfsr = (u16)(((c->lfsr << 1) & 0x0FFE) | (u16)data_in);
+    c->internal_lfsr = (u16)(((c->internal_lfsr << 1) & 0x0FFE) | (u16)data_in);
 
     if (IS_SET_BIT(c->control, 5))
     {
@@ -749,8 +751,8 @@ INLINE void Mikey::AdvanceLFSR(u8 channel)
         c->output = (s8)v;
     }
 
-    c->lfsr_low = (u8)(c->lfsr & 0x00FF);
-    c->other = (u8)((c->other & 0x0F) | ((c->lfsr >> 4) & 0xF0));
+    c->lfsr_low = (u8)(c->internal_lfsr & 0x00FF);
+    c->other = (u8)((c->other & 0x0F) | ((c->internal_lfsr >> 4) & 0xF0));
 }
 
 INLINE void Mikey::RebuildTapsMask(GLYNX_Mikey_Audio* channel)
@@ -760,14 +762,41 @@ INLINE void Mikey::RebuildTapsMask(GLYNX_Mikey_Audio* channel)
     u16 mask = (u16)(feedback & 0x3F);
     mask |= ((u16)(feedback & 0xC0)) << 4;
     mask |= (u16)(control & 0x80);
-    channel->taps_mask = mask;
+    channel->internal_taps_mask = mask;
 }
 
 INLINE void Mikey::RebuildLFSR(GLYNX_Mikey_Audio* channel)
 {
     u16 lfsr = (u16)(channel->lfsr_low);
     lfsr |= ((u16)(channel->other & 0xF0)) << 4;
-    channel->lfsr = lfsr;
+    channel->internal_lfsr = lfsr;
+}
+
+INLINE void Mikey::CalculateCutoff(u8 channel)
+{
+    GLYNX_Mikey_Audio* c = &m_state.audio[channel];
+
+    if (c->internal_period_cycles != 0)
+    {
+        u32 cycles = (c->backup + 1) * c->internal_period_cycles;
+        c->mix = (cycles >= 32);
+    }
+    else
+    {
+        int link = k_mikey_audio_backward_links[channel];
+        if (link >= 0)
+        {
+            u32 cycles = (m_state.audio[link].backup + 1) * m_state.audio[link].internal_period_cycles;
+            cycles *= (c->backup + 1);
+            c->mix = (cycles >= 32);
+        }
+        else // channel 0 links to timer 7
+        {
+            u32 cycles = (m_state.timers[7].backup + 1) * m_state.timers[7].internal_period_cycles;
+            cycles *= (c->backup + 1);
+            c->mix = (cycles >= 32);
+        }
+    }
 }
 
 INLINE void Mikey::UpdateIRQs()

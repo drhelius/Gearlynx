@@ -25,22 +25,17 @@
 Audio::Audio(Mikey* mikey)
 {
     m_mikey = mikey;
-    m_cycles = 0;
     m_mute = false;
-    m_buffer_pos = 0;
-    m_sample_left = 0;
-    m_sample_right = 0;
-    InitPointer(m_buffer);
+    Reset();
 }
 
 Audio::~Audio()
 {
-    SafeDeleteArray(m_buffer);
 }
 
 void Audio::Init()
 {
-    m_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
+    Reset();
 }
 
 void Audio::Reset()
@@ -50,6 +45,10 @@ void Audio::Reset()
     m_sample_left = 0;
     m_sample_right = 0;
     memset(m_buffer, 0, sizeof(s16) * GLYNX_AUDIO_BUFFER_SIZE);
+    m_lpfL = 0;
+    m_lpfR = 0;
+    // fc=4 kHz, fs=44.1 kHz -> alpha = 1 - exp(-2PI·fc/fs) = 0.434 -> Q15 = 14230
+    m_lpf_alpha_q15 = (u16)14230;
 }
 
 void Audio::Mute(bool mute)
@@ -63,24 +62,28 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 
     if (IsValidPointer(sample_buffer) && IsValidPointer(sample_count))
     {
-        int samples = m_buffer_pos;
+        const int samples = m_buffer_pos; // interleaved L,R count
         *sample_count = samples;
 
-        for (int i = 0; i < samples; i++)
+        for (int i = 0; i + 1 < samples; i += 2)
         {
-            if (m_mute)
-                sample_buffer[i] = 0;
-            else
-            {
-                s32 mix = (s32)(m_buffer[i] * 10);
+            s32 xL = (s32)m_buffer[i + 0];
+            s32 xR = (s32)m_buffer[i + 1];
 
-                if (mix > 32767)
-                    mix = 32767;
-                else if (mix < -32768)
-                    mix = -32768;
+            // 1-pole: y += alpha * (x - y)
+            m_lpfL = m_lpfL + (((s32)m_lpf_alpha_q15 * (xL - m_lpfL)) >> 15);
+            m_lpfR = m_lpfR + (((s32)m_lpf_alpha_q15 * (xR - m_lpfR)) >> 15);
+            xL = m_lpfL;
+            xR = m_lpfR;
 
-                sample_buffer[i] = (s16)mix;
-            }
+            s32 outL = m_mute ? 0 : (xL * 30);
+            s32 outR = m_mute ? 0 : (xR * 30);
+
+            outL = CLAMP(outL, -32768, 32767);
+            outR = CLAMP(outR, -32768, 32767);
+
+            sample_buffer[i + 0] = (s16)outL;
+            sample_buffer[i + 1] = (s16)outR;
         }
     }
 
