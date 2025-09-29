@@ -777,7 +777,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
 {
     ShiftRegisterReset(data_begin);
 
-    u32 h_accum = haccum_init; // start with HSIZOFF when drawing right
+    u32 h_accum = haccum_init;
 
     while (m_state.shift_register_address < data_end)
     {
@@ -804,7 +804,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
 {
     ShiftRegisterReset(data_begin);
 
-    u32 h_accum = haccum_init; // start with HSIZOFF when drawing right
+    u32 h_accum = haccum_init;
 
     while (m_state.shift_register_address < data_end)
     {
@@ -1017,7 +1017,8 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
     u16 bytes_remaining_after_current = (u16)((stop_addr - 1) - m_state.shift_register_address);
     int remaining_bits = bits_in_current_byte + (int)bytes_remaining_after_current * 8;
 
-    if (n > remaining_bits)
+    // Hardware quirk: refuse when exactly equal, dropping the last bit
+    if (n >= remaining_bits)
         return SHIFTREG_EOF;
 
     // MSB-first
