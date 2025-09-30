@@ -30,20 +30,27 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_memory_breakpoint_hit = false;
+#else
+    UNUSED(instruction_completed);
 #endif
 
     m_s.cycles = 0;
 
+    if (unlikely(m_halted))
+    {
+        if (m_s.irq_asserted)
+            m_halted = false;
+            
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (IsValidPointer(instruction_completed))
+                *instruction_completed = false;
+#endif
+        return 4;
+    }
+
     u8 opcode = Fetch8();
     CheckIRQs();
     (this->*m_opcodes[opcode])();
-
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (IsValidPointer(instruction_completed))
-        *instruction_completed = true;
-#else
-    UNUSED(instruction_completed);
-#endif
 
     if(m_s.irq_pending)
         HandleIRQ();
@@ -51,6 +58,11 @@ INLINE u32 M6502::RunInstruction(bool* instruction_completed)
     DisassembleNextOPCode();
 
     m_s.cycles += k_m6502_opcode_cycles[opcode];
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (IsValidPointer(instruction_completed))
+        *instruction_completed = true;   
+#endif
 
     return m_s.cycles;
 }
@@ -83,6 +95,11 @@ INLINE void M6502::CheckIRQs()
 INLINE void M6502::AssertIRQ(bool asserted)
 {
     m_s.irq_asserted = asserted;
+}
+
+INLINE void M6502::Halt(bool halted)
+{
+    m_halted = halted;
 }
 
 INLINE void M6502::InjectCycles(unsigned int cycles)

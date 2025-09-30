@@ -83,6 +83,7 @@ public:
     void Reset();
     u32 RunInstruction(bool* instruction_completed = NULL);
     void AssertIRQ(bool asserted);
+    void Halt(bool halted);
     void InjectCycles(unsigned int cycles);
     M6502_State* GetState();
     void DisassembleNextOPCode();
@@ -119,6 +120,7 @@ private:
     bool m_run_to_breakpoint_requested;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_reset_value;
+    bool m_halted;
 
 private:
     void HandleIRQ();

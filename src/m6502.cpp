@@ -32,6 +32,7 @@ M6502::M6502()
     m_s.cycles = 0;
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
+    m_s.debug_next_irq = 0;
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = false;
     m_cpu_breakpoint_hit = false;
@@ -39,6 +40,7 @@ M6502::M6502()
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
     m_reset_value = -1;
+    m_halted = false;
 }
 
 M6502::~M6502()
@@ -85,6 +87,7 @@ void M6502::Reset()
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
+    m_halted = false;
     ClearDisassemblerCallStack();
 }
 

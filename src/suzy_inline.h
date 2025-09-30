@@ -1057,6 +1057,7 @@ INLINE void Suzy::UpdateSprites(u32 cycles)
             m_state.sprite_cycles = 0;
             m_state.sprsys_spritesbusy = false;
             m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
+            m_m6502->Halt(false);
         }
     }
 }
