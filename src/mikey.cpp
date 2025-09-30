@@ -53,7 +53,10 @@ void Mikey::Reset()
 {
     memset(&m_state, 0, sizeof(Mikey_State));
     memset(m_host_palette, 0, sizeof(m_host_palette));
+
+    ResetPalette();
     ResetTimers();
+    ResetAudio();
 
     m_debug_cycles = 0;
 }
@@ -120,6 +123,12 @@ void Mikey::ResetAudio()
         m_state.audio[i].internal_taps_mask = 0;
         m_state.audio[i].mix = false;
     }
+}
+
+void Mikey::ResetPalette()
+{
+    for (int address = 0xFDA0; address < 0xFDC0; address++)
+        WriteColor(address, 0xFF);
 }
 
 void Mikey::SaveState(std::ostream& stream)

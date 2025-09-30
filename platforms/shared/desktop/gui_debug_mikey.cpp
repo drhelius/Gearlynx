@@ -334,12 +334,11 @@ void gui_debug_window_mikey_colors(void)
         {
             int idx = (line * 4) + c;
 
-            u8 color_green = mikey_state->colors[idx].green;
+            u8 color_green = mikey_state->colors[idx].green & 0x0F;
             u8 color_blue = (mikey_state->colors[idx].bluered >> 4) & 0x0F;
             u8 color_red = mikey_state->colors[idx].bluered & 0x0F;
 
-            ImGui::TextColored(gray, "0"); ImGui::SameLine(0,0);
-            ImGui::TextColored(green, "%01X", color_green); ImGui::SameLine(0,0);
+            ImGui::TextColored(green, " %01X", color_green); ImGui::SameLine(0,0);
             ImGui::TextColored(blue, "%01X", color_blue); ImGui::SameLine(0,0);
             ImGui::TextColored(red, "%01X       ", color_red);
 

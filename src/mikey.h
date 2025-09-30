@@ -82,6 +82,7 @@ private:
     void InitPalettes();
     void ResetTimers();
     void ResetAudio();
+    void ResetPalette();
     u8 ReadColor(u16 address);
     void WriteColor(u16 address, u8 value);
     u8 ReadTimer(u16 address);
