@@ -58,28 +58,30 @@ INLINE u8 Mikey::Read(u16 address)
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
+            DebugMikey("Reading INTRST: %02X", m_state.irq_pending);
             return m_state.irq_pending;
         case MIKEY_INTSET:        // 0xFD81
+            DebugMikey("Reading INTSET: %02X", m_state.irq_pending);
             return m_state.irq_pending;
         case MIKEY_MAGRDY0:       // 0xFD84
-            DebugMikey("Reading MAGRDY0 (unused)");
+            DebugMikey("Reading MAGRDY0 (unused): 00");
             return 0x00;
         case MIKEY_MAGRDY1:       // 0xFD85
-            DebugMikey("Reading MAGRDY1 (unused)");
+            DebugMikey("Reading MAGRDY1 (unused): 00");
             return 0x00;
         case MIKEY_AUDIN:         // 0xFD86
-            DebugMikey("Reading AUDIN (unused)");
+            DebugMikey("Reading AUDIN (unused): 80");
             return 0x80;
         case MIKEY_SYSCTL1:       // 0xFD87
-            DebugMikey("Reading write-only SYSCTL1: %02X", m_state.SYSCTL1);
+            DebugMikey("Reading write-only SYSCTL1: FF");
             return 0xFF;
         case MIKEY_MIKEYHREV:     // 0xFD88
             return 0x01;
         case MIKEY_MIKEYSREV:     // 0xFD89
-            DebugMikey("Reading write-only MIKEYSREV");
+            DebugMikey("Reading write-only MIKEYSREV: FF");
             return 0xFF;
         case MIKEY_IODIR:         // 0xFD8A
-            DebugMikey("Reading write-only IODIR: %02X", m_state.IODIR);
+            DebugMikey("Reading write-only IODIR: FF");
             return 0xFF;
         case MIKEY_IODAT:         // 0xFD8B
         {
@@ -96,39 +98,47 @@ INLINE u8 Mikey::Read(u16 address)
                 ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
 
             ret |= 0x04;
+            DebugMikey("Reading IODAT: %02X", ret);
 
             return ret;
         }
         case MIKEY_SERCTL:        // 0xFD8C
-            return m_state.SERCTL;
+        {
+            // Read returns STATUS, not the control byte. Emulate a benign idle UART:
+            // TXRDY=1 (B7), RXRDY=0 (B6), TXEMPTY=1 (B5), error bits 0, RXBRK=0, PARBIT=0.
+            const u8 status = 0xA0;
+            DebugMikey("Reading SERCTL: %02X", status);
+            return status;
+        }
         case MIKEY_SERDAT:        // 0xFD8D
+            DebugMikey("Reading SERDAT: %02X", m_state.SERDAT);
             return m_state.SERDAT;
         case MIKEY_SDONEACK:      // 0xFD90
-            DebugMikey("Reading write-only SDONEACK: %02X", m_state.SDONEACK);
+            DebugMikey("Reading write-only SDONEACK: FF");
             return 0xFF;
         case MIKEY_CPUSLEEP:      // 0xFD91
-            DebugMikey("Reading write-only CPUSLEEP: %02X", m_state.CPUSLEEP);
+            DebugMikey("Reading write-only CPUSLEEP: FF");
             return 0xFF;
         case MIKEY_DISPCTL:       // 0xFD92
-            DebugMikey("Reading write-only DISPCTL: %02X", m_state.DISPCTL);
+            DebugMikey("Reading write-only DISPCTL: FF");
             return 0xFF;
         case MIKEY_PBKUP:         // 0xFD93
-            DebugMikey("Reading write-only PBKUP: %02X", m_state.PBKUP);
+            DebugMikey("Reading write-only PBKUP: FF");
             return 0xFF;
         case MIKEY_DISPADRL:      // 0xFD94
-            DebugMikey("Reading write-only DISPADRL: %02X", m_state.DISPADR.low);
+            DebugMikey("Reading write-only DISPADRL: FF");
             return 0xFF;
         case MIKEY_DISPADRH:      // 0xFD95
-            DebugMikey("Reading write-only DISPADRH: %02X", m_state.DISPADR.high);
+            DebugMikey("Reading write-only DISPADRH: FF");
             return 0xFF;
         case MIKEY_MTEST0:        // 0xFD9C
-            DebugMikey("Reading MTEST0 (unused)");
+            DebugMikey("Reading MTEST0 (unused): FF");
             return 0xFF;
         case MIKEY_MTEST1:        // 0xFD9D
-            DebugMikey("Reading MTEST1 (unused)");
+            DebugMikey("Reading MTEST1 (unused): FF");
             return 0xFF;
         case MIKEY_MTEST2:        // 0xFD9E
-            DebugMikey("Reading MTEST2 (unused)");
+            DebugMikey("Reading MTEST2 (unused): FF");
             return 0xFF;
         default:
             assert(false && "Unhandled Mikey Read Address");
@@ -156,12 +166,21 @@ INLINE void Mikey::Write(u16 address, u8 value)
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
-            DebugMikey("Clearing IRQs: %02X (was %02X)", m_state.irq_pending & ~value, m_state.irq_pending);
+            DebugMikey("Clearing IRQs: %02X (was %02X)", value, m_state.irq_pending);
             m_state.irq_pending &= ~value;
+            // Relevel UART IRQ: it's level-driven by SERCTL enables & ready
+            {
+                const bool tx_int_en = IS_SET_BIT(m_state.SERCTL, 7);// (m_state.SERCTL & 0x80) != 0;
+                const bool rx_int_en = IS_SET_BIT(m_state.SERCTL, 6);// (m_state.SERCTL & 0x40) != 0;
+                const bool tx_ready = true;  // minimal model: TX always ready
+                const bool rx_ready = false; // minimal model: no RX data
+                if ((tx_int_en && tx_ready) || (rx_int_en && rx_ready))
+                    m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
+            }
             UpdateIRQs();
             break;
         case MIKEY_INTSET:        // 0xFD81
-            DebugMikey("Setting IRQs: %02X (was %02X)", m_state.irq_pending | value, m_state.irq_pending);
+            DebugMikey("Setting IRQs: %02X (was %02X)", value, m_state.irq_pending);
             m_state.irq_pending |= value;
             UpdateIRQs();
             break;
@@ -195,17 +214,57 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.IODAT = value;
             break;
         case MIKEY_SERCTL:        // 0xFD8C
+        {
+            DebugMikey("Setting SERCTL to %02X (was %02X)", value, m_state.SERCTL);
             m_state.SERCTL = value;
+
+            // Minimal emulation: TX always ready/empty, RX never ready.
+            const bool tx_ready = true;
+            const bool rx_ready = false;
+            const bool tx_int_en = IS_SET_BIT(m_state.SERCTL, 7);
+            const bool rx_int_en = IS_SET_BIT(m_state.SERCTL, 6);
+
+            // Mask for UART IRQ (source 4) comes from SERCTL enables, not Timer4 CTRLA[7]
+            if (tx_int_en || rx_int_en)
+                m_state.irq_mask = SET_BIT(m_state.irq_mask, 4);
+            else
+                m_state.irq_mask = UNSET_BIT(m_state.irq_mask, 4);
+
+            // Drive pending bit 4 (Timer4) from UART ready & its enables (level behavior)
+            if ((tx_int_en && tx_ready) || (rx_int_en && rx_ready))
+                m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
+            else
+                m_state.irq_pending = UNSET_BIT(m_state.irq_pending, 4);
+
+            UpdateIRQs();
             break;
+        }
         case MIKEY_SERDAT:        // 0xFD8D
+        {
+            DebugMikey("Setting SERDAT to %02X (was %02X)", value, m_state.SERDAT);
             m_state.SERDAT = value;
+
+            // Minimal emulation: TX always ready/empty, RX never ready.
+            const bool tx_ready = true;
+            const bool rx_ready = false;
+            const bool tx_int_en = IS_SET_BIT(m_state.SERCTL, 7);
+            const bool rx_int_en = IS_SET_BIT(m_state.SERCTL, 6);
+
+            if ((tx_int_en && tx_ready) || (rx_int_en && rx_ready))
+                m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
+            else
+                m_state.irq_pending = UNSET_BIT(m_state.irq_pending, 4);
+
+            UpdateIRQs();
             break;
+        }
         case MIKEY_SDONEACK:      // 0xFD90
             DebugMikey("Setting SDONEACK to %02X (was %02X)", value, m_state.SDONEACK);
             m_state.SDONEACK = value;
             break;
         case MIKEY_CPUSLEEP:      // 0xFD91
             DebugMikey("Setting CPUSLEEP to %02X (was %02X)", value, m_state.CPUSLEEP);
+            m_m6502->Halt(true);
             m_state.CPUSLEEP = value;
             break;
         case MIKEY_DISPCTL:       // 0xFD92
@@ -304,12 +363,16 @@ INLINE u8 Mikey::ReadTimer(u16 address)
     switch (reg)
     {
     case 0:
+        DebugMikey("Reading Timer %d Backup: %02X", i, t->backup);
         return t->backup;
     case 1:
+        DebugMikey("Reading Timer %d Control A: %02X", i, t->control_a);
         return t->control_a;
     case 2:
+        DebugMikey("Reading Timer %d Counter: %02X", i, t->counter);
         return t->counter;
     case 3:
+        DebugMikey("Reading Timer %d Control B: %02X", i, t->control_b);
         return t->control_b;
     default:
         return 0xFF;
@@ -355,11 +418,14 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
             t->internal_pending_ticks = 0;
         }
 
-        // IRQ enable mask
-        if (IS_SET_BIT(value, 7))
-            m_state.irq_mask = SET_BIT(m_state.irq_mask, i);
-        else
-            m_state.irq_mask = UNSET_BIT(m_state.irq_mask, i);
+        // Timer 4 (UART) does NOT use CTRLA[7] for its IRQ; it's masked by SERCTL
+        if (i != 4)
+        {
+            if (IS_SET_BIT(value, 7))
+                m_state.irq_mask = SET_BIT(m_state.irq_mask, i);
+            else
+                m_state.irq_mask = UNSET_BIT(m_state.irq_mask, i);
+        }
 
         // RESET TIMER DONE is level-triggered
         if (IS_SET_BIT(value, 6))
