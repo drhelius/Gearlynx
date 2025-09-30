@@ -106,7 +106,7 @@ bool GearlynxCore::LoadROMFromBuffer(const u8* buffer, int size, const char* fil
         return false;
 }
 
-bool GearlynxCore::LoadBios(const char* file_path)
+GLYNX_Bios_State GearlynxCore::LoadBios(const char* file_path)
 {
     return m_media->LoadBios(file_path);
 }

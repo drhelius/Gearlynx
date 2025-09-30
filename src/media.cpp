@@ -279,48 +279,56 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
     return m_ready;
 }
 
-bool Media::LoadBios(const char* path)
+GLYNX_Bios_State Media::LoadBios(const char* path)
 {
     using namespace std;
 
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
 
-    ifstream file(path, ios::in | ios::binary | ios::ate);
-
-    if (file.is_open())
-    {
-        int size = static_cast<int> (file.tellg());
-
-        if (size != 0x200)
-        {
-            Error("Incorrect BIOS size %d: %s", size, path);
-            return false;
-        }
-
-        file.seekg(0, ios::beg);
-        file.read(reinterpret_cast<char*>(m_bios), size);
-        file.close();
-
-        u32 crc = CalculateCRC32(0, m_bios, size);
-
-        m_is_bios_valid = (crc == GLYNX_DB_BIOS_CRC);
-
-        if (!m_is_bios_valid)
-        {
-            Log("Incorrect BIOS CRC %08X: %s", crc, path);
-        }
-
-        m_is_bios_loaded = true;
-
-        Log("BIOS %s loaded (%d bytes)", path, size);
-    }
-    else
+    if (!IsValidFile(path))
     {
         Error("There was a problem opening the file %s", path);
+        return BIOS_LOAD_FILE_ERROR;
     }
 
-    return m_is_bios_loaded;
+    ifstream file(path, ios::in | ios::binary | ios::ate);
+
+    if (!file.is_open())
+    {
+        Error("There was a problem opening the file %s", path);
+        return BIOS_LOAD_FILE_ERROR;
+    }
+
+    int size = static_cast<int>(file.tellg());
+
+    if (size != 0x200)
+    {
+        Error("Incorrect BIOS size %d: %s", size, path);
+        file.close();
+        return BIOS_LOAD_INVALID_SIZE;
+    }
+
+    file.seekg(0, ios::beg);
+    file.read(reinterpret_cast<char*>(m_bios), size);
+    file.close();
+
+    u32 crc = CalculateCRC32(0, m_bios, size);
+
+    m_is_bios_valid = (crc == GLYNX_DB_BIOS_CRC);
+
+    if (!m_is_bios_valid)
+    {
+        Log("Incorrect BIOS CRC %08X: %s", crc, path);
+        m_is_bios_loaded = true;
+        return BIOS_LOAD_INVALID_CRC;
+    }
+
+    m_is_bios_loaded = true;
+
+    Log("BIOS %s loaded (%d bytes)", path, size);
+
+    return BIOS_LOAD_OK;
 }
 
 u8 Media::ReadBank0()

@@ -198,7 +198,7 @@ void gui_file_dialog_choose_screenshot_path(void)
 void gui_file_dialog_load_bios(void)
 {
     nfdchar_t *outPath;
-    nfdfilteritem_t filterItem[1] = { { "BIOS Files", "img" } };
+    nfdfilteritem_t filterItem[1] = { { "BIOS Files", "img,lnx,lyx,o,bin,rom" } };
     nfdopendialogu8args_t args = { };
     args.filterList = filterItem;
     args.filterCount = 1;

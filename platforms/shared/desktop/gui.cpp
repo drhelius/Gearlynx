@@ -315,23 +315,38 @@ void gui_load_bios(const char* path)
     else
         filename = fullpath;
 
-    if (!emu_load_bios(path))
-    {
-        std::string message("Error loading BIOS:\n");
-        message += filename;
-        gui_set_error_message(message.c_str());
-        gui_action_reset();
-        return;
-    }
+    GLYNX_Bios_State result = emu_load_bios(path);
 
-    if (!emu_get_core()->GetMedia()->IsBiosValid())
+    if (result == BIOS_LOAD_FILE_ERROR)
     {
-        std::string message("Invalid BIOS file:\n");
+        std::string message("Error loading BIOS file:\n");
         message += filename;
-        message += "\n\nMake sure the file is a valid BIOS file.";
+        message += "\n\nThe file was not found or could not be opened.";
         gui_set_error_message(message.c_str());
-        gui_action_reset();
-        return;
+    }
+    else if (result == BIOS_LOAD_INVALID_SIZE)
+    {
+        std::string message("Invalid BIOS file size:\n");
+        message += filename;
+        message += "\n\nBIOS file must be exactly 512 bytes.";
+        gui_set_error_message(message.c_str());
+    }
+    else if (result == BIOS_LOAD_INVALID_CRC)
+    {
+        std::string message("Invalid BIOS file CRC:\n");
+        message += filename;
+        message += "\n\nThe BIOS file has loaded but it is not valid.\n";
+        message += "You can still use it, but some games may not work properly.\n\n";
+        message += "The original BIOS file have the following checksums:\n";
+        message += "CRC32: 0D973C9D\n";
+        message += "MD5: fcd403db69f54290b51035d82f835e7b";
+        gui_set_error_message(message.c_str());
+    }
+    else if (result == BIOS_LOAD_OK)
+    {
+        string message("BIOS loaded successfully:\n");
+        message += filename;
+        gui_set_status_message(message.c_str(), 3000);
     }
 
     gui_action_reset();

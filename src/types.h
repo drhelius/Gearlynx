@@ -53,6 +53,14 @@ struct GLYNX_Runtime_Info
     float frame_time;
 };
 
+enum GLYNX_Bios_State
+{
+    BIOS_LOAD_OK = 0,
+    BIOS_LOAD_FILE_ERROR,
+    BIOS_LOAD_INVALID_SIZE,
+    BIOS_LOAD_INVALID_CRC
+};
+
 struct GLYNX_Color
 {
     u8 red;

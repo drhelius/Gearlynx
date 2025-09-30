@@ -73,7 +73,7 @@ public:
     const char* GetFileExtension();
     bool LoadFromFile(const char* path);
     bool LoadFromBuffer(const u8* buffer, int size, const char* path);
-    bool LoadBios(const char* path);
+    GLYNX_Bios_State LoadBios(const char* path);
     u8 ReadBank0();
     u8 ReadBank1();
     void WriteBank0(u8 value);

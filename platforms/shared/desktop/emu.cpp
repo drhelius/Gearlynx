@@ -180,9 +180,9 @@ bool emu_is_bios_loaded(void)
     return core->GetMedia()->IsBiosLoaded();
 }
 
-bool emu_load_bios(const char* file_path)
+GLYNX_Bios_State emu_load_bios(const char* file_path)
 {
-    return core->GetMedia()->LoadBios(file_path);
+    return core->LoadBios(file_path);
 }
 
 void emu_reset(void)

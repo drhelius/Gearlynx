@@ -103,7 +103,26 @@ static void load_bootroms(void)
 {
     char bios_path[4113];
     snprintf(bios_path, 4113, "%s%clynxboot.img", retro_system_directory, slash);
-    core->LoadBios(bios_path);
+    Media::GLYNX_Bios_Load_Result result = core->LoadBios(bios_path);
+
+    switch (result)
+    {
+        case Media::BIOS_LOAD_OK:
+            log_cb(RETRO_LOG_INFO, "BIOS loaded successfully from %s\n", bios_path);
+            break;
+        case Media::BIOS_LOAD_FILE_ERROR:
+            log_cb(RETRO_LOG_ERROR, "BIOS file error: %s\n", bios_path);
+            break;
+        case Media::BIOS_LOAD_INVALID_SIZE:
+            log_cb(RETRO_LOG_ERROR, "BIOS file has invalid size: %s\n", bios_path);
+            break;
+        case Media::BIOS_LOAD_INVALID_CRC:
+            log_cb(RETRO_LOG_WARN, "BIOS file has invalid CRC: %s\n", bios_path);
+            break;
+        default:
+            log_cb(RETRO_LOG_ERROR, "Unknown error loading BIOS: %s\n", bios_path);
+            break;
+    }
 }
 
 unsigned retro_api_version(void)

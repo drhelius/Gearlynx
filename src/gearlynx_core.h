@@ -53,7 +53,7 @@ public:
     bool RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug = NULL);
     bool LoadROM(const char* file_path);
     bool LoadROMFromBuffer(const u8* buffer, int size, const char* file_path = NULL);
-    bool LoadBios(const char* file_path);
+    GLYNX_Bios_State LoadBios(const char* file_path);
     void ResetROM(bool preserve_ram);
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);

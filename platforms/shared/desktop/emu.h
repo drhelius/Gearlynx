@@ -69,7 +69,7 @@ EXTERN bool emu_is_paused(void);
 EXTERN bool emu_is_debug_idle(void);
 EXTERN bool emu_is_empty(void);
 EXTERN bool emu_is_bios_loaded(void);
-EXTERN bool emu_load_bios(const char* file_path);
+EXTERN GLYNX_Bios_State emu_load_bios(const char* file_path);
 EXTERN void emu_reset(void);
 EXTERN void emu_audio_mute(bool mute);
 EXTERN void emu_audio_reset(void);
