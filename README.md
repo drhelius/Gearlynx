@@ -8,18 +8,40 @@
 [![License](https://img.shields.io/github/license/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/drhelius)](https://x.com/drhelius)
 
-> IN DEVELOPMENT: I develop publicly from start to finish. Not intended to be used now, it does not work!
-
 Gearlynx is a cross-platform Atari Lynx emulator written in C++ that runs on Windows, macOS, Linux, BSD and RetroArch.
 
 This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please consider [sponsoring](https://github.com/sponsors/drhelius).
+
+Don't hesitate to report bugs or ask for new features by [opening an issue](https://github.com/drhelius/Gearlynx/issues).
 
 <img src="http://www.geardome.com/files/gearlynx/gearlynx_debug_06.png">
 
 ## Downloads
 
 - **Dev Builds**: [GitHub Actions](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
-  
+
+## Tips
+
+### Basic Usage
+- **BIOS**: Gearlynx requires a BIOS to work. It is possible to load any BIOS but the original with md5 ```fcd403db69f54290b51035d82f835e7b``` is recommended.
+- **Portable Mode**: Create an empty file named `portable.ini` in the same directory as the application binary to enable portable mode.
+
+### Debugging Features
+- **Docking Windows**: In debug mode, you can dock windows together by pressing SHIFT and dragging a window onto another.
+- **Multi-viewport**: In Windows or macOS, you can enable "multi-viewport" in the debug menu. You must restart the emulator for the change to take effect. Once enabled, you can drag debugger windows outside the main window.
+- **Debug Symbols**: The emulator automatically tries to load a symbol file when loading a ROM. For example, for ```path_to_rom_file.rom``` it tries to load ```path_to_rom_file.sym```. You can also load symbol files using the GUI or the CLI.
+
+### Command Line Usage
+```
+gearlynx [options] [rom_file] [symbol_file]
+
+Options:
+  -f, --fullscreen    Start in fullscreen mode
+  -w, --windowed      Start in windowed mode with menu visible
+  -v, --version       Display version information
+  -h, --help          Display this help message
+```
+
 ## Build Instructions
 
 ### Windows
