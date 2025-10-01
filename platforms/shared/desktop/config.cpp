@@ -102,9 +102,7 @@ void config_read(void)
     config_debug.show_psg = read_bool("Debug", "PSG", false);
     config_debug.show_trace_logger = read_bool("Debug", "TraceLogger", false);
     config_debug.show_mikey_regs = read_bool("Debug", "MikeyRegs", false);
-    config_debug.show_mikey_timer_regs = read_bool("Debug", "MikeyTimerRegs", false);
     config_debug.show_mikey_timers = read_bool("Debug", "MikeyTimers", false);
-    config_debug.show_mikey_audio = read_bool("Debug", "MikeyAudio", false);
     config_debug.show_mikey_colors = read_bool("Debug", "MikeyColors", false);
     config_debug.show_suzy_regs = read_bool("Debug", "SuzyRegs", false);
     config_debug.show_suzy_math_regs = read_bool("Debug", "SuzyMathRegs", false);
@@ -169,7 +167,7 @@ void config_read(void)
     config_video.mix_frames = read_bool("Video", "MixFrames", true);
     config_video.mix_frames_intensity = read_float("Video", "MixFramesIntensity", 0.60f);
     config_video.scanlines_type = read_int("Video", "ScanlinesType", 2);
-    config_video.scanlines_filter = read_bool("Video", "ScanlinesFilter", false);
+    config_video.scanlines_filter = read_bool("Video", "ScanlinesFilter", true);
     config_video.scanlines_intensity = read_float("Video", "ScanlinesIntensity", 0.80f);
 
     config_audio.enable = read_bool("Audio", "Enable", true);
@@ -215,9 +213,7 @@ void config_write(void)
     write_bool("Debug", "CallStack", config_debug.show_call_stack);
     write_bool("Debug", "PSG", config_debug.show_psg);
     write_bool("Debug", "MikeyRegs", config_debug.show_mikey_regs);
-    write_bool("Debug", "MikeyTimerRegs", config_debug.show_mikey_timer_regs);
     write_bool("Debug", "MikeyTimers", config_debug.show_mikey_timers);
-    write_bool("Debug", "MikeyAudio", config_debug.show_mikey_audio);
     write_bool("Debug", "MikeyColors", config_debug.show_mikey_colors);
     write_bool("Debug", "SuzyRegs", config_debug.show_suzy_regs);
     write_bool("Debug", "SuzyMathRegs", config_debug.show_suzy_math_regs);

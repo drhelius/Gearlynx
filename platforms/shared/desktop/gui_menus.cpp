@@ -586,19 +586,17 @@ static void menu_debug(void)
         ImGui::MenuItem("Show Mikey 65C02 Call Stack", "", &config_debug.show_call_stack, config_debug.debug);
         ImGui::MenuItem("Show Mikey Registers", "", &config_debug.show_mikey_regs, config_debug.debug);
         ImGui::MenuItem("Show Mikey Timers", "", &config_debug.show_mikey_timers, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Timer Registers", "", &config_debug.show_mikey_timer_regs, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Audio Registers", "", &config_debug.show_mikey_audio, config_debug.debug);
         ImGui::MenuItem("Show Mikey Color Registers", "", &config_debug.show_mikey_colors, config_debug.debug);
+        ImGui::MenuItem("Show Mikey Audio", "", &config_debug.show_psg, config_debug.debug);
 
         ImGui::Separator();
 
         ImGui::MenuItem("Show Suzy Registers", "", &config_debug.show_suzy_regs, config_debug.debug);
         ImGui::MenuItem("Show Suzy Math Registers", "", &config_debug.show_suzy_math_regs, config_debug.debug);
+        ImGui::MenuItem("Show Framebuffers", "", &config_debug.show_frame_buffers, config_debug.debug);
 
         ImGui::Separator();
 
-        ImGui::MenuItem("Show Framebuffers", "", &config_debug.show_frame_buffers, config_debug.debug);
-        ImGui::MenuItem("Show PSG", "", &config_debug.show_psg, config_debug.debug);
         ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
 
 #if defined(__APPLE__) || defined(_WIN32)

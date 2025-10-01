@@ -80,12 +80,8 @@ void gui_debug_windows(void)
             gui_debug_window_trace_logger();
         if (config_debug.show_mikey_regs)
             gui_debug_window_mikey_regs();
-        if (config_debug.show_mikey_timer_regs)
-            gui_debug_window_mikey_timer_regs();
         if (config_debug.show_mikey_timers)
             gui_debug_window_timers();
-        if (config_debug.show_mikey_audio)
-            gui_debug_window_mikey_audio();
         if (config_debug.show_mikey_colors)
             gui_debug_window_mikey_colors();
         if (config_debug.show_suzy_regs)

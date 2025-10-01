@@ -34,8 +34,8 @@ static ImVec4 color_444_to_float(u16 color);
 void gui_debug_window_mikey_regs(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::SetNextWindowPos(ImVec2(93, 79), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(284, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(210, 162), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(328, 340), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Mikey Registers", &config_debug.show_mikey_regs);
 
@@ -103,171 +103,11 @@ void gui_debug_window_mikey_regs(void)
     ImGui::PopStyleVar();
 }
 
-void gui_debug_window_mikey_timer_regs(void)
-{
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::SetNextWindowPos(ImVec2(400, 79), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(284, 400), ImGuiCond_FirstUseEver);
-
-    ImGui::Begin("Mikey Timer Registers", &config_debug.show_mikey_timer_regs);
-    ImGui::PushFont(gui_default_font);
-
-    GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
-
-    struct {
-        const char* name;
-        const char* addr;
-        u8* reg;
-    } timer_regs16[] = {
-        {"TIM0BKUP", "FD00", &mikey_state->timers[0].backup},
-        {"TIM1BKUP", "FD04", &mikey_state->timers[1].backup},
-        {"TIM2BKUP", "FD08", &mikey_state->timers[2].backup},
-        {"TIM3BKUP", "FD0C", &mikey_state->timers[3].backup},
-        {"TIM4BKUP", "FD10", &mikey_state->timers[4].backup},
-        {"TIM5BKUP", "FD14", &mikey_state->timers[5].backup},
-        {"TIM6BKUP", "FD18", &mikey_state->timers[6].backup},
-        {"TIM7BKUP", "FD1C", &mikey_state->timers[7].backup},
-        {0, 0, 0}
-    };
-
-    struct {
-        const char* name;
-        const char* addr;
-        u8* reg;
-    } timer_regs8[] = {
-        {"TIM0CTLA", "FD01", &mikey_state->timers[0].control_a},
-        {"TIM0CNT ", "FD02", &mikey_state->timers[0].counter},
-        {"TIM0CTLB", "FD03", &mikey_state->timers[0].control_b},
-        {"TIM1CTLA", "FD05", &mikey_state->timers[1].control_a},
-        {"TIM1CNT ", "FD06", &mikey_state->timers[1].counter},
-        {"TIM1CTLB", "FD07", &mikey_state->timers[1].control_b},
-        {"TIM2CTLA", "FD09", &mikey_state->timers[2].control_a},
-        {"TIM2CNT ", "FD0A", &mikey_state->timers[2].counter},
-        {"TIM2CTLB", "FD0B", &mikey_state->timers[2].control_b},
-        {"TIM3CTLA", "FD0D", &mikey_state->timers[3].control_a},
-        {"TIM3CNT ", "FD0E", &mikey_state->timers[3].counter},
-        {"TIM3CTLB", "FD0F", &mikey_state->timers[3].control_b},
-        {"TIM4CTLA", "FD11", &mikey_state->timers[4].control_a},
-        {"TIM4CNT ", "FD12", &mikey_state->timers[4].counter},
-        {"TIM4CTLB", "FD13", &mikey_state->timers[4].control_b},
-        {"TIM5CTLA", "FD15", &mikey_state->timers[5].control_a},
-        {"TIM5CNT ", "FD16", &mikey_state->timers[5].counter},
-        {"TIM5CTLB", "FD17", &mikey_state->timers[5].control_b},
-        {"TIM6CTLA", "FD19", &mikey_state->timers[6].control_a},
-        {"TIM6CNT ", "FD1A", &mikey_state->timers[6].counter},
-        {"TIM6CTLB", "FD1B", &mikey_state->timers[6].control_b},
-        {"TIM7CTLA", "FD1D", &mikey_state->timers[7].control_a},
-        {"TIM7CNT ", "FD1E", &mikey_state->timers[7].counter},
-        {"TIM7CTLB", "FD1F", &mikey_state->timers[7].control_b},
-        {0, 0, 0}
-    };
-
-
-    int i = 0;
-    while (timer_regs16[i].name != 0)
-    {
-        if (i > 0)
-            ImGui::NewLine();
-        ImGui::TextColored(cyan, "TIMER %d", i); ImGui::Separator();
-
-        ImGui::TextColored(cyan, "%s ", timer_regs16[i].addr); ImGui::SameLine();
-        ImGui::TextColored(orange, "%s ", timer_regs16[i].name); ImGui::SameLine();
-        ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", *timer_regs16[i].reg, BYTE_TO_BINARY(*timer_regs16[i].reg >> 8), BYTE_TO_BINARY(*timer_regs16[i].reg & 0xFF));
-
-        for (int j = 0; j < 3; j++)
-        {
-            int idx = (i * 3) + j;
-            ImGui::TextColored(cyan, "%s ", timer_regs8[idx].addr); ImGui::SameLine();
-            ImGui::TextColored(orange, "%s   ", timer_regs8[idx].name); ImGui::SameLine();
-            ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *timer_regs8[idx].reg, BYTE_TO_BINARY(*timer_regs8[idx].reg));
-        }
-
-        i++;
-    }
-
-    ImGui::PopFont();
-    ImGui::End();
-    ImGui::PopStyleVar();
-}
-
-void gui_debug_window_mikey_audio(void)
-{
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::SetNextWindowPos(ImVec2(700, 79), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(284, 400), ImGuiCond_FirstUseEver);
-
-    ImGui::Begin("Mikey Audio Registers", &config_debug.show_mikey_audio);
-    ImGui::PushFont(gui_default_font);
-
-    GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
-
-    struct {
-        const char* name;
-        const char* addr;
-        u8* reg;
-    } audio_regs[] = {
-        {"AUD0VOL   ", "FD20", &mikey_state->audio[0].volume},
-        {"AUD0SHFTFB", "FD21", &mikey_state->audio[0].feedback},
-        {"AUD0OUTVAL", "FD22", (u8*)&mikey_state->audio[0].output},
-        {"AUD0L8SHFT", "FD23", &mikey_state->audio[0].lfsr_low},
-        {"AUD0TBACK ", "FD24", &mikey_state->audio[0].backup},
-        {"AUD0CTL   ", "FD25", &mikey_state->audio[0].control},
-        {"AUD0COUNT ", "FD26", &mikey_state->audio[0].counter},
-        {"AUD0MISC  ", "FD27", &mikey_state->audio[0].other},
-        {"AUD1VOL   ", "FD28", &mikey_state->audio[1].volume},
-        {"AUD1SHFTFB", "FD29", &mikey_state->audio[1].feedback},
-        {"AUD1OUTVAL", "FD2A", (u8*)&mikey_state->audio[1].output},
-        {"AUD1L8SHFT", "FD2B", &mikey_state->audio[1].lfsr_low},
-        {"AUD1TBACK ", "FD2C", &mikey_state->audio[1].backup},
-        {"AUD1CTL   ", "FD2D", &mikey_state->audio[1].control},
-        {"AUD1COUNT ", "FD2E", &mikey_state->audio[1].counter},
-        {"AUD1MISC  ", "FD2F", &mikey_state->audio[1].other},
-        {"AUD2VOL   ", "FD30", &mikey_state->audio[2].volume},
-        {"AUD2SHFTFB", "FD31", &mikey_state->audio[2].feedback},
-        {"AUD2OUTVAL", "FD32", (u8*)&mikey_state->audio[2].output},
-        {"AUD2L8SHFT", "FD33", &mikey_state->audio[2].lfsr_low},
-        {"AUD2TBACK ", "FD34", &mikey_state->audio[2].backup},
-        {"AUD2CTL   ", "FD35", &mikey_state->audio[2].control},
-        {"AUD2COUNT ", "FD36", &mikey_state->audio[2].counter},
-        {"AUD2MISC  ", "FD37", &mikey_state->audio[2].other},
-        {"AUD3VOL   ", "FD38", &mikey_state->audio[3].volume},
-        {"AUD3SHFTFB", "FD39", &mikey_state->audio[3].feedback},
-        {"AUD3OUTVAL", "FD3A", (u8*)&mikey_state->audio[3].output},
-        {"AUD3L8SHFT", "FD3B", &mikey_state->audio[3].lfsr_low},
-        {"AUD3TBACK ", "FD3C", &mikey_state->audio[3].backup},
-        {"AUD3CTL   ", "FD3D", &mikey_state->audio[3].control},
-        {"AUD3COUNT ", "FD3E", &mikey_state->audio[3].counter},
-        {"AUD3MISC  ", "FD3F", &mikey_state->audio[3].other},
-        {0, 0, 0}
-    };
-    int i = 0;
-    while (audio_regs[i].name != 0)
-    {
-        if (i % 8 == 0)
-        {
-            if (i > 0)
-                ImGui::NewLine();
-
-            ImGui::TextColored(cyan, "CHANNEL %d", i / 8); ImGui::Separator();
-        }
-
-        ImGui::TextColored(cyan, "%s ", audio_regs[i].addr); ImGui::SameLine();
-        ImGui::TextColored(orange, "%s ", audio_regs[i].name); ImGui::SameLine();
-        ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", *audio_regs[i].reg, BYTE_TO_BINARY(*audio_regs[i].reg));
-        i++;
-    }
-    ImGui::PopFont();
-    ImGui::End();
-    ImGui::PopStyleVar();
-}
-
 void gui_debug_window_mikey_colors(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::SetNextWindowPos(ImVec2(1000, 79), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(284, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(212, 128), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(338, 400), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Mikey Color Registers", &config_debug.show_mikey_colors);
     ImGui::PushFont(gui_default_font);

@@ -125,8 +125,8 @@ void gui_debug_window_suzy_regs(void)
 void gui_debug_window_suzy_math_regs(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::SetNextWindowPos(ImVec2(93, 79), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(284, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(444, 218), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(216, 276), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Suzy Math Registers", &config_debug.show_suzy_math_regs);
 

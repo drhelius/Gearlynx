@@ -27,8 +27,6 @@
 #endif
 
 EXTERN void gui_debug_window_mikey_regs(void);
-EXTERN void gui_debug_window_mikey_timer_regs(void);
-EXTERN void gui_debug_window_mikey_audio(void);
 EXTERN void gui_debug_window_mikey_colors(void);
 
 #undef GUI_DEBUG_MIKEY_IMPORT
