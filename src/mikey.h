@@ -122,9 +122,8 @@ private:
     u32 m_debug_cycles;
 };
 
-static const u32 k_mikey_timerX_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };
-static const u32 k_mikey_timerX_period_cycles[8] = { 16, 32, 64, 128, 256, 512, 1024, 0 };
-static const u32 k_mikey_timer4_period_cycles[8] = { 128, 256, 512, 1024, 2048, 4096, 8192, 0 };
+static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };
+static const u32 k_mikey_timer_period_cycles[8] = { 16, 32, 64, 128, 256, 512, 1024, 0 };
 static const int k_mikey_timer_forward_links[8] = { 2, 3, 4, 5, -1, 7, -1, 8 };
 static const int k_mikey_timer_backward_links[8] = { -1, 11, 0, 1, 2, 3, -1, 5 };
 static const int k_mikey_audio_forward_links[4] = { 1, 2, 3, -1 };

@@ -121,7 +121,7 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     float t2_backup = (float)mikey_state->timers[2].backup;
 
     u8 t0_prescaler = mikey_state->timers[0].control_a & 0x07;
-    float tick_T0_us = (float)k_mikey_timerX_period_us[t0_prescaler];
+    float tick_T0_us = (float)k_mikey_timer_period_us[t0_prescaler];
 
     float frame_time_ms = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
 

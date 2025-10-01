@@ -98,7 +98,7 @@ void Mikey::ResetTimers()
         m_state.timers[i].control_b = 0;
 
         m_state.timers[i].internal_cycles = 0;
-        m_state.timers[i].internal_period_cycles = ((i == 4) ? k_mikey_timer4_period_cycles[0] : k_mikey_timerX_period_cycles[0]);
+        m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
         m_state.timers[i].internal_pending_ticks = 0;
     }
 }
@@ -117,7 +117,7 @@ void Mikey::ResetAudio()
         m_state.audio[i].other = 0;
 
         m_state.audio[i].internal_cycles = 0;
-        m_state.audio[i].internal_period_cycles = k_mikey_timerX_period_cycles[0];
+        m_state.audio[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
         m_state.audio[i].internal_pending_ticks = 0;
         m_state.audio[i].internal_lfsr = 0;
         m_state.audio[i].internal_taps_mask = 0;

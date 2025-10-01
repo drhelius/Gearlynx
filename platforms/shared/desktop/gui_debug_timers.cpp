@@ -106,7 +106,10 @@ void gui_debug_window_timers(void)
                 ImGui::TextColored(reload ? green : gray, "%s", reload ? "YES" : "NO");
 
                 ImGui::TextColored(violet, "INTERRUPT  "); ImGui::SameLine();
-                ImGui::TextColored(interrupt ? green : gray, "%s", interrupt ? "YES" : "NO");
+                if (t != 4)
+                    ImGui::TextColored(interrupt ? green : gray, "%s", interrupt ? "YES" : "NO");
+                else
+                    ImGui::TextColored(gray, "N/A");
 
                 ImGui::TextColored(violet, "RESET DONE "); ImGui::SameLine();
                 ImGui::TextColored(reset_timer_done ? green : gray, "%s", reset_timer_done ? "YES" : "NO");

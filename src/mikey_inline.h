@@ -403,10 +403,7 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
 
         t->control_a = value;
 
-        if (i == 4)
-            t->internal_period_cycles = k_mikey_timer4_period_cycles[new_prescaler];
-        else
-            t->internal_period_cycles = k_mikey_timerX_period_cycles[new_prescaler];
+        t->internal_period_cycles = k_mikey_timer_period_cycles[new_prescaler];
 
         // Re-sync ONLY when clock source changes or when enabling counting from disabled
         bool prescaler_changed = (old_prescaler != new_prescaler);
@@ -514,7 +511,7 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
         u8 new_prescaler = value & 0x07;
 
         c->control = value;
-        c->internal_period_cycles = k_mikey_timerX_period_cycles[new_prescaler];
+        c->internal_period_cycles = k_mikey_timer_period_cycles[new_prescaler];
 
         bool prescaler_changed = (old_prescaler != new_prescaler);
         bool enable_count_rising = IS_NOT_SET_BIT(old_control, 3) && IS_SET_BIT(value, 3);
