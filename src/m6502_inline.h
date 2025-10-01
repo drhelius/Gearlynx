@@ -36,19 +36,17 @@ INLINE u32 M6502::RunInstruction()
 
     if (unlikely(m_halted))
     {
+        m_s.cycles = 4;
+
         if (m_s.irq_asserted)
         {
             m_halted = false;
-            // CheckIRQs();
-            // if(m_s.irq_pending)
-            //     HandleIRQ();
-            // return m_s.cycles;
+            CheckIRQs();
+            if(m_s.irq_pending)
+                HandleIRQ();
         }
-        //else
-        {
-            m_s.cycles = 4;
-            return m_s.cycles;
-        }
+
+        return m_s.cycles;
     }
 
     u8 opcode = Fetch8();
