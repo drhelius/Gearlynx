@@ -31,9 +31,7 @@
 #include "emu.h"
 #include "utils.h"
 
-static float plot_x[32];
-static float plot_y[32];
-static bool exclusive_channel[6] = { false, false, false, false, false, false };
+static bool exclusive_channel[4] = { false, false, false, false };
 static float* wave_buffer_left = NULL;
 static float* wave_buffer_right = NULL;
 
@@ -53,7 +51,7 @@ void gui_debug_window_psg(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(242, 356), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(242, 418), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey Audio", &config_debug.show_psg);
 
     GearlynxCore* core = emu_get_core();
@@ -69,6 +67,8 @@ void gui_debug_window_psg(void)
 
         for (int c = 0; c < 4; c++)
         {
+            Audio* audio = core->GetAudio();
+            Audio::GLYNX_Audio_Channel* psg_channels = audio->GetChannels();
             GLYNX_Mikey_Audio* channel = &mikey_state->audio[c];
             u8 period = (channel->control & 0x07);
             bool is_linked = (period == 7) && (k_mikey_audio_backward_links[c] != -1);
@@ -79,6 +79,7 @@ void gui_debug_window_psg(void)
             bool timer_done = IS_SET_BIT(channel->other, 3);
             bool borrow_in = IS_SET_BIT(channel->other, 1);
             bool borrow_out = IS_SET_BIT(channel->other, 0);
+            u32 frame_samples = audio->GetFrameSamples();
 
             char tab_name[32];
             snprintf(tab_name, 32, "%d", c);
@@ -86,6 +87,113 @@ void gui_debug_window_psg(void)
             if (ImGui::BeginTabItem(tab_name))
             {
                 ImGui::PushFont(gui_default_font);
+
+                ImGui::BeginTable("##audio", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoPadOuterX);
+
+                ImGui::TableNextColumn();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, psg_channels[c].mute ? mid_gray : white);
+                ImGui::PushFont(gui_material_icons_font);
+
+                char label[32];
+                snprintf(label, 32, "%s##mute%d", psg_channels[c].mute ? ICON_MD_MUSIC_OFF : ICON_MD_MUSIC_NOTE, c);
+                if (ImGui::Button(label))
+                {
+                    for (int i = 0; i < 4; i++)
+                        exclusive_channel[i] = false;
+                    psg_channels[c].mute = !psg_channels[c].mute;
+                }
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("Mute Channel");
+
+                snprintf(label, 32, "%s##exc%d", ICON_MD_STAR, c);
+
+                ImGui::PushStyleColor(ImGuiCol_Text, exclusive_channel[c] ? yellow : white);
+                if (ImGui::Button(label))
+                {
+                    exclusive_channel[c] = !exclusive_channel[c];
+                    psg_channels[c].mute = false;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (i != c)
+                        {
+                            exclusive_channel[i] = false;
+                            psg_channels[i].mute = exclusive_channel[c] ? true : false;
+                        }
+                    }
+                }
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                {
+                    ImGui::SetTooltip("Solo Channel");
+                }
+                ImGui::PopFont();
+                ImGui::PopStyleColor();
+
+                ImGui::TableNextColumn();
+
+                ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(1, 1));
+
+                int trigger_left = 0;
+                int trigger_right = 0;
+                int data_size = frame_samples / 2;
+
+                for (int i = 0; i < data_size; i++)
+                {
+                    wave_buffer_left[i] = (float)(psg_channels[c].buffer[i * 2]) / 128.0f * 1.0f;
+                    wave_buffer_right[i] = (float)(psg_channels[c].buffer[(i * 2) + 1]) / 128.0f * 1.0f;
+                }
+
+                for (int i = 100; i < data_size; ++i)
+                {
+                    if (wave_buffer_left[i - 1] < 0.0f && wave_buffer_left[i] >= 0.0f)
+                    {
+                        trigger_left = i;
+                        break;
+                    }
+                }
+
+                for (int i = 100; i < data_size; ++i)
+                {
+                    if (wave_buffer_right[i - 1] < 0.0f && wave_buffer_right[i] >= 0.0f)
+                    {
+                        trigger_right = i;
+                        break;
+                    }
+                }
+
+                int half_window_size = 100;
+                int x_min_left = MAX(0, trigger_left - half_window_size);
+                int x_max_left = MIN(data_size, trigger_left + half_window_size);
+
+                ImPlotAxisFlags flags = ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickMarks;
+
+                if (ImPlot::BeginPlot("Left wave", ImVec2(90, 50), ImPlotFlags_CanvasOnly))
+                {
+                    ImPlot::SetupAxes("x", "y", flags, flags);
+                    ImPlot::SetupAxesLimits(x_min_left, x_max_left, -1.0f, 1.0f, ImPlotCond_Always);
+                    ImPlot::SetNextLineStyle(red, 1.0f);
+                    ImPlot::PlotLine("Wave", wave_buffer_left, data_size);
+                    ImPlot::EndPlot();
+                }
+
+                ImGui::SameLine();
+
+                int x_min_right = MAX(0, trigger_right - half_window_size);
+                int x_max_right = MIN(data_size, trigger_right + half_window_size);
+
+                if (ImPlot::BeginPlot("Right wave", ImVec2(90, 50), ImPlotFlags_CanvasOnly))
+                {
+                    ImPlot::SetupAxes("x", "y", flags, flags);
+                    ImPlot::SetupAxesLimits(x_min_right, x_max_right, -1.0f, 1.0f, ImPlotCond_Always);
+                    ImPlot::SetNextLineStyle(red, 1.0f);
+                    ImPlot::PlotLine("Wave", wave_buffer_right, data_size);
+                    ImPlot::EndPlot();
+                }
+
+                ImGui::EndTable();
+
+                ImGui::Separator();
 
                 ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 0); ImGui::SameLine();
                 ImGui::TextColored(orange, "VOLUME    "); ImGui::SameLine();

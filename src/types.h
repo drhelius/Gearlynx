@@ -181,7 +181,7 @@ struct GLYNX_Mikey_Audio
     u32 internal_pending_ticks;
     u16 internal_lfsr;
     u16 internal_taps_mask;
-    bool mix;
+    bool internal_mix;
 };
 
 struct GLYNX_Mikey_Color

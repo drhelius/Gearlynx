@@ -842,7 +842,7 @@ INLINE void Mikey::CalculateCutoff(u8 channel)
     if (c->internal_period_cycles != 0)
     {
         u32 cycles = (c->backup + 1) * c->internal_period_cycles;
-        c->mix = (cycles >= 32);
+        c->internal_mix = (cycles >= 32);
     }
     else
     {
@@ -851,13 +851,13 @@ INLINE void Mikey::CalculateCutoff(u8 channel)
         {
             u32 cycles = (m_state.audio[link].backup + 1) * m_state.audio[link].internal_period_cycles;
             cycles *= (c->backup + 1);
-            c->mix = (cycles >= 32);
+            c->internal_mix = (cycles >= 32);
         }
         else // channel 0 links to timer 7
         {
             u32 cycles = (m_state.timers[7].backup + 1) * m_state.timers[7].internal_period_cycles;
             cycles *= (c->backup + 1);
-            c->mix = (cycles >= 32);
+            c->internal_mix = (cycles >= 32);
         }
     }
 }

@@ -29,6 +29,14 @@ class Mikey;
 class Audio
 {
 public:
+    struct GLYNX_Audio_Channel
+    {
+        bool mute;
+        float volume;
+        s8 buffer[GLYNX_AUDIO_BUFFER_SIZE];
+    };
+
+public:
     Audio(Mikey* mikey);
     ~Audio();
     void Init();
@@ -36,6 +44,8 @@ public:
     void Mute(bool mute);
     void Clock(u32 cycles);
     void EndFrame(s16* sample_buffer, int* sample_count);
+    GLYNX_Audio_Channel* GetChannels();
+    u32 GetFrameSamples();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -43,13 +53,12 @@ private:
     Mikey* m_mikey;
     u32 m_cycles;
     bool m_mute;
-    s16 m_sample_left;
-    s16 m_sample_right;
     s32 m_lpfL;
     s32 m_lpfR;
     u16 m_lpf_alpha_q15;
     u32 m_buffer_pos;
-    s16 m_buffer[GLYNX_AUDIO_BUFFER_SIZE] = { 0 };
+    u32 m_frame_samples;
+    GLYNX_Audio_Channel m_channel[4];
 };
 
 #include "audio_inline.h"
