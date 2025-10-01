@@ -59,7 +59,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
     if (debugger)
     {
         bool debug_enable = false;
-        bool instruction_completed = false;
+
         if (IsValidPointer(debug))
         {
             debug_enable = true;
@@ -71,10 +71,10 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
 
         do
         {
-            if (debug_enable && (IsValidPointer(m_debug_callback)))
+            if (debug_enable && (IsValidPointer(m_debug_callback)) && !m_m6502->IsHalted())
                 m_debug_callback();
 
-            u32 cpu_cycles = m_m6502->RunInstruction(&instruction_completed);
+            u32 cpu_cycles = m_m6502->RunInstruction();
             u32 lynx_cycles = (cpu_cycles * 5) - 1;
 
             m_suzy->Clock(lynx_cycles);
@@ -90,17 +90,14 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
 
             if (debug_enable)
             {
-                if (debug->step_debugger)
-                    stop = instruction_completed;
+                if (debug->step_debugger && !m_m6502->IsHalted())
+                    stop = true;
 
-                if (instruction_completed)
-                {
-                    if (m_m6502->BreakpointHit())
-                        stop = true;
+                if (m_m6502->BreakpointHit())
+                    stop = true;
 
-                    if (debug->stop_on_run_to_breakpoint && m_m6502->RunToBreakpointHit())
-                        stop = true;
-                }
+                if (debug->stop_on_run_to_breakpoint && m_m6502->RunToBreakpointHit())
+                    stop = true;
             }
         }
         while (!stop);

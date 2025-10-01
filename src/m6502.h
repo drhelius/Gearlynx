@@ -81,9 +81,10 @@ public:
     ~M6502();
     void Init(Memory* memory);
     void Reset();
-    u32 RunInstruction(bool* instruction_completed = NULL);
+    u32 RunInstruction();
     void AssertIRQ(bool asserted);
     void Halt(bool halted);
+    bool IsHalted();
     void InjectCycles(unsigned int cycles);
     M6502_State* GetState();
     void DisassembleNextOPCode();
