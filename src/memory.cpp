@@ -97,12 +97,13 @@ GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 address)
     if (!IsValidPointer(record))
     {
         record = new GLYNX_Disassembler_Record();
+        record->rom = false;
         record->address = address;
         record->segment[0] = 0;
         record->name[0] = 0;
         record->bytes[0] = 0;
         record->size = 0;
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 3; i++)
             record->opcodes[i] = 0;
         record->jump = false;
         record->jump_address = 0;

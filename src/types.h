@@ -140,6 +140,7 @@ struct GLYNX_SaveState_Screenshot
 struct GLYNX_Disassembler_Record
 {
     u32 address;
+    bool rom;
     char name[64];
     char bytes[10];
     char segment[5];

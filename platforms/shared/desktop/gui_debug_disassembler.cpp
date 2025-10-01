@@ -498,18 +498,26 @@ static void prepare_drawable_lines(void)
     Memory* memory = emu_get_core()->GetMemory();
     M6502* processor = emu_get_core()->GetM6502();
     M6502::M6502_State* proc_state = processor->GetState();
+    Memory::Memory_State* mem_state = memory->GetState();
     u16 pc = proc_state->PC.GetValue();
 
     disassembler_lines.clear();
     pc_pos = 0;
     goto_address_pos = 0;
 
+    bool rom_enabled = IS_NOT_SET_BIT(mem_state->MAPCTL, 2);
+
     for (int i = 0; i < 0x10000; i++)
     {
         GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(i);
 
         if (IsValidPointer(record) && (record->name[0] != 0))
+        {
+            if ((i >= 0xFE00) && (rom_enabled != record->rom))
+                continue;
+
             add_auto_symbol(record, i);
+        }
     }
 
     for (int i = 0; i < 0x10000; i++)
@@ -518,6 +526,9 @@ static void prepare_drawable_lines(void)
 
         if (IsValidPointer(record) && (record->name[0] != 0))
         {
+            if ((i >= 0xFE00) && (rom_enabled != record->rom))
+                continue;
+
             bool fixed_symbol_found = false;
             if (config_debug.dis_show_symbols)
             {
@@ -690,7 +701,7 @@ static void draw_disassembly(void)
                 if (config_debug.dis_show_segment)
                 {
                     ImGui::SameLine();
-                    ImGui::TextColored(color_segment, "%s", line.record->segment);
+                    ImGui::TextColored(color_segment, "%s ", line.record->segment);
                 }
 
                 ImGui::SameLine();
@@ -699,11 +710,11 @@ static void draw_disassembly(void)
                 ImGui::SameLine();
                 if (line.address == pc)
                 {
-                    ImGui::TextColored(yellow, " ->");
+                    ImGui::TextColored(yellow, "->");
                 }
                 else
                 {
-                    ImGui::TextColored(yellow, "   ");
+                    ImGui::TextColored(yellow, "  ");
                 }
 
                 ImGui::SameLine();

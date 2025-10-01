@@ -443,6 +443,7 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
     u8 opcode_size = k_m6502_opcode_sizes[opcode];
 
     record->address = address;
+    record->rom = (address >= 0xFE00) && IS_NOT_SET_BIT(m_memory->GetState()->MAPCTL, 2);
     record->name[0] = 0;
     record->bytes[0] = 0;
     record->segment[0] = 0;
@@ -526,7 +527,7 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         }
     }
 
-    // JMP hhll, JSR hhll
+    // JMP $nn, JSR $nn
     if (opcode == 0x4C || opcode == 0x20)
     {
         u16 jump_address = Address16(m_memory->Read(address + 2), m_memory->Read(address + 1));
@@ -534,28 +535,17 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         record->jump_address = jump_address;
     }
 
-    // BSR rr, JSR hhll
-    if (opcode == 0x44 || opcode == 0x20)
+    // JSR $nn
+    if (opcode == 0x20)
     {
         record->subroutine = true;
     }
 
-    // if (record->bank < 0xF7)
-    // {
-    //     strncpy(record->segment, "ROM", 5);
-    // }
-    // else if (record->bank == 0xF7)
-    // {
-    //     strncpy(record->segment, "BAT", 5);
-    // }
-    // else if (record->bank >= 0xF8 && record->bank < 0xFC)
-    // {
-    //     strncpy(record->segment, "RAM", 5);
-    // }
-    // else
-    // {
-    //     strncpy(record->segment, "???", 5);
-    // }
+    if (record->rom)
+        strncpy(record->segment, "BIOS", 5);
+    else
+        strncpy(record->segment, "RAM ", 5);
+
 #else
     UNUSED(record);
     UNUSED(opcode);
