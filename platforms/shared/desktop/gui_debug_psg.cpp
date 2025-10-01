@@ -54,7 +54,7 @@ void gui_debug_window_psg(void)
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(444, 400), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Mikey Audio", &config_debug.show_mikey_timers);
+    ImGui::Begin("Mikey Audio", &config_debug.show_mikey_audio);
 
     GearlynxCore* core = emu_get_core();
     Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
