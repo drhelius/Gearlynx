@@ -141,9 +141,9 @@ struct GLYNX_Disassembler_Record
 {
     u32 address;
     char name[64];
-    char bytes[25];
+    char bytes[10];
     char segment[5];
-    u8 opcodes[7];
+    u8 opcodes[3];
     int size;
     bool jump;
     u16 jump_address;

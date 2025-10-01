@@ -411,6 +411,28 @@ INLINE void M6502::DisassembleNextOPCode()
         return;
     }
 
+    for (int back = 1; back < 3; ++back)
+    {
+        int prev_start = (int)address - back;
+        if (prev_start < 0)
+            continue;
+
+        GLYNX_Disassembler_Record* prev = m_memory->GetDisassemblerRecord(prev_start);
+
+        if (!IsValidPointer(prev))
+            continue;
+        if (prev->size == 0)
+            continue;
+
+        int distance = address - prev_start;
+        if (prev->size <= distance)
+            continue;
+
+        prev->size = 0;
+        prev->name[0] = 0;
+        prev->bytes[0] = 0;
+    }
+
     PopulateDisassemblerRecord(record, opcode, address);
 #endif
 }
@@ -441,8 +463,8 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
     {
         char value[4];
         snprintf(value, 4, "%02X", record->opcodes[i]);
-        strncat(record->bytes, value, 24);
-        strncat(record->bytes, " ", 24);
+        strncat(record->bytes, value, 9);
+        strncat(record->bytes, " ", 9);
     }
 
     switch (k_m6502_opcode_names[opcode].type)
