@@ -176,7 +176,7 @@ void gui_debug_window_frame_buffers(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(59, 70), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(526, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(498, 440), ImGuiCond_FirstUseEver);
     ImGui::Begin("Framebuffers", &config_debug.show_frame_buffers);
 
     ImGui::PushFont(gui_default_font);

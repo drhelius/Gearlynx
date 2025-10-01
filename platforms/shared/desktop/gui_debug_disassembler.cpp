@@ -1428,7 +1428,7 @@ void gui_debug_window_call_stack(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(340, 168), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(330, 240), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(302, 228), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Mikey 65C02 Call Stack", &config_debug.show_call_stack);
 

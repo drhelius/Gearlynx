@@ -40,7 +40,7 @@ void gui_debug_window_timers(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(444, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(240, 310), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey Timers", &config_debug.show_mikey_timers);
 
     GearlynxCore* core = emu_get_core();

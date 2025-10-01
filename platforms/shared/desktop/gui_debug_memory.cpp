@@ -70,7 +70,7 @@ void gui_debug_window_memory(void)
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(670, 330), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(592, 383), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Memory Editor", &config_debug.show_memory, ImGuiWindowFlags_MenuBar);
 
