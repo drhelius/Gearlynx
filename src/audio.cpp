@@ -19,6 +19,7 @@
 
 #include <istream>
 #include <ostream>
+#include <math.h>
 #include "audio.h"
 #include "mikey.h"
 
