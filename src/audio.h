@@ -41,11 +41,13 @@ public:
     ~Audio();
     void Init();
     void Reset();
-    void Mute(bool mute);
     void Clock(u32 cycles);
     void EndFrame(s16* sample_buffer, int* sample_count);
+    void Mute(bool mute);
     GLYNX_Audio_Channel* GetChannels();
     u32 GetFrameSamples();
+    void SetVolume(int channel, float volume);
+    void SetLowpassCutoff(float fc);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

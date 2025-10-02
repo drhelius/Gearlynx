@@ -72,6 +72,8 @@ EXTERN bool emu_is_bios_loaded(void);
 EXTERN GLYNX_Bios_State emu_load_bios(const char* file_path);
 EXTERN void emu_reset(void);
 EXTERN void emu_audio_mute(bool mute);
+EXTERN void emu_audio_set_volume(int channel, float volume);
+EXTERN void emu_audio_set_lowpass_cutoff(float fc);
 EXTERN void emu_audio_reset(void);
 EXTERN bool emu_is_audio_enabled(void);
 EXTERN bool emu_is_audio_open(void);

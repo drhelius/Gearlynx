@@ -201,6 +201,16 @@ void emu_audio_mute(bool mute)
     core->GetAudio()->Mute(mute);
 }
 
+void emu_audio_set_volume(int channel, float volume)
+{
+    core->GetAudio()->SetVolume(channel, volume);
+}
+
+void emu_audio_set_lowpass_cutoff(float fc)
+{
+    core->GetAudio()->SetLowpassCutoff(fc);
+}
+
 void emu_audio_reset(void)
 {
     sound_queue->Stop();

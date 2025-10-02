@@ -561,6 +561,42 @@ static void menu_audio(void)
             emu_audio_mute(!config_audio.enable);
         }
 
+        ImGui::Separator();
+
+        for (int i = 0; i < 4; i++)
+        {
+            std::string label = "Channel " + std::to_string(i) + " Volume";
+            if (ImGui::BeginMenu(label.c_str(), config_audio.enable))
+            {
+                ImGui::PushItemWidth(200.0f);
+                if (ImGui::SliderFloat("##psg_volume", &config_audio.volume[i], 0.0f, 2.0f, "Volume = %.2f", ImGuiSliderFlags_AlwaysClamp))
+                {
+                    emu_audio_set_volume(i, config_audio.volume[i]);
+                }
+                ImGui::PopItemWidth();
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Anything above 1.00 may cause clipping.");
+                    ImGui::EndTooltip();
+                }
+                ImGui::EndMenu();
+            }
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Low-pass Filter", config_audio.enable))
+        {
+            ImGui::PushItemWidth(200.0f);
+            if (SliderIntWithSteps("##psg_filter", &config_audio.lowpass_cutoff, 100, 5000, 10, "Cutoff = %d Hz"))
+            {
+                emu_audio_set_lowpass_cutoff(config_audio.lowpass_cutoff);
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMenu();
     }
 }

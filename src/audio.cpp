@@ -42,6 +42,8 @@ void Audio::Init()
         m_channel[i].mute = false;
         m_channel[i].volume = 1.0f;
     }
+
+    SetLowpassCutoff(1000.0f);
 }
 
 void Audio::Reset()
@@ -54,19 +56,6 @@ void Audio::Reset()
 
     for (int i = 0; i < 4; i++)
         memset(m_channel[i].buffer, 0, sizeof(s8) * GLYNX_AUDIO_BUFFER_SIZE);
-
-    const float fc = 1000.0f;
-    const float fs = 44100.0f;
-    // alpha = 1 - exp(-2 * pi * fc / fs)
-    float alpha = 1.0f - expf(-2.0f * 3.14159265358979323846f * fc / fs);
-    alpha = CLAMP(alpha, 0.0f, 0.9999f);
-    // convert to Q1.15 fixed point
-    m_lpf_alpha_q15 = (u16)(alpha * 32768.0f + 0.5f);
-}
-
-void Audio::Mute(bool mute)
-{
-    m_mute = mute;
 }
 
 void Audio::EndFrame(s16* sample_buffer, int* sample_count)
@@ -116,14 +105,22 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
     m_buffer_pos = 0;
 }
 
-Audio::GLYNX_Audio_Channel* Audio::GetChannels()
+void Audio::SetVolume(int channel, float volume)
 {
-    return m_channel;
+    if (channel < 0 || channel >= 4)
+        return;
+
+    m_channel[channel].volume = volume;
 }
 
-u32 Audio::GetFrameSamples()
+void Audio::SetLowpassCutoff(float fc)
 {
-    return m_frame_samples;
+    const float fs = 44100.0f;
+    // alpha = 1 - exp(-2 * pi * fc / fs)
+    float alpha = 1.0f - expf(-2.0f * 3.14159265358979323846f * fc / fs);
+    alpha = CLAMP(alpha, 0.0f, 0.9999f);
+    // convert to Q1.15 fixed point
+    m_lpf_alpha_q15 = (u16)(alpha * 32768.0f + 0.5f);
 }
 
 void Audio::SaveState(std::ostream& stream)

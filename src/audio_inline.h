@@ -58,4 +58,19 @@ inline void Audio::Clock(u32 cycles)
     }
 }
 
+inline void Audio::Mute(bool mute)
+{
+    m_mute = mute;
+}
+
+inline Audio::GLYNX_Audio_Channel* Audio::GetChannels()
+{
+    return m_channel;
+}
+
+inline u32 Audio::GetFrameSamples()
+{
+    return m_frame_samples;
+}
+
 #endif /* AUDIO_INLINE_H */

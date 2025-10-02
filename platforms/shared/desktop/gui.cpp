@@ -106,6 +106,9 @@ bool gui_init(void)
     set_style();
 
     emu_audio_mute(!config_audio.enable);
+    emu_audio_set_lowpass_cutoff(config_audio.lowpass_cutoff);
+    for (int i = 0; i < 4; i++)
+        emu_audio_set_volume(i, config_audio.volume[i]);
     emu_debug_set_callback(gui_debug_callback);
 
     strcpy(gui_savefiles_path, config_emulator.savefiles_path.c_str());

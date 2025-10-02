@@ -77,6 +77,8 @@ struct config_Audio
 {
     bool enable = true;
     bool sync = true;
+    float volume[4];
+    int lowpass_cutoff = 1000;
 };
 
 struct config_Input
