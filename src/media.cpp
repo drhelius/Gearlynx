@@ -313,22 +313,26 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
     file.read(reinterpret_cast<char*>(m_bios), size);
     file.close();
 
+    m_is_bios_loaded = true;
+    Log("BIOS loaded (%d bytes): %s", size, path);
+
+    m_bios[0x1F8] = 0x00;   // Register 0xFFF8 is RAM
+    m_bios[0x1F9] = 0x80;   // Register 0xFFF9 is MAPCTL
+
     u32 crc = CalculateCRC32(0, m_bios, size);
 
     m_is_bios_valid = (crc == GLYNX_DB_BIOS_CRC);
 
-    if (!m_is_bios_valid)
+    if (m_is_bios_valid)
     {
-        Log("Incorrect BIOS CRC %08X: %s", crc, path);
-        m_is_bios_loaded = true;
+        Log("BIOS CRC is valid: %08X: %s", crc, path);
+        return BIOS_LOAD_OK;
+    }
+    else
+    {
+        Log("WARNING: Incorrect BIOS CRC %08X: %s", crc, path);
         return BIOS_LOAD_INVALID_CRC;
     }
-
-    m_is_bios_loaded = true;
-
-    Log("BIOS %s loaded (%d bytes)", path, size);
-
-    return BIOS_LOAD_OK;
 }
 
 u8 Media::ReadBank0()
