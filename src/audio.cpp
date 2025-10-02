@@ -79,14 +79,12 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
             xL += (s32)(m_channel[1].buffer[i + 0] * (m_channel[1].mute ? 0.0f : m_channel[1].volume));
             xL += (s32)(m_channel[2].buffer[i + 0] * (m_channel[2].mute ? 0.0f : m_channel[2].volume));
             xL += (s32)(m_channel[3].buffer[i + 0] * (m_channel[3].mute ? 0.0f : m_channel[3].volume));
-            xL = CLAMP(xL, -32768, 32767);
 
             s32 xR = 0;
             xR += (s32)(m_channel[0].buffer[i + 1] * (m_channel[0].mute ? 0.0f : m_channel[0].volume));
             xR += (s32)(m_channel[1].buffer[i + 1] * (m_channel[1].mute ? 0.0f : m_channel[1].volume));
             xR += (s32)(m_channel[2].buffer[i + 1] * (m_channel[2].mute ? 0.0f : m_channel[2].volume));
             xR += (s32)(m_channel[3].buffer[i + 1] * (m_channel[3].mute ? 0.0f : m_channel[3].volume));
-            xR = CLAMP(xR, -32768, 32767);
 
             // 1-pole: y += alpha * (x - y)
             m_lpfL = m_lpfL + (((s32)m_lpf_alpha_q15 * (xL - m_lpfL)) >> 15);

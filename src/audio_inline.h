@@ -32,26 +32,21 @@ inline void Audio::Clock(u32 cycles)
         m_cycles -= GLYNX_AUDIO_CYCLES_PER_SAMPLE;
         Mikey::Mikey_State* state = m_mikey->GetState();
 
-        if (state->audio[0].internal_mix)
-        {
-            m_channel[0].buffer[m_buffer_pos + 0] = state->audio[0].output;
-            m_channel[0].buffer[m_buffer_pos + 1] = state->audio[0].output;
-        }
-        if (state->audio[1].internal_mix)
-        {
-            m_channel[1].buffer[m_buffer_pos + 0] = state->audio[1].output;
-            m_channel[1].buffer[m_buffer_pos + 1] = state->audio[1].output;
-        }
-        if (state->audio[2].internal_mix)
-        {
-            m_channel[2].buffer[m_buffer_pos + 0] = state->audio[2].output;
-            m_channel[2].buffer[m_buffer_pos + 1] = state->audio[2].output;
-        }
-        if (state->audio[3].internal_mix)
-        {
-            m_channel[3].buffer[m_buffer_pos + 0] = state->audio[3].output;
-            m_channel[3].buffer[m_buffer_pos + 1] = state->audio[3].output;
-        }
+        s8 sample = state->audio[0].internal_mix ? state->audio[0].output : 0;
+        m_channel[0].buffer[m_buffer_pos + 0] = sample;
+        m_channel[0].buffer[m_buffer_pos + 1] = sample;
+
+        sample = state->audio[1].internal_mix ? state->audio[1].output : 0;
+        m_channel[1].buffer[m_buffer_pos + 0] = sample;
+        m_channel[1].buffer[m_buffer_pos + 1] = sample;
+
+        sample = state->audio[2].internal_mix ? state->audio[2].output : 0;
+        m_channel[2].buffer[m_buffer_pos + 0] = sample;
+        m_channel[2].buffer[m_buffer_pos + 1] = sample;
+
+        sample = state->audio[3].internal_mix ? state->audio[3].output : 0;
+        m_channel[3].buffer[m_buffer_pos + 0] = sample;
+        m_channel[3].buffer[m_buffer_pos + 1] = sample;
 
         m_buffer_pos += 2;
 
