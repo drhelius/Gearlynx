@@ -49,13 +49,19 @@ void Audio::Reset()
     m_cycles = 0;
     m_buffer_pos = 0;
     m_frame_samples = 0;
-    m_lpfL = 0;
-    m_lpfR = 0;
-    // fc=4 kHz, fs=44.1 kHz -> alpha = 1 - exp(-2PI·fc/fs) = 0.434 -> Q15 = 14230
-    m_lpf_alpha_q15 = (u16)14230;
+    m_lpf_left = 0;
+    m_lpf_right = 0;
 
     for (int i = 0; i < 4; i++)
         memset(m_channel[i].buffer, 0, sizeof(s8) * GLYNX_AUDIO_BUFFER_SIZE);
+
+    const float fc = 1000.0f;
+    const float fs = 44100.0f;
+    // alpha = 1 - exp(-2 * pi * fc / fs)
+    float alpha = 1.0f - expf(-2.0f * 3.14159265358979323846f * fc / fs);
+    alpha = CLAMP(alpha, 0.0f, 0.9999f);
+    // convert to Q1.15 fixed point
+    m_lpf_alpha_q15 = (u16)(alpha * 32768.0f + 0.5f);
 }
 
 void Audio::Mute(bool mute)
@@ -74,32 +80,36 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 
         for (u32 i = 0; i + 1 < m_frame_samples; i += 2)
         {
-            s32 xL = 0;
-            xL += (s32)(m_channel[0].buffer[i + 0] * (m_channel[0].mute ? 0.0f : m_channel[0].volume));
-            xL += (s32)(m_channel[1].buffer[i + 0] * (m_channel[1].mute ? 0.0f : m_channel[1].volume));
-            xL += (s32)(m_channel[2].buffer[i + 0] * (m_channel[2].mute ? 0.0f : m_channel[2].volume));
-            xL += (s32)(m_channel[3].buffer[i + 0] * (m_channel[3].mute ? 0.0f : m_channel[3].volume));
+            s32 x_left = 0;
+            x_left += (s32)(m_channel[0].buffer[i + 0] * (m_channel[0].mute ? 0.0f : m_channel[0].volume));
+            x_left += (s32)(m_channel[1].buffer[i + 0] * (m_channel[1].mute ? 0.0f : m_channel[1].volume));
+            x_left += (s32)(m_channel[2].buffer[i + 0] * (m_channel[2].mute ? 0.0f : m_channel[2].volume));
+            x_left += (s32)(m_channel[3].buffer[i + 0] * (m_channel[3].mute ? 0.0f : m_channel[3].volume));
 
-            s32 xR = 0;
-            xR += (s32)(m_channel[0].buffer[i + 1] * (m_channel[0].mute ? 0.0f : m_channel[0].volume));
-            xR += (s32)(m_channel[1].buffer[i + 1] * (m_channel[1].mute ? 0.0f : m_channel[1].volume));
-            xR += (s32)(m_channel[2].buffer[i + 1] * (m_channel[2].mute ? 0.0f : m_channel[2].volume));
-            xR += (s32)(m_channel[3].buffer[i + 1] * (m_channel[3].mute ? 0.0f : m_channel[3].volume));
+            s32 x_right = 0;
+            x_right += (s32)(m_channel[0].buffer[i + 1] * (m_channel[0].mute ? 0.0f : m_channel[0].volume));
+            x_right += (s32)(m_channel[1].buffer[i + 1] * (m_channel[1].mute ? 0.0f : m_channel[1].volume));
+            x_right += (s32)(m_channel[2].buffer[i + 1] * (m_channel[2].mute ? 0.0f : m_channel[2].volume));
+            x_right += (s32)(m_channel[3].buffer[i + 1] * (m_channel[3].mute ? 0.0f : m_channel[3].volume));
 
-            // 1-pole: y += alpha * (x - y)
-            m_lpfL = m_lpfL + (((s32)m_lpf_alpha_q15 * (xL - m_lpfL)) >> 15);
-            m_lpfR = m_lpfR + (((s32)m_lpf_alpha_q15 * (xR - m_lpfR)) >> 15);
-            xL = m_lpfL;
-            xR = m_lpfR;
+            // Single-pole low-pass filter
+            // y += alpha * (x - y)
+            m_lpf_left += ((s32)m_lpf_alpha_q15 * (x_left - m_lpf_left)) >> 15;
+            m_lpf_right += ((s32)m_lpf_alpha_q15 * (x_right - m_lpf_right)) >> 15;
+            s32 y_left = m_lpf_left;
+            s32 y_right = m_lpf_right;
 
-            s32 outL = m_mute ? 0 : (xL * 40);
-            s32 outR = m_mute ? 0 : (xR * 40);
+            s32 out_left = 0;
+            s32 out_right = 0;
 
-            outL = CLAMP(outL, -32768, 32767);
-            outR = CLAMP(outR, -32768, 32767);
+            if (!m_mute)
+            {
+                out_left = CLAMP(y_left * 40, -32768, 32767);
+                out_right = CLAMP(y_right * 40, -32768, 32767);
+            }
 
-            sample_buffer[i + 0] = (s16)outL;
-            sample_buffer[i + 1] = (s16)outR;
+            sample_buffer[i + 0] = (s16)out_left;
+            sample_buffer[i + 1] = (s16)out_right;
         }
     }
 
