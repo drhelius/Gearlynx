@@ -21,10 +21,10 @@
 #define BACKERS_H
 
 static const char * BACKERS_STR = 
-" · Michael Mellor (dinglyburrow)"
-"\n · Francisco Javier Trujillo (fjtrujy)"
+" · Waldemar Pawlaszek (laoo)"
+"\n · Bastian Schick (42Bastian)"
+"\n · Michael Mellor (dinglyburrow)"
 "\n · Libretro / RetroArch team"
-"\n · Rupert Carmichael (carmiker)"
 "\n · Orange Kryptonite (OrangeKryptonite)"
 "\n · Danny Van den Heuve (Danny-VdH)"
 "\n · KPreston2900050"
