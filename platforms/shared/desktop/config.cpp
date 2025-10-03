@@ -161,7 +161,7 @@ void config_read(void)
     if (config_video.scale > 3)
         config_video.scale -= 2;
     config_video.scale_manual = read_int("Video", "ScaleManual", 1);
-    config_video.ratio = read_int("Video", "AspectRatio", 1);
+    config_video.ratio = read_int("Video", "AspectRatio", 0);
     config_video.fps = read_bool("Video", "FPS", false);
     config_video.bilinear = read_bool("Video", "Bilinear", false);
     config_video.mix_frames = read_bool("Video", "MixFrames", true);
