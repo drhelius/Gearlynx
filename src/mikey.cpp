@@ -21,13 +21,12 @@
 #include <ostream>
 #include "mikey.h"
 #include "memory.h"
-#include "suzy.h"
 
-Mikey::Mikey(Media* media, M6502* m6502)
+Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502)
 {
+    m_suzy = suzy;
     m_media = media;
     m_m6502 = m6502;
-    InitPointer(m_suzy);
     InitPointer(m_memory);
     InitPointer(m_frame_buffer);
     InitPointer(m_ram);
@@ -39,9 +38,8 @@ Mikey::~Mikey()
 {
 }
 
-void Mikey::Init(Suzy* suzy, Memory* memory, GLYNX_Pixel_Format pixel_format)
+void Mikey::Init(Memory* memory, GLYNX_Pixel_Format pixel_format)
 {
-    m_suzy = suzy;
     m_memory = memory;
     m_pixel_format = pixel_format;
     m_ram = m_memory->GetRAM();

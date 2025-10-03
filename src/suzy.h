@@ -29,7 +29,6 @@ class Media;
 class Memory;
 class M6502;
 class Input;
-class Mikey;
 
 class Suzy
 {
@@ -88,12 +87,13 @@ public:
 public:
     Suzy(Media* media, M6502* m6502, Input* input);
     ~Suzy();
-    void Init(Mikey* mikey, Memory* memory);
+    void Init(Memory* memory);
     void Reset();
     void Clock(u32 cycles);
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
     Suzy_State* GetState();
+    bool IsBlitterBusy();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -124,7 +124,6 @@ private:
 
 private:
     Media* m_media;
-    Mikey* m_mikey;
     Memory* m_memory;
     M6502* m_m6502;
     Input* m_input;

@@ -63,9 +63,9 @@ public:
     };
 
 public:
-    Mikey(Media* media, M6502* m6502);
+    Mikey(Suzy* suzy, Media* media, M6502* m6502);
     ~Mikey();
-    void Init(Suzy* suzy, Memory* memory, GLYNX_Pixel_Format pixel_format);
+    void Init(Memory* memory, GLYNX_Pixel_Format pixel_format);
     void Reset();
     bool Clock(u32 cycles);
     u8 Read(u16 address);

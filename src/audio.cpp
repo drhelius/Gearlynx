@@ -21,7 +21,6 @@
 #include <ostream>
 #include <math.h>
 #include "audio.h"
-#include "mikey.h"
 
 Audio::Audio(Mikey* mikey)
 {

@@ -23,7 +23,6 @@
 #include "media.h"
 #include "memory.h"
 #include "m6502.h"
-#include "mikey.h"
 #include "input.h"
 
 Suzy::Suzy(Media* media, M6502* m6502, Input* input)
@@ -31,19 +30,16 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input)
     m_media = media;
     m_m6502 = m6502;
     m_input = input;
-    InitPointer(m_mikey);
     InitPointer(m_memory);
     InitPointer(m_ram);
     Reset();
 }
-
 Suzy::~Suzy()
 {
 }
 
-void Suzy::Init(Mikey* mikey, Memory* memory)
+void Suzy::Init(Memory* memory)
 {
-    m_mikey = mikey;
     m_memory = memory;
     m_ram = m_memory->GetRAM();
     ComputeQuadLUT();

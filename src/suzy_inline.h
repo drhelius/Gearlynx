@@ -21,9 +21,9 @@
 #define SUZY_INLINE_H
 
 #include "suzy.h"
-#include "mikey.h"
 #include "media.h"
 #include "m6502.h"
+#include "input.h"
 
 INLINE void Suzy::Clock(u32 cycles)
 {
@@ -534,6 +534,11 @@ INLINE Suzy::Suzy_State* Suzy::GetState()
 {
     return &m_state;
 }
+
+INLINE bool Suzy::IsBlitterBusy()
+{
+    return m_state.sprsys_spritesbusy;
+};
 
 INLINE void Suzy::SpritesGo()
 {

@@ -264,7 +264,8 @@ INLINE void Mikey::Write(u16 address, u8 value)
             break;
         case MIKEY_CPUSLEEP:      // 0xFD91
             DebugMikey("Setting CPUSLEEP to %02X (was %02X)", value, m_state.CPUSLEEP);
-            m_m6502->Halt(true);
+            if ((value != 0) && m_suzy->IsBlitterBusy())
+                m_m6502->Halt(true);
             m_state.CPUSLEEP = value;
             break;
         case MIKEY_DISPCTL:       // 0xFD92

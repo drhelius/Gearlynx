@@ -20,8 +20,6 @@
 #ifndef AUDIO_H
 #define AUDIO_H
 
-#include <iostream>
-#include <fstream>
 #include "common.h"
 
 class Mikey;
