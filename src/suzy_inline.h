@@ -444,7 +444,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
     case SUZY_MATHM:       // 0xFC6C
         m_state.MATHM = value;
         m_state.MATHL = 0;
-        m_state.sprsys_lastcarrybit = false;
+        m_state.sprsys_mathbit = false;
         break;
     case SUZY_MATHL:       // 0xFC6D
         m_state.MATHL = value;

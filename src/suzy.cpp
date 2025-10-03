@@ -59,14 +59,19 @@ void Suzy::MathRunMultiply()
 {
     DebugSuzy("MathRunMultiply called");
 
+    m_state.sprsys_lastcarrybit = false;
+
     u16 ab = (u16(m_state.MATHA) << 8) | m_state.MATHB;
     u16 cd = (u16(m_state.MATHC) << 8) | m_state.MATHD;
 
     u32 result = (u32)ab * (u32)cd;
 
     bool negative_result = m_state.sprsys_sign && (m_state.math_sign_A ^ m_state.math_sign_C);
-    if (negative_result && result != 0)
+    if (negative_result)
+    {
+        m_state.sprsys_lastcarrybit = (result != 0);
         result = (u32)(-((s32)result));
+    }
 
     m_state.MATHE = (result >> 24) & 0xFF;
     m_state.MATHF = (result >> 16) & 0xFF;
@@ -78,12 +83,14 @@ void Suzy::MathRunMultiply()
         u32 acc = m_state.MATHJ << 24 | m_state.MATHK << 16 | m_state.MATHL << 8 | m_state.MATHM;
         u64 sum = u64(acc) + u64(result);
         m_state.sprsys_lastcarrybit = (sum > 0xFFFFFFFF);
+        m_state.sprsys_mathbit = (sum > 0xFFFFFFFF);
         m_state.MATHJ = (sum >> 24) & 0xFF;
         m_state.MATHK = (sum >> 16) & 0xFF;
         m_state.MATHL = (sum >> 8) & 0xFF;
         m_state.MATHM = sum & 0xFF;
     }
 
+    m_state.sprsys_unsafe = true;
     m_state.sprsys_mathbusy = true;
     m_state.math_cycles = 44 + ((m_state.sprsys_accumulate || m_state.sprsys_sign) ? 10 : 0);
 }
@@ -120,7 +127,7 @@ void Suzy::MathRunDivide()
     m_state.MATHK = 0;
     m_state.MATHL = (remainder >> 8) & 0xFF;
     m_state.MATHM = remainder & 0xFF;
-
+    m_state.sprsys_unsafe = true;
     m_state.sprsys_mathbusy = true;
     m_state.math_cycles = 176 + (14 * l_zero16(divisor));
 }
