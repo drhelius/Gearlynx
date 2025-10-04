@@ -809,7 +809,7 @@ static void add_symbol(const char* line)
         // Handle different formats
         if ((tokens.size() == 3) && (tokens[0] == "al"))
         {
-            // cc65 label file
+            // cc65 VICE label file
             // al <address> <symbolname>
             addr_str = tokens[1];
 
@@ -817,6 +817,16 @@ static void add_symbol(const char* line)
                 symbol = tokens[2].substr(1);
             else
                 symbol = tokens[2];
+        }
+        else if (tokens.size() == 2)
+        {
+            //<address> <symbolname>
+            addr_str = tokens[0];
+
+            if (tokens[1][0] == '.')
+                symbol = tokens[1].substr(1);
+            else
+                symbol = tokens[1];
         }
 
         // Parse address
