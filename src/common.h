@@ -112,15 +112,24 @@ inline bool is_hex_digit(char c)
 template<typename T>
 inline bool parse_hex_string(const char* str, size_t len, T* result, size_t max_digits = sizeof(T) * 2)
 {
-    if (len == 0 || len > max_digits)
+    if (len == 0 || max_digits == 0)
         return false;
 
-    *result = 0;
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < len; ++i)
     {
         if (!is_hex_digit(str[i]))
             return false;
+    }
 
+    if (len > max_digits)
+    {
+        str += (len - max_digits);
+        len = max_digits;
+    }
+
+    *result = 0;
+    for (size_t i = 0; i < len; ++i)
+    {
         *result = (*result << 4);
 
         if (str[i] >= '0' && str[i] <= '9')

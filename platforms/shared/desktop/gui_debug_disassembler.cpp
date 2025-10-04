@@ -157,49 +157,28 @@ void gui_debug_load_symbols_file(const char* file_path)
             while (line[0] == ' ')
                 line = line.substr(1);
 
-            if (line.find("Bank") == 0)
-                continue;
-
-            if (line.find("-") == 0)
-                continue;
+            // if (line.find("Bank") == 0)
+            //     continue;
 
             if (line.empty())
                 continue;
 
-            if (line.find("[") != std::string::npos)
-            {
-                valid_section = false;
-                if (line.find("[symbols]") != std::string::npos)
-                    valid_section = true;
-                else if (line.find("[labels]") != std::string::npos)
-                    valid_section = true;
+            // if (line.find("[") != std::string::npos)
+            // {
+            //     valid_section = false;
+            //     if (line.find("[symbols]") != std::string::npos)
+            //         valid_section = true;
+            //     else if (line.find("[labels]") != std::string::npos)
+            //         valid_section = true;
 
-                continue;
-            }
+            //     continue;
+            // }
 
-            if (line.find("Sections:") != std::string::npos)
-            {
-                valid_section = false;
-                continue;
-            }
-
-            if (line.find("Source:") != std::string::npos)
-            {
-                valid_section = false;
-                continue;
-            }
-
-            if (line.find("Symbols by name:") != std::string::npos)
-            {
-                valid_section = false;
-                continue;
-            }
-
-            if (line.find("Symbols by value:") != std::string::npos)
-            {
-                valid_section = true;
-                continue;
-            }
+            // if (line.find("Source:") != std::string::npos)
+            // {
+            //     valid_section = false;
+            //     continue;
+            // }
 
             if (valid_section)
                 add_symbol(line.c_str());
@@ -820,7 +799,7 @@ static void add_symbol(const char* line)
         tokens.push_back(token);
     }
 
-    // Need at least 2 tokens (bank/address and symbol) for valid format
+    // Need at least 2 tokens (address and symbol) for valid format
     if (tokens.size() >= 2)
     {
         std::string bank_str = "0";
@@ -828,60 +807,31 @@ static void add_symbol(const char* line)
         std::string symbol;
 
         // Handle different formats
-        if (tokens.size() >= 4 && tokens[2].find(':') != std::string::npos) {
-            // PCEAS new format: <bank:address> <size> <filenumber:linenumber:columnnumber> <symbolname>
-            std::string addr_part = tokens[0];
-            symbol = tokens[3];
-
-            std::size_t separator = addr_part.find(":");
-            if (separator != std::string::npos) {
-                bank_str = addr_part.substr(0, separator);
-                addr_str = addr_part.substr(separator + 1);
-            } else {
-                addr_str = addr_part;
-            }
-        }
-        else if (tokens[0].find(':') != std::string::npos) {
-            // WLA format: <bank:address> <symbolname>
-            std::string addr_part = tokens[0];
-            std::size_t separator = addr_part.find(":");
-
-            bank_str = addr_part.substr(0, separator);
-            addr_str = addr_part.substr(separator + 1);
-            symbol = tokens[1];
-        }
-        else if (tokens.size() >= 3 && tokens[0].length() <= 2) {
-            // PCEAS old format: <bank> <address> <symbolname>
-            bank_str = tokens[0];
+        if ((tokens.size() == 3) && (tokens[0] == "al"))
+        {
+            // cc65 label file
+            // al <address> <symbolname>
             addr_str = tokens[1];
-            symbol = tokens[2];
-        }
-        else
-        {
-            // VASM format: <address> <symbolname>
-            addr_str = tokens[0];
-            symbol = tokens[1];
+
+            if (tokens[2][0] == '.')
+                symbol = tokens[2].substr(1);
+            else
+                symbol = tokens[2];
         }
 
-        // Parse the bank and address values
-        u16 bank_value = 0;
-        if (parse_hex_string(bank_str.c_str(), bank_str.length(), &bank_value))
+        // Parse address
+        u16 address_value = 0;
+        if (parse_hex_string(addr_str.c_str(), addr_str.length(), &address_value))
         {
-            u16 address_value = 0;
-            if (parse_hex_string(addr_str.c_str(), addr_str.length(), &address_value))
-            {
-                //s.bank = bank_value;
-                s.address = address_value;
-                snprintf(s.text, 64, "%s", symbol.c_str());
+            s.address = address_value;
+            snprintf(s.text, 64, "%s", symbol.c_str());
 
-                // Store the symbol
-                DebugSymbol* new_symbol = new DebugSymbol;
-                new_symbol->address = s.address;
-                //new_symbol->bank = s.bank;
-                snprintf(new_symbol->text, 64, "%s", s.text);
+            // Store the symbol
+            DebugSymbol* new_symbol = new DebugSymbol;
+            new_symbol->address = s.address;
+            snprintf(new_symbol->text, 64, "%s", s.text);
 
-                fixed_symbols[s.address] = new_symbol;
-            }
+            fixed_symbols[s.address] = new_symbol;
         }
     }
 }
