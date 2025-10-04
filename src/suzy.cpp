@@ -99,6 +99,9 @@ void Suzy::MathRunDivide()
 {
     DebugSuzy("MathRunDivide called");
 
+    m_state.sprsys_lastcarrybit = false;
+    m_state.sprsys_mathbit = false;
+
     u32 dividend = (u32(m_state.MATHE) << 24) | (u32(m_state.MATHF) << 16) | (u32(m_state.MATHG) << 8) | u32(m_state.MATHH);
     u16 divisor = (u16(m_state.MATHN) << 8) | m_state.MATHP;
     bool zero_divisor = (divisor == 0);
@@ -115,7 +118,7 @@ void Suzy::MathRunDivide()
     {
         quotient = dividend / divisor;
         remainder = (u16)(dividend % divisor);
-        m_state.sprsys_mathbit = false;
+        m_state.sprsys_lastcarrybit = (remainder != 0);
     }
 
     m_state.MATHA = (quotient >> 24) & 0xFF;
@@ -127,6 +130,7 @@ void Suzy::MathRunDivide()
     m_state.MATHK = 0;
     m_state.MATHL = (remainder >> 8) & 0xFF;
     m_state.MATHM = remainder & 0xFF;
+
     m_state.sprsys_unsafe = true;
     m_state.sprsys_mathbusy = true;
     m_state.math_cycles = 176 + (14 * l_zero16(divisor));
