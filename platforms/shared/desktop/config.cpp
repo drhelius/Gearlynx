@@ -174,7 +174,7 @@ void config_read(void)
     config_audio.sync = read_bool("Audio", "Sync", true);
     for (int i = 0; i < 4; i++)
         config_audio.volume[i] = read_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), 1.0f);
-    config_audio.lowpass_cutoff = read_int("Audio", "LowpassCutoff", 2000);
+    config_audio.lowpass_cutoff = read_int("Audio", "LowpassCutoff", 3000);
 
     config_input.key_left = (SDL_Scancode)read_int("Input", "KeyLeft", SDL_SCANCODE_LEFT);
     config_input.key_right = (SDL_Scancode)read_int("Input", "KeyRight", SDL_SCANCODE_RIGHT);
