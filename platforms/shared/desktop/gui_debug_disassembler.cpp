@@ -818,6 +818,17 @@ static void add_symbol(const char* line)
             else
                 symbol = tokens[2];
         }
+        else if ((tokens.size() == 3) && (tokens[1] == "EQU"))
+        {
+            // lyxass symbol file
+            // <symbolname> EQU $<address>
+            symbol = tokens[0];
+
+            if (tokens[2][0] == '$')
+                addr_str = tokens[2].substr(1);
+            else
+                addr_str = tokens[2];
+        }
         else if (tokens.size() == 2)
         {
             //<address> <symbolname>
