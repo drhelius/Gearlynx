@@ -174,11 +174,24 @@ void gui_debug_load_symbols_file(const char* file_path)
             //     continue;
             // }
 
-            // if (line.find("Source:") != std::string::npos)
-            // {
-            //     valid_section = false;
-            //     continue;
-            // }
+            // mads hea file
+            if (line.rfind("; CONSTANS", 0) == 0)
+            {
+                valid_section = false;
+                continue;
+            }
+            // mads hea file
+            if (line.rfind("; VARIABLES", 0) == 0)
+            {
+                valid_section = false;
+                continue;
+            }
+            // mads hea file
+            if (line.rfind("; PROCEDURES", 0) == 0)
+            {
+                valid_section = true;
+                continue;
+            }
 
             if (valid_section)
                 add_symbol(line.c_str());
@@ -811,6 +824,7 @@ static void add_symbol(const char* line)
         {
             // cc65 VICE label file
             // al <address> <symbolname>
+
             addr_str = tokens[1];
 
             if (tokens[2][0] == '.')
@@ -820,8 +834,9 @@ static void add_symbol(const char* line)
         }
         else if ((tokens.size() == 3) && (tokens[1] == "EQU"))
         {
-            // lyxass symbol file
+            // lyxass equ file
             // <symbolname> EQU $<address>
+
             symbol = tokens[0];
 
             if (tokens[2][0] == '$')
@@ -829,9 +844,36 @@ static void add_symbol(const char* line)
             else
                 addr_str = tokens[2];
         }
+        else if ((tokens.size() == 3))
+        {
+            if (tokens[0] == "00")
+            {
+                // mads label file
+                // <bank> <address> <symbolname>
+
+                addr_str = tokens[1];
+
+                if (tokens[2].rfind("LYNX.", 0) == 0)
+                    symbol = tokens[2].substr(5);
+            }
+            else if (tokens[1] == "=")
+            {
+                // mads hea file
+                // <symbolname> = $<address>
+
+                if (tokens[0].rfind("LYNX.", 0) == 0)
+                    symbol = tokens[0].substr(5);
+
+                if (tokens[2][0] == '$')
+                    addr_str = tokens[2].substr(1);
+                else
+                    addr_str = tokens[2];
+            }
+        }
         else if (tokens.size() == 2)
         {
             //<address> <symbolname>
+
             addr_str = tokens[0];
 
             if (tokens[1][0] == '.')
