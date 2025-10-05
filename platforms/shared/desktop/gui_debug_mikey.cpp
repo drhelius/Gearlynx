@@ -154,7 +154,9 @@ void gui_debug_window_mikey_colors(void)
             ImVec4 float_color = color_444_to_float(color);
 
             if (c > 0)
-            ImGui::Text("      "); ImGui::SameLine(0,0);
+                ImGui::Text("      ");
+
+            ImGui::SameLine(0,0);
 
             char id[16];
             snprintf(id, sizeof(id), "##pal_%d_%d", line, c);
