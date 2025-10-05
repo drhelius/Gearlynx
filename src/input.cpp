@@ -20,13 +20,16 @@
 #include "input.h"
 #include "common.h"
 
-Input::Input()
+Input::Input(Media* media)
 {
+    m_media = media;
+    InitPointer(m_suzy);
     m_input = 0x0000;
 }
 
-void Input::Init()
+void Input::Init(Suzy* suzy)
 {
+    m_suzy = suzy;
     Reset();
 }
 

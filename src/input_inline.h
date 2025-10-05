@@ -20,16 +20,82 @@
 #ifndef INPUT_INLINE_H
 #define INPUT_INLINE_H
 
+
 #include "input.h"
+#include "media.h"
+#include "suzy.h"
+
+INLINE GLYNX_Keys Input::MapDirectional(GLYNX_Keys key)
+{
+    GLYNX_Keys mapped = key;
+    Media::GLYNX_Media_Rotation rotation = m_media->GetRotation();
+    bool lefthanded = m_suzy->GetState()->sprsys_lefthand;
+
+    switch (rotation)
+    {
+        case Media::ROTATE_LEFT:
+            if (key == GLYNX_KEY_UP)
+                mapped = GLYNX_KEY_LEFT;
+            else if (key == GLYNX_KEY_LEFT)
+                mapped = GLYNX_KEY_DOWN;
+            else if (key == GLYNX_KEY_DOWN)
+                mapped = GLYNX_KEY_RIGHT;
+            else if (key == GLYNX_KEY_RIGHT)
+                mapped = GLYNX_KEY_UP;
+            break;
+
+        case Media::ROTATE_RIGHT:
+            if (key == GLYNX_KEY_UP)
+                mapped = GLYNX_KEY_RIGHT;
+            else if (key == GLYNX_KEY_RIGHT)
+                mapped = GLYNX_KEY_DOWN;
+            else if (key == GLYNX_KEY_DOWN)
+                mapped = GLYNX_KEY_LEFT;
+            else if (key == GLYNX_KEY_LEFT)
+                mapped = GLYNX_KEY_UP;
+            break;
+
+        default:
+            break;
+    }
+
+    if (lefthanded)
+    {
+        if (mapped == GLYNX_KEY_UP)
+            mapped = GLYNX_KEY_DOWN;
+        else if (mapped == GLYNX_KEY_DOWN)
+            mapped = GLYNX_KEY_UP;
+        else if (mapped == GLYNX_KEY_LEFT)
+            mapped = GLYNX_KEY_RIGHT;
+        else if (mapped == GLYNX_KEY_RIGHT)
+            mapped = GLYNX_KEY_LEFT;
+    }
+
+    return mapped;
+}
 
 INLINE void Input::KeyPressed(GLYNX_Keys key)
 {
-    m_input |= key;
+    GLYNX_Keys mapped = key;
+
+    bool is_dpad = (key == GLYNX_KEY_UP) || (key == GLYNX_KEY_DOWN) || (key == GLYNX_KEY_LEFT) || (key == GLYNX_KEY_RIGHT);
+
+    if (is_dpad)
+        mapped = MapDirectional(key);
+
+    m_input |= mapped;
 }
 
 INLINE void Input::KeyReleased(GLYNX_Keys key)
 {
-    m_input &= ~key;
+    GLYNX_Keys mapped = key;
+
+    bool is_dpad = (key == GLYNX_KEY_UP) || (key == GLYNX_KEY_DOWN) || (key == GLYNX_KEY_LEFT) || (key == GLYNX_KEY_RIGHT);
+
+    if (is_dpad)
+        mapped = MapDirectional(key);
+
+    m_input &= ~mapped;
 }
 
 INLINE u8 Input::ReadJoystick()

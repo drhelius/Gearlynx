@@ -24,22 +24,27 @@
 #include <fstream>
 #include "common.h"
 
+class Media;
+class Suzy;
+
 class Input
 {
 public:
-    Input();
-    void Init();
+    Input(Media* media);
+    void Init(Suzy* suzy);
     void Reset();
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);
     u8 ReadJoystick();
     u8 ReadSwitches();
+    GLYNX_Keys MapDirectional(GLYNX_Keys key);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
+    Media* m_media;
+    Suzy* m_suzy;
     u16 m_input;
-
 };
 
 #include "input_inline.h"

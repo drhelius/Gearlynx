@@ -66,8 +66,8 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     srand((unsigned int)time(NULL));
 
     m_media = new Media();
-    m_input = new Input();
     m_m6502 = new M6502();
+    m_input = new Input(m_media);
     m_suzy = new Suzy(m_media, m_m6502, m_input);
     m_mikey = new Mikey(m_suzy,m_media, m_m6502);
     m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502);
@@ -76,7 +76,7 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_media->Init();
     m_memory->Init();
     m_audio->Init();
-    m_input->Init();
+    m_input->Init(m_suzy);
     m_suzy->Init(m_memory);
     m_mikey->Init(m_memory, pixel_format);
     m_m6502->Init(m_memory);
