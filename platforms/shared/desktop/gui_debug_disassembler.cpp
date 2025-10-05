@@ -1435,8 +1435,8 @@ static void add_symbol_popup(void)
         ImGui::InputText("##symname", name, IM_ARRAYSIZE(name));
 
         ImGui::Text("Address:");
-        ImGui::PushItemWidth(70);
-        if (ImGui::InputTextWithHint("##symaddr", "XX:XXXX", address, IM_ARRAYSIZE(address), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsUppercase))
+        ImGui::PushItemWidth(50);
+        if (ImGui::InputTextWithHint("##symaddr", "XXXX", address, IM_ARRAYSIZE(address), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CharsUppercase))
         {
             symbol_modified = true;
         }

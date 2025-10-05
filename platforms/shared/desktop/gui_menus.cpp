@@ -162,31 +162,31 @@ static void menu_gearlynx(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Save RAM As..."))
+        if (ImGui::MenuItem("Save RAM As...", NULL, false, false))
         {
             save_ram = true;
         }
 
-        if (ImGui::MenuItem("Load RAM From..."))
+        if (ImGui::MenuItem("Load RAM From...", NULL, false, false))
         {
             open_ram = true;
         }
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Save State As...")) 
+        if (ImGui::MenuItem("Save State As...", NULL, false, false))
         {
             save_state = true;
         }
 
-        if (ImGui::MenuItem("Load State From..."))
+        if (ImGui::MenuItem("Load State From...", NULL, false, false))
         {
             open_state = true;
         }
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("Save State Slot"))
+        if (ImGui::BeginMenu("Save State Slot", false))
         {
             ImGui::PushItemWidth(100.0f);
             ImGui::Combo("##slot", &config_emulator.save_slot, "Slot 1\0Slot 2\0Slot 3\0Slot 4\0Slot 5\0\0");
@@ -198,7 +198,7 @@ static void menu_gearlynx(void)
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Save State", "Ctrl+S")) 
+        if (ImGui::MenuItem("Save State", "Ctrl+S", false, false)) 
         {
             std::string message("Saving state to slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -206,7 +206,7 @@ static void menu_gearlynx(void)
             emu_save_state_slot(config_emulator.save_slot + 1);
         }
 
-        if (ImGui::MenuItem("Load State", "Ctrl+L"))
+        if (ImGui::MenuItem("Load State", "Ctrl+L", false, false))
         {
             std::string message("Loading state from slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -281,7 +281,7 @@ static void menu_emulator(void)
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("Save States Dir"))
+        if (ImGui::BeginMenu("Save States Dir", false))
         {
             ImGui::PushItemWidth(220.0f);
             if (ImGui::Combo("##savestate_option", &config_emulator.savestates_dir_option, "Default Location\0Same as ROM\0Custom Location\0\0"))
