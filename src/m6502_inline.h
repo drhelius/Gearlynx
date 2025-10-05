@@ -88,9 +88,10 @@ INLINE void M6502::CheckIRQs()
     m_s.irq_pending = IsSetFlag(FLAG_INTERRUPT) ? false : m_s.irq_asserted;
 }
 
-INLINE void M6502::AssertIRQ(bool asserted)
+INLINE void M6502::AssertIRQ(bool asserted, u8 irq_mask)
 {
     m_s.irq_asserted = asserted;
+    m_s.debug_irq_mask = irq_mask;
 }
 
 INLINE void M6502::Halt(bool halted)
@@ -326,7 +327,9 @@ INLINE void M6502::CheckBreakpoints()
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
 
-    m_cpu_breakpoint_hit = (m_breakpoints_irq_enabled && m_s.debug_next_irq > 0);
+    bool irq_hit = (m_s.irq_asserted && ((m_s.debug_irq_mask & m_breakpoints_irq_enabled) != 0));
+
+    m_cpu_breakpoint_hit = (irq_hit && m_s.debug_next_irq == 3);
     m_run_to_breakpoint_hit = false;
 
     if (m_run_to_breakpoint_requested)

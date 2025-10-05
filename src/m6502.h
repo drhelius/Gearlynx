@@ -56,6 +56,7 @@ public:
         bool irq_asserted;
         bool irq_pending;
         s32 debug_next_irq;
+        s32 debug_irq_mask;
     };
 
     struct GLYNX_Breakpoint
@@ -82,14 +83,14 @@ public:
     void Init(Memory* memory);
     void Reset();
     u32 RunInstruction();
-    void AssertIRQ(bool asserted);
+    void AssertIRQ(bool asserted, u8 irq_mask);
     void Halt(bool halted);
     bool IsHalted();
     void InjectCycles(unsigned int cycles);
     M6502_State* GetState();
     void DisassembleNextOPCode();
     void SetResetValue(int value);
-    void EnableBreakpoints(bool enable, bool irqs);
+    void EnableBreakpoints(bool enable, u8 irqs);
     bool BreakpointHit();
     bool RunToBreakpointHit();
     void ResetBreakpoints();
@@ -112,7 +113,7 @@ private:
     Memory* m_memory;
     M6502_State m_s;
     bool m_breakpoints_enabled;
-    bool m_breakpoints_irq_enabled;
+    u8 m_breakpoints_irq_enabled;
     bool m_cpu_breakpoint_hit;
     bool m_memory_breakpoint_hit;
     bool m_run_to_breakpoint_hit;

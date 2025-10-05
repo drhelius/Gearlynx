@@ -33,8 +33,9 @@ M6502::M6502()
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_s.debug_next_irq = 0;
+    m_s.debug_irq_mask = 0;
     m_breakpoints_enabled = false;
-    m_breakpoints_irq_enabled = false;
+    m_breakpoints_irq_enabled = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
@@ -83,6 +84,7 @@ void M6502::Reset()
     m_s.cycles = 0;
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
+    m_s.debug_irq_mask = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
@@ -101,7 +103,7 @@ void M6502::SetResetValue(int value)
     m_reset_value = value;
 }
 
-void M6502::EnableBreakpoints(bool enable, bool irqs)
+void M6502::EnableBreakpoints(bool enable, u8 irqs)
 {
     m_breakpoints_enabled = enable;
     m_breakpoints_irq_enabled = irqs;

@@ -55,7 +55,7 @@ EXTERN bool emu_debug_pc_changed;
 
 EXTERN bool emu_audio_sync;
 EXTERN bool emu_debug_disable_breakpoints;
-EXTERN bool emu_debug_irq_breakpoints;
+EXTERN bool emu_debug_irq_breakpoints[8];
 
 EXTERN bool emu_init(void);
 EXTERN void emu_destroy(void);

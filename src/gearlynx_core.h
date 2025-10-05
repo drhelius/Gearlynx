@@ -41,7 +41,7 @@ public:
         bool step_debugger;
         bool stop_on_breakpoint;
         bool stop_on_run_to_breakpoint;
-        bool stop_on_irq;
+        u8 stop_on_irq;
     };
 
     typedef void (*GLYNX_Debug_Callback)();

@@ -865,7 +865,8 @@ INLINE void Mikey::CalculateCutoff(u8 channel)
 
 INLINE void Mikey::UpdateIRQs()
 {
-    m_m6502->AssertIRQ((m_state.irq_pending & m_state.irq_mask) != 0);
+    u8 effective_irqs = m_state.irq_pending & m_state.irq_mask;
+    m_m6502->AssertIRQ(effective_irqs != 0, effective_irqs);
 }
 
 INLINE void Mikey::HorizontalBlank()

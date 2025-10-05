@@ -65,9 +65,10 @@ bool emu_init(void)
     audio_enabled = true;
     emu_audio_sync = true;
     emu_debug_disable_breakpoints = false;
-    emu_debug_irq_breakpoints = false;
     emu_debug_command = Debug_Command_None;
     emu_debug_pc_changed = false;
+    for (int i = 0; i < 8; i++)
+        emu_debug_irq_breakpoints[i] = false;
 
     return true;
 }
@@ -115,7 +116,13 @@ void emu_update(void)
         debug_run.step_debugger = (emu_debug_command == Debug_Command_Step);
         debug_run.stop_on_breakpoint = !emu_debug_disable_breakpoints;
         debug_run.stop_on_run_to_breakpoint = true;
-        debug_run.stop_on_irq = emu_debug_irq_breakpoints;
+
+        debug_run.stop_on_irq = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            if (emu_debug_irq_breakpoints[i])
+                debug_run.stop_on_irq = SET_BIT(debug_run.stop_on_irq, i);
+        }
 
         if (emu_debug_command != Debug_Command_None)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);

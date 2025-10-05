@@ -134,6 +134,8 @@ void gui_debug_reset_breakpoints(void)
 {
     emu_get_core()->GetM6502()->ResetBreakpoints();
     new_breakpoint_buffer[0] = 0;
+    for (int i = 0; i < 8; i++)
+        emu_debug_irq_breakpoints[i] = false;
 }
 
 void gui_debug_load_symbols_file(const char* file_path)
@@ -374,12 +376,22 @@ static void draw_breakpoints(void)
 {
     if (ImGui::CollapsingHeader("Breakpoints"))
     {
-        ImGui::Checkbox("Break On IRQs##irq_break", &emu_debug_irq_breakpoints); ImGui::SameLine();
         ImGui::Checkbox("Disable All##disable_mem", &emu_debug_disable_breakpoints); ImGui::SameLine();
 
         if (ImGui::Button("Remove All##clear_all", ImVec2(85, 0)))
         {
             gui_debug_reset_breakpoints();
+        }
+
+        ImGui::Separator();
+
+        for (int i = 0; i < 8; i++)
+        {
+            char irq[32];
+            snprintf(irq, 32, "IRQ %d   ", i);
+            ImGui::Checkbox(irq, &emu_debug_irq_breakpoints[i]);
+            if (i != 3 && i != 7)
+                ImGui::SameLine();
         }
 
         ImGui::Columns(2, "breakpoints");
@@ -1234,7 +1246,18 @@ static void disassembler_menu(void)
             gui_debug_toggle_breakpoint();
         }
 
-        ImGui::MenuItem("Break On IRQs", 0, &emu_debug_irq_breakpoints);
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("IRQs"))
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                char irq[32];
+                snprintf(irq, 32, "Break on IRQ %d", i);
+                ImGui::MenuItem(irq, 0, &emu_debug_irq_breakpoints[i]);
+            }
+            ImGui::EndMenu();
+        }
 
         ImGui::Separator();
 
