@@ -87,6 +87,13 @@ enum GLYNX_Keys
     GLYNX_KEY_PAUSE     = 0x0100,
 };
 
+enum GLYNX_Rotation
+{
+    NO_ROTATION = 0,
+    ROTATE_LEFT = 1,
+    ROTATE_RIGHT = 2
+};
+
 struct GLYNX_Cartridge_Header
 {
     u8 magic[4];

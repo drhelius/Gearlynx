@@ -106,6 +106,10 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
 
         m_audio->EndFrame(sample_buffer, sample_count);
 
+        GLYNX_Rotation rotation = m_media->GetRotation();
+        if (rotation != NO_ROTATION)
+            m_mikey->RotateFrameBuffer(rotation);
+
         return m_m6502->BreakpointHit() || m_m6502->RunToBreakpointHit();
     }
     else
@@ -134,6 +138,10 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         while (!stop);
 
         m_audio->EndFrame(sample_buffer, sample_count);
+
+        GLYNX_Rotation rotation = m_media->GetRotation();
+        if (rotation != NO_ROTATION)
+            m_mikey->RotateFrameBuffer(rotation);
 
         return false;
     }

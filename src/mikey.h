@@ -75,6 +75,7 @@ public:
     u8* GetBuffer();
     u32* GetRGBA8888Palette();
     u16* GetRGB565Palette();
+    void RotateFrameBuffer(GLYNX_Rotation rotation);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -115,6 +116,7 @@ private:
     u8* m_ram;
     u16 m_host_palette[16] = {};
     u8* m_frame_buffer;
+    u8 m_rotated_frame_buffer[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4] = {};
     GLYNX_Pixel_Format m_pixel_format;
     u32 m_rgba8888_palette[4096] = {};
     u16 m_rgb565_palette[4096] = {};

@@ -46,7 +46,7 @@ static void update_debug_sprites(void);
 
 bool emu_init(void)
 {
-    emu_frame_buffer = new u8[1024 * 512 * 4];
+    emu_frame_buffer = new u8[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4];
     audio_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
 
     init_debug();
@@ -193,6 +193,11 @@ void emu_reset(void)
     save_ram();
     core->ResetROM(false);
     load_ram();
+}
+
+void emu_force_rotation(int rotation)
+{
+    core->GetMedia()->ForceRotation((GLYNX_Rotation)rotation);
 }
 
 void emu_audio_mute(bool mute)
@@ -435,7 +440,7 @@ static void load_ram(void)
 
 static void reset_buffers(void)
 {
-    for (int i = 0; i < 1024 * 512 * 4; i++)
+    for (int i = 0; i < (GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4); i++)
         emu_frame_buffer[i] = 0;
 
     // emu_debug_background_buffer_width = 32;

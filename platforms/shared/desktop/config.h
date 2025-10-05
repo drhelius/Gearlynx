@@ -64,6 +64,7 @@ struct config_Video
     int scale = 0;
     int scale_manual = 1;
     int ratio = 0;
+    int rotation = 0;
     bool fps = false;
     bool bilinear = false;
     bool mix_frames = true;

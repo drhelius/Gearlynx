@@ -25,13 +25,6 @@
 class Media
 {
 public:
-    enum GLYNX_Media_Rotation
-    {
-        NO_ROTATION = 0,
-        ROTATE_LEFT = 1,
-        ROTATE_RIGHT = 2
-    };
-
     enum GLYNX_Media_EEPROM
     {
         NO_EEPROM = 0,
@@ -62,7 +55,8 @@ public:
     bool IsBiosValid();
     int GetROMSize();
     u32 GetCRC();
-    GLYNX_Media_Rotation GetRotation();
+    void ForceRotation(GLYNX_Rotation rotation);
+    GLYNX_Rotation GetRotation();
     GLYNX_Media_EEPROM GetEEPROM();
     GLYNX_Media_Type GetType();
     bool GetAudin();
@@ -89,7 +83,7 @@ private:
     void DefaultLynxHeader();
     void SetupBanks();
     void GatherDataFromPath(const char* path);
-    GLYNX_Media_Rotation ReadHeaderRotation(u8 rotation);
+    GLYNX_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_Media_EEPROM ReadHeaderEEPROM(u8 eeprom);
     bool IsValidFile(const char* path);
 
@@ -114,7 +108,8 @@ private:
     u32 m_page_offset_mask[2];
     bool m_shift_register_strobe;
     bool m_shift_register_bit;
-    GLYNX_Media_Rotation m_rotation;
+    GLYNX_Rotation m_rotation;
+    GLYNX_Rotation m_forced_rotation;
     GLYNX_Media_EEPROM m_eeprom;
     GLYNX_Media_Type m_type;
     bool m_audin;

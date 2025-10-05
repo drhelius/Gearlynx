@@ -461,6 +461,16 @@ static void menu_video(void)
             ImGui::EndMenu();
         }
 
+
+        if (ImGui::BeginMenu("Rotation"))
+        {
+            ImGui::PushItemWidth(120.0f);
+            ImGui::Combo("##rotation", &config_video.rotation, "Auto\0Rotate LEFT\0Rotate RIGHT\0\0");
+            emu_force_rotation(config_video.rotation);
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
         ImGui::Separator();
 
         ImGui::MenuItem("Show FPS", "", &config_video.fps);

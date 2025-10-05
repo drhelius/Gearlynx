@@ -28,12 +28,12 @@
 INLINE GLYNX_Keys Input::MapDirectional(GLYNX_Keys key)
 {
     GLYNX_Keys mapped = key;
-    Media::GLYNX_Media_Rotation rotation = m_media->GetRotation();
+    GLYNX_Rotation rotation = m_media->GetRotation();
     bool lefthanded = m_suzy->GetState()->sprsys_lefthand;
 
     switch (rotation)
     {
-        case Media::ROTATE_LEFT:
+        case ROTATE_LEFT:
             if (key == GLYNX_KEY_UP)
                 mapped = GLYNX_KEY_LEFT;
             else if (key == GLYNX_KEY_LEFT)
@@ -44,7 +44,7 @@ INLINE GLYNX_Keys Input::MapDirectional(GLYNX_Keys key)
                 mapped = GLYNX_KEY_UP;
             break;
 
-        case Media::ROTATE_RIGHT:
+        case ROTATE_RIGHT:
             if (key == GLYNX_KEY_UP)
                 mapped = GLYNX_KEY_RIGHT;
             else if (key == GLYNX_KEY_RIGHT)

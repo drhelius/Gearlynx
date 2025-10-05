@@ -33,6 +33,7 @@ Media::Media()
     InitPointer(m_bank_data[1]);
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
+    m_forced_rotation = NO_ROTATION;
     Reset();
 }
 
@@ -135,9 +136,17 @@ u8* Media::GetBIOS()
     return m_bios;
 }
 
-Media::GLYNX_Media_Rotation Media::GetRotation()
+void Media::ForceRotation(GLYNX_Rotation rotation)
 {
-    return m_rotation;
+    m_forced_rotation = rotation;
+}
+
+GLYNX_Rotation Media::GetRotation()
+{
+    if (m_forced_rotation != NO_ROTATION)
+        return m_forced_rotation;
+    else
+        return m_rotation;
 }
 
 Media::GLYNX_Media_EEPROM Media::GetEEPROM()
@@ -731,7 +740,7 @@ void Media::GatherDataFromPath(const char* path)
     snprintf(m_file_extension, sizeof(m_file_extension), "%s", extension.c_str());
 }
 
-Media::GLYNX_Media_Rotation Media::ReadHeaderRotation(u8 rotation)
+GLYNX_Rotation Media::ReadHeaderRotation(u8 rotation)
 {
     switch (rotation)
     {

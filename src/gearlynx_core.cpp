@@ -113,8 +113,18 @@ GLYNX_Bios_State GearlynxCore::LoadBios(const char* file_path)
 
 bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
 {
-    runtime_info.screen_width = GLYNX_SCREEN_WIDTH;
-    runtime_info.screen_height = GLYNX_SCREEN_HEIGHT;
+    GLYNX_Rotation rotation = m_media->GetRotation();
+
+    if (rotation == ROTATE_LEFT || rotation == ROTATE_RIGHT)
+    {
+        runtime_info.screen_width = GLYNX_SCREEN_HEIGHT;
+        runtime_info.screen_height = GLYNX_SCREEN_WIDTH;
+    }
+    else
+    {
+        runtime_info.screen_width = GLYNX_SCREEN_WIDTH;
+        runtime_info.screen_height = GLYNX_SCREEN_HEIGHT;
+    }
 
     Mikey::Mikey_State* mikey_state = m_mikey->GetState();
     float t0_backup = (float)mikey_state->timers[0].backup;

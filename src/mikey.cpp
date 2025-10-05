@@ -17,6 +17,7 @@
  *
  */
 
+#include <cstring>
 #include <istream>
 #include <ostream>
 #include "mikey.h"
@@ -128,6 +129,55 @@ void Mikey::ResetPalette()
     for (int address = 0xFDA0; address < 0xFDC0; address++)
         WriteColor(address, 0xFF);
 }
+
+void Mikey::RotateFrameBuffer(GLYNX_Rotation rotation)
+{
+    if (rotation == NO_ROTATION)
+        return;
+
+    const int width = GLYNX_SCREEN_WIDTH;
+    const int height = GLYNX_SCREEN_HEIGHT;
+    const int pixel_count = width * height;
+
+    if (m_pixel_format == GLYNX_PIXEL_RGB565)
+    {
+        const u16* src = reinterpret_cast<const u16*>(m_frame_buffer);
+        u16* dst = reinterpret_cast<u16*>(m_rotated_frame_buffer);
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                const int src_index = y * width + x;
+                const int dst_index = (rotation == ROTATE_LEFT)
+                                      ? (width - 1 - x) * height + y
+                                      : x * height + (height - 1 - y);
+                dst[dst_index] = src[src_index];
+            }
+        }
+
+        memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u16));
+        return;
+    }
+
+    const u32* src = reinterpret_cast<const u32*>(m_frame_buffer);
+    u32* dst = reinterpret_cast<u32*>(m_rotated_frame_buffer);
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            const int src_index = y * width + x;
+            const int dst_index = (rotation == ROTATE_LEFT)
+                                  ? (width - 1 - x) * height + y
+                                  : x * height + (height - 1 - y);
+            dst[dst_index] = src[src_index];
+        }
+    }
+
+    memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u32));
+}
+
 
 void Mikey::SaveState(std::ostream& stream)
 {
