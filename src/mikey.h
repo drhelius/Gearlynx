@@ -76,6 +76,7 @@ public:
     u32* GetRGBA8888Palette();
     u16* GetRGB565Palette();
     void RotateFrameBuffer(GLYNX_Rotation rotation);
+    void RenderNoBiosScreen(u8* frame_buffer);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

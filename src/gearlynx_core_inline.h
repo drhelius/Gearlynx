@@ -29,15 +29,14 @@
 
 INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
-    if (m_paused || !m_media->IsReady())
-        return false;
-
     if (!m_media->IsBiosLoaded())
     {
-        //TODO: implement bios missing message
-        //RenderFrameBuffer(pFrameBuffer);
+        m_mikey->RenderNoBiosScreen(frame_buffer);
         return false;
     }
+
+    if (m_paused || !m_media->IsReady())
+        return false;
 
 #if defined(GLYNX_DISABLE_DISASSEMBLER)
     const bool debugger = false;

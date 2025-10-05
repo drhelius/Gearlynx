@@ -22,6 +22,7 @@
 #include <ostream>
 #include "mikey.h"
 #include "memory.h"
+#include "no_bios.h"
 
 Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502)
 {
@@ -178,6 +179,12 @@ void Mikey::RotateFrameBuffer(GLYNX_Rotation rotation)
     memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u32));
 }
 
+void Mikey::RenderNoBiosScreen(u8* frame_buffer)
+{
+    int byte_count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * (m_pixel_format == GLYNX_PIXEL_RGB565 ? 2 : 4);
+    u8* no_bios_image = (m_pixel_format == GLYNX_PIXEL_RGB565) ? (u8*)k_no_bios_rgb565 : (u8*)k_no_bios_rgba8888;
+    memcpy(frame_buffer, no_bios_image, byte_count);
+}
 
 void Mikey::SaveState(std::ostream& stream)
 {
