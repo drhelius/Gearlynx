@@ -80,10 +80,10 @@ enum GLYNX_Keys
     GLYNX_KEY_B         = 0x0002,
     GLYNX_KEY_OPTION2   = 0x0004,
     GLYNX_KEY_OPTION1   = 0x0008,
-    GLYNX_KEY_LEFT      = 0x0010,
-    GLYNX_KEY_RIGHT     = 0x0020,
-    GLYNX_KEY_UP        = 0x0040,
-    GLYNX_KEY_DOWN      = 0x0080,
+    GLYNX_KEY_RIGHT     = 0x0010,
+    GLYNX_KEY_LEFT      = 0x0020,
+    GLYNX_KEY_DOWN      = 0x0040,
+    GLYNX_KEY_UP        = 0x0080,
     GLYNX_KEY_PAUSE     = 0x0100,
 };
 
