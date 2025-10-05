@@ -1491,7 +1491,7 @@ void gui_debug_window_call_stack(void)
     if (ImGui::BeginTable("call_stack", 3, flags))
     {
         ImGui::TableSetupScrollFreeze(0, 1);
-        ImGui::TableSetupColumn("Function", ImGuiTableColumnFlags_WidthStretch, 2.0f);
+        ImGui::TableSetupColumn("Subroutine", ImGuiTableColumnFlags_WidthStretch, 2.0f);
         ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_WidthStretch, 0.5f);
         ImGui::TableSetupColumn("Return", ImGuiTableColumnFlags_WidthStretch, 0.5f);
         ImGui::TableHeadersRow();
