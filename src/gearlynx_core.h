@@ -98,7 +98,6 @@ private:
     Suzy* m_suzy;
     Mikey* m_mikey;
     bool m_paused;
-    u64 m_clock;
     GLYNX_Debug_Callback m_debug_callback;
 };
 

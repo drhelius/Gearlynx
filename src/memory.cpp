@@ -25,6 +25,7 @@
 #include "suzy.h"
 #include "mikey.h"
 #include "m6502.h"
+#include "state_serializer.h"
 
 Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502)
 {
@@ -241,10 +242,19 @@ void Memory::LastPageWrite(u16 address, u8 value)
 
 void Memory::SaveState(std::ostream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 void Memory::LoadState(std::istream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+    RebuildMemoryMap();
+}
+
+void Memory::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_state.MAPCTL);
+    G_SERIALIZE_ARRAY(s, m_state.ram, 0x10000);
 }

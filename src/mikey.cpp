@@ -23,6 +23,7 @@
 #include "mikey.h"
 #include "memory.h"
 #include "no_bios.h"
+#include "state_serializer.h"
 
 Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502)
 {
@@ -188,10 +189,77 @@ void Mikey::RenderNoBiosScreen(u8* frame_buffer)
 
 void Mikey::SaveState(std::ostream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 void Mikey::LoadState(std::istream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Mikey::Serialize(StateSerializer& s)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        G_SERIALIZE(s, m_state.timers[i].backup);
+        G_SERIALIZE(s, m_state.timers[i].control_a);
+        G_SERIALIZE(s, m_state.timers[i].control_b);
+        G_SERIALIZE(s, m_state.timers[i].counter);
+
+        G_SERIALIZE(s, m_state.timers[i].internal_cycles);
+        G_SERIALIZE(s, m_state.timers[i].internal_period_cycles);
+        G_SERIALIZE(s, m_state.timers[i].internal_pending_ticks);
+    }
+
+    for (int i = 0; i < 16; i++)
+    {
+        G_SERIALIZE(s, m_state.colors[i].green);
+        G_SERIALIZE(s, m_state.colors[i].bluered);
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        G_SERIALIZE(s, m_state.audio[i].volume);
+        G_SERIALIZE(s, m_state.audio[i].feedback);
+        G_SERIALIZE(s, m_state.audio[i].output);
+        G_SERIALIZE(s, m_state.audio[i].lfsr_low);
+        G_SERIALIZE(s, m_state.audio[i].backup);
+        G_SERIALIZE(s, m_state.audio[i].control);
+        G_SERIALIZE(s, m_state.audio[i].counter);
+        G_SERIALIZE(s, m_state.audio[i].other);
+
+        G_SERIALIZE(s, m_state.audio[i].internal_cycles);
+        G_SERIALIZE(s, m_state.audio[i].internal_period_cycles);
+        G_SERIALIZE(s, m_state.audio[i].internal_pending_ticks);
+        G_SERIALIZE(s, m_state.audio[i].internal_lfsr);
+        G_SERIALIZE(s, m_state.audio[i].internal_taps_mask);
+        G_SERIALIZE(s, m_state.audio[i].internal_mix);
+    }
+
+    G_SERIALIZE(s, m_state.ATTEN_A);
+    G_SERIALIZE(s, m_state.ATTEN_B);
+    G_SERIALIZE(s, m_state.ATTEN_C);
+    G_SERIALIZE(s, m_state.ATTEN_D);
+    G_SERIALIZE(s, m_state.MPAN);
+    G_SERIALIZE(s, m_state.MSTEREO);
+    G_SERIALIZE(s, m_state.SYSCTL1);
+    G_SERIALIZE(s, m_state.IODIR);
+    G_SERIALIZE(s, m_state.IODAT);
+    G_SERIALIZE(s, m_state.SERCTL);
+    G_SERIALIZE(s, m_state.SERDAT);
+    G_SERIALIZE(s, m_state.SDONEACK);
+    G_SERIALIZE(s, m_state.CPUSLEEP);
+    G_SERIALIZE(s, m_state.DISPCTL);
+    G_SERIALIZE(s, m_state.PBKUP);
+    G_SERIALIZE(s, m_state.DISPADR.value);
+    G_SERIALIZE(s, m_state.irq_pending);
+    G_SERIALIZE(s, m_state.irq_mask);
+    G_SERIALIZE(s, m_state.frame_ready);
+    G_SERIALIZE(s, m_state.render_line);
+    G_SERIALIZE(s, m_state.dispadr_latch);
+    G_SERIALIZE(s, m_state.rest);
+
+    G_SERIALIZE_ARRAY(s, m_host_palette, 16);
 }

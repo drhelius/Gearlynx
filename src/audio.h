@@ -23,6 +23,7 @@
 #include "common.h"
 
 class Mikey;
+class StateSerializer;
 
 class Audio
 {
@@ -48,6 +49,7 @@ public:
     void SetLowpassCutoff(float fc);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
+    void Serialize(StateSerializer& s);
 
 private:
     Mikey* m_mikey;

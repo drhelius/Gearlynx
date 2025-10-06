@@ -19,12 +19,13 @@
 
 #include "input.h"
 #include "common.h"
+#include "state_serializer.h"
 
 Input::Input(Media* media)
 {
     m_media = media;
     InitPointer(m_suzy);
-    m_input = 0x0000;
+    m_state = 0x0000;
 }
 
 void Input::Init(Suzy* suzy)
@@ -35,15 +36,22 @@ void Input::Init(Suzy* suzy)
 
 void Input::Reset()
 {
-    m_input = 0x0000;
+    m_state = 0x0000;
 }
 
 void Input::SaveState(std::ostream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 void Input::LoadState(std::istream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Input::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_state);
 }

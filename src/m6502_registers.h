@@ -23,6 +23,7 @@
 #include <istream>
 #include <ostream>
 #include "common.h"
+#include "state_serializer.h"
 
 class EightBitRegister
 {
@@ -36,6 +37,7 @@ public:
     void Decrement(u8 value);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
+    void Serialize(StateSerializer& s);
 
 private:
     u8 m_value;
@@ -73,12 +75,19 @@ INLINE void EightBitRegister::Decrement(u8 value)
 
 INLINE void EightBitRegister::SaveState(std::ostream& stream)
 {
-    stream.write(reinterpret_cast<const char*> (&m_value), sizeof(m_value));
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 INLINE void EightBitRegister::LoadState(std::istream& stream)
 {
-    stream.read(reinterpret_cast<char*> (&m_value), sizeof(m_value));
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+INLINE void EightBitRegister::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_value);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -101,6 +110,7 @@ public:
     void Decrement(u16 value);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
+    void Serialize(StateSerializer& s);
 
 private:
     u16_union m_value;
@@ -169,12 +179,19 @@ INLINE void SixteenBitRegister::Decrement(u16 value)
 
 INLINE void SixteenBitRegister::SaveState(std::ostream& stream)
 {
-    stream.write(reinterpret_cast<const char*> (&m_value.value), sizeof(m_value.value));
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 INLINE void SixteenBitRegister::LoadState(std::istream& stream)
 {
-    stream.read(reinterpret_cast<char*> (&m_value.value), sizeof(m_value.value));
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+INLINE void SixteenBitRegister::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_value.value);
 }
 
 #endif /* M6502_REGISTERS_H */

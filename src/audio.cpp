@@ -21,6 +21,7 @@
 #include <ostream>
 #include <math.h>
 #include "audio.h"
+#include "state_serializer.h"
 
 Audio::Audio(Mikey* mikey)
 {
@@ -125,10 +126,26 @@ void Audio::SetLowpassCutoff(float fc)
 
 void Audio::SaveState(std::ostream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 void Audio::LoadState(std::istream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Audio::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_cycles);
+    G_SERIALIZE(s, m_lpf_left);
+    G_SERIALIZE(s, m_lpf_right);
+    G_SERIALIZE(s, m_buffer_pos);
+    G_SERIALIZE(s, m_frame_samples);
+
+    for (int i = 0; i < 4; i++)
+    {
+        G_SERIALIZE_ARRAY(s, m_channel[i].buffer, GLYNX_AUDIO_BUFFER_SIZE);
+    }
 }

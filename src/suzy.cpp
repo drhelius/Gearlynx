@@ -24,6 +24,7 @@
 #include "memory.h"
 #include "m6502.h"
 #include "input.h"
+#include "state_serializer.h"
 
 Suzy::Suzy(Media* media, M6502* m6502, Input* input)
 {
@@ -162,10 +163,81 @@ void Suzy::ComputeQuadLUT()
 
 void Suzy::SaveState(std::ostream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 void Suzy::LoadState(std::istream& stream)
 {
-    UNUSED(stream);
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Suzy::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_state.TMPADR);
+    G_SERIALIZE(s, m_state.TILTACUM);
+    G_SERIALIZE(s, m_state.HOFF);
+    G_SERIALIZE(s, m_state.VOFF);
+    G_SERIALIZE(s, m_state.VIDBAS);
+    G_SERIALIZE(s, m_state.COLLBAS);
+    G_SERIALIZE(s, m_state.VIDADR);
+    G_SERIALIZE(s, m_state.COLLADR);
+    G_SERIALIZE(s, m_state.SCBNEXT);
+    G_SERIALIZE(s, m_state.SPRDLINE);
+    G_SERIALIZE(s, m_state.HPOSSTRT);
+    G_SERIALIZE(s, m_state.VPOSSTRT);
+    G_SERIALIZE(s, m_state.SPRHSIZ);
+    G_SERIALIZE(s, m_state.SPRVSIZ);
+    G_SERIALIZE(s, m_state.STRETCH);
+    G_SERIALIZE(s, m_state.TILT);
+    G_SERIALIZE(s, m_state.SPRDOFF);
+    G_SERIALIZE(s, m_state.SPRVPOS);
+    G_SERIALIZE(s, m_state.COLLOFF);
+    G_SERIALIZE(s, m_state.VSIZACUM);
+    G_SERIALIZE(s, m_state.HSIZOFF);
+    G_SERIALIZE(s, m_state.VSIZOFF);
+    G_SERIALIZE(s, m_state.SCBADR);
+    G_SERIALIZE(s, m_state.PROCADR);
+    G_SERIALIZE(s, m_state.MATHD);
+    G_SERIALIZE(s, m_state.MATHC);
+    G_SERIALIZE(s, m_state.MATHB);
+    G_SERIALIZE(s, m_state.MATHA);
+    G_SERIALIZE(s, m_state.MATHP);
+    G_SERIALIZE(s, m_state.MATHN);
+    G_SERIALIZE(s, m_state.MATHH);
+    G_SERIALIZE(s, m_state.MATHG);
+    G_SERIALIZE(s, m_state.MATHF);
+    G_SERIALIZE(s, m_state.MATHE);
+    G_SERIALIZE(s, m_state.MATHM);
+    G_SERIALIZE(s, m_state.MATHL);
+    G_SERIALIZE(s, m_state.MATHK);
+    G_SERIALIZE(s, m_state.MATHJ);
+    G_SERIALIZE(s, m_state.SPRCTL0);
+    G_SERIALIZE(s, m_state.SPRCTL1);
+    G_SERIALIZE(s, m_state.SPRCOLL);
+    G_SERIALIZE(s, m_state.SPRINIT);
+    G_SERIALIZE(s, m_state.SUZYBUSEN);
+    G_SERIALIZE(s, m_state.SPRGO);
+    G_SERIALIZE(s, m_state.sprsys_sign);
+    G_SERIALIZE(s, m_state.sprsys_accumulate);
+    G_SERIALIZE(s, m_state.sprsys_dontcollide);
+    G_SERIALIZE(s, m_state.sprsys_vstrech);
+    G_SERIALIZE(s, m_state.sprsys_lefthand);
+    G_SERIALIZE(s, m_state.sprsys_unsafe);
+    G_SERIALIZE(s, m_state.sprsys_stopsprites);
+    G_SERIALIZE(s, m_state.sprsys_mathbusy);
+    G_SERIALIZE(s, m_state.sprsys_mathbit);
+    G_SERIALIZE(s, m_state.sprsys_lastcarrybit);
+    G_SERIALIZE(s, m_state.sprsys_spritesbusy);
+    G_SERIALIZE_ARRAY(s, m_state.pen_map, 16);
+    G_SERIALIZE(s, m_state.sprite_cycles);
+    G_SERIALIZE(s, m_state.math_cycles);
+    G_SERIALIZE(s, m_state.math_sign_A);
+    G_SERIALIZE(s, m_state.math_sign_C);
+    G_SERIALIZE(s, m_state.shift_register_address);
+    G_SERIALIZE(s, m_state.shift_register_current);
+    G_SERIALIZE(s, m_state.shift_register_bit);
+    G_SERIALIZE(s, m_state.fred);
+    G_SERIALIZE(s, m_state.everon);
 }

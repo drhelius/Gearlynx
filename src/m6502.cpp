@@ -24,6 +24,7 @@
 #include <assert.h>
 #include "m6502.h"
 #include "memory.h"
+#include "state_serializer.h"
 
 M6502::M6502()
 {
@@ -34,6 +35,7 @@ M6502::M6502()
     m_s.irq_pending = 0;
     m_s.debug_next_irq = 0;
     m_s.debug_irq_mask = 0;
+    m_s.halted = false;
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = 0;
     m_cpu_breakpoint_hit = false;
@@ -41,7 +43,6 @@ M6502::M6502()
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
     m_reset_value = -1;
-    m_halted = false;
 }
 
 M6502::~M6502()
@@ -85,11 +86,11 @@ void M6502::Reset()
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_s.debug_irq_mask = 0;
+    m_s.halted = false;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
-    m_halted = false;
     ClearDisassemblerCallStack();
 }
 
@@ -309,10 +310,8 @@ void M6502::SaveState(std::ostream& stream)
     m_s.S.SaveState(stream);
     m_s.P.SaveState(stream);
 
-    stream.write(reinterpret_cast<const char*> (&m_s.cycles), sizeof(m_s.cycles));
-    stream.write(reinterpret_cast<const char*> (&m_s.irq_asserted), sizeof(m_s.irq_asserted));
-    stream.write(reinterpret_cast<const char*> (&m_s.irq_pending), sizeof(m_s.irq_pending));
-    stream.write(reinterpret_cast<const char*> (&m_s.debug_next_irq), sizeof(m_s.debug_next_irq));
+    StateSerializer serializer(stream);
+    Serialize(serializer);
 }
 
 void M6502::LoadState(std::istream& stream)
@@ -324,8 +323,16 @@ void M6502::LoadState(std::istream& stream)
     m_s.S.LoadState(stream);
     m_s.P.LoadState(stream);
 
-    stream.read(reinterpret_cast<char*> (&m_s.cycles), sizeof(m_s.cycles));
-    stream.read(reinterpret_cast<char*> (&m_s.irq_asserted), sizeof(m_s.irq_asserted));
-    stream.read(reinterpret_cast<char*> (&m_s.irq_pending), sizeof(m_s.irq_pending));
-    stream.read(reinterpret_cast<char*> (&m_s.debug_next_irq), sizeof(m_s.debug_next_irq));
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void M6502::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_s.cycles);
+    G_SERIALIZE(s, m_s.irq_asserted);
+    G_SERIALIZE(s, m_s.irq_pending);
+    G_SERIALIZE(s, m_s.debug_next_irq);
+    G_SERIALIZE(s, m_s.debug_irq_mask);
+    G_SERIALIZE(s, m_s.halted);
 }

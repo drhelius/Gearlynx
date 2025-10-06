@@ -26,6 +26,7 @@
 
 class Media;
 class Suzy;
+class StateSerializer;
 
 class Input
 {
@@ -37,14 +38,17 @@ public:
     void KeyReleased(GLYNX_Keys key);
     u8 ReadJoystick();
     u8 ReadSwitches();
-    GLYNX_Keys MapDirectional(GLYNX_Keys key);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
+    GLYNX_Keys MapDirectional(GLYNX_Keys key);
+    void Serialize(StateSerializer& s);
+
+private:
     Media* m_media;
     Suzy* m_suzy;
-    u16 m_input;
+    u16 m_state;
 };
 
 #include "input_inline.h"

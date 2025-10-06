@@ -174,19 +174,19 @@ static void menu_gearlynx(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Save State As...", NULL, false, false))
+        if (ImGui::MenuItem("Save State As..."))
         {
             save_state = true;
         }
 
-        if (ImGui::MenuItem("Load State From...", NULL, false, false))
+        if (ImGui::MenuItem("Load State From..."))
         {
             open_state = true;
         }
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("Save State Slot", false))
+        if (ImGui::BeginMenu("Save State Slot"))
         {
             ImGui::PushItemWidth(100.0f);
             ImGui::Combo("##slot", &config_emulator.save_slot, "Slot 1\0Slot 2\0Slot 3\0Slot 4\0Slot 5\0\0");
@@ -198,7 +198,7 @@ static void menu_gearlynx(void)
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Save State", "Ctrl+S", false, false)) 
+        if (ImGui::MenuItem("Save State", "Ctrl+S"))
         {
             std::string message("Saving state to slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -206,7 +206,7 @@ static void menu_gearlynx(void)
             emu_save_state_slot(config_emulator.save_slot + 1);
         }
 
-        if (ImGui::MenuItem("Load State", "Ctrl+L", false, false))
+        if (ImGui::MenuItem("Load State", "Ctrl+L"))
         {
             std::string message("Loading state from slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -281,7 +281,7 @@ static void menu_emulator(void)
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("Save States Dir", false))
+        if (ImGui::BeginMenu("Save States Dir"))
         {
             ImGui::PushItemWidth(220.0f);
             if (ImGui::Combo("##savestate_option", &config_emulator.savestates_dir_option, "Default Location\0Same as ROM\0Custom Location\0\0"))
@@ -872,7 +872,7 @@ static void draw_savestate_slot_info(int slot)
         {
             float width = (float)emu_savestates_screenshots[slot].width;
             float height = (float)emu_savestates_screenshots[slot].height;
-            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_savestates, ImVec2((height / 3.0f) * 4.0f, height), ImVec2(0, 0), ImVec2(width / 2048.0f, height / 256.0f));
+            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_savestates, ImVec2(width, height), ImVec2(0, 0), ImVec2(width / 256.0f, height / 256.0f));
         }
     }
     else

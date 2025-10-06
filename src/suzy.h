@@ -29,6 +29,7 @@ class Media;
 class Memory;
 class M6502;
 class Input;
+class StateSerializer;
 
 class Suzy
 {
@@ -114,6 +115,7 @@ private:
     void MathRunDivide();
     bool MathIsNegative(u16 value);
     void ComputeQuadLUT();
+    void Serialize(StateSerializer& s);
 
 private:
     struct QuadPos

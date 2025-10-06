@@ -34,13 +34,13 @@ INLINE u32 M6502::RunInstruction()
 
     m_s.cycles = 0;
 
-    if (unlikely(m_halted))
+    if (unlikely(m_s.halted))
     {
         m_s.cycles = 4;
 
         if (m_s.irq_asserted)
         {
-            m_halted = false;
+            m_s.halted = false;
             CheckIRQs();
             if(m_s.irq_pending)
                 HandleIRQ();
@@ -96,12 +96,12 @@ INLINE void M6502::AssertIRQ(bool asserted, u8 irq_mask)
 
 INLINE void M6502::Halt(bool halted)
 {
-    m_halted = halted;
+    m_s.halted = halted;
 }
 
 INLINE bool M6502::IsHalted()
 {
-    return m_halted;
+    return m_s.halted;
 }
 
 INLINE void M6502::InjectCycles(unsigned int cycles)

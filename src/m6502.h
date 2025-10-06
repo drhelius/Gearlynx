@@ -40,6 +40,7 @@
 #define STACK_ADDR      0x0100
 
 class Memory;
+class StateSerializer;
 
 class M6502
 {
@@ -57,6 +58,7 @@ public:
         bool irq_pending;
         s32 debug_next_irq;
         s32 debug_irq_mask;
+        bool halted;
     };
 
     struct GLYNX_Breakpoint
@@ -122,7 +124,6 @@ private:
     bool m_run_to_breakpoint_requested;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_reset_value;
-    bool m_halted;
 
 private:
     void HandleIRQ();
@@ -166,6 +167,8 @@ private:
     u16 AbsoluteIndexedIndirectAddressing();
 
     void PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record, u8 opcode, u16 address);
+
+    void Serialize(StateSerializer& s);
 
     void UnofficialOPCode();
     void OPCodes_ADC(u8 value);

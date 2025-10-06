@@ -45,7 +45,6 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_mikey);
     InitPointer(m_debug_callback);
     m_paused = true;
-    m_clock = 0;
 }
 
 GearlynxCore::~GearlynxCore()
@@ -308,13 +307,12 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
 
     Debug("Serializing save state...");
 
-    // stream.write(reinterpret_cast<const char*> (&m_clock), sizeof(m_clock));
-    // m_memory->SaveState(stream);
-    // m_huc6260->SaveState(stream);
-    // m_huc6270->SaveState(stream);
-    // m_m6502->SaveState(stream);
-    // m_audio->SaveState(stream);
-    // m_input->SaveState(stream);
+    m_m6502->SaveState(stream);
+    m_memory->SaveState(stream);
+    m_mikey->SaveState(stream);
+    m_suzy->SaveState(stream);
+    m_audio->SaveState(stream);
+    m_input->SaveState(stream);
 
 #if defined(__LIBRETRO__)
     GLYNX_SaveState_Header_Libretro header;
@@ -341,21 +339,27 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
 
     if (screenshot)
     {
-        //TODO: Implement screenshot
-        // header.screenshot_width = m_huc6260->GetCurrentLineWidth();
-        // header.screenshot_height = m_huc6260->GetCurrentHeight();
+        GLYNX_Runtime_Info runtime_info;
+        if (!GetRuntimeInfo(runtime_info))
+        {
+            header.screenshot_size = 0;
+            header.screenshot_width = 0;
+            header.screenshot_height = 0;
+        }
+        else
+        {
+            header.screenshot_width = runtime_info.screen_width;
+            header.screenshot_height = runtime_info.screen_height;
 
-        // int bytes_per_pixel = 2;
-        // if (m_huc6260->GetPixelFormat() == GLYNX_PIXEL_RGBA8888 || m_huc6260->GetPixelFormat() == GLYNX_PIXEL_BGRA8888)
-        //     bytes_per_pixel = 4;
+            int bytes_per_pixel = 2;
+            if (m_mikey->GetPixelFormat() == GLYNX_PIXEL_RGBA8888)
+                bytes_per_pixel = 4;
 
-        // u8* frame_buffer = m_huc6260->GetBuffer();
+            u8* frame_buffer = m_mikey->GetBuffer();
 
-        // header.screenshot_size = header.screenshot_width * header.screenshot_height * bytes_per_pixel;
-        // stream.write(reinterpret_cast<const char*>(frame_buffer), header.screenshot_size);
-        header.screenshot_size = 0;
-        header.screenshot_width = 0;
-        header.screenshot_height = 0;
+            header.screenshot_size = header.screenshot_width * header.screenshot_height * bytes_per_pixel;
+            stream.write(reinterpret_cast<const char*>(frame_buffer), header.screenshot_size);
+        }
     }
     else
     {
@@ -508,13 +512,12 @@ bool GearlynxCore::LoadState(std::istream& stream)
 
     Debug("Unserializing save state...");
 
-    // stream.read(reinterpret_cast<char*> (&m_clock), sizeof(m_clock));
-    // m_memory->LoadState(stream);
-    // m_huc6260->LoadState(stream);
-    // m_huc6270->LoadState(stream);
-    // m_m6502->LoadState(stream);
-    // m_audio->LoadState(stream);
-    // m_input->LoadState(stream);
+    m_m6502->LoadState(stream);
+    m_memory->LoadState(stream);
+    m_mikey->LoadState(stream);
+    m_suzy->LoadState(stream);
+    m_audio->LoadState(stream);
+    m_input->LoadState(stream);
 
     return true;
 }
@@ -604,7 +607,6 @@ bool GearlynxCore::GetSaveStateScreenshot(int index, const char* path, GLYNX_Sav
 
 void GearlynxCore::Reset()
 {
-    m_clock = 0;
     m_paused = false;
 
     m_suzy->Reset();

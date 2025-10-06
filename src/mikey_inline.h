@@ -326,6 +326,11 @@ INLINE u16* Mikey::GetRGB565Palette()
     return m_rgb565_palette;
 }
 
+INLINE GLYNX_Pixel_Format Mikey::GetPixelFormat()
+{
+    return m_pixel_format;
+}
+
 INLINE u8 Mikey::ReadColor(u16 address)
 {
     assert(address >= MIKEY_GREEN0 && address <= MIKEY_BLUEREDF);
@@ -919,6 +924,10 @@ INLINE void Mikey::VerticalBlank()
     m_state.frame_ready = true;
     //m_state.render_line = 0;
     m_debug_cycles = 0;
+
+    GLYNX_Rotation rotation = m_media->GetRotation();
+    if (rotation != NO_ROTATION)
+        RotateFrameBuffer(rotation);
 }
 
 INLINE void Mikey::LineDMA(int line)

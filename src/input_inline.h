@@ -83,7 +83,7 @@ INLINE void Input::KeyPressed(GLYNX_Keys key)
     if (is_dpad)
         mapped = MapDirectional(key);
 
-    m_input |= mapped;
+    m_state |= mapped;
 }
 
 INLINE void Input::KeyReleased(GLYNX_Keys key)
@@ -95,17 +95,17 @@ INLINE void Input::KeyReleased(GLYNX_Keys key)
     if (is_dpad)
         mapped = MapDirectional(key);
 
-    m_input &= ~mapped;
+    m_state &= ~mapped;
 }
 
 INLINE u8 Input::ReadJoystick()
 {
-    return (u8)(m_input & 0xFF);
+    return (u8)(m_state & 0xFF);
 }
 
 INLINE u8 Input::ReadSwitches()
 {
-    return (u8)(m_input >> 8);
+    return (u8)(m_state >> 8);
 }
 
 #endif /* INPUT_INLINE_H */

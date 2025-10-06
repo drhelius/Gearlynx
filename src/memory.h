@@ -30,6 +30,7 @@ class Audio;
 class Suzy;
 class Mikey;
 class M6502;
+class StateSerializer;
 
 class Memory
 {
@@ -67,6 +68,7 @@ private:
     u8 BiosRead(u16 address);
     u8 LastPageRead(u16 address);
     void LastPageWrite(u16 address, u8 value);
+    void Serialize(StateSerializer& s);
 
 private:
     Media* m_media;

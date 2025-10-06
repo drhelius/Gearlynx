@@ -23,7 +23,8 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 ## Features
 
 - Very accurate 65C02 core.
-- Compressed rom support (lnx, lyx, and zip).
+- Compressed and hombrew rom support (lnx, lyx, o, and zip).
+- Save states with preview.
 - Configurable low-pass audio filter.
 - Internal database for automatic rom detection and hardware selection if `Auto` options are selected.
 - Supported platforms (standalone): Windows, Linux, BSD and macOS.

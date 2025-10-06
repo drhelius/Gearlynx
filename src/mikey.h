@@ -29,6 +29,7 @@ class Media;
 class Memory;
 class M6502;
 class Suzy;
+class StateSerializer;
 
 class Mikey
 {
@@ -75,7 +76,7 @@ public:
     u8* GetBuffer();
     u32* GetRGBA8888Palette();
     u16* GetRGB565Palette();
-    void RotateFrameBuffer(GLYNX_Rotation rotation);
+    GLYNX_Pixel_Format GetPixelFormat();
     void RenderNoBiosScreen(u8* frame_buffer);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
@@ -107,6 +108,8 @@ private:
     void LineDMATemplate(int line);
     template <int bytes_per_pixel>
     void LineDMABlankTemplate(int line);
+    void RotateFrameBuffer(GLYNX_Rotation rotation);
+    void Serialize(StateSerializer& s);
 
 private:
     Media* m_media;
