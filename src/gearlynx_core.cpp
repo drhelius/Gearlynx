@@ -132,10 +132,7 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     u8 t0_prescaler = mikey_state->timers[0].control_a & 0x07;
     float tick_T0_us = (float)k_mikey_timer_period_us[t0_prescaler];
 
-    float frame_time_ms = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
-
-    // Clamp to (50, 80) FPS range
-    runtime_info.frame_time = CLAMP(frame_time_ms, 12.5f, 20.0f);
+    runtime_info.frame_time = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
 
     return m_media->IsReady();
 }
