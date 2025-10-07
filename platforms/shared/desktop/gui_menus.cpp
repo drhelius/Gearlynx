@@ -601,7 +601,7 @@ static void menu_audio(void)
             ImGui::PushItemWidth(200.0f);
             if (SliderIntWithSteps("##psg_filter", &config_audio.lowpass_cutoff, 100, 5000, 10, "Cutoff = %d Hz"))
             {
-                emu_audio_set_lowpass_cutoff(config_audio.lowpass_cutoff);
+                emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
             }
             ImGui::PopItemWidth();
             ImGui::EndMenu();
