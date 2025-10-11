@@ -95,7 +95,9 @@ private:
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
     void UpdateTimers(u32 cycles);
+    bool BorrowInTimer(int i, GLYNX_Mikey_Timer* t);
     void UpdateAudio(u32 cycles);
+    bool BorrowInChannel(int i, GLYNX_Mikey_Audio* c);
     void AdvanceLFSR(u8 channel);
     void RebuildTapsMask(GLYNX_Mikey_Audio* channel);
     void RebuildLFSR(GLYNX_Mikey_Audio* channel);
