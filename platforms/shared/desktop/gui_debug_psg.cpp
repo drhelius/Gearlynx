@@ -71,7 +71,7 @@ void gui_debug_window_psg(void)
             Audio::GLYNX_Audio_Channel* psg_channels = audio->GetChannels();
             GLYNX_Mikey_Audio* channel = &mikey_state->audio[c];
             u8 period = (channel->control & 0x07);
-            bool is_linked = (period == 7) && (k_mikey_audio_backward_links[c] != -1);
+            bool is_linked = (period == 7);
             bool enabled = IS_SET_BIT(channel->control, 3);
             bool reload = IS_SET_BIT(channel->control, 4);
             bool integrate = IS_SET_BIT(channel->control, 5);

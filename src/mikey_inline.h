@@ -620,7 +620,6 @@ INLINE void Mikey::UpdateTimers(u32 cycles)
         // Clear transient status bits for this update
         t->control_b = UNSET_BIT(t->control_b, 0); // Borrow Out
         t->control_b = UNSET_BIT(t->control_b, 1); // Borrow In
-        t->control_b = UNSET_BIT(t->control_b, 2); // Last Clock
 
         // Reset Timer Done is level-triggered
         if (IS_SET_BIT(t->control_a, 6))
@@ -667,13 +666,15 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
     if (t->counter > 0)
     {
         t->counter--;
-        if (t->counter == 0)
-            t->control_b = SET_BIT(t->control_b, 2); // Last clock (pre-borrow)
+        if (t->internal_period_cycles != 0)
+            t->control_b = UNSET_BIT(t->control_b, 2); // reset Last clock
     }
     else
     {
-        // Borrow out on the tick after LAST-CLOCK
-        t->control_b = SET_BIT(t->control_b, 0);
+        t->control_b = SET_BIT(t->control_b, 0); // Borrow Out
+        if (t->internal_period_cycles != 0)
+            t->control_b = SET_BIT(t->control_b, 2); // Last clock
+        t->control_b = SET_BIT(t->control_b, 3); // Timer Done
 
         int link = k_mikey_timer_forward_links[i];
 
@@ -696,8 +697,6 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
 
         if (!one_shot)
             t->counter = t->backup;
-
-        t->control_b = SET_BIT(t->control_b, 3); // Timer Done
 
         // IRQ on borrow attempt (except timer 4 / UART baud)
         if (IS_SET_BIT(t->control_a, 7) && (i != 4))
@@ -729,7 +728,6 @@ INLINE void Mikey::UpdateAudio(u32 cycles)
         // Clear transient status bits for this update
         c->other = UNSET_BIT(c->other, 0); // Borrow Out
         c->other = UNSET_BIT(c->other, 1); // Borrow In
-        c->other = UNSET_BIT(c->other, 2); // Last Clock
 
         // Reset Timer Done is level-triggered
         if (IS_SET_BIT(c->control, 6))
@@ -776,13 +774,15 @@ INLINE bool Mikey::BorrowInChannel(int i, GLYNX_Mikey_Audio* c)
     if (c->counter > 0)
     {
         c->counter--;
-        if (c->counter == 0)
-            c->other = SET_BIT(c->other, 2); // Last clock (pre-borrow)
+        if (c->internal_period_cycles != 0)
+            c->other = UNSET_BIT(c->other, 2); // reset Last clock
     }
     else
     {
-        // Borrow out on the tick after LAST-CLOCK
-        c->other = SET_BIT(c->other, 0);
+        c->other = SET_BIT(c->other, 0); // Borrow Out
+        if (c->internal_period_cycles != 0)
+            c->other = SET_BIT(c->other, 2); // Last clock
+        c->other = SET_BIT(c->other, 3); // Timer done
 
         int link = k_mikey_audio_forward_links[i];
 
@@ -802,8 +802,6 @@ INLINE bool Mikey::BorrowInChannel(int i, GLYNX_Mikey_Audio* c)
 
         if (!one_shot)
             c->counter = c->backup;
-
-        c->other = SET_BIT(c->other, 3); // Timer Done
 
         AdvanceLFSR(i);
 
