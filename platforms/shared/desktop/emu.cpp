@@ -46,7 +46,7 @@ static void update_debug_sprites(void);
 
 bool emu_init(void)
 {
-    emu_frame_buffer = new u8[256 * 128 * 4];
+    emu_frame_buffer = new u8[256 * 256 * 4];
     audio_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
 
     init_debug();

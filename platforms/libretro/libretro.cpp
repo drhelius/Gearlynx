@@ -185,7 +185,7 @@ void retro_init(void)
     core->Init(GLYNX_PIXEL_RGB565);
 #endif
 
-// TODO:   frame_buffer = new u8[HUC6270_MAX_RESOLUTION_WIDTH * HUC6270_MAX_RESOLUTION_HEIGHT * 2];
+// TODO:   frame_buffer = new u8[256 * 256 * 2];
 
     for (int i = 0; i < MAX_PADS; i++)
     {
