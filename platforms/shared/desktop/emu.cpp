@@ -447,7 +447,7 @@ static void load_ram(void)
 
 static void reset_buffers(void)
 {
-    for (int i = 0; i < (GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4); i++)
+    for (int i = 0; i < (256 * 256 * 4); i++)
         emu_frame_buffer[i] = 0;
 
     // emu_debug_background_buffer_width = 32;
@@ -490,8 +490,8 @@ static void init_debug(void)
 {
     for (int i = 0; i < 2; i++)
     {
-        emu_debug_framebuffer[i] = new u8[256 * 128 * 4];
-        memset(emu_debug_framebuffer[i], 0, 256 * 128 * 4);
+        emu_debug_framebuffer[i] = new u8[256 * 256 * 4];
+        memset(emu_debug_framebuffer[i], 0, 256 * 256 * 4);
     }
     // emu_debug_background_buffer = new u8[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4];
     // for (int i = 0; i < GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4; i++)
@@ -527,16 +527,18 @@ static void update_debug_framebuffers(void)
     u16 dispadr = core->GetMikey()->GetState()->DISPADR.value;
     u8* ram = core->GetMemory()->GetRAM();
     u32* palette = core->GetMikey()->GetRGBA8888Palette();
+    if (!palette)
+        return;
 
     int count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT;
-    
+
     u32* frame_buffer_vidbas = (u32*)emu_debug_framebuffer[0];
     u32* frame_buffer_dispadr = (u32*)emu_debug_framebuffer[1];
 
     for (int i = 0; i < count; i++)
     {
-        u16 src_vidbas = vidbas + (i / 2);
-        u16 src_dispadr = dispadr + (i / 2);
+        u16 src_vidbas = (u16)(vidbas + (i >> 1));
+        u16 src_dispadr = (u16)(dispadr + (i >> 1));
 
         int color_idx_vidbas = i & 1 ? (ram[src_vidbas] & 0x0F) : (ram[src_vidbas] >> 4);
         int color_idx_dispadr = i & 1 ? (ram[src_dispadr] & 0x0F) : (ram[src_dispadr] >> 4);
@@ -546,8 +548,11 @@ static void update_debug_framebuffers(void)
         u16 green_dispadr = core->GetMikey()->GetState()->colors[color_idx_dispadr].green;
         u16 bluered_dispadr = core->GetMikey()->GetState()->colors[color_idx_dispadr].bluered;
 
-        u32 final_color_vidbas = palette[green_vidbas << 8 | bluered_vidbas];
-        u32 final_color_dispadr = palette[green_dispadr << 8 | bluered_dispadr];
+        u16 palette_idx_vidbas = ((green_vidbas & 0x0F) << 8 | (bluered_vidbas & 0xFF)) & 0x0FFF;
+        u16 palette_idx_dispadr = ((green_dispadr & 0x0F) << 8 | (bluered_dispadr & 0xFF)) & 0x0FFF;
+
+        u32 final_color_vidbas = palette[palette_idx_vidbas];
+        u32 final_color_dispadr = palette[palette_idx_dispadr];
 
         frame_buffer_vidbas[i] = final_color_vidbas;
         frame_buffer_dispadr[i] = final_color_dispadr;
