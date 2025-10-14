@@ -122,7 +122,7 @@ void Mikey::ResetAudio()
         m_state.audio[i].internal_pending_ticks = 0;
         m_state.audio[i].internal_lfsr = 0;
         m_state.audio[i].internal_taps_mask = 0;
-        m_state.audio[i].internal_mix = false;
+        m_state.audio[i].internal_mix = true;
     }
 }
 
