@@ -109,4 +109,29 @@
     #define unlikely(x) (x)
 #endif
 
+#if defined(__has_cpp_attribute)
+  #if __has_cpp_attribute(fallthrough)
+    #define FALLTHROUGH [[fallthrough]]
+  #elif __has_cpp_attribute(clang::fallthrough)
+    #define FALLTHROUGH [[clang::fallthrough]]
+  #elif __has_cpp_attribute(gnu::fallthrough)
+    #define FALLTHROUGH [[gnu::fallthrough]]
+  #endif
+#endif
+
+// MSVC older toolsets
+#ifndef FALLTHROUGH
+  #if defined(_MSC_VER) && !defined(__clang__)
+    #include <sal.h>
+    #ifdef __fallthrough
+      #define FALLTHROUGH __fallthrough
+    #else
+      #define FALLTHROUGH ((void)0) /* fall through */
+    #endif
+  #else
+    // Safe no-op for compilers without a recognized attribute
+    #define FALLTHROUGH ((void)0) /* fall through */
+  #endif
+#endif
+
 #endif /* DEFINES_H */

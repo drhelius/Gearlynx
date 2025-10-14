@@ -388,8 +388,8 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_MATHD:       // 0xFC52
         m_state.MATHD = value;
-        Write(SUZY_MATHC, 0);
-        break;
+        value = 0;
+        FALLTHROUGH;
     case SUZY_MATHC:       // 0xFC53
         m_state.MATHC = value;
         if (m_state.sprsys_sign)
