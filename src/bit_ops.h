@@ -56,7 +56,19 @@ INLINE u32 l_zero16(u16 value)
 #endif
 }
 
-INLINE u8 parity16(u16 x) {
+INLINE u8 parity8(u8 x)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return (u8)__builtin_parity((unsigned int)x);
+#else
+    x ^= x >> 4;
+    x &= 0x0F;
+    return (u8)((0x6996 >> x) & 1);
+#endif
+}
+
+INLINE u8 parity16(u16 x)
+{
 #if defined(__GNUC__) || defined(__clang__)
     return (u8)__builtin_parity((unsigned int)x);
 #else

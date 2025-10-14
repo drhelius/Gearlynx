@@ -58,6 +58,7 @@ void Mikey::Reset()
     ResetPalette();
     ResetTimers();
     ResetAudio();
+    ResetUART();
 
     m_debug_cycles = 0;
 }
@@ -126,10 +127,239 @@ void Mikey::ResetAudio()
     }
 }
 
+void Mikey::ResetUART()
+{
+    m_state.uart.tx_int_en = false;
+    m_state.uart.rx_int_en = false;
+    m_state.uart.par_en = false;
+    m_state.uart.reset_err = false;
+    m_state.uart.tx_open = false;
+    m_state.uart.tx_brk = false;
+    m_state.uart.par_even = false;
+    m_state.uart.tx_ready = true;
+    m_state.uart.rx_ready = false;
+    m_state.uart.tx_empty = true;
+    m_state.uart.par_err = false;
+    m_state.uart.ovr_err = false;
+    m_state.uart.fram_err = false;
+    m_state.uart.rx_break = false;
+    m_state.uart.par_bit = false;
+    m_state.uart.tx_active = false;
+    m_state.uart.tx_hold_valid = false;
+    m_state.uart.tx_parbit = false;
+    m_state.uart.tx_hold_data = 0;
+    m_state.uart.tx_data = 0;
+    m_state.uart.rx_data = 0;
+    m_state.uart.tx_bit_index = 0;
+}
+
 void Mikey::ResetPalette()
 {
     for (int address = 0xFDA0; address < 0xFDC0; address++)
         WriteColor(address, 0xFF);
+}
+
+void Mikey::UartBeginFrame(u8 data)
+{
+    m_state.uart.tx_data = data;
+    m_state.uart.tx_bit_index = 0;
+
+    if (m_state.uart.par_en)
+    {
+        bool odd = (parity8(data) != 0);
+        bool want_even = m_state.uart.par_even;
+        m_state.uart.tx_parbit = (want_even ? !odd : odd);
+    }
+    else
+    {
+        m_state.uart.tx_parbit = m_state.uart.par_even ? 1 : 0;
+    }
+
+    m_state.uart.tx_active = true;
+    m_state.uart.tx_empty  = false;
+    m_state.uart.tx_ready  = false;
+}
+
+void Mikey::UartClock()
+{
+    // If break is asserted, keep line busy and do not advance a normal frame
+    if (m_state.uart.tx_brk)
+    {
+        m_state.uart.tx_active = true;
+        m_state.uart.tx_empty  = false;
+        return;
+    }
+
+    if (!m_state.uart.tx_active)
+        return; // nothing to shift this tick
+
+    // Skip synthesizing the TX line level per bit for now
+
+    m_state.uart.tx_bit_index++;
+
+    if (m_state.uart.tx_bit_index >= 11)
+    {
+        // End of frame: deliver RX byte via loopback
+        if (m_state.uart.rx_ready)
+        {
+            // RX overrun if previous byte wasn't read
+            m_state.uart.ovr_err = true;
+        }
+        m_state.uart.rx_data  = m_state.uart.tx_data;
+        m_state.uart.par_bit  = (m_state.uart.tx_parbit != 0);
+        m_state.uart.rx_ready = true;
+
+        // Frame complete on TX side
+        m_state.uart.tx_active = false;
+        // If there is a holding byte queued, start it now
+        if (m_state.uart.tx_hold_valid)
+        {
+            u8 next = m_state.uart.tx_hold_data;
+            m_state.uart.tx_hold_valid = false;
+            UartBeginFrame(next);
+        }
+        else
+        {
+            m_state.uart.tx_empty = true;
+            m_state.uart.tx_ready = true;
+        }
+
+        UartRelevelIRQ();
+    }
+}
+
+void Mikey::HorizontalBlank()
+{
+    u8 timer_2_counter = m_state.timers[2].counter;
+    u8 timer_2_backup = m_state.timers[2].backup;
+    int line = 101 - timer_2_counter;
+
+    if (line >= 0 && line < 102)
+    {
+        //DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
+        LineDMA(line);
+    }
+    // else
+    // {
+    //     DebugMikey("===> Skiping VBLANK line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
+    // }
+
+    // Typically end of hcount 104
+    if (timer_2_counter == timer_2_backup)
+    {
+        DebugMikey("===> Rest signal goes low");
+        m_state.rest = false;
+    }
+    // Typically end of hcount 103, start of 3rd vblank line
+    else if (timer_2_counter == (timer_2_backup - 1))
+    {
+        DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
+        m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;
+    }
+    // Typically end of hcount 101
+    else if (timer_2_counter == (timer_2_backup - 3))
+    {
+        DebugMikey("===> Rest signal goes high");
+        m_state.rest = true;
+    }
+
+    // At the end of the last vblank line
+    if (timer_2_counter == (timer_2_backup - 2))
+    {
+        m_state.render_line = 0;
+    }
+    else
+        m_state.render_line++;
+}
+
+void Mikey::VerticalBlank()
+{
+    DebugMikey("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
+    m_state.frame_ready = true;
+    //m_state.render_line = 0;
+    m_debug_cycles = 0;
+
+    GLYNX_Rotation rotation = m_media->GetRotation();
+    if (rotation != NO_ROTATION)
+        RotateFrameBuffer(rotation);
+}
+
+void Mikey::LineDMA(int line)
+{
+    if (IS_SET_BIT(m_state.DISPCTL, 0))
+    {
+        if (m_pixel_format == GLYNX_PIXEL_RGB565)
+            LineDMATemplate<2>(line);
+        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
+            LineDMATemplate<4>(line);
+    }
+    else
+    {
+        if (m_pixel_format == GLYNX_PIXEL_RGB565)
+            LineDMABlankTemplate<2>(line);
+        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
+            LineDMABlankTemplate<4>(line);
+    }
+}
+
+template <int bytes_per_pixel>
+void Mikey::LineDMATemplate(int line)
+{
+    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
+
+    u8* ram = m_memory->GetRAM();
+    u16 line_offset = (u16)(m_state.dispadr_latch + (line * (GLYNX_SCREEN_WIDTH / 2)));
+    u8* src_line_ptr = ram + line_offset;
+    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
+    u16* palette = m_host_palette;
+    u8* src = src_line_ptr;
+
+    // RGB565
+    if (bytes_per_pixel == 2)
+    {
+        u16* dst16 = (u16*)(dst_line_ptr);
+
+        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+        {
+            u8 byte = *src++;
+            u8 color0 = byte >> 4;
+            u8 color1 = byte & 0x0F;
+            u16 idx0 = palette[color0] & 0x0FFF;
+            u16 idx1 = palette[color1] & 0x0FFF;
+
+            dst16[0] = m_rgb565_palette[idx0];
+            dst16[1] = m_rgb565_palette[idx1];
+            dst16 += 2;
+        }
+    }
+    // RGBA8888
+    else
+    {
+        u32* dst32 = (u32*)(dst_line_ptr);
+
+        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
+        {
+            u8 byte = *src++;
+            u8 color0 = byte >> 4;
+            u8 color1 = byte & 0x0F;
+            u16 idx0 = palette[color0] & 0x0FFF;
+            u16 idx1 = palette[color1] & 0x0FFF;
+
+            dst32[0] = m_rgba8888_palette[idx0];
+            dst32[1] = m_rgba8888_palette[idx1];
+            dst32 += 2;
+        }
+    }
+}
+
+template <int bytes_per_pixel>
+void Mikey::LineDMABlankTemplate(int line)
+{
+    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
+
+    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
+    size_t line_size = GLYNX_SCREEN_WIDTH * bytes_per_pixel;
+    memset(dst_line_ptr, 0, line_size);
 }
 
 void Mikey::RotateFrameBuffer(GLYNX_Rotation rotation)
@@ -237,6 +467,29 @@ void Mikey::Serialize(StateSerializer& s)
         G_SERIALIZE(s, m_state.audio[i].internal_taps_mask);
         G_SERIALIZE(s, m_state.audio[i].internal_mix);
     }
+
+    G_SERIALIZE(s, m_state.uart.tx_int_en);
+    G_SERIALIZE(s, m_state.uart.rx_int_en);
+    G_SERIALIZE(s, m_state.uart.par_en);
+    G_SERIALIZE(s, m_state.uart.reset_err);
+    G_SERIALIZE(s, m_state.uart.tx_open);
+    G_SERIALIZE(s, m_state.uart.tx_brk);
+    G_SERIALIZE(s, m_state.uart.par_even);
+    G_SERIALIZE(s, m_state.uart.tx_ready);
+    G_SERIALIZE(s, m_state.uart.rx_ready);
+    G_SERIALIZE(s, m_state.uart.tx_empty);
+    G_SERIALIZE(s, m_state.uart.par_err);
+    G_SERIALIZE(s, m_state.uart.ovr_err);
+    G_SERIALIZE(s, m_state.uart.fram_err);
+    G_SERIALIZE(s, m_state.uart.rx_break);
+    G_SERIALIZE(s, m_state.uart.par_bit);
+    G_SERIALIZE(s, m_state.uart.tx_active);
+    G_SERIALIZE(s, m_state.uart.tx_hold_valid);
+    G_SERIALIZE(s, m_state.uart.tx_parbit);
+    G_SERIALIZE(s, m_state.uart.tx_hold_data);
+    G_SERIALIZE(s, m_state.uart.tx_data);
+    G_SERIALIZE(s, m_state.uart.rx_data);
+    G_SERIALIZE(s, m_state.uart.tx_bit_index);
 
     G_SERIALIZE(s, m_state.ATTEN_A);
     G_SERIALIZE(s, m_state.ATTEN_B);

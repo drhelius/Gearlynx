@@ -197,4 +197,32 @@ struct GLYNX_Mikey_Color
     u8 bluered;
 };
 
+struct GLYNX_Uart
+{
+    bool tx_int_en;    // B7
+    bool rx_int_en;    // B6
+    bool par_en;       // B4
+    bool reset_err;    // B3
+    bool tx_open;      // B2
+    bool tx_brk;       // B1
+    bool par_even;     // B0
+
+    bool tx_ready;     // B7
+    bool rx_ready;     // B6
+    bool tx_empty;     // B5
+    bool par_err;      // B4
+    bool ovr_err;      // B3
+    bool fram_err;     // B2
+    bool rx_break;     // B1
+    bool par_bit;      // B0
+
+    bool tx_active;
+    bool tx_hold_valid;
+    bool tx_parbit;
+    u8 tx_hold_data;
+    u8 tx_data;
+    u8 rx_data;
+    u8 tx_bit_index;
+};
+
 #endif /* TYPES_H */

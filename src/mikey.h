@@ -39,6 +39,7 @@ public:
         GLYNX_Mikey_Timer timers[8];
         GLYNX_Mikey_Color colors[16];
         GLYNX_Mikey_Audio audio[4];
+        GLYNX_Uart uart;
         u8 ATTEN_A;
         u8 ATTEN_B;
         u8 ATTEN_C;
@@ -85,6 +86,7 @@ private:
     void InitPalettes();
     void ResetTimers();
     void ResetAudio();
+    void ResetUART();
     void ResetPalette();
     u8 ReadColor(u16 address);
     void WriteColor(u16 address, u8 value);
@@ -103,6 +105,9 @@ private:
     void RebuildLFSR(GLYNX_Mikey_Audio* channel);
     void CalculateCutoff(u8 channel);
     void UpdateIRQs();
+    void UartRelevelIRQ();
+    void UartBeginFrame(u8 data);
+    void UartClock();
     void HorizontalBlank();
     void VerticalBlank();
     void LineDMA(int line);

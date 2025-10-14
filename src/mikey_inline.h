@@ -24,6 +24,7 @@
 #include "suzy.h"
 #include "media.h"
 #include "m6502.h"
+#include "bit_ops.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
@@ -104,15 +105,29 @@ INLINE u8 Mikey::Read(u16 address)
         }
         case MIKEY_SERCTL:        // 0xFD8C
         {
-            // Read returns STATUS, not the control byte. Emulate a benign idle UART:
-            // TXRDY=1 (B7), RXRDY=0 (B6), TXEMPTY=1 (B5), error bits 0, RXBRK=0, PARBIT=0.
-            const u8 status = 0xA0;
+            u8 status = 0;
+            status |= (m_state.uart.tx_ready ? 0x80 : 0x00);
+            status |= (m_state.uart.rx_ready ? 0x40 : 0x00);
+            status |= (m_state.uart.tx_empty ? 0x20 : 0x00);
+            status |= (m_state.uart.par_err ? 0x10 : 0x00);
+            status |= (m_state.uart.ovr_err ? 0x08 : 0x00);
+            status |= (m_state.uart.fram_err ? 0x04 : 0x00);
+            status |= (m_state.uart.rx_break ? 0x02 : 0x00);
+            status |= (m_state.uart.par_bit  ? 0x01 : 0x00);
             DebugMikey("Reading SERCTL: %02X", status);
             return status;
         }
         case MIKEY_SERDAT:        // 0xFD8D
-            DebugMikey("Reading SERDAT: %02X", m_state.SERDAT);
-            return m_state.SERDAT;
+        {
+            u8 ret = m_state.uart.rx_data;
+            DebugMikey("Reading SERDAT (RX): %02X", ret);
+            m_state.uart.rx_ready = false;
+            m_state.uart.par_err = false;
+            m_state.uart.fram_err = false;
+            m_state.uart.ovr_err = false;
+            UartRelevelIRQ();
+            return ret;
+        }
         case MIKEY_SDONEACK:      // 0xFD90
             DebugMikey("Reading write-only SDONEACK: FF");
             return 0xFF;
@@ -166,19 +181,12 @@ INLINE void Mikey::Write(u16 address, u8 value)
         switch (address)
         {
         case MIKEY_INTRST:        // 0xFD80
+        {
             DebugMikey("Clearing IRQs: %02X (was %02X)", value, m_state.irq_pending);
             m_state.irq_pending &= ~value;
-            // Relevel UART IRQ: it's level-driven by SERCTL enables & ready
-            {
-                const bool tx_int_en = IS_SET_BIT(m_state.SERCTL, 7);// (m_state.SERCTL & 0x80) != 0;
-                const bool rx_int_en = IS_SET_BIT(m_state.SERCTL, 6);// (m_state.SERCTL & 0x40) != 0;
-                const bool tx_ready = true;  // minimal model: TX always ready
-                const bool rx_ready = false; // minimal model: no RX data
-                if ((tx_int_en && tx_ready) || (rx_int_en && rx_ready))
-                    m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
-            }
-            UpdateIRQs();
+            UartRelevelIRQ();
             break;
+        }
         case MIKEY_INTSET:        // 0xFD81
             DebugMikey("Setting IRQs: %02X (was %02X)", value, m_state.irq_pending);
             m_state.irq_pending |= value;
@@ -218,44 +226,62 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Setting SERCTL to %02X (was %02X)", value, m_state.SERCTL);
             m_state.SERCTL = value;
 
-            // Minimal emulation: TX always ready/empty, RX never ready.
-            const bool tx_ready = true;
-            const bool rx_ready = false;
-            const bool tx_int_en = IS_SET_BIT(m_state.SERCTL, 7);
-            const bool rx_int_en = IS_SET_BIT(m_state.SERCTL, 6);
+            m_state.uart.tx_int_en = IS_SET_BIT(value, 7);
+            m_state.uart.rx_int_en = IS_SET_BIT(value, 6);
+            m_state.uart.par_en = IS_SET_BIT(value, 4);
+            m_state.uart.reset_err = IS_SET_BIT(value, 3);
+            m_state.uart.tx_open = IS_SET_BIT(value, 2);
+            m_state.uart.tx_brk = IS_SET_BIT(value, 1);
+            m_state.uart.par_even = IS_SET_BIT(value, 0);
 
-            // Mask for UART IRQ (source 4) comes from SERCTL enables, not Timer4 CTRLA[7]
-            if (tx_int_en || rx_int_en)
+            if (m_state.uart.reset_err)
+            {
+                m_state.uart.par_err = false;
+                m_state.uart.fram_err = false;
+                m_state.uart.ovr_err = false;
+                m_state.uart.rx_break = false;
+            }
+
+            if (m_state.uart.tx_brk)
+            {
+                m_state.uart.tx_empty = false;
+                m_state.uart.tx_ready = false;
+                m_state.uart.tx_active = true;
+            }
+            else
+            {
+                if (!m_state.uart.tx_active && !m_state.uart.tx_hold_valid)
+                {
+                    m_state.uart.tx_empty = true;
+                    m_state.uart.tx_ready = true;
+                }
+            }
+
+            if (m_state.uart.tx_int_en || m_state.uart.rx_int_en)
                 m_state.irq_mask = SET_BIT(m_state.irq_mask, 4);
             else
                 m_state.irq_mask = UNSET_BIT(m_state.irq_mask, 4);
 
-            // Drive pending bit 4 (Timer4) from UART ready & its enables (level behavior)
-            if ((tx_int_en && tx_ready) || (rx_int_en && rx_ready))
-                m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
-            else
-                m_state.irq_pending = UNSET_BIT(m_state.irq_pending, 4);
-
-            UpdateIRQs();
+            UartRelevelIRQ();
             break;
         }
         case MIKEY_SERDAT:        // 0xFD8D
         {
-            DebugMikey("Setting SERDAT to %02X (was %02X)", value, m_state.SERDAT);
-            m_state.SERDAT = value;
+            DebugMikey("Setting SERDAT (TX) to %02X", value);
 
-            // Minimal emulation: TX always ready/empty, RX never ready.
-            const bool tx_ready = true;
-            const bool rx_ready = false;
-            const bool tx_int_en = IS_SET_BIT(m_state.SERCTL, 7);
-            const bool rx_int_en = IS_SET_BIT(m_state.SERCTL, 6);
-
-            if ((tx_int_en && tx_ready) || (rx_int_en && rx_ready))
-                m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
+            if (!m_state.uart.tx_active && !m_state.uart.tx_brk)
+            {
+                UartBeginFrame(value);
+            }
             else
-                m_state.irq_pending = UNSET_BIT(m_state.irq_pending, 4);
+            {
+                m_state.uart.tx_hold_data = value;
+                m_state.uart.tx_hold_valid = true;
+                m_state.uart.tx_ready = false;
+                m_state.uart.tx_empty = false;
+            }
 
-            UpdateIRQs();
+            UartRelevelIRQ();
             break;
         }
         case MIKEY_SDONEACK:      // 0xFD90
@@ -331,7 +357,7 @@ INLINE GLYNX_Pixel_Format Mikey::GetPixelFormat()
     return m_pixel_format;
 }
 
-INLINE u8 Mikey::ReadColor(u16 address)
+inline u8 Mikey::ReadColor(u16 address)
 {
     assert(address >= MIKEY_GREEN0 && address <= MIKEY_BLUEREDF);
 
@@ -343,7 +369,7 @@ INLINE u8 Mikey::ReadColor(u16 address)
         return m_state.colors[color_index].bluered;
 }
 
-INLINE void Mikey::WriteColor(u16 address, u8 value)
+inline void Mikey::WriteColor(u16 address, u8 value)
 {
     assert(address >= MIKEY_GREEN0 && address <= MIKEY_BLUEREDF);
 
@@ -358,7 +384,7 @@ INLINE void Mikey::WriteColor(u16 address, u8 value)
 }
 
 
-INLINE u8 Mikey::ReadTimer(u16 address)
+inline u8 Mikey::ReadTimer(u16 address)
 {
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
@@ -385,7 +411,7 @@ INLINE u8 Mikey::ReadTimer(u16 address)
     }
 }
 
-INLINE void Mikey::WriteTimer(u16 address, u8 value)
+inline void Mikey::WriteTimer(u16 address, u8 value)
 {
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
@@ -453,7 +479,7 @@ INLINE void Mikey::WriteTimer(u16 address, u8 value)
     }
 }
 
-INLINE u8 Mikey::ReadAudio(u16 address)
+inline u8 Mikey::ReadAudio(u16 address)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
@@ -484,7 +510,7 @@ INLINE u8 Mikey::ReadAudio(u16 address)
     }
 }
 
-INLINE void Mikey::WriteAudio(u16 address, u8 value)
+inline void Mikey::WriteAudio(u16 address, u8 value)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
@@ -534,6 +560,9 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
         if (IS_SET_BIT(value, 6))
             c->other = UNSET_BIT(c->other, 3);
 
+        if (IS_NOT_SET_BIT(c->control, 3))
+            c->internal_mix = true;
+
         RebuildTapsMask(c);
         break;
     }
@@ -553,7 +582,7 @@ INLINE void Mikey::WriteAudio(u16 address, u8 value)
     }
 }
 
-INLINE u8 Mikey::ReadAudioExtra(u16 address)
+inline u8 Mikey::ReadAudioExtra(u16 address)
 {
     assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
 
@@ -577,7 +606,7 @@ INLINE u8 Mikey::ReadAudioExtra(u16 address)
     }
 }
 
-INLINE void Mikey::WriteAudioExtra(u16 address, u8 value)
+inline void Mikey::WriteAudioExtra(u16 address, u8 value)
 {
     assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
 
@@ -702,10 +731,12 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
         if (IS_SET_BIT(t->control_a, 7) && (i != 4))
             m_state.irq_pending = SET_BIT(m_state.irq_pending, i);
 
-        if (i == 0)
+        if (likely(i == 0))
             HorizontalBlank();
         else if (i == 2)
             VerticalBlank();
+        else if (i == 4)
+            UartClock();
 
         // In one-shot, after DONE we must not consume more clocks
         if (one_shot && IS_SET_BIT(t->control_b, 3))
@@ -813,7 +844,7 @@ INLINE bool Mikey::BorrowInChannel(int i, GLYNX_Mikey_Audio* c)
     return true;
 }
 
-INLINE void Mikey::AdvanceLFSR(u8 channel)
+inline void Mikey::AdvanceLFSR(u8 channel)
 {
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
@@ -860,7 +891,7 @@ INLINE void Mikey::RebuildLFSR(GLYNX_Mikey_Audio* channel)
     channel->internal_lfsr = lfsr;
 }
 
-INLINE void Mikey::CalculateCutoff(u8 channel)
+inline void Mikey::CalculateCutoff(u8 channel)
 {
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
@@ -893,138 +924,17 @@ INLINE void Mikey::UpdateIRQs()
     m_m6502->AssertIRQ(effective_irqs != 0, effective_irqs);
 }
 
-INLINE void Mikey::HorizontalBlank()
+INLINE void Mikey::UartRelevelIRQ()
 {
-    u8 timer_2_counter = m_state.timers[2].counter;
-    u8 timer_2_backup = m_state.timers[2].backup;
-    int line = 101 - timer_2_counter;
+    bool tx_level = (m_state.uart.tx_int_en && m_state.uart.tx_ready);
+    bool rx_level = (m_state.uart.rx_int_en && m_state.uart.rx_ready);
 
-    if (line >= 0 && line < 102)
-    {
-        //DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
-        LineDMA(line);
-    }
-    // else
-    // {
-    //     DebugMikey("===> Skiping VBLANK line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
-    // }
-
-    // Typically end of hcount 104
-    if (timer_2_counter == timer_2_backup)
-    {
-        DebugMikey("===> Rest signal goes low");
-        m_state.rest = false;
-    }
-    // Typically end of hcount 103, start of 3rd vblank line
-    else if (timer_2_counter == (timer_2_backup - 1))
-    {
-        DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
-        m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;
-    }
-    // Typically end of hcount 101
-    else if (timer_2_counter == (timer_2_backup - 3))
-    {
-        DebugMikey("===> Rest signal goes high");
-        m_state.rest = true;
-    }
-
-    // At the end of the last vblank line
-    if (timer_2_counter == (timer_2_backup - 2))
-    {
-        m_state.render_line = 0;
-    }
+    if (tx_level || rx_level)
+        m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
     else
-        m_state.render_line++;
-}
+        m_state.irq_pending = UNSET_BIT(m_state.irq_pending, 4);
 
-INLINE void Mikey::VerticalBlank()
-{
-    DebugMikey("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
-    m_state.frame_ready = true;
-    //m_state.render_line = 0;
-    m_debug_cycles = 0;
-
-    GLYNX_Rotation rotation = m_media->GetRotation();
-    if (rotation != NO_ROTATION)
-        RotateFrameBuffer(rotation);
-}
-
-INLINE void Mikey::LineDMA(int line)
-{
-    if (IS_SET_BIT(m_state.DISPCTL, 0))
-    {
-        if (m_pixel_format == GLYNX_PIXEL_RGB565)
-            LineDMATemplate<2>(line);
-        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
-            LineDMATemplate<4>(line);
-    }
-    else
-    {
-        if (m_pixel_format == GLYNX_PIXEL_RGB565)
-            LineDMABlankTemplate<2>(line);
-        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
-            LineDMABlankTemplate<4>(line);
-    }
-}
-
-template <int bytes_per_pixel>
-inline void Mikey::LineDMATemplate(int line)
-{
-    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
-
-    u8* ram = m_memory->GetRAM();
-    u16 line_offset = (u16)(m_state.dispadr_latch + (line * (GLYNX_SCREEN_WIDTH / 2)));
-    u8* src_line_ptr = ram + line_offset;
-    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
-    u16* palette = m_host_palette;
-    u8* src = src_line_ptr;
-
-    // RGB565
-    if (bytes_per_pixel == 2)
-    {
-        u16* dst16 = (u16*)(dst_line_ptr);
-
-        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
-        {
-            u8 byte = *src++;
-            u8 color0 = byte >> 4;
-            u8 color1 = byte & 0x0F;
-            u16 idx0 = palette[color0] & 0x0FFF;
-            u16 idx1 = palette[color1] & 0x0FFF;
-
-            dst16[0] = m_rgb565_palette[idx0];
-            dst16[1] = m_rgb565_palette[idx1];
-            dst16 += 2;
-        }
-    }
-    // RGBA8888
-    else
-    {
-        u32* dst32 = (u32*)(dst_line_ptr);
-
-        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
-        {
-            u8 byte = *src++;
-            u8 color0 = byte >> 4;
-            u8 color1 = byte & 0x0F;
-            u16 idx0 = palette[color0] & 0x0FFF;
-            u16 idx1 = palette[color1] & 0x0FFF;
-
-            dst32[0] = m_rgba8888_palette[idx0];
-            dst32[1] = m_rgba8888_palette[idx1];
-            dst32 += 2;
-        }
-    }
-}
-
-template <int bytes_per_pixel>
-inline void Mikey::LineDMABlankTemplate(int line)
-{
-    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
-
-    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
-    size_t line_size = GLYNX_SCREEN_WIDTH * bytes_per_pixel;
-    memset(dst_line_ptr, 0, line_size);
+    UpdateIRQs();
 }
 
 #endif /* MIKEY_INLINE_H */
