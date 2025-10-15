@@ -937,4 +937,73 @@ INLINE void Mikey::UartRelevelIRQ()
     UpdateIRQs();
 }
 
+inline void Mikey::UartBeginFrame(u8 data)
+{
+    m_state.uart.tx_data = data;
+    m_state.uart.tx_bit_index = 0;
+
+    if (m_state.uart.par_en)
+    {
+        bool odd = (parity8(data) != 0);
+        bool want_even = m_state.uart.par_even;
+        m_state.uart.tx_parbit = (want_even ? !odd : odd);
+    }
+    else
+    {
+        m_state.uart.tx_parbit = m_state.uart.par_even ? 1 : 0;
+    }
+
+    m_state.uart.tx_active = true;
+    m_state.uart.tx_empty  = false;
+    m_state.uart.tx_ready  = false;
+}
+
+inline void Mikey::UartClock()
+{
+    // If break is asserted, keep line busy and do not advance a normal frame
+    if (m_state.uart.tx_brk)
+    {
+        m_state.uart.tx_active = true;
+        m_state.uart.tx_empty  = false;
+        return;
+    }
+
+    if (!m_state.uart.tx_active)
+        return; // nothing to shift this tick
+
+    // Skip synthesizing the TX line level per bit for now
+
+    m_state.uart.tx_bit_index++;
+
+    if (m_state.uart.tx_bit_index >= 11)
+    {
+        // End of frame: deliver RX byte via loopback
+        if (m_state.uart.rx_ready)
+        {
+            // RX overrun if previous byte wasn't read
+            m_state.uart.ovr_err = true;
+        }
+        m_state.uart.rx_data  = m_state.uart.tx_data;
+        m_state.uart.par_bit  = (m_state.uart.tx_parbit != 0);
+        m_state.uart.rx_ready = true;
+
+        // Frame complete on TX side
+        m_state.uart.tx_active = false;
+        // If there is a holding byte queued, start it now
+        if (m_state.uart.tx_hold_valid)
+        {
+            u8 next = m_state.uart.tx_hold_data;
+            m_state.uart.tx_hold_valid = false;
+            UartBeginFrame(next);
+        }
+        else
+        {
+            m_state.uart.tx_empty = true;
+            m_state.uart.tx_ready = true;
+        }
+
+        UartRelevelIRQ();
+    }
+}
+
 #endif /* MIKEY_INLINE_H */
