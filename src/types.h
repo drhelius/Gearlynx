@@ -227,6 +227,7 @@ struct GLYNX_Uart
     u8 prescaler;
     u8 tx_empty_bits;
     u8 tx_ready_bits;
+    bool tx_started_from_chain;
 };
 
 #endif /* TYPES_H */

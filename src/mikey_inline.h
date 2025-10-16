@@ -273,6 +273,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             {
                 UartBeginFrame(value);
                 m_state.uart.tx_ready_bits = 2;
+                m_state.uart.tx_started_from_chain = false;
             }
             else
             {
@@ -958,6 +959,7 @@ inline void Mikey::UartBeginFrame(u8 data)
     m_state.uart.tx_empty = false;
     m_state.uart.tx_ready = false;
     m_state.uart.tx_empty_bits = 0;
+    m_state.uart.tx_started_from_chain = false;
 }
 
 inline void Mikey::UartClock()
@@ -1026,12 +1028,14 @@ inline void Mikey::UartClock()
             m_state.uart.tx_ready = true;
             m_state.uart.tx_ready_bits = 0;
             m_state.uart.tx_empty_bits = 0;
+            m_state.uart.tx_started_from_chain = true;
         }
         else
         {
             m_state.uart.tx_ready = true;
-            m_state.uart.tx_empty = false;
-            m_state.uart.tx_empty_bits = 2;
+            m_state.uart.tx_empty_bits = (m_state.uart.tx_started_from_chain ? 0 : 2);
+            m_state.uart.tx_started_from_chain = false;
+            m_state.uart.tx_empty = (m_state.uart.tx_empty_bits == 0);
         }
 
         UartRelevelIRQ();

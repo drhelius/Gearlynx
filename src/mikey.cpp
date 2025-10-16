@@ -154,6 +154,7 @@ void Mikey::ResetUART()
     m_state.uart.prescaler = 0;
     m_state.uart.tx_empty_bits = 0;
     m_state.uart.tx_ready_bits = 0;
+    m_state.uart.tx_started_from_chain = false;
 }
 
 void Mikey::ResetPalette()
@@ -426,6 +427,8 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.uart.tx_bit_index);
     G_SERIALIZE(s, m_state.uart.prescaler);
     G_SERIALIZE(s, m_state.uart.tx_empty_bits);
+    G_SERIALIZE(s, m_state.uart.tx_ready_bits);
+    G_SERIALIZE(s, m_state.uart.tx_started_from_chain);
 
     G_SERIALIZE(s, m_state.ATTEN_A);
     G_SERIALIZE(s, m_state.ATTEN_B);
