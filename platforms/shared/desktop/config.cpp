@@ -54,8 +54,8 @@ void config_init(void)
     config_input.key_right = SDL_SCANCODE_RIGHT;
     config_input.key_up = SDL_SCANCODE_UP;
     config_input.key_down = SDL_SCANCODE_DOWN;
-    config_input.key_pause = SDL_SCANCODE_A;
-    config_input.key_option1 = SDL_SCANCODE_S;
+    config_input.key_pause = SDL_SCANCODE_S;
+    config_input.key_option1 = SDL_SCANCODE_A;
     config_input.key_option2 = SDL_SCANCODE_D;
     config_input.key_A = SDL_SCANCODE_Z;
     config_input.key_B = SDL_SCANCODE_X;
@@ -182,8 +182,8 @@ void config_read(void)
     config_input.key_right = (SDL_Scancode)read_int("Input", "KeyRight", SDL_SCANCODE_RIGHT);
     config_input.key_up = (SDL_Scancode)read_int("Input", "KeyUp", SDL_SCANCODE_UP);
     config_input.key_down = (SDL_Scancode)read_int("Input", "KeyDown", SDL_SCANCODE_DOWN);
-    config_input.key_pause = (SDL_Scancode)read_int("Input", "KeyPause", SDL_SCANCODE_A);
-    config_input.key_option1 = (SDL_Scancode)read_int("Input", "KeyOption1", SDL_SCANCODE_S);
+    config_input.key_pause = (SDL_Scancode)read_int("Input", "KeyPause", SDL_SCANCODE_S);
+    config_input.key_option1 = (SDL_Scancode)read_int("Input", "KeyOption1", SDL_SCANCODE_A);
     config_input.key_option2 = (SDL_Scancode)read_int("Input", "KeyOption2", SDL_SCANCODE_D);
     config_input.key_A = (SDL_Scancode)read_int("Input", "KeyA", SDL_SCANCODE_Z);
     config_input.key_B = (SDL_Scancode)read_int("Input", "KeyB", SDL_SCANCODE_X);
