@@ -34,6 +34,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/gui_debug_suzy.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_timers.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_trace_logger.cpp \
+    $(DESKTOP_SRC_DIR)/gui_debug_uart.cpp \
     $(DESKTOP_SRC_DIR)/renderer.cpp \
     $(DESKTOP_SRC_DIR)/emu.cpp \
     $(DESKTOP_SRC_DIR)/sound_queue.cpp \

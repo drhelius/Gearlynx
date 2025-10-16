@@ -635,6 +635,7 @@ static void menu_debug(void)
         ImGui::MenuItem("Show Mikey Timers", "", &config_debug.show_mikey_timers, config_debug.debug);
         ImGui::MenuItem("Show Mikey Color Registers", "", &config_debug.show_mikey_colors, config_debug.debug);
         ImGui::MenuItem("Show Mikey Audio", "", &config_debug.show_psg, config_debug.debug);
+        ImGui::MenuItem("Show Mikey UART", "", &config_debug.show_uart, config_debug.debug);
 
         ImGui::Separator();
 

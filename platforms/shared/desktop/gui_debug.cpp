@@ -30,6 +30,7 @@
 #include "gui_debug_mikey.h"
 #include "gui_debug_suzy.h"
 #include "gui_debug_timers.h"
+#include "gui_debug_uart.h"
 #include "emu.h"
 #include "config.h"
 
@@ -39,6 +40,7 @@ void gui_debug_init(void)
     gui_debug_psg_init();
     gui_debug_memory_init();
     gui_debug_timers_init();
+    gui_debug_uart_init();
 }
 
 void gui_debug_destroy(void)
@@ -47,6 +49,7 @@ void gui_debug_destroy(void)
     gui_debug_psg_destroy();
     gui_debug_memory_destroy();
     gui_debug_timers_destroy();
+    gui_debug_uart_destroy();
 }
 
 void gui_debug_reset(void)
@@ -90,6 +93,8 @@ void gui_debug_windows(void)
             gui_debug_window_suzy_math_regs();
         if (config_debug.show_frame_buffers)
             gui_debug_window_frame_buffers();
+        if (config_debug.show_uart)
+            gui_debug_window_uart();
 
         gui_debug_memory_watches_window();
         gui_debug_memory_search_window();
