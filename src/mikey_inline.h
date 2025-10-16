@@ -954,22 +954,38 @@ inline void Mikey::UartBeginFrame(u8 data)
     }
 
     m_state.uart.tx_active = true;
-    m_state.uart.tx_empty  = false;
-    m_state.uart.tx_ready  = false;
+    m_state.uart.tx_empty = false;
+    m_state.uart.tx_ready = false;
+    m_state.uart.tx_empty_bits = 0;
 }
 
 inline void Mikey::UartClock()
 {
+    m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
+    if (m_state.uart.prescaler != 0)
+        return;
+
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
     {
         m_state.uart.tx_active = true;
-        m_state.uart.tx_empty  = false;
+        m_state.uart.tx_empty = false;
         return;
     }
 
     if (!m_state.uart.tx_active)
+    {
+        if (m_state.uart.tx_empty_bits > 0)
+        {
+            m_state.uart.tx_empty_bits--;
+            if (m_state.uart.tx_empty_bits == 0)
+            {
+                m_state.uart.tx_empty = true;
+                UartRelevelIRQ();
+            }
+        }
         return; // nothing to shift this tick
+    }
 
     // Skip synthesizing the TX line level per bit for now
 
@@ -983,8 +999,8 @@ inline void Mikey::UartClock()
             // RX overrun if previous byte wasn't read
             m_state.uart.ovr_err = true;
         }
-        m_state.uart.rx_data  = m_state.uart.tx_data;
-        m_state.uart.par_bit  = (m_state.uart.tx_parbit != 0);
+        m_state.uart.rx_data = m_state.uart.tx_data;
+        m_state.uart.par_bit = (m_state.uart.tx_parbit != 0);
         m_state.uart.rx_ready = true;
 
         // Frame complete on TX side
@@ -995,11 +1011,15 @@ inline void Mikey::UartClock()
             u8 next = m_state.uart.tx_hold_data;
             m_state.uart.tx_hold_valid = false;
             UartBeginFrame(next);
+            m_state.uart.tx_ready = true;
+            m_state.uart.tx_empty = false;
+            m_state.uart.tx_empty_bits = 0;
         }
         else
         {
-            m_state.uart.tx_empty = true;
             m_state.uart.tx_ready = true;
+            m_state.uart.tx_empty = false;
+            m_state.uart.tx_empty_bits = 2;
         }
 
         UartRelevelIRQ();

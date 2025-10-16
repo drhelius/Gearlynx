@@ -223,6 +223,9 @@ struct GLYNX_Uart
     u8 tx_data;
     u8 rx_data;
     u8 tx_bit_index;
+
+    u8 prescaler;
+    u8 tx_empty_bits;
 };
 
 #endif /* TYPES_H */
