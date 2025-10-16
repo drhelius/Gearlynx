@@ -272,6 +272,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             if (!m_state.uart.tx_active && !m_state.uart.tx_brk)
             {
                 UartBeginFrame(value);
+                m_state.uart.tx_ready_bits = 2;
             }
             else
             {
@@ -987,24 +988,35 @@ inline void Mikey::UartClock()
         return; // nothing to shift this tick
     }
 
+    if (!m_state.uart.tx_ready && m_state.uart.tx_ready_bits > 0)
+    {
+        m_state.uart.tx_ready_bits--;
+        if (m_state.uart.tx_ready_bits == 0)
+        {
+            m_state.uart.tx_ready = true;
+            UartRelevelIRQ();
+        }
+    }
+
     // Skip synthesizing the TX line level per bit for now
 
     m_state.uart.tx_bit_index++;
 
     if (m_state.uart.tx_bit_index >= 11)
     {
-        // End of frame: deliver RX byte via loopback
+        // Frame complete on TX side
+        m_state.uart.tx_active = false;
+
         if (m_state.uart.rx_ready)
         {
             // RX overrun if previous byte wasn't read
             m_state.uart.ovr_err = true;
         }
+
         m_state.uart.rx_data = m_state.uart.tx_data;
         m_state.uart.par_bit = (m_state.uart.tx_parbit != 0);
         m_state.uart.rx_ready = true;
 
-        // Frame complete on TX side
-        m_state.uart.tx_active = false;
         // If there is a holding byte queued, start it now
         if (m_state.uart.tx_hold_valid)
         {
@@ -1012,7 +1024,7 @@ inline void Mikey::UartClock()
             m_state.uart.tx_hold_valid = false;
             UartBeginFrame(next);
             m_state.uart.tx_ready = true;
-            m_state.uart.tx_empty = false;
+            m_state.uart.tx_ready_bits = 0;
             m_state.uart.tx_empty_bits = 0;
         }
         else

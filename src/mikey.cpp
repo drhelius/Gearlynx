@@ -153,6 +153,7 @@ void Mikey::ResetUART()
     m_state.uart.tx_bit_index = 0;
     m_state.uart.prescaler = 0;
     m_state.uart.tx_empty_bits = 0;
+    m_state.uart.tx_ready_bits = 0;
 }
 
 void Mikey::ResetPalette()
