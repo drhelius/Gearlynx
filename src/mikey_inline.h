@@ -933,8 +933,6 @@ INLINE void Mikey::UartRelevelIRQ()
 
     if (tx_level || rx_level)
         m_state.irq_pending = SET_BIT(m_state.irq_pending, 4);
-    else
-        m_state.irq_pending = UNSET_BIT(m_state.irq_pending, 4);
 
     UpdateIRQs();
 }
