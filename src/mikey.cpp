@@ -145,6 +145,7 @@ void Mikey::ResetUART()
     m_state.uart.par_bit = false;
     m_state.uart.tx_active = false;
     m_state.uart.tx_hold_valid = false;
+    m_state.uart.tx_suppress_eof_loopback = false;
     m_state.uart.tx_parbit = false;
     m_state.uart.tx_hold_data = 0;
     m_state.uart.tx_data = 0;
@@ -419,6 +420,7 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.uart.tx_active);
     G_SERIALIZE(s, m_state.uart.tx_hold_valid);
     G_SERIALIZE(s, m_state.uart.tx_parbit);
+    G_SERIALIZE(s, m_state.uart.tx_suppress_eof_loopback);
     G_SERIALIZE(s, m_state.uart.tx_hold_data);
     G_SERIALIZE(s, m_state.uart.tx_data);
     G_SERIALIZE(s, m_state.uart.rx_data);

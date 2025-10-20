@@ -284,6 +284,9 @@ INLINE void Mikey::Write(u16 address, u8 value)
                 m_state.uart.tx_hold_valid = true;
                 m_state.uart.tx_ready = false;
                 m_state.uart.tx_empty = false;
+
+                if (m_state.uart.tx_brk)
+                    m_state.uart.tx_suppress_eof_loopback = true;
             }
 
             UartRelevelIRQ();
@@ -1054,7 +1057,10 @@ inline void Mikey::UartClock()
         bool new_fram = false;   // not synthesized here
         bool new_break = false;
 
-        UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break);
+        if (m_state.uart.tx_suppress_eof_loopback)
+            m_state.uart.tx_suppress_eof_loopback = false;
+        else
+            UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break);
 
         // If there is a holding byte queued, start it now
         if (m_state.uart.tx_hold_valid)

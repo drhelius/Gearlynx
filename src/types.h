@@ -221,6 +221,7 @@ struct GLYNX_Uart
     bool tx_active;
     bool tx_hold_valid;
     bool tx_parbit;
+    bool tx_suppress_eof_loopback;
     u8 tx_hold_data;
     u8 tx_data;
     u8 tx_bit_index;
