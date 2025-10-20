@@ -988,12 +988,10 @@ inline void Mikey::UartBeginFrame(u8 data)
     {
         bool odd = (parity8(data) != 0);
         bool want_even = m_state.uart.par_even;
-        m_state.uart.tx_parbit = (want_even ? !odd : odd);
+        m_state.uart.tx_parbit = (want_even ? odd : !odd);
     }
     else
-    {
         m_state.uart.tx_parbit = m_state.uart.par_even ? 1 : 0;
-    }
 
     m_state.uart.tx_active = true;
     m_state.uart.tx_empty = false;
