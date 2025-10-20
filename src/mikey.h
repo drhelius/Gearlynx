@@ -106,6 +106,8 @@ private:
     void CalculateCutoff(u8 channel);
     void UpdateIRQs();
     void UartRelevelIRQ();
+    void UartRxReflectHead();
+    void UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak);
     void UartBeginFrame(u8 data);
     void UartClock();
     void HorizontalBlank();

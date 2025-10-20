@@ -132,7 +132,6 @@ void Mikey::ResetUART()
     m_state.uart.tx_int_en = false;
     m_state.uart.rx_int_en = false;
     m_state.uart.par_en = false;
-    m_state.uart.reset_err = false;
     m_state.uart.tx_open = false;
     m_state.uart.tx_brk = false;
     m_state.uart.par_even = false;
@@ -406,7 +405,6 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.uart.tx_int_en);
     G_SERIALIZE(s, m_state.uart.rx_int_en);
     G_SERIALIZE(s, m_state.uart.par_en);
-    G_SERIALIZE(s, m_state.uart.reset_err);
     G_SERIALIZE(s, m_state.uart.tx_open);
     G_SERIALIZE(s, m_state.uart.tx_brk);
     G_SERIALIZE(s, m_state.uart.par_even);
@@ -429,6 +427,10 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.uart.tx_empty_bits);
     G_SERIALIZE(s, m_state.uart.tx_ready_bits);
     G_SERIALIZE(s, m_state.uart.tx_started_from_chain);
+    G_SERIALIZE(s, m_state.uart.rxq_head);
+    G_SERIALIZE(s, m_state.uart.rxq_count);
+    G_SERIALIZE_ARRAY(s, m_state.uart.rxq_data, 2);
+    G_SERIALIZE_ARRAY(s, m_state.uart.rxq_flags, 2);
 
     G_SERIALIZE(s, m_state.ATTEN_A);
     G_SERIALIZE(s, m_state.ATTEN_B);

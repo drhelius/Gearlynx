@@ -79,9 +79,6 @@ void gui_debug_window_uart(void)
     ImGui::TextColored(violet, "PARITY       "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.par_en ? green : gray, "%s", mikey_state->uart.par_en ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "RESET ERR    "); ImGui::SameLine();
-    ImGui::TextColored(mikey_state->uart.reset_err ? green : gray, "%s", mikey_state->uart.reset_err ? "YES" : "NO");
-
     ImGui::TextColored(violet, "TX OPEN      "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.tx_open ? green : gray, "%s", mikey_state->uart.tx_open ? "YES" : "NO");
 

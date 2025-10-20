@@ -121,10 +121,14 @@ INLINE u8 Mikey::Read(u16 address)
         {
             u8 ret = m_state.uart.rx_data;
             DebugMikey("Reading SERDAT (RX): %02X", ret);
-            m_state.uart.rx_ready = false;
-            m_state.uart.par_err = false;
-            m_state.uart.fram_err = false;
-            m_state.uart.ovr_err = false;
+
+            if (m_state.uart.rxq_count > 0)
+            {
+                m_state.uart.rxq_head ^= 1;
+                m_state.uart.rxq_count--;
+            }
+
+            UartRxReflectHead();
             UartRelevelIRQ();
             return ret;
         }
@@ -229,16 +233,15 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.uart.tx_int_en = IS_SET_BIT(value, 7);
             m_state.uart.rx_int_en = IS_SET_BIT(value, 6);
             m_state.uart.par_en = IS_SET_BIT(value, 4);
-            m_state.uart.reset_err = IS_SET_BIT(value, 3);
             m_state.uart.tx_open = IS_SET_BIT(value, 2);
             m_state.uart.tx_brk = IS_SET_BIT(value, 1);
             m_state.uart.par_even = IS_SET_BIT(value, 0);
 
-            if (m_state.uart.reset_err)
+            if (IS_SET_BIT(value, 3)) // RESETERR
             {
-                m_state.uart.par_err = false;
+                m_state.uart.par_err  = false;
                 m_state.uart.fram_err = false;
-                m_state.uart.ovr_err = false;
+                m_state.uart.ovr_err  = false;
                 m_state.uart.rx_break = false;
             }
 
@@ -937,6 +940,45 @@ INLINE void Mikey::UartRelevelIRQ()
     UpdateIRQs();
 }
 
+inline void Mikey::UartRxReflectHead()
+{
+    if (m_state.uart.rxq_count > 0)
+    {
+        u8 h = m_state.uart.rxq_head & 1;
+        u8 flags = m_state.uart.rxq_flags[h];
+        m_state.uart.rx_data  = m_state.uart.rxq_data[h];
+        m_state.uart.par_bit  = IS_SET_BIT(flags, 0);
+        m_state.uart.par_err  = IS_SET_BIT(flags, 1);
+        m_state.uart.fram_err = IS_SET_BIT(flags, 2);
+        m_state.uart.rx_break = IS_SET_BIT(flags, 3);
+        m_state.uart.rx_ready = true;
+    }
+    else
+    {
+        m_state.uart.rx_ready = false;
+        m_state.uart.par_err  = false;
+        m_state.uart.fram_err = false;
+        m_state.uart.rx_break = false;
+        m_state.uart.par_bit  = false;
+    }
+}
+
+inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak)
+{
+    if (m_state.uart.rxq_count < 2)
+    {
+        u8 tail = (m_state.uart.rxq_head + m_state.uart.rxq_count) & 1;
+        u8 flags = (parbit ? 0x01 : 0) | (parerr ? 0x02 : 0) | (framerr ? 0x04 : 0) | (rxbreak ? 0x08 : 0);
+        m_state.uart.rxq_data[tail] = data;
+        m_state.uart.rxq_flags[tail] = flags;
+        m_state.uart.rxq_count++;
+    }
+    else
+        m_state.uart.ovr_err = true;
+
+    UartRxReflectHead();
+}
+
 inline void Mikey::UartBeginFrame(u8 data)
 {
     m_state.uart.tx_data = data;
@@ -1007,15 +1049,14 @@ inline void Mikey::UartClock()
         // Frame complete on TX side
         m_state.uart.tx_active = false;
 
-        if (m_state.uart.rx_ready)
-        {
-            // RX overrun if previous byte wasn't read
-            m_state.uart.ovr_err = true;
-        }
+        // Loopback RX: enqueue into 2-deep RX queue
+        u8 new_data = m_state.uart.tx_data;
+        bool new_parbit = (m_state.uart.tx_parbit != 0);
+        bool new_parerr = false;   // not synthesized here
+        bool new_fram = false;   // not synthesized here
+        bool new_break = false;
 
-        m_state.uart.rx_data = m_state.uart.tx_data;
-        m_state.uart.par_bit = (m_state.uart.tx_parbit != 0);
-        m_state.uart.rx_ready = true;
+        UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break);
 
         // If there is a holding byte queued, start it now
         if (m_state.uart.tx_hold_valid)
