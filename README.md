@@ -57,6 +57,9 @@ Options:
   -h, --help          Display this help message
 ```
 
+## Hardware Tests
+- **Atari Lynx Hardware Test ROMs**: [https://github.com/drhelius/lynx-tests](https://github.com/drhelius/lynx-tests).
+
 ## Build Instructions
 
 ### Windows
