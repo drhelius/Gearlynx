@@ -92,6 +92,11 @@ inline unsigned int pow_2_ceil(u16 n)
     return n;
 }
 
+inline bool is_pow2(u32 x)
+{
+    return x && ((x & (x - 1)) == 0);
+}
+
 inline void get_date_time_string(time_t timestamp, char* buffer, size_t size)
 {
     struct tm* timeinfo = localtime(&timestamp);

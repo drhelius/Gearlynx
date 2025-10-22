@@ -25,6 +25,7 @@
 #include "miniz.h"
 #include "crc.h"
 #include "game_db.h"
+#include "state_serializer.h"
 
 Media::Media()
 {
@@ -34,7 +35,7 @@ Media::Media()
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
     m_forced_rotation = NO_ROTATION;
-    Reset();
+    HardReset();
 }
 
 Media::~Media()
@@ -44,10 +45,18 @@ Media::~Media()
 
 void Media::Init()
 {
-    Reset();
+    HardReset();
 }
 
 void Media::Reset()
+{
+    m_address_shift = 0;
+    m_page_offset = 0;
+    m_shift_register_strobe = false;
+    m_shift_register_bit = false;
+}
+
+void Media::HardReset()
 {
     SafeDeleteArray(m_rom);
     m_rom_size = 0;
@@ -178,7 +187,7 @@ bool Media::LoadFromFile(const char* path)
     if (!IsValidFile(path))
         return false;
 
-    Reset();
+    HardReset();
 
     GatherDataFromPath(path);
 
@@ -224,7 +233,7 @@ bool Media::LoadFromFile(const char* path)
     }
 
     if (!m_ready)
-        Reset();
+        HardReset();
 
     return m_ready;
 }
@@ -239,7 +248,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
         return false;
     }
 
-    Reset();
+    HardReset();
 
     GatherDataFromPath(path);
 
@@ -283,7 +292,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
     Debug("ROM loaded from buffer. Size: %d bytes", m_rom_size);
 
     if (!m_ready)
-        Reset();
+        HardReset();
 
     return m_ready;
 }
@@ -359,6 +368,7 @@ u8 Media::ReadBank0()
 
 u8 Media::ReadBank1()
 {
+    assert(false);
     assert(m_bank_data[1] != NULL && m_bank_size[1] > 0);
 
     u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
@@ -372,11 +382,13 @@ u8 Media::ReadBank1()
 
 void Media::WriteBank0(u8 value)
 {
+    assert(false);
     Debug("WARNING: WriteBank0 called with value: %02X", value);
 }
 
 void Media::WriteBank1(u8 value)
 {
+    assert(false);
     Debug("WARNING: WriteBank1 called with value: %02X", value);
 }
 
@@ -400,6 +412,15 @@ void Media::ShiftRegisterStrobe(bool strobe)
 void Media::ShiftRegisterBit(bool bit)
 {
     m_shift_register_bit = bit;
+}
+
+void Media::Power(bool on)
+{
+    if (!on)
+    {
+        Debug("Resetting Media state on Power OFF");
+        Reset();
+    }
 }
 
 bool Media::LoadFromZipFile(const u8* buffer, int size)
@@ -831,4 +852,24 @@ bool Media::IsValidFile(const char* path)
         Error("Unable to open file %s", path);
         return false;
     }
+}
+
+void Media::SaveState(std::ostream& stream)
+{
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Media::LoadState(std::istream& stream)
+{
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Media::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_address_shift);
+    G_SERIALIZE(s, m_page_offset);
+    G_SERIALIZE(s, m_shift_register_strobe);
+    G_SERIALIZE(s, m_shift_register_bit);
 }

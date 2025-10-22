@@ -271,7 +271,7 @@ void gui_load_rom(const char* path)
         message += path;
         gui_set_error_message(message.c_str());
 
-        emu_get_core()->GetMedia()->Reset();
+        emu_get_core()->GetMedia()->HardReset();
         gui_action_reset();
         return;
     }
@@ -283,7 +283,7 @@ void gui_load_rom(const char* path)
         message += "Make sure you have a valid BIOS file in 'Menu->Emulator->BIOS'.";
         gui_set_error_message(message.c_str());
 
-        emu_get_core()->GetMedia()->Reset();
+        emu_get_core()->GetMedia()->HardReset();
         gui_action_reset();
         return;
     }

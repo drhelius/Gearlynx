@@ -22,6 +22,8 @@
 
 #include "common.h"
 
+class StateSerializer;
+
 class Media
 {
 public:
@@ -48,6 +50,7 @@ public:
     ~Media();
     void Init();
     void Reset();
+    void HardReset();
     u8* GetROM();
     u8* GetBIOS();
     bool IsReady();
@@ -74,8 +77,12 @@ public:
     void WriteBank1(u8 value);
     void ShiftRegisterStrobe(bool strobe);
     void ShiftRegisterBit(bool bit);
+    void Power(bool on);
+    void SaveState(std::ostream& stream);
+    void LoadState(std::istream& stream);
 
 private:
+    void Serialize(StateSerializer& s);
     bool LoadFromZipFile(const u8* buffer, int size);
     void GatherInfoFromDB();
     bool GatherLynxHeader(const u8* buffer);

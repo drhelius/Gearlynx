@@ -310,6 +310,7 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
     m_suzy->SaveState(stream);
     m_audio->SaveState(stream);
     m_input->SaveState(stream);
+    m_media->SaveState(stream);
 
 #if defined(__LIBRETRO__)
     GLYNX_SaveState_Header_Libretro header;
@@ -515,6 +516,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
     m_suzy->LoadState(stream);
     m_audio->LoadState(stream);
     m_input->LoadState(stream);
+    m_media->LoadState(stream);
 
     return true;
 }
@@ -606,6 +608,7 @@ void GearlynxCore::Reset()
 {
     m_paused = false;
 
+    m_media->Reset();
     m_suzy->Reset();
     m_mikey->Reset();
     m_memory->Reset();
