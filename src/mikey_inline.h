@@ -1054,9 +1054,16 @@ inline void Mikey::UartClock()
         // Loopback RX: enqueue into 2-deep RX queue
         u8 new_data = m_state.uart.tx_data;
         bool new_parbit = (m_state.uart.tx_parbit != 0);
-        bool new_parerr = false;   // not synthesized here
+        bool new_parerr = false;
         bool new_fram = false;   // not synthesized here
         bool new_break = false;
+
+        if (m_state.uart.par_en)
+        {
+            bool odd = (parity8(new_data) != 0);
+            bool expected_parbit = m_state.uart.par_even ? odd : !odd;
+            new_parerr = (new_parbit != expected_parbit);
+        }
 
         if (m_state.uart.tx_suppress_eof_loopback)
             m_state.uart.tx_suppress_eof_loopback = false;
