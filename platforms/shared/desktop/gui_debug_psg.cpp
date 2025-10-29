@@ -51,7 +51,7 @@ void gui_debug_window_psg(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(242, 418), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(244, 470), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey Audio", &config_debug.show_psg);
 
     GearlynxCore* core = emu_get_core();
@@ -79,6 +79,9 @@ void gui_debug_window_psg(void)
             bool timer_done = IS_SET_BIT(channel->other, 3);
             bool borrow_in = IS_SET_BIT(channel->other, 1);
             bool borrow_out = IS_SET_BIT(channel->other, 0);
+            u8 mstereo = mikey_state->MSTEREO;
+            u8 mpan = mikey_state->MPAN;
+            u8 ch_atten = (&mikey_state->ATTEN_A)[c];
             u32 frame_samples = audio->GetFrameSamples();
 
             char tab_name[32];
@@ -227,6 +230,10 @@ void gui_debug_window_psg(void)
                 ImGui::TextColored(orange, "OTHER     "); ImGui::SameLine();
                 ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->other, BYTE_TO_BINARY(channel->other));
 
+                ImGui::TextColored(cyan, "FD%02X ", 0x40 + c); ImGui::SameLine();
+                ImGui::TextColored(orange, "ATTEN     "); ImGui::SameLine();
+                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", ch_atten, BYTE_TO_BINARY(ch_atten));
+
                 ImGui::Separator();
 
                 ImGui::TextColored(violet, "ENABLED    "); ImGui::SameLine();
@@ -265,9 +272,67 @@ void gui_debug_window_psg(void)
                 ImGui::TextColored(violet, "BORROW OUT "); ImGui::SameLine();
                 ImGui::TextColored(borrow_out ? green : gray, "%s", borrow_out ? "YES" : "NO");
 
+                bool left_enabled = IS_NOT_SET_BIT(mstereo, 4 + c);
+                bool left_att_en = IS_SET_BIT(mpan, 4 + c);
+                u8 left_vol = (ch_atten >> 4) & 0xF;
+
+                ImGui::TextColored(violet, "LEFT EAR   "); ImGui::SameLine();
+                if (left_enabled)
+                {
+                    if (left_att_en)
+                        ImGui::TextColored(yellow, "%d/15", left_vol);
+                    else
+                        ImGui::TextColored(green, "FULL");
+                }
+                else
+                    ImGui::TextColored(gray, "DISABLED");
+
+                bool right_enabled = IS_NOT_SET_BIT(mstereo, c);
+                bool right_att_en = IS_SET_BIT(mpan, c);
+                u8 right_vol = ch_atten & 0xF;
+
+                ImGui::TextColored(violet, "RIGHT EAR  "); ImGui::SameLine();
+                if (right_enabled)
+                {
+                    if (right_att_en)
+                        ImGui::TextColored(yellow, "%d/15", right_vol);
+                    else
+                        ImGui::TextColored(green, "FULL");
+                }
+                else
+                    ImGui::TextColored(gray, "DISABLED");
+
                 ImGui::PopFont();
                 ImGui::EndTabItem();
             }
+        }
+
+        if (ImGui::BeginTabItem("Stereo"))
+        {
+            ImGui::PushFont(gui_default_font);
+
+            ImGui::TextColored(cyan, "FD50 "); ImGui::SameLine();
+            ImGui::TextColored(orange, "MSTEREO "); ImGui::SameLine();
+            ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->MSTEREO, BYTE_TO_BINARY(mikey_state->MSTEREO));
+
+            ImGui::TextColored(cyan, "FD44 "); ImGui::SameLine();
+            ImGui::TextColored(orange, "MPAN    "); ImGui::SameLine();
+            ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->MPAN, BYTE_TO_BINARY(mikey_state->MPAN));
+
+            ImGui::Separator();
+
+            for (int ch = 0; ch < 4; ch++)
+            {
+                bool left_enabled = IS_NOT_SET_BIT(mikey_state->MSTEREO, 4 + ch);
+                bool right_enabled = IS_NOT_SET_BIT(mikey_state->MSTEREO, ch);
+
+                ImGui::TextColored(violet, "CHANNEL %d:  ", ch); ImGui::SameLine();
+                ImGui::TextColored(left_enabled ? green : gray, "L:%s", left_enabled ? "ON " : "OFF"); ImGui::SameLine();
+                ImGui::TextColored(right_enabled ? green : gray, " R:%s", right_enabled ? "ON " : "OFF");
+            }
+
+            ImGui::PopFont();
+            ImGui::EndTabItem();
         }
 
         ImGui::EndTabBar();

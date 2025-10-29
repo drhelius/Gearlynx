@@ -32,21 +32,37 @@ inline void Audio::Clock(u32 cycles)
         m_cycles -= GLYNX_AUDIO_CYCLES_PER_SAMPLE;
         Mikey::Mikey_State* state = m_mikey->GetState();
 
-        s8 sample = state->audio[0].internal_mix ? state->audio[0].output : 0;
-        m_channel[0].buffer[m_buffer_pos + 0] = sample;
-        m_channel[0].buffer[m_buffer_pos + 1] = sample;
+        // MSTEREO ($FD50) controls channel routing to each ear (bit=1 disables)
+        // MPAN ($FD44) enables attenuation per channel/ear (bit=1 enables)
+        // ATTEN_X ($FD40-$FD43) sets volume per channel: bits 7-4=left, 3-0=right (0=silent, 15=full).
 
-        sample = state->audio[1].internal_mix ? state->audio[1].output : 0;
-        m_channel[1].buffer[m_buffer_pos + 0] = sample;
-        m_channel[1].buffer[m_buffer_pos + 1] = sample;
+        u8 mstereo = state->MSTEREO;
+        u8 mpan = state->MPAN;
+        const u8* atten = &state->ATTEN_A;
 
-        sample = state->audio[2].internal_mix ? state->audio[2].output : 0;
-        m_channel[2].buffer[m_buffer_pos + 0] = sample;
-        m_channel[2].buffer[m_buffer_pos + 1] = sample;
+        for (int ch = 0; ch < 4; ch++)
+        {
+            s8 sample = state->audio[ch].internal_mix ? state->audio[ch].output : 0;
+            u8 ch_atten = atten[ch];
 
-        sample = state->audio[3].internal_mix ? state->audio[3].output : 0;
-        m_channel[3].buffer[m_buffer_pos + 0] = sample;
-        m_channel[3].buffer[m_buffer_pos + 1] = sample;
+            // Left
+            if (IS_NOT_SET_BIT(mstereo, 4 + ch))
+            {
+                s32 att = IS_SET_BIT(mpan, 4 + ch) ? (ch_atten >> 4) : 15;
+                m_channel[ch].buffer[m_buffer_pos + 0] = (sample * att) / 15;
+            }
+            else
+                m_channel[ch].buffer[m_buffer_pos + 0] = 0;
+
+            // Right
+            if (IS_NOT_SET_BIT(mstereo, ch))
+            {
+                s32 att = IS_SET_BIT(mpan, ch) ? (ch_atten & 0x0F) : 15;
+                m_channel[ch].buffer[m_buffer_pos + 1] = (sample * att) / 15;
+            }
+            else
+                m_channel[ch].buffer[m_buffer_pos + 1] = 0;
+        }
 
         m_buffer_pos += 2;
 
