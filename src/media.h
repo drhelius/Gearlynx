@@ -77,7 +77,6 @@ public:
     void WriteBank1(u8 value);
     void ShiftRegisterStrobe(bool strobe);
     void ShiftRegisterBit(bool bit);
-    void Power(bool on);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

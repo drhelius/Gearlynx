@@ -414,15 +414,6 @@ void Media::ShiftRegisterBit(bool bit)
     m_shift_register_bit = bit;
 }
 
-void Media::Power(bool on)
-{
-    if (!on)
-    {
-        Debug("Resetting Media state on Power OFF");
-        Reset();
-    }
-}
-
 bool Media::LoadFromZipFile(const u8* buffer, int size)
 {
     Debug("Loading from ZIP file... Size: %d", size);

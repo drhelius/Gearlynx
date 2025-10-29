@@ -98,7 +98,6 @@ INLINE u8 Mikey::Read(u16 address)
             if (IS_SET_BIT(m_state.IODIR, 4))
                 ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
 
-            ret |= 0x04;
             //DebugMikey("Reading IODAT: %02X", ret);
 
             return ret;
@@ -208,7 +207,6 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_SYSCTL1:       // 0xFD87
             DebugMikey("Setting SYSCTL1 to %02X (was %02X)", value, m_state.SYSCTL1);
             m_media->ShiftRegisterStrobe(IS_SET_BIT(value, 0));
-            m_media->Power(IS_SET_BIT(value, 1));
             m_state.SYSCTL1 = value;
             break;
         case MIKEY_MIKEYHREV:     // 0xFD88
