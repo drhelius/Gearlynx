@@ -53,12 +53,14 @@ static char retro_game_path[4096];
 static s16 audio_buf[GLYNX_AUDIO_BUFFER_SIZE];
 static int audio_sample_count = 0;
 
+static GLYNX_Runtime_Info runtime_info;
 static int current_screen_width = 0;
 static int current_screen_height = 0;
 static float current_aspect_ratio = 0.0f;
 static float aspect_ratio = 0.0f;
 
 static bool allow_up_down = false;
+static bool input_updated = false;
 
 static bool libretro_supports_bitmasks;
 static int joypad_current[MAX_PADS][JOYPAD_BUTTONS];
@@ -158,6 +160,18 @@ void retro_set_video_refresh(retro_video_refresh_t cb)
 void retro_set_environment(retro_environment_t cb)
 {
     environ_cb = cb;
+
+    static const struct retro_system_content_info_override content_overrides[] =
+    {
+        {
+            "lnx|lyx|o",  // extensions
+            false,        // need_fullpath
+            false         // persistent_data
+        },
+        { NULL, false, false }
+    };
+
+    environ_cb(RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE, (void*)content_overrides);
     set_controller_info();
     set_variabless();
 }
@@ -179,13 +193,10 @@ void retro_init(void)
 
     core = new GearlynxCore();
 
-#ifdef PS2
     core->Init(GLYNX_PIXEL_RGB565);
-#else
-    core->Init(GLYNX_PIXEL_RGB565);
-#endif
+    core->GetRuntimeInfo(runtime_info);
 
-// TODO:   frame_buffer = new u8[256 * 256 * 2];
+    frame_buffer = new u8[256 * 256 * 2];
 
     for (int i = 0; i < MAX_PADS; i++)
     {
@@ -234,7 +245,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
             break;
         case RETRO_DEVICE_LYNX_PAD:
         case RETRO_DEVICE_JOYPAD:
-            log_cb(RETRO_LOG_INFO, "Controller %u: PCE Pad\n", port);
+            log_cb(RETRO_LOG_INFO, "Controller %u: Lynx Pad\n", port);
             break;
         default:
             log_cb(RETRO_LOG_DEBUG, "Setting descriptors for unsupported device.\n");
@@ -253,18 +264,12 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-    GLYNX_Runtime_Info runtime_info;
-    core->GetRuntimeInfo(runtime_info);
-
-    current_screen_width = runtime_info.screen_width;
-    current_screen_height = runtime_info.screen_height;
-
-    info->geometry.base_width   = runtime_info.screen_width;
-    info->geometry.base_height  = runtime_info.screen_height;
-    info->geometry.max_width    = 1024;// TODO
-    info->geometry.max_height   = 512;// TODO
-    info->geometry.aspect_ratio = aspect_ratio;
-    info->timing.fps            = 59.82;
+    info->geometry.base_width   = 102;
+    info->geometry.base_height  = 102;
+    info->geometry.max_width    = 160;
+    info->geometry.max_height   = 160;
+    info->geometry.aspect_ratio = aspect_ratio == 0.0f ? (float)runtime_info.screen_width / (float)runtime_info.screen_height : aspect_ratio;
+    info->timing.fps            = 60.0f;
     info->timing.sample_rate    = 44100.0;
 }
 
@@ -274,12 +279,14 @@ void retro_run(void)
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &core_options_updated) && core_options_updated)
         check_variables();
 
-    update_input();
-
     audio_sample_count = 0;
-// TODO:   core->RunToVBlank(frame_buffer, audio_buf, &audio_sample_count);
+    core->RunToVBlank(frame_buffer, audio_buf, &audio_sample_count);
 
-    GLYNX_Runtime_Info runtime_info;
+    if (!input_updated)
+        update_input();
+
+    input_updated = false;
+
     core->GetRuntimeInfo(runtime_info);
 
     if ((runtime_info.screen_width != current_screen_width) ||
@@ -295,7 +302,8 @@ void retro_run(void)
         info.geometry.base_height  = runtime_info.screen_height;
         info.geometry.max_width    = runtime_info.screen_width;
         info.geometry.max_height   = runtime_info.screen_height;
-        info.geometry.aspect_ratio = aspect_ratio;
+        info.geometry.aspect_ratio = (aspect_ratio == 0.0f ? (float)runtime_info.screen_width / (float)runtime_info.screen_height : aspect_ratio);
+        info.timing.fps            = runtime_info.frame_time > 0.0f ? (1.0f / runtime_info.frame_time) : 60.0f;
 
         environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry);
     }
@@ -312,7 +320,7 @@ bool retro_load_game(const struct retro_game_info *info)
     load_bootroms();
 
     snprintf(retro_game_path, sizeof(retro_game_path), "%s", info->path);
-    log_cb(RETRO_LOG_INFO, "Loading game: %s\n", retro_game_path);
+    log_cb(RETRO_LOG_INFO, "retro_load_game: %s\n", retro_game_path);
 
     if (!core->LoadROMFromBuffer(reinterpret_cast<const u8*>(info->data), info->size))
     {
@@ -339,7 +347,6 @@ void retro_unload_game(void)
 
 unsigned retro_get_region(void)
 {
-    // TODO [libretro] Implement region detection
     return RETRO_REGION_NTSC;
 }
 
@@ -370,13 +377,12 @@ bool retro_unserialize(const void *data, size_t size)
 
 void *retro_get_memory_data(unsigned id)
 {
-    // TODO [libretro] Implement memory access for cheevos
     switch (id)
     {
         case RETRO_MEMORY_SAVE_RAM:
             return NULL;
         case RETRO_MEMORY_SYSTEM_RAM:
-            return NULL;
+            return core->GetMemory()->GetRAM();
     }
 
     return NULL;
@@ -384,13 +390,12 @@ void *retro_get_memory_data(unsigned id)
 
 size_t retro_get_memory_size(unsigned id)
 {
-    // TODO [libretro] Implement memory access for cheevos
     switch (id)
     {
         case RETRO_MEMORY_SAVE_RAM:
             return 0;
         case RETRO_MEMORY_SYSTEM_RAM:
-            return 0;
+            return 0x10000;
     }
 
     return 0;
@@ -398,12 +403,13 @@ size_t retro_get_memory_size(unsigned id)
 
 void retro_cheat_reset(void)
 {
-    // TODO [libretro] Implement cheats
 }
 
 void retro_cheat_set(unsigned index, bool enabled, const char *code)
 {
-    // TODO [libretro] Implement cheats
+    UNUSED(index);
+    UNUSED(enabled);
+    UNUSED(code);
 }
 
 static void set_controller_info(void)
@@ -440,6 +446,11 @@ static void set_controller_info(void)
 
 static void update_input(void)
 {
+    if (input_updated)
+        return;
+
+    input_updated = true;
+
     int16_t joypad_bits[MAX_PADS];
 
     input_poll_cb();
@@ -514,6 +525,13 @@ static void update_input(void)
 static void set_variabless(void)
 {
     struct retro_variable vars[] = {
+        { "gearlynx_aspect_ratio", "Aspect Ratio; 1:1 PAR|4:3 DAR|16:9 DAR|16:10 DAR" },
+        { "gearlynx_rotation", "Screen Rotation; Auto|Left|Right" },
+        { "gearlynx_lowpass_filter", "Audio Low-Pass Filter (Hz); 3500|500|1000|1500|2000|2500|3000|3500|4000|4500|5000" },
+        { "gearlynx_audio_ch0_volume", "Audio Channel 0 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
+        { "gearlynx_audio_ch1_volume", "Audio Channel 1 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
+        { "gearlynx_audio_ch2_volume", "Audio Channel 2 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
+        { "gearlynx_audio_ch3_volume", "Audio Channel 3 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
         { "gearlynx_up_down_allowed", "Allow Up+Down / Left+Right; Disabled|Enabled" },
         { NULL }
     };
@@ -524,6 +542,61 @@ static void set_variabless(void)
 static void check_variables(void)
 {
     struct retro_variable var = {0};
+
+    var.key = "gearlynx_aspect_ratio";
+    var.value = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (strcmp(var.value, "1:1 PAR") == 0)
+            aspect_ratio = 0.0f;
+        else if (strcmp(var.value, "4:3 DAR") == 0)
+            aspect_ratio = 4.0f / 3.0f;
+        else if (strcmp(var.value, "16:9 DAR") == 0)
+            aspect_ratio = 16.0f / 9.0f;
+        else if (strcmp(var.value, "16:10 DAR") == 0)
+            aspect_ratio = 16.0f / 10.0f;
+    }
+
+    var.key = "gearlynx_rotation";
+    var.value = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        GLYNX_Rotation rotation = NO_ROTATION;
+
+        if (strcmp(var.value, "Auto") == 0)
+            rotation = NO_ROTATION;
+        else if (strcmp(var.value, "Left") == 0)
+            rotation = ROTATE_LEFT;
+        else if (strcmp(var.value, "Right") == 0)
+            rotation = ROTATE_RIGHT;
+
+        core->GetMedia()->ForceRotation(rotation);
+    }
+
+    var.key = "gearlynx_lowpass_filter";
+    var.value = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        float fc = (float)atoi(var.value);
+        core->GetAudio()->SetLowpassCutoff(fc);
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        char key[64];
+        snprintf(key, sizeof(key), "gearlynx_audio_ch%d_volume", i);
+        var.key = key;
+        var.value = NULL;
+
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+        {
+            int volume = atoi(var.value);
+            core->GetAudio()->SetVolume(i, volume / 100.0f);
+        }
+    }
 
     var.key = "gearlynx_up_down_allowed";
     var.value = NULL;

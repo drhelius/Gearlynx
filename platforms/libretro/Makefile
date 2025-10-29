@@ -365,7 +365,8 @@ endif
 	$(CC) $(CXXFLAGS) -std=c99 -c -o $@ $<
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS)
+	rm -f $(TARGET)
 
 install:
 	install -D -m 755 $(TARGET) $(DESTDIR)$(libdir)/$(LIBRETRO_INSTALL_DIR)/$(TARGET)
