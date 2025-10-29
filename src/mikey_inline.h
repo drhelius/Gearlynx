@@ -1062,6 +1062,10 @@ inline void Mikey::UartClock()
             bool expected_parbit = m_state.uart.par_even ? odd : !odd;
             new_parerr = (new_parbit != expected_parbit);
         }
+        else
+        {
+            new_parerr = (new_parbit != m_state.uart.par_even);
+        }
 
         if (m_state.uart.tx_suppress_eof_loopback)
             m_state.uart.tx_suppress_eof_loopback = false;
