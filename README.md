@@ -18,6 +18,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 
 ## Downloads
 
+- **Pre-Releases**: [here](https://github.com/drhelius/Gearlynx/releases)
 - **Dev Builds**: [GitHub Actions](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
 
 ## Features
