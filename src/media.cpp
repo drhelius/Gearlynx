@@ -191,7 +191,8 @@ bool Media::LoadFromFile(const char* path)
 
     GatherDataFromPath(path);
 
-    ifstream file(path, ios::in | ios::binary | ios::ate);
+    ifstream file;
+    open_ifstream_utf8(file, path, ios::in | ios::binary | ios::ate);
     int size = (int)(file.tellg());
 
     if (file.is_open())
@@ -310,7 +311,8 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
         return BIOS_LOAD_FILE_ERROR;
     }
 
-    ifstream file(path, ios::in | ios::binary | ios::ate);
+    ifstream file;
+    open_ifstream_utf8(file, path, ios::in | ios::binary | ios::ate);
 
     if (!file.is_open())
     {
@@ -815,7 +817,8 @@ bool Media::IsValidFile(const char* path)
         return false;
     }
 
-    ifstream file(path, ios::in | ios::binary | ios::ate);
+    ifstream file;
+    open_ifstream_utf8(file, path, ios::in | ios::binary | ios::ate);
 
     if (file.is_open())
     {

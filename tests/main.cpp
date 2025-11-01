@@ -87,7 +87,8 @@ int main(int argc, char* argv[])
 
 bool run_file(const char* filename)
 {
-    std::ifstream json_fstream (filename);
+    std::ifstream json_fstream;
+    open_ifstream_utf8(json_fstream, filename, std::ios::in);
 
     if (!json_fstream.is_open())
     {

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string>
 #include <string.h>
+#include <fstream>
 #include <time.h>
 #if defined(_WIN32)
 #include <direct.h>
@@ -307,5 +308,74 @@ inline bool extract_zip_to_folder(const char* zip_path, const char* out_folder)
 
     return true;
 }
+
+#if defined(_WIN32)
+inline std::wstring utf8_to_wstring(const char* utf8_str)
+{
+    if (!utf8_str || utf8_str[0] == '\0')
+        return std::wstring();
+
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8_str, -1, NULL, 0);
+    if (size_needed == 0)
+        return std::wstring();
+
+    std::wstring wstr(size_needed - 1, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8_str, -1, &wstr[0], size_needed);
+    return wstr;
+}
+
+inline FILE* fopen_utf8(const char* path, const char* mode)
+{
+    if (!path || !mode)
+        return NULL;
+
+    std::wstring wpath = utf8_to_wstring(path);
+    std::wstring wmode = utf8_to_wstring(mode);
+
+    if (wpath.empty() || wmode.empty())
+        return NULL;
+
+    return _wfopen(wpath.c_str(), wmode.c_str());
+}
+
+inline void open_ifstream_utf8(std::ifstream& stream, const char* path, std::ios_base::openmode mode = std::ios_base::in)
+{
+    if (!path)
+        return;
+
+    std::wstring wpath = utf8_to_wstring(path);
+    if (wpath.empty())
+        return;
+
+    stream.open(wpath.c_str(), mode);
+}
+
+inline void open_ofstream_utf8(std::ofstream& stream, const char* path, std::ios_base::openmode mode = std::ios_base::out)
+{
+    if (!path)
+        return;
+
+    std::wstring wpath = utf8_to_wstring(path);
+    if (wpath.empty())
+        return;
+
+    stream.open(wpath.c_str(), mode);
+}
+#else
+inline FILE* fopen_utf8(const char* path, const char* mode)
+{
+    return fopen(path, mode);
+}
+
+inline void open_ifstream_utf8(std::ifstream& stream, const char* path, std::ios_base::openmode mode = std::ios_base::in)
+{
+    stream.open(path, mode);
+}
+
+inline void open_ofstream_utf8(std::ofstream& stream, const char* path, std::ios_base::openmode mode = std::ios_base::out)
+{
+    stream.open(path, mode);
+}
+#endif
 
 #endif /* COMMON_H */
