@@ -42,6 +42,7 @@ static bool running = true;
 static bool paused_when_focus_lost = false;
 static Uint64 frame_time_start = 0;
 static Uint64 frame_time_end = 0;
+static bool input_gamepad_shortcut_prev[config_HotkeyIndex_COUNT] = { };
 static Uint32 mouse_last_motion_time = 0;
 static const Uint32 mouse_hide_timeout_ms = 1500;
 
@@ -53,6 +54,8 @@ static void sdl_events_quit(const SDL_Event* event);
 static void sdl_events_app(const SDL_Event* event);
 static void sdl_events_shortcuts_gui(const SDL_Event* event);
 static void sdl_events_emu(const SDL_Event* event);
+static void input_check_gamepad_shortcuts(void);
+static bool input_get_button(SDL_GameController* controller, int mapping);
 static void sdl_add_gamepads(void);
 static void sdl_remove_gamepad(SDL_JoystickID instance_id);
 static void handle_mouse_cursor(void);
@@ -486,6 +489,11 @@ static void sdl_events(void)
             }
         }
     }
+
+    if (!gui_in_use)
+    {
+        input_check_gamepad_shortcuts();
+    }
 }
 
 static void sdl_events_quit(const SDL_Event* event)
@@ -885,6 +893,62 @@ static void sdl_events_emu(const SDL_Event* event)
         }
         break;
     }
+}
+
+static void input_check_gamepad_shortcuts(void)
+{
+    SDL_GameController* sdl_controller = application_gamepad;
+    if (!IsValidPointer(sdl_controller))
+        return;
+
+    for (int i = 0; i < config_HotkeyIndex_COUNT; i++)
+    {
+        int button_mapping = config_input_gamepad_shortcuts.gamepad_shortcuts[i];
+        if (button_mapping == SDL_CONTROLLER_BUTTON_INVALID)
+            continue;
+
+        bool button_pressed = input_get_button(sdl_controller, button_mapping);
+
+        if (button_pressed && !input_gamepad_shortcut_prev[i])
+        {
+            if (i >= config_HotkeyIndex_SelectSlot1 && i <= config_HotkeyIndex_SelectSlot5)
+            {
+                config_emulator.save_slot = i - config_HotkeyIndex_SelectSlot1;
+            }
+            else
+            {
+                for (int j = 0; j < GUI_HOTKEY_MAP_COUNT; j++)
+                {
+                    if (gui_hotkey_map[j].config_index == i)
+                    {
+                        gui_shortcut((gui_ShortCutEvent)gui_hotkey_map[j].shortcut);
+                        break;
+                    }
+                }
+            }
+        }
+
+        input_gamepad_shortcut_prev[i] = button_pressed;
+    }
+}
+
+static bool input_get_button(SDL_GameController* controller, int mapping)
+{
+    if (!IsValidPointer(controller))
+        return false;
+
+    if (mapping >= 0 && mapping < SDL_CONTROLLER_BUTTON_MAX)
+    {
+        return SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)mapping) != 0;
+    }
+    else if (mapping >= GAMEPAD_VBTN_AXIS_BASE)
+    {
+        int axis = mapping - GAMEPAD_VBTN_AXIS_BASE;
+        Sint16 value = SDL_GameControllerGetAxis(controller, (SDL_GameControllerAxis)axis);
+        return value > GAMEPAD_VBTN_AXIS_THRESHOLD;
+    }
+
+    return false;
 }
 
 static void sdl_add_gamepads(void)

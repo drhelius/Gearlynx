@@ -73,6 +73,11 @@ void config_init(void)
     config_input.gamepad_x_axis = SDL_CONTROLLER_AXIS_LEFTX;
     config_input.gamepad_y_axis = SDL_CONTROLLER_AXIS_LEFTY;
 
+    for (int i = 0; i < config_HotkeyIndex_COUNT; i++)
+    {
+        config_input_gamepad_shortcuts.gamepad_shortcuts[i] = SDL_CONTROLLER_BUTTON_INVALID;
+    }
+
     config_hotkeys[config_HotkeyIndex_OpenROM] = make_hotkey(SDL_SCANCODE_O, KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_Quit] = make_hotkey(SDL_SCANCODE_Q, KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_Reset] = make_hotkey(SDL_SCANCODE_R, KMOD_CTRL);
@@ -229,6 +234,13 @@ void config_read(void)
     config_input.gamepad_A = read_int("Input", "GamepadA", SDL_CONTROLLER_BUTTON_A);
     config_input.gamepad_B = read_int("Input", "GamepadB", SDL_CONTROLLER_BUTTON_B);
 
+    for (int i = 0; i < config_HotkeyIndex_COUNT; i++)
+    {
+        char key_name[32];
+        snprintf(key_name, sizeof(key_name), "Shortcut%d", i);
+        config_input_gamepad_shortcuts.gamepad_shortcuts[i] = read_int("InputGamepadShortcuts", key_name, SDL_CONTROLLER_BUTTON_INVALID);
+    }
+
     // Read hotkeys
     config_hotkeys[config_HotkeyIndex_OpenROM] = read_hotkey("Hotkeys", "OpenROM", make_hotkey(SDL_SCANCODE_O, KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_Quit] = read_hotkey("Hotkeys", "Quit", make_hotkey(SDL_SCANCODE_Q, KMOD_CTRL));
@@ -357,6 +369,13 @@ void config_write(void)
     write_int("Input", "GamepadY", config_input.gamepad_y_axis);
     write_int("Input", "GamepadA", config_input.gamepad_A);
     write_int("Input", "GamepadB", config_input.gamepad_B);
+
+    for (int i = 0; i < config_HotkeyIndex_COUNT; i++)
+    {
+        char key_name[32];
+        snprintf(key_name, sizeof(key_name), "Shortcut%d", i);
+        write_int("InputGamepadShortcuts", key_name, config_input_gamepad_shortcuts.gamepad_shortcuts[i]);
+    }
 
     // Write hotkeys
     write_hotkey("Hotkeys", "OpenROM", config_hotkeys[config_HotkeyIndex_OpenROM]);
