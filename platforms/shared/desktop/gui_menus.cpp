@@ -53,6 +53,7 @@ static void menu_about(void);
 static void file_dialogs(void);
 static void keyboard_configuration_item(const char* text, SDL_Scancode* key);
 static void gamepad_configuration_item(const char* text, int* button);
+static void hotkey_configuration_item(const char* text, config_Hotkey* hotkey);
 static void gamepad_device_selector(void);
 static void draw_savestate_slot_info(int slot);
 
@@ -102,7 +103,7 @@ static void menu_gearlynx(void)
     {
         gui_in_use = true;
 
-        if (ImGui::MenuItem("Open ROM...", "Ctrl+O"))
+        if (ImGui::MenuItem("Open ROM...", config_hotkeys[config_HotkeyIndex_OpenROM].str))
         {
             if (emu_is_bios_loaded())
                 open_rom = true;
@@ -135,19 +136,19 @@ static void menu_gearlynx(void)
 
         ImGui::Separator();
         
-        if (ImGui::MenuItem("Reset", "Ctrl+R"))
+        if (ImGui::MenuItem("Reset", config_hotkeys[config_HotkeyIndex_Reset].str))
         {
             gui_action_reset();
         }
 
-        if (ImGui::MenuItem("Pause", "Ctrl+P", &config_emulator.paused))
+        if (ImGui::MenuItem("Pause", config_hotkeys[config_HotkeyIndex_Pause].str, &config_emulator.paused))
         {
             gui_action_pause();
         }
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Fast Forward", "Ctrl+F", &config_emulator.ffwd))
+        if (ImGui::MenuItem("Fast Forward", config_hotkeys[config_HotkeyIndex_FFWD].str, &config_emulator.ffwd))
         {
             gui_action_ffwd();
         }
@@ -198,7 +199,7 @@ static void menu_gearlynx(void)
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Save State", "Ctrl+S"))
+        if (ImGui::MenuItem("Save State", config_hotkeys[config_HotkeyIndex_SaveState].str))
         {
             std::string message("Saving state to slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -206,7 +207,7 @@ static void menu_gearlynx(void)
             emu_save_state_slot(config_emulator.save_slot + 1);
         }
 
-        if (ImGui::MenuItem("Load State", "Ctrl+L"))
+        if (ImGui::MenuItem("Load State", config_hotkeys[config_HotkeyIndex_LoadState].str))
         {
             std::string message("Loading state from slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -229,14 +230,14 @@ static void menu_gearlynx(void)
             save_screenshot = true;
         }
 
-        if (ImGui::MenuItem("Save Screenshot", "Ctrl+X"))
+        if (ImGui::MenuItem("Save Screenshot", config_hotkeys[config_HotkeyIndex_Screenshot].str))
         {
             gui_action_save_screenshot(NULL);
         }
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Quit", "Ctrl+Q"))
+        if (ImGui::MenuItem("Quit", config_hotkeys[config_HotkeyIndex_Quit].str))
         {
             application_trigger_quit();
         }
@@ -410,6 +411,48 @@ static void menu_emulator(void)
         ImGui::MenuItem("Start Paused", "", &config_emulator.start_paused);
         ImGui::MenuItem("Pause When Inactive", "", &config_emulator.pause_when_inactive);
 
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Hotkeys"))
+        {
+            hotkey_configuration_item("Open ROM:", &config_hotkeys[config_HotkeyIndex_OpenROM]);
+            hotkey_configuration_item("Quit:", &config_hotkeys[config_HotkeyIndex_Quit]);
+            hotkey_configuration_item("Reset:", &config_hotkeys[config_HotkeyIndex_Reset]);
+            hotkey_configuration_item("Pause:", &config_hotkeys[config_HotkeyIndex_Pause]);
+            hotkey_configuration_item("Fast Forward:", &config_hotkeys[config_HotkeyIndex_FFWD]);
+            hotkey_configuration_item("Save State:", &config_hotkeys[config_HotkeyIndex_SaveState]);
+            hotkey_configuration_item("Load State:", &config_hotkeys[config_HotkeyIndex_LoadState]);
+            hotkey_configuration_item("Save State Slot 1:", &config_hotkeys[config_HotkeyIndex_SelectSlot1]);
+            hotkey_configuration_item("Save State Slot 2:", &config_hotkeys[config_HotkeyIndex_SelectSlot2]);
+            hotkey_configuration_item("Save State Slot 3:", &config_hotkeys[config_HotkeyIndex_SelectSlot3]);
+            hotkey_configuration_item("Save State Slot 4:", &config_hotkeys[config_HotkeyIndex_SelectSlot4]);
+            hotkey_configuration_item("Save State Slot 5:", &config_hotkeys[config_HotkeyIndex_SelectSlot5]);
+            hotkey_configuration_item("Screenshot:", &config_hotkeys[config_HotkeyIndex_Screenshot]);
+            hotkey_configuration_item("Fullscreen:", &config_hotkeys[config_HotkeyIndex_Fullscreen]);
+            hotkey_configuration_item("Show Main Menu:", &config_hotkeys[config_HotkeyIndex_ShowMainMenu]);
+
+            gui_popup_modal_hotkey();
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Debug Hotkeys"))
+        {
+            hotkey_configuration_item("Step Into:", &config_hotkeys[config_HotkeyIndex_DebugStepInto]);
+            hotkey_configuration_item("Step Over:", &config_hotkeys[config_HotkeyIndex_DebugStepOver]);
+            hotkey_configuration_item("Step Out:", &config_hotkeys[config_HotkeyIndex_DebugStepOut]);
+            hotkey_configuration_item("Step Frame:", &config_hotkeys[config_HotkeyIndex_DebugStepFrame]);
+            hotkey_configuration_item("Continue:", &config_hotkeys[config_HotkeyIndex_DebugContinue]);
+            hotkey_configuration_item("Break:", &config_hotkeys[config_HotkeyIndex_DebugBreak]);
+            hotkey_configuration_item("Run to Cursor:", &config_hotkeys[config_HotkeyIndex_DebugRunToCursor]);
+            hotkey_configuration_item("Toggle Breakpoint:", &config_hotkeys[config_HotkeyIndex_DebugBreakpoint]);
+            hotkey_configuration_item("Go Back:", &config_hotkeys[config_HotkeyIndex_DebugGoBack]);
+
+            gui_popup_modal_hotkey();
+
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMenu();
     }
 }
@@ -420,12 +463,12 @@ static void menu_video(void)
     {
         gui_in_use = true;
 
-        if (ImGui::MenuItem("Full Screen", "F12", &config_emulator.fullscreen))
+        if (ImGui::MenuItem("Full Screen", config_hotkeys[config_HotkeyIndex_Fullscreen].str, &config_emulator.fullscreen))
         {
             application_trigger_fullscreen(config_emulator.fullscreen);
         }
 
-        ImGui::MenuItem("Always Show Menu", "CTRL+M", &config_emulator.always_show_menu);
+        ImGui::MenuItem("Always Show Menu", config_hotkeys[config_HotkeyIndex_ShowMainMenu].str, &config_emulator.always_show_menu);
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
@@ -791,6 +834,33 @@ static void gamepad_configuration_item(const char* text, int* button)
     if (ImGui::Button(remove_label))
     {
         *button = SDL_CONTROLLER_BUTTON_INVALID;
+    }
+}
+
+static void hotkey_configuration_item(const char* text, config_Hotkey* hotkey)
+{
+    ImGui::Text("%s", text);
+    ImGui::SameLine(150);
+
+    char button_label[256];
+    snprintf(button_label, sizeof(button_label), "%s##%s", hotkey->str[0] != '\0' ? hotkey->str : "<None>", text);
+
+    if (ImGui::Button(button_label, ImVec2(150,0)))
+    {
+        gui_configured_hotkey = hotkey;
+        ImGui::OpenPopup("Hotkey Configuration");
+    }
+
+    ImGui::SameLine();
+
+    char remove_label[256];
+    snprintf(remove_label, sizeof(remove_label), "X##rh%s", text);
+
+    if (ImGui::Button(remove_label))
+    {
+        hotkey->key = SDL_SCANCODE_UNKNOWN;
+        hotkey->mod = KMOD_NONE;
+        config_update_hotkey_string(hotkey);
     }
 }
 
