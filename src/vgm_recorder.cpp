@@ -1,4 +1,4 @@
-x/*
+/*
  * Gearlynx - Lynx Emulator
  * Copyright (C) 2025  Ignacio Sanchez
 
