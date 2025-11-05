@@ -31,6 +31,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502)
     m_media = media;
     m_m6502 = m6502;
     InitPointer(m_memory);
+    InitPointer(m_audio);
     InitPointer(m_frame_buffer);
     InitPointer(m_ram);
     m_pixel_format = GLYNX_PIXEL_RGBA8888;
@@ -48,6 +49,11 @@ void Mikey::Init(Memory* memory, GLYNX_Pixel_Format pixel_format)
     m_ram = m_memory->GetRAM();
     InitPalettes();
     Reset();
+}
+
+void Mikey::SetAudio(Audio* audio)
+{
+    m_audio = audio;
 }
 
 void Mikey::Reset()

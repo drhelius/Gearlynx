@@ -96,6 +96,9 @@ EXTERN void emu_debug_break(void);
 EXTERN void emu_debug_continue(void);
 EXTERN void emu_debug_set_callback(GearlynxCore::GLYNX_Debug_Callback callback);
 EXTERN void emu_save_screenshot(const char* file_path);
+EXTERN void emu_start_vgm_recording(const char* file_path);
+EXTERN void emu_stop_vgm_recording(void);
+EXTERN bool emu_is_vgm_recording(void);
 
 #undef EMU_IMPORT
 #undef EXTERN

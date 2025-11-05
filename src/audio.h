@@ -21,6 +21,7 @@
 #define AUDIO_H
 
 #include "common.h"
+#include "vgm_recorder.h"
 
 class Mikey;
 class StateSerializer;
@@ -50,6 +51,10 @@ public:
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
     void Serialize(StateSerializer& s);
+    bool StartVgmRecording(const char* file_path, int clock_rate);
+    void StopVgmRecording();
+    bool IsVgmRecording() const;
+    VgmRecorder* GetVgmRecorder();
 
 private:
     Mikey* m_mikey;
@@ -61,6 +66,8 @@ private:
     u32 m_buffer_pos;
     u32 m_frame_samples;
     GLYNX_Audio_Channel m_channel[4];
+    VgmRecorder m_vgm_recorder;
+    bool m_vgm_recording_enabled;
 };
 
 #include "audio_inline.h"

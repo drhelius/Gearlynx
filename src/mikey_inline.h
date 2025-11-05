@@ -21,6 +21,7 @@
 #define MIKEY_INLINE_H
 
 #include "mikey.h"
+#include "audio.h"
 #include "suzy.h"
 #include "media.h"
 #include "m6502.h"
@@ -521,6 +522,11 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
+#ifndef GLYNX_DISABLE_VGMRECORDER
+    if (m_audio->IsVgmRecording())
+        m_audio->GetVgmRecorder()->WriteMikey(address, value);
+#endif
+
     int reg = address & 7;
     int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
     GLYNX_Mikey_Audio* c = &m_state.audio[i];
@@ -616,6 +622,11 @@ inline u8 Mikey::ReadAudioExtra(u16 address)
 inline void Mikey::WriteAudioExtra(u16 address, u8 value)
 {
     assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
+
+#ifndef GLYNX_DISABLE_VGMRECORDER
+    if (m_audio->IsVgmRecording())
+        m_audio->GetVgmRecorder()->WriteMikey(address, value);
+#endif
 
     switch (address)
     {

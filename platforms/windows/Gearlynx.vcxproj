@@ -45,6 +45,7 @@
     <ClInclude Include="..\..\src\suzy.h" />
     <ClInclude Include="..\..\src\suzy_defines.h" />
     <ClInclude Include="..\..\src\suzy_inline.h" />
+    <ClInclude Include="..\..\src\vgm_recorder.h" />
     <ClInclude Include="..\shared\dependencies\miniz\miniz.h" />
     <ClInclude Include="..\..\src\types.h" />
     <ClInclude Include="..\shared\desktop\application.h" />
@@ -103,6 +104,7 @@
     <ClCompile Include="..\..\src\memory.cpp" />
     <ClCompile Include="..\..\src\mikey.cpp" />
     <ClCompile Include="..\..\src\suzy.cpp" />
+    <ClCompile Include="..\..\src\vgm_recorder.cpp" />
     <ClCompile Include="..\shared\dependencies\miniz\miniz.c" />
     <ClCompile Include="..\shared\desktop\application.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />

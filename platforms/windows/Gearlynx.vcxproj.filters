@@ -237,6 +237,9 @@
     <ClInclude Include="..\..\src\suzy_inline.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\vgm_recorder.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\types.h">
       <Filter>core</Filter>
     </ClInclude>
@@ -369,6 +372,9 @@
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\suzy.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vgm_recorder.cpp">
       <Filter>core</Filter>
     </ClCompile>
   </ItemGroup>

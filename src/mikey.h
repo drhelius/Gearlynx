@@ -29,6 +29,7 @@ class Media;
 class Memory;
 class M6502;
 class Suzy;
+class Audio;
 class StateSerializer;
 
 class Mikey
@@ -68,6 +69,7 @@ public:
     Mikey(Suzy* suzy, Media* media, M6502* m6502);
     ~Mikey();
     void Init(Memory* memory, GLYNX_Pixel_Format pixel_format);
+    void SetAudio(Audio* audio);
     void Reset();
     bool Clock(u32 cycles);
     u8 Read(u16 address);
@@ -125,6 +127,7 @@ private:
     Suzy* m_suzy;
     Memory* m_memory;
     M6502* m_m6502;
+    Audio* m_audio;
     Mikey_State m_state;
     u8* m_ram;
     u16 m_host_palette[16] = {};

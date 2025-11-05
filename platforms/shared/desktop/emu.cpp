@@ -563,3 +563,36 @@ static void update_debug_sprites(void)
 {
     
 }
+
+void emu_start_vgm_recording(const char* file_path)
+{
+    if (!core->GetMedia()->IsReady())
+        return;
+
+    if (core->GetAudio()->IsVgmRecording())
+    {
+        emu_stop_vgm_recording();
+    }
+
+    // Atari Lynx Mikey chip clock rate is 16 MHz
+    int clock_rate = 16000000;
+
+    if (core->GetAudio()->StartVgmRecording(file_path, clock_rate))
+    {
+        Log("VGM recording started: %s", file_path);
+    }
+}
+
+void emu_stop_vgm_recording(void)
+{
+    if (core->GetAudio()->IsVgmRecording())
+    {
+        core->GetAudio()->StopVgmRecording();
+        Log("VGM recording stopped");
+    }
+}
+
+bool emu_is_vgm_recording(void)
+{
+    return core->GetAudio()->IsVgmRecording();
+}

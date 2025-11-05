@@ -27,6 +27,7 @@ Audio::Audio(Mikey* mikey)
 {
     m_mikey = mikey;
     m_mute = false;
+    m_vgm_recording_enabled = false;
     Reset();
 }
 
@@ -103,6 +104,11 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
         }
     }
 
+#ifndef GLYNX_DISABLE_VGMRECORDER
+    if (m_vgm_recording_enabled)
+        m_vgm_recorder.UpdateTiming(*sample_count / 2);
+#endif
+
     m_buffer_pos = 0;
 }
 
@@ -148,4 +154,90 @@ void Audio::Serialize(StateSerializer& s)
     {
         G_SERIALIZE_ARRAY(s, m_channel[i].buffer, GLYNX_AUDIO_BUFFER_SIZE);
     }
+}
+
+bool Audio::StartVgmRecording(const char* file_path, int clock_rate)
+{
+    if (m_vgm_recording_enabled)
+        return false;
+
+    m_vgm_recorder.Start(file_path, clock_rate);
+    m_vgm_recording_enabled = m_vgm_recorder.IsRecording();
+
+    // Write initial state of all audio registers to VGM
+    if (m_vgm_recording_enabled)
+    {
+        // Get Mikey state
+        Mikey::Mikey_State* mikey_state = m_mikey->GetState();
+
+        // Write audio channel registers (0xFD20-0xFD3F)
+        for (int i = 0; i < 4; i++)
+        {
+            u16 base = 0xFD20 + (i * 8);
+
+            // AUDnVOL
+            m_vgm_recorder.WriteMikey(base + 0, mikey_state->audio[i].volume);
+
+            // AUDnSHFTFB
+            m_vgm_recorder.WriteMikey(base + 1, mikey_state->audio[i].feedback);
+
+            // AUDnOUTVAL
+            m_vgm_recorder.WriteMikey(base + 2, mikey_state->audio[i].output);
+
+            // AUDnL8SHFT
+            m_vgm_recorder.WriteMikey(base + 3, mikey_state->audio[i].lfsr_low);
+
+            // AUDnTBACK
+            m_vgm_recorder.WriteMikey(base + 4, mikey_state->audio[i].backup);
+
+            // AUDnCTL
+            m_vgm_recorder.WriteMikey(base + 5, mikey_state->audio[i].control);
+
+            // AUDnCOUNT
+            m_vgm_recorder.WriteMikey(base + 6, mikey_state->audio[i].counter);
+
+            // AUDnMISC
+            m_vgm_recorder.WriteMikey(base + 7, mikey_state->audio[i].other);
+        }
+
+        // Write audio extra registers
+        // ATTEN_A (0xFD40)
+        m_vgm_recorder.WriteMikey(0xFD40, mikey_state->ATTEN_A);
+
+        // ATTEN_B (0xFD41)
+        m_vgm_recorder.WriteMikey(0xFD41, mikey_state->ATTEN_B);
+
+        // ATTEN_C (0xFD42)
+        m_vgm_recorder.WriteMikey(0xFD42, mikey_state->ATTEN_C);
+
+        // ATTEN_D (0xFD43)
+        m_vgm_recorder.WriteMikey(0xFD43, mikey_state->ATTEN_D);
+
+        // MPAN (0xFD44)
+        m_vgm_recorder.WriteMikey(0xFD44, mikey_state->MPAN);
+
+        // MSTEREO (0xFD50)
+        m_vgm_recorder.WriteMikey(0xFD50, mikey_state->MSTEREO);
+    }
+
+    return m_vgm_recording_enabled;
+}
+
+void Audio::StopVgmRecording()
+{
+    if (m_vgm_recording_enabled)
+    {
+        m_vgm_recorder.Stop();
+        m_vgm_recording_enabled = false;
+    }
+}
+
+bool Audio::IsVgmRecording() const
+{
+    return m_vgm_recording_enabled;
+}
+
+VgmRecorder* Audio::GetVgmRecorder()
+{
+    return &m_vgm_recorder;
 }

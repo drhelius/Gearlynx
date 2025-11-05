@@ -17,3 +17,4 @@ SOURCES_CXX := \
     $(SRC_DIR)/memory.cpp \
     $(SRC_DIR)/mikey.cpp \
     $(SRC_DIR)/suzy.cpp \
+    $(SRC_DIR)/vgm_recorder.cpp
