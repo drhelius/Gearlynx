@@ -30,6 +30,8 @@
 #include "backers.h"
 #include "renderer.h"
 #include "keyboard.h"
+#include "imgui.h"
+#include "implot.h"
 
 static char build_info[4096] = "";
 static int info_pos = 0;
