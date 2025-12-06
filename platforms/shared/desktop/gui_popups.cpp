@@ -238,6 +238,7 @@ void gui_popup_modal_about(void)
                 add_build_info("SDL %d.%d.%d (link)\n", application_sdl_link_version.major, application_sdl_link_version.minor, application_sdl_link_version.patch);
                 add_build_info("OpenGL %s\n", renderer_opengl_version);
                 add_build_info("Dear ImGui %s (%d)\n", IMGUI_VERSION, IMGUI_VERSION_NUM);
+                add_build_info("ImPlot %s (%d)\n", IMPLOT_VERSION, IMPLOT_VERSION_NUM);
 
                 #if defined(DEBUG)
                 add_build_info("define: DEBUG\n");
