@@ -168,6 +168,9 @@
     <ClInclude Include="..\..\src\bit_ops.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\bus.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\media.h">
       <Filter>core</Filter>
     </ClInclude>
@@ -345,6 +348,9 @@
       <Filter>desktop</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\audio.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\bus.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\media.cpp">

@@ -28,6 +28,7 @@
 #include "media.h"
 #include "memory.h"
 #include "audio.h"
+#include "bus.h"
 #include "input.h"
 #include "m6502.h"
 #include "suzy.h"
@@ -38,6 +39,7 @@ GearlynxCore::GearlynxCore()
 {
     InitPointer(m_memory);
     InitPointer(m_audio);
+    InitPointer(m_bus);
     InitPointer(m_input);
     InitPointer(m_media);
     InitPointer(m_m6502);
@@ -52,6 +54,7 @@ GearlynxCore::~GearlynxCore()
     SafeDelete(m_m6502);
     SafeDelete(m_media);
     SafeDelete(m_input);
+    SafeDelete(m_bus);
     SafeDelete(m_audio);
     SafeDelete(m_memory);
     SafeDelete(m_suzy);
@@ -66,15 +69,17 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
 
     m_media = new Media();
     m_m6502 = new M6502();
+    m_bus = new Bus();
     m_input = new Input(m_media);
-    m_suzy = new Suzy(m_media, m_m6502, m_input);
-    m_mikey = new Mikey(m_suzy,m_media, m_m6502);
+    m_suzy = new Suzy(m_media, m_m6502, m_input, m_bus);
+    m_mikey = new Mikey(m_suzy, m_media, m_m6502, m_bus);
     m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502);
     m_audio = new Audio(m_mikey);
 
     m_media->Init();
     m_memory->Init();
     m_audio->Init();
+    m_bus->Init();
     m_input->Init(m_suzy);
     m_suzy->Init(m_memory);
     m_mikey->Init(m_memory, pixel_format);
@@ -616,6 +621,7 @@ void GearlynxCore::Reset()
     m_memory->Reset();
     m_m6502->Reset();
     m_audio->Reset();
+    m_bus->Reset();
     m_input->Reset();
 
     if (m_media->GetType() == Media::MEDIA_HOMEBREW)

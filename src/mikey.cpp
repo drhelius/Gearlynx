@@ -25,11 +25,12 @@
 #include "no_bios.h"
 #include "state_serializer.h"
 
-Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502)
+Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
 {
     m_suzy = suzy;
     m_media = media;
     m_m6502 = m6502;
+    m_bus = bus;
     InitPointer(m_memory);
     InitPointer(m_audio);
     InitPointer(m_frame_buffer);

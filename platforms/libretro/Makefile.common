@@ -2,6 +2,7 @@ SOURCES_C   :=  $(DEPS_DIR)/miniz/miniz.c \
 
 SOURCES_CXX :=  $(CORE_DIR)/libretro.cpp \
                 $(SOURCE_DIR)/audio.cpp \
+                $(SOURCE_DIR)/bus.cpp \
                 $(SOURCE_DIR)/gearlynx_core.cpp \
                 $(SOURCE_DIR)/input.cpp \
                 $(SOURCE_DIR)/m6502.cpp \

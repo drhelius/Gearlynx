@@ -25,6 +25,7 @@
 #include "common.h"
 
 class Audio;
+class Bus;
 class Input;
 class Memory;
 class Media;
@@ -78,6 +79,7 @@ public:
     M6502* GetM6502();
     Suzy* GetSuzy();
     Mikey* GetMikey();
+    Bus* GetBus();
     void SetDebugCallback(GLYNX_Debug_Callback callback);
 
 private:
@@ -92,6 +94,7 @@ private:
 private:
     Memory* m_memory;
     Audio* m_audio;
+    Bus* m_bus;
     Input* m_input;
     Media* m_media;
     M6502* m_m6502;

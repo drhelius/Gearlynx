@@ -22,6 +22,7 @@
     <ClInclude Include="..\..\src\audio.h" />
     <ClInclude Include="..\..\src\audio_inline.h" />
     <ClInclude Include="..\..\src\bit_ops.h" />
+    <ClInclude Include="..\..\src\bus.h" />
     <ClInclude Include="..\..\src\media.h" />
     <ClInclude Include="..\..\src\common.h" />
     <ClInclude Include="..\..\src\defines.h" />
@@ -95,6 +96,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp" />
+    <ClCompile Include="..\..\src\bus.cpp" />
     <ClCompile Include="..\..\src\media.cpp" />
     <ClCompile Include="..\..\src\gearlynx_core.cpp" />
     <ClCompile Include="..\..\src\input.cpp" />

@@ -40,6 +40,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/sound_queue.cpp \
     $(SRC_DIR)/gearlynx_core.cpp \
     $(SRC_DIR)/audio.cpp \
+    $(SRC_DIR)/bus.cpp \
     $(SRC_DIR)/input.cpp \
     $(SRC_DIR)/m6502.cpp \
     $(SRC_DIR)/m6502_functors.cpp \

@@ -26,11 +26,12 @@
 #include "input.h"
 #include "state_serializer.h"
 
-Suzy::Suzy(Media* media, M6502* m6502, Input* input)
+Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
 {
     m_media = media;
     m_m6502 = m6502;
     m_input = input;
+    m_bus = bus;
     InitPointer(m_memory);
     InitPointer(m_ram);
     Reset();

@@ -24,6 +24,7 @@
 #include "media.h"
 #include "m6502.h"
 #include "input.h"
+#include "bus.h"
 
 INLINE void Suzy::Clock(u32 cycles)
 {
@@ -33,6 +34,8 @@ INLINE void Suzy::Clock(u32 cycles)
 
 INLINE u8 Suzy::Read(u16 address)
 {
+    m_bus->InjectCycles(15);
+
     switch(address)
     {
     case SUZY_TMPADRL:     // 0xFC00
@@ -228,6 +231,8 @@ INLINE u8 Suzy::Read(u16 address)
 
 INLINE void Suzy::Write(u16 address, u8 value)
 {
+    m_bus->InjectCycles(5);
+
     switch(address)
     {
     case SUZY_TMPADRL:     // 0xFC00

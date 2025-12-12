@@ -29,6 +29,7 @@ class Media;
 class Memory;
 class M6502;
 class Input;
+class Bus;
 class StateSerializer;
 
 class Suzy
@@ -86,7 +87,7 @@ public:
     };
 
 public:
-    Suzy(Media* media, M6502* m6502, Input* input);
+    Suzy(Media* media, M6502* m6502, Input* input, Bus* bus);
     ~Suzy();
     void Init(Memory* memory);
     void Reset();
@@ -129,6 +130,7 @@ private:
     Memory* m_memory;
     M6502* m_m6502;
     Input* m_input;
+    Bus* m_bus;
     Suzy_State m_state;
     u8* m_ram;
     QuadPos m_quad_lut[4][4][4] = {};

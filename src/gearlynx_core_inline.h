@@ -24,6 +24,7 @@
 #include "media.h"
 #include "m6502.h"
 #include "audio.h"
+#include "bus.h"
 #include "mikey.h"
 #include "suzy.h"
 
@@ -74,7 +75,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
                 m_debug_callback();
 
             u32 cpu_cycles = m_m6502->RunInstruction();
-            u32 lynx_cycles = (cpu_cycles * 5) - 1;
+            u32 lynx_cycles = (cpu_cycles * 5) + m_bus->ConsumeCycles();
 
             m_suzy->Clock(lynx_cycles);
             stop = m_mikey->Clock(lynx_cycles);
@@ -171,6 +172,11 @@ INLINE Suzy* GearlynxCore::GetSuzy()
 INLINE Mikey* GearlynxCore::GetMikey()
 {
     return m_mikey;
+}
+
+INLINE Bus* GearlynxCore::GetBus()
+{
+    return m_bus;
 }
 
 #endif /* GEARLYNX_CORE_INLINE_H */

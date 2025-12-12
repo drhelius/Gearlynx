@@ -26,6 +26,7 @@
 #include "media.h"
 #include "m6502.h"
 #include "bit_ops.h"
+#include "bus.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
@@ -47,6 +48,8 @@ INLINE bool Mikey::Clock(u32 cycles)
 
 INLINE u8 Mikey::Read(u16 address)
 {
+    m_bus->InjectCycles(10);
+
     if (address < 0xFD20)
         return ReadTimer(address);
     else if (address < 0xFD40)
@@ -172,6 +175,8 @@ INLINE u8 Mikey::Read(u16 address)
 
 INLINE void Mikey::Write(u16 address, u8 value)
 {
+    m_bus->InjectCycles(20);
+
     if (address < 0xFD20)
         WriteTimer(address, value);
     else if (address < 0xFD40)
