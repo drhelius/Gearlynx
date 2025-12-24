@@ -31,12 +31,6 @@
 #include "config.h"
 #include "emu.h"
 
-struct DebugSymbol
-{
-    u16 address;
-    char text[64];
-};
-
 struct DisassemblerLine
 {
     u16 address;
@@ -1552,6 +1546,77 @@ void gui_debug_window_call_stack(void)
 
     ImGui::End();
     ImGui::PopStyleVar();
+}
+
+void gui_debug_add_symbol(const char* symbol_str)
+{
+    add_symbol(symbol_str);
+}
+
+void gui_debug_remove_symbol(u16 address)
+{
+    DebugSymbol* symbol = fixed_symbols[address];
+    if (IsValidPointer(symbol))
+    {
+        delete symbol;
+        fixed_symbols[address] = NULL;
+    }
+}
+
+void gui_debug_add_disassembler_bookmark(u16 address, const char* name)
+{
+    DisassemblerBookmark bookmark;
+    bookmark.address = address;
+
+    if (name && strlen(name) > 0)
+    {
+        snprintf(bookmark.name, 32, "%s", name);
+    }
+    else
+    {
+        // Auto-generate name from instruction
+        Memory* memory = emu_get_core()->GetMemory();
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(address);
+
+        if (IsValidPointer(record) && (record->name[0] != 0))
+        {
+            std::string instr = record->name;
+            size_t pos = instr.find("{}");
+            if (pos != std::string::npos)
+                instr.replace(pos, 2, "");
+            snprintf(bookmark.name, 32, "%s", instr.c_str());
+        }
+        else
+        {
+            snprintf(bookmark.name, 32, "Bookmark_%04X", address);
+        }
+    }
+
+    bookmarks.push_back(bookmark);
+}
+
+void gui_debug_remove_disassembler_bookmark(u16 address)
+{
+    for (std::vector<DisassemblerBookmark>::iterator it = bookmarks.begin(); it != bookmarks.end(); ++it)
+    {
+        if (it->address == address)
+        {
+            bookmarks.erase(it);
+            break;
+        }
+    }
+}
+
+int gui_debug_get_disassembler_bookmarks(void** bookmarks_ptr)
+{
+    *bookmarks_ptr = (void*)&bookmarks;
+    return (int)bookmarks.size();
+}
+
+int gui_debug_get_symbols(void** symbols_ptr)
+{
+    *symbols_ptr = (void*)fixed_symbols;
+    return 0x10000; // 64K address space
 }
 
 static void save_full_disassembler(FILE* file)

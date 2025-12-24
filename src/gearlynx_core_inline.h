@@ -76,6 +76,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
 
             u32 cpu_cycles = m_m6502->RunInstruction();
             u32 lynx_cycles = (cpu_cycles * 5) + m_bus->ConsumeCycles();
+            m_total_cycles += lynx_cycles;
 
             m_suzy->Clock(lynx_cycles);
             stop = m_mikey->Clock(lynx_cycles);
@@ -119,6 +120,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         {
             u32 cpu_cycles = m_m6502->RunInstruction();
             u32 lynx_cycles = (cpu_cycles * 5) - 1;
+            m_total_cycles += lynx_cycles;
 
             m_suzy->Clock(lynx_cycles);
             stop = m_mikey->Clock(lynx_cycles);

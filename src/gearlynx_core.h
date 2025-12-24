@@ -81,6 +81,7 @@ public:
     Mikey* GetMikey();
     Bus* GetBus();
     void SetDebugCallback(GLYNX_Debug_Callback callback);
+    u64 GetTotalCycles();
 
 private:
     void Reset();
@@ -102,6 +103,7 @@ private:
     Mikey* m_mikey;
     bool m_paused;
     GLYNX_Debug_Callback m_debug_callback;
+    u64 m_total_cycles;
 };
 
 #include "gearlynx_core_inline.h"

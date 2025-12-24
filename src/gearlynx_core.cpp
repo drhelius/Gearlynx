@@ -47,6 +47,7 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_mikey);
     InitPointer(m_debug_callback);
     m_paused = true;
+    m_total_cycles = 0;
 }
 
 GearlynxCore::~GearlynxCore()
@@ -146,6 +147,11 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
 void GearlynxCore::SetDebugCallback(GLYNX_Debug_Callback callback)
 {
     m_debug_callback = callback;
+}
+
+u64 GearlynxCore::GetTotalCycles()
+{
+    return m_total_cycles;
 }
 
 void GearlynxCore::KeyPressed(GLYNX_Keys key)
@@ -614,6 +620,7 @@ bool GearlynxCore::GetSaveStateScreenshot(int index, const char* path, GLYNX_Sav
 void GearlynxCore::Reset()
 {
     m_paused = false;
+    m_total_cycles = 0;
 
     m_media->Reset();
     m_suzy->Reset();

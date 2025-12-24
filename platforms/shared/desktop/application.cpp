@@ -46,6 +46,8 @@ static bool input_gamepad_shortcut_prev[config_HotkeyIndex_COUNT] = { };
 static Uint32 mouse_last_motion_time = 0;
 static const Uint32 mouse_hide_timeout_ms = 1500;
 
+bool g_mcp_stdio_mode = false;
+
 static bool sdl_init(void);
 static void sdl_destroy(void);
 static void sdl_load_gamepad_mappings(void);
@@ -77,7 +79,7 @@ extern "C" void* macos_install_fullscreen_observer(void* nswindow, void(*enter_c
 extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter);
 #endif
 
-int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed)
+int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed, int mcp_mode, int mcp_tcp_port)
 {
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Desktop App", GLYNX_TITLE, GLYNX_VERSION);
@@ -140,6 +142,14 @@ int application_init(const char* rom_file, const char* symbol_file, bool force_f
         Log("Symbol file argument: %s", symbol_file);
         gui_debug_reset_symbols();
         gui_debug_load_symbols_file(symbol_file);
+    }
+
+    if (mcp_mode >= 0)
+    {
+        Log("Auto-starting MCP server (mode: %s, port: %d)...", mcp_mode == 0 ? "stdio" : "http", mcp_tcp_port);
+        config_debug.debug = true;
+        emu_mcp_set_transport(mcp_mode, mcp_tcp_port);
+        emu_mcp_start();
     }
 
     return 0;

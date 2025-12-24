@@ -22,6 +22,7 @@
 #include "gearlynx.h"
 #include "sound_queue.h"
 #include "config.h"
+#include "mcp/mcp_manager.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #if defined(_WIN32)
@@ -33,6 +34,7 @@ static GearlynxCore* core;
 static SoundQueue* sound_queue;
 static s16* audio_buffer;
 static bool audio_enabled;
+static McpManager* mcp_manager;
 
 static void save_ram(void);
 static void load_ram(void);
@@ -70,12 +72,16 @@ bool emu_init(void)
     for (int i = 0; i < 8; i++)
         emu_debug_irq_breakpoints[i] = false;
 
+    mcp_manager = new McpManager();
+    mcp_manager->Init(core);
+
     return true;
 }
 
 void emu_destroy(void)
 {
     save_ram();
+    SafeDelete(mcp_manager);
     SafeDeleteArray(audio_buffer);
     SafeDelete(sound_queue);
     SafeDelete(core);
@@ -104,6 +110,8 @@ bool emu_load_rom(const char* file_path)
 
 void emu_update(void)
 {
+    emu_mcp_pump_commands();
+
     if (emu_is_empty())
         return;
 
@@ -427,6 +435,42 @@ void emu_save_screenshot(const char* file_path)
     Log("Screenshot saved to %s", file_path);
 }
 
+int emu_get_screenshot_png(unsigned char** out_buffer)
+{
+    if (!core->GetMedia()->IsReady())
+        return 0;
+
+    GLYNX_Runtime_Info runtime;
+    emu_get_runtime(runtime);
+
+    int stride = runtime.screen_width * 4;
+    int len = 0;
+
+    *out_buffer = stbi_write_png_to_mem(emu_frame_buffer, stride, 
+                                         runtime.screen_width, runtime.screen_height, 
+                                         4, &len);
+
+    return len;
+}
+
+int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer)
+{
+    if (!core->GetMedia()->IsReady())
+        return 0;
+
+    if (buffer_index < 0 || buffer_index > 1)
+        return 0;
+
+    int stride = GLYNX_SCREEN_WIDTH * 4;
+    int len = 0;
+
+    *out_buffer = stbi_write_png_to_mem(emu_debug_framebuffer[buffer_index], stride,
+                                         GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT,
+                                         4, &len);
+
+    return len;
+}
+
 static void save_ram(void)
 {
     // TOOD
@@ -595,4 +639,38 @@ void emu_stop_vgm_recording(void)
 bool emu_is_vgm_recording(void)
 {
     return core->GetAudio()->IsVgmRecording();
+}
+
+void emu_mcp_set_transport(int mode, int tcp_port)
+{
+    if (mcp_manager)
+        mcp_manager->SetTransportMode((McpTransportMode)mode, tcp_port);
+}
+
+void emu_mcp_start(void)
+{
+    if (mcp_manager)
+        mcp_manager->Start();
+}
+
+void emu_mcp_stop(void)
+{
+    if (mcp_manager)
+        mcp_manager->Stop();
+}
+
+bool emu_mcp_is_running(void)
+{
+    return mcp_manager && mcp_manager->IsRunning();
+}
+
+int emu_mcp_get_transport_mode(void)
+{
+    return mcp_manager ? mcp_manager->GetTransportMode() : -1;
+}
+
+void emu_mcp_pump_commands(void)
+{
+    if (mcp_manager && mcp_manager->IsRunning())
+        mcp_manager->PumpCommands(core);
 }

@@ -96,9 +96,17 @@ EXTERN void emu_debug_break(void);
 EXTERN void emu_debug_continue(void);
 EXTERN void emu_debug_set_callback(GearlynxCore::GLYNX_Debug_Callback callback);
 EXTERN void emu_save_screenshot(const char* file_path);
+EXTERN int emu_get_screenshot_png(unsigned char** out_buffer);
+EXTERN int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer);
 EXTERN void emu_start_vgm_recording(const char* file_path);
 EXTERN void emu_stop_vgm_recording(void);
 EXTERN bool emu_is_vgm_recording(void);
+EXTERN void emu_mcp_set_transport(int mode, int tcp_port);
+EXTERN void emu_mcp_start(void);
+EXTERN void emu_mcp_stop(void);
+EXTERN bool emu_mcp_is_running(void);
+EXTERN int emu_mcp_get_transport_mode(void);
+EXTERN void emu_mcp_pump_commands(void);
 
 #undef EMU_IMPORT
 #undef EXTERN

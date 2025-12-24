@@ -25,6 +25,9 @@
     <Filter Include="core\miniz">
       <UniqueIdentifier>{9de1416f-42b2-4737-a80f-85bffb2f2bd9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="desktop\mcp">
+      <UniqueIdentifier>{a3b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\shared\desktop\imgui\fonts\IconsMaterialDesign.h">
@@ -246,6 +249,18 @@
     <ClInclude Include="..\..\src\types.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\mcp\mcp_debug_adapter.h">
+      <Filter>desktop\mcp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\mcp\mcp_manager.h">
+      <Filter>desktop\mcp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\mcp\mcp_server.h">
+      <Filter>desktop\mcp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\mcp\mcp_transport.h">
+      <Filter>desktop\mcp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\shared\desktop\imgui\imgui.cpp">
@@ -382,6 +397,12 @@
     </ClCompile>
     <ClCompile Include="..\..\src\vgm_recorder.cpp">
       <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\mcp\mcp_debug_adapter.cpp">
+      <Filter>desktop\mcp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp">
+      <Filter>desktop\mcp</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

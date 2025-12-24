@@ -18,7 +18,7 @@
  */
 
 #ifndef LOG_H
-#define	LOG_H
+#define LOG_H
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -27,6 +27,8 @@
 #if defined(__LIBRETRO__)
 #include "libretro.h"
 extern retro_log_printf_t log_cb;
+#else
+extern bool g_mcp_stdio_mode;
 #endif
 
 #if defined(GLYNX_DEBUG)
@@ -56,18 +58,20 @@ inline void Log_func(const char* const msg, ...)
         log_cb(RETRO_LOG_INFO, "%s\n", buffer);
         return;
     }
-#endif
-
-//#if defined(GLYNX_DEBUG)
-#if 0
-    static int count = 1;
-    printf("%d: %s\n", count, buffer);
-    count++;
+    else
+    {
+        printf("%s\n", buffer);
+        fflush(stdout);
+        return;
+    }
 #else
-    printf("%s\n", buffer);
-#endif
+    if (g_mcp_stdio_mode)
+        return;
 
+    printf("%s\n", buffer);
     fflush(stdout);
+    return;
+#endif
 }
 
 #endif /* LOG_H */

@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/github/license/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/drhelius)](https://x.com/drhelius)
 
-Gearlynx is a cross-platform Atari Lynx emulator written in C++ that runs on Windows, macOS, Linux, BSD and RetroArch.
+Gearlynx is an accurate cross-platform Atari Lynx emulator written in C++ that runs on Windows, macOS, Linux, BSD and RetroArch.
 
 This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please consider [sponsoring](https://github.com/sponsors/drhelius).
 
@@ -18,11 +18,78 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 
 ## Downloads
 
-- **Pre-Releases**: [here](https://github.com/drhelius/Gearlynx/releases)
-- **Dev Builds**: [GitHub Actions](https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml)
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Architecture</th>
+      <th>Download Link</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- <tr>
+      <td rowspan="4"><strong>Windows</strong></td>
+      <td>Desktop x64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-windows-x64.zip">Gearlynx-1.0.0-desktop-windows-x64.zip</a></td>
+      <td rowspan="4">May need <a href="https://go.microsoft.com/fwlink/?LinkId=746572">Visual C++ Redistributable</a> and <a href="https://apps.microsoft.com/detail/9nqpsl29bfff">OpenGL Compatibility Pack</a></td>
+    </tr>
+    <tr>
+      <td>Desktop ARM64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-windows-arm64.zip">Gearlynx-1.0.0-desktop-windows-arm64.zip</a></td>
+    </tr>
+    <tr>
+      <td>MCP x64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-windows-x64.mcpb">Gearlynx-1.0.0-mcpb-windows-x64.mcpb</a></td>
+    </tr>
+    <tr>
+      <td>MCP ARM64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-windows-arm64.mcpb">Gearlynx-1.0.0-mcpb-windows-arm64.mcpb</a></td>
+    </tr>
+    <tr>
+      <td rowspan="4"><strong>macOS</strong></td>
+      <td>Desktop Apple Silicon</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-macos-arm64.zip">Gearlynx-1.0.0-desktop-macos-arm64.zip</a></td>
+      <td rowspan="4"></td>
+    </tr>
+    <tr>
+      <td>Desktop Intel</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-macos-intel.zip">Gearlynx-1.0.0-desktop-macos-intel.zip</a></td>
+    </tr>
+    <tr>
+      <td>MCP ARM64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-macos-arm64.mcpb">Gearlynx-1.0.0-mcpb-macos-arm64.mcpb</a></td>
+    </tr>
+    <tr>
+      <td>MCP x64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-macos-x64.mcpb">Gearlynx-1.0.0-mcpb-macos-x64.mcpb</a></td>
+    </tr>
+    <tr>
+      <td rowspan="3"><strong>Linux</strong></td>
+      <td>Desktop Ubuntu 24.04</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-ubuntu24.04-x64.zip">Gearlynx-1.0.0-desktop-ubuntu24.04-x64.zip</a></td>
+      <td rowspan="3">May need <code>libsdl2</code></td>
+    </tr>
+    <tr>
+      <td>Desktop Ubuntu 22.04</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-ubuntu22.04-x64.zip">Gearlynx-1.0.0-desktop-ubuntu22.04-x64.zip</a></td>
+    </tr>
+    <tr>
+      <td>MCP x64</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-linux-x64.mcpb">Gearlynx-1.0.0-mcpb-linux-x64.mcpb</a></td>
+    </tr> -->
+    <tr>
+      <td><strong>Dev Builds</strong></td>
+      <td>All platforms</td>
+      <td><a href="https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml">GitHub Actions</a></td>
+      <td>Latest development builds</td>
+    </tr>
+  </tbody>
+</table>
 
 ## Features
 
+- Accurate emulation supporting the entire commercial Atari Lynx catalog.
 - Very accurate 65C02 core.
 - Compressed and hombrew rom support (lnx, lyx, o, and zip).
 - Save states with preview.
@@ -31,6 +98,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - Supported platforms (standalone): Windows, Linux, BSD and macOS.
 - Supported platforms (libretro): Windows, Linux, macOS, Raspberry Pi, Android, iOS, tvOS, PlayStation Vita, PlayStation 3, Nintendo 3DS, Nintendo GameCube, Nintendo Wii, Nintendo WiiU, Nintendo Switch, Emscripten, Classic Mini systems (NES, SNES, C64, ...), OpenDingux, RetroFW and QNX.
 - Full debugger with just-in-time disassembler that can handle self-modifying code, CPU breakpoints, memory access breakpoints, code navigation (goto address, JP JR and JSR double clicking), debug symbols, automatic labels, memory editor, Suzy and Mikey register viewer, audio inspector and framebuffer preview.
+- MCP server for AI-assisted debugging with GitHub Copilot, Claude, ChatGPT and similar, exposing tools for execution control, memory inspection, hardware status, and more.
 - Windows and Linux *Portable Mode*.
 - ROM loading from the command line by adding the ROM path as an argument.
 - ROM loading using drag & drop.
@@ -40,6 +108,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 
 ### Basic Usage
 - **BIOS**: Gearlynx requires a BIOS to work. It is possible to load any BIOS but the original with md5 ```fcd403db69f54290b51035d82f835e7b``` is recommended.
+- **Mouse Cursor**: Automatically hides when hovering over the main output window or when Main Menu is disabled.
 - **Portable Mode**: Create an empty file named `portable.ini` in the same directory as the application binary to enable portable mode.
 
 ### Debugging Features
@@ -49,14 +118,27 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 
 ### Command Line Usage
 ```
-gearlynx [options] [rom_file] [symbol_file]
+gearlynx [options] [game_file] [symbol_file]
+
+Arguments:
+  [game_file]              Game file: accepts ROMs (.pce, .sgx, .hes), CUE (.cue) or ZIP (.zip)
+  [symbol_file]            Optional symbol file for debugging
 
 Options:
-  -f, --fullscreen    Start in fullscreen mode
-  -w, --windowed      Start in windowed mode with menu visible
-  -v, --version       Display version information
-  -h, --help          Display this help message
+  -f, --fullscreen         Start in fullscreen mode
+  -w, --windowed           Start in windowed mode with menu visible
+      --mcp-stdio          Auto-start MCP server with stdio transport
+      --mcp-http           Auto-start MCP server with HTTP transport
+      --mcp-http-port N    HTTP port for MCP server (default: 7777)
+  -v, --version            Display version information
+  -h, --help               Display this help message
 ```
+
+### MCP Server
+
+Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, ChatGPT and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, sprite viewing, and more.
+
+For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
 
 ## Hardware Tests
 - **Atari Lynx Hardware Test ROMs**: [https://github.com/drhelius/lynx-tests](https://github.com/drhelius/lynx-tests).
