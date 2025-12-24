@@ -16,7 +16,9 @@ bundle:
 	cp iconfile.icns $(APP_NAME).app/Contents/Resources/
 	cp $(TARGET) $(APP_NAME).app/Contents/MacOS/
 	cp run.sh $(APP_NAME).app/Contents/MacOS/
-	cp ../shared/gamecontrollerdb.txt $(APP_NAME).app/Contents/MacOS/
+	mkdir -p $(APP_NAME).app/Contents/Resources/mcp
+	cp ../shared/gamecontrollerdb.txt $(APP_NAME).app/Contents/Resources/
+	cp -r ../shared/desktop/mcp/resources $(APP_NAME).app/Contents/Resources/mcp/
 
 dist: clean all bundle
 	@echo Success!!
