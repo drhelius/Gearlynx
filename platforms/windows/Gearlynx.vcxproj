@@ -111,7 +111,9 @@
     <ClCompile Include="..\..\src\mikey.cpp" />
     <ClCompile Include="..\..\src\suzy.cpp" />
     <ClCompile Include="..\..\src\vgm_recorder.cpp" />
-    <ClCompile Include="..\shared\dependencies\miniz\miniz.c" />
+    <ClCompile Include="..\shared\dependencies\miniz\miniz.c">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
     <ClCompile Include="..\shared\desktop\application.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />
     <ClCompile Include="..\shared\desktop\emu.cpp" />
@@ -131,18 +133,40 @@
     <ClCompile Include="..\shared\desktop\gui_filedialogs.cpp" />
     <ClCompile Include="..\shared\desktop\gui_menus.cpp" />
     <ClCompile Include="..\shared\desktop\gui_popups.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_demo.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_draw.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_opengl2.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_sdl2.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_tables.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\implot.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\implot_demo.cpp" />
-    <ClCompile Include="..\shared\dependencies\imgui\implot_items.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_demo.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_draw.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_opengl2.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_sdl2.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_tables.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_widgets.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\implot.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\implot_demo.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\shared\dependencies\imgui\implot_items.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
     <ClCompile Include="..\shared\desktop\main.cpp" />
-    <ClCompile Include="..\shared\dependencies\nfd\nfd_win.cpp" />
+    <ClCompile Include="..\shared\dependencies\nfd\nfd_win.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
     <ClCompile Include="..\shared\desktop\renderer.cpp" />
     <ClCompile Include="..\shared\desktop\sound_queue.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_debug_adapter.cpp" />
