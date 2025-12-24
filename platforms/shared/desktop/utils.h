@@ -61,14 +61,37 @@ static inline int get_reset_value(int option)
     }
 }
 
+static inline int ends_with(const char* s, const char* suffix)
+{
+    size_t sl = strlen(s);
+    size_t su = strlen(suffix);
+
+    if (sl < su)
+    {
+        return 0;
+    }
+
+    return (memcmp(s + (sl - su), suffix, su) == 0);
+}
+
 static inline void get_executable_path(char* path, size_t size)
 {
 #if defined(_WIN32)
     DWORD len = GetModuleFileNameA(NULL, path, (DWORD)size);
-    if (len > 0 && len < size) {
+    if (len > 0 && len < size)
+    {
         char* last_slash = strrchr(path, '\\');
         if (last_slash) *last_slash = '\0';
-    } else {
+
+        // Check if we're in an MCPB bundle (server\ subfolder)
+        char* server_pos = strstr(path, "\\server");
+        if (server_pos && (server_pos[7] == '\0' || server_pos[7] == '\\'))
+        {
+            *server_pos = '\0';  // Truncate at server\ to get bundle root
+        }
+    }
+    else
+    {
         path[0] = '\0';
     }
 #elif defined(__APPLE__)
@@ -76,23 +99,67 @@ static inline void get_executable_path(char* path, size_t size)
     if (_NSGetExecutablePath(path, &bufsize) == 0) {
         char* dir = dirname(path);
         strncpy(path, dir, size);
-        path[size-1] = '\0';
-    } else {
+        path[size - 1] = '\0';
+
+        // Check if we're in an MCPB bundle (server/ subfolder)
+        char* server_pos = strstr(path, "/server");
+        if (server_pos && (server_pos[7] == '\0' || server_pos[7] == '/'))
+        {
+            *server_pos = '\0';  // Truncate at server/ to get bundle root
+        }
+        // If running inside a .app bundle, use Contents/Resources as data root
+        else if (ends_with(path, "/Contents/MacOS"))
+        {
+            size_t len = strlen(path);
+            const char* repl = "Resources";
+
+            // Replace the trailing "MacOS" with "Resources"
+            if (len >= strlen("MacOS") && (len - strlen("MacOS") + strlen(repl) + 1) <= size)
+            {
+                memcpy(path + (len - strlen("MacOS")), repl, strlen(repl) + 1);
+            }
+        }
+    }
+    else
+    {
         path[0] = '\0';
     }
 #elif defined(__linux__)
-    ssize_t len = readlink("/proc/self/exe", path, size-1);
-    if (len != -1) {
+    ssize_t len = readlink("/proc/self/exe", path, size - 1);
+    if (len != -1)
+    {
         path[len] = '\0';
         char* last_slash = strrchr(path, '/');
         if (last_slash) *last_slash = '\0';
-    } else {
+
+        // Check if we're in an MCPB bundle (server/ subfolder)
+        char* server_pos = strstr(path, "/server");
+        if (server_pos && (server_pos[7] == '\0' || server_pos[7] == '/'))
+        {
+            *server_pos = '\0';  // Truncate at server/ to get bundle root
+        }
+    }
+    else
+    {
         path[0] = '\0';
     }
 #else
     (void)(size);
     path[0] = '\0';
 #endif
+}
+
+static inline void strip_color_tags(std::string& str)
+{
+    size_t pos = 0;
+    while ((pos = str.find('{', pos)) != std::string::npos)
+    {
+        size_t end_pos = str.find('}', pos);
+        if (end_pos != std::string::npos)
+            str.erase(pos, end_pos - pos + 1);
+        else
+            pos++;
+    }
 }
 
 static inline bool SliderFloatWithSteps(const char* label, float* v, float v_min, float v_max, float v_step, const char* display_format)
