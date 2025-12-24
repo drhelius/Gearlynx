@@ -198,6 +198,7 @@ void Mikey::HorizontalBlank()
     {
         DebugMikey("===> Rest signal goes low");
         m_state.rest = false;
+        m_state.frame_ready = true;
     }
     // Typically end of hcount 103, start of 3rd vblank line
     else if (timer_2_counter == (timer_2_backup - 1))
@@ -224,7 +225,7 @@ void Mikey::HorizontalBlank()
 void Mikey::VerticalBlank()
 {
     DebugMikey("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
-    m_state.frame_ready = true;
+    //m_state.frame_ready = true;
     //m_state.render_line = 0;
     m_debug_cycles = 0;
 
