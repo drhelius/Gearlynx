@@ -25,6 +25,7 @@
 #include "m6502_timing.h"
 #include "m6502_names.h"
 #include "memory.h"
+#include "bus.h"
 
 INLINE u32 M6502::RunInstruction()
 {
@@ -33,6 +34,7 @@ INLINE u32 M6502::RunInstruction()
 #endif
 
     m_s.cycles = 0;
+    m_s.memory_accesses = 0;
 
     if (unlikely(m_s.halted))
     {
@@ -49,7 +51,23 @@ INLINE u32 M6502::RunInstruction()
         return m_s.cycles;
     }
 
-    u8 opcode = Fetch8();
+    //u8 opcode = Fetch8();
+
+    u16 fetch_address = m_s.PC.GetValue();
+
+    bool page_mode = (m_prev_opcode_address != 0xFFFF) && ((m_prev_opcode_address & 0xFF00) == (fetch_address & 0xFF00));
+
+    m_bus->InjectCycles(page_mode ? k_bus_cycles_opcode_page : k_bus_cycles_opcode_normal);
+
+    OnMemoryAccess(); // opcode fetch counts as a memory access
+
+    // Use opcode-specific memory read that skips RAM timing injection
+    u8 opcode = m_memory->ReadOpcode(fetch_address);
+    m_prev_opcode_address = fetch_address;
+    m_s.PC.Increment();
+
+
+
     CheckIRQs();
     (this->*m_opcodes[opcode])();
 
@@ -60,7 +78,11 @@ INLINE u32 M6502::RunInstruction()
 
     m_s.cycles += k_m6502_opcode_cycles[opcode];
 
-    return m_s.cycles;
+    //return m_s.cycles;
+
+    u32 internal_cycles = (m_s.cycles > m_s.memory_accesses) ? (m_s.cycles - m_s.memory_accesses) : 0;
+
+    return internal_cycles;
 }
 
 inline void M6502::HandleIRQ()
@@ -107,6 +129,11 @@ INLINE bool M6502::IsHalted()
 INLINE void M6502::InjectCycles(unsigned int cycles)
 {
     m_s.cycles += cycles;
+}
+
+INLINE void M6502::OnMemoryAccess()
+{
+    m_s.memory_accesses++;
 }
 
 INLINE u8 M6502::Fetch8()

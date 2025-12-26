@@ -30,6 +30,7 @@ class Audio;
 class Suzy;
 class Mikey;
 class M6502;
+class Bus;
 class StateSerializer;
 
 class Memory
@@ -42,13 +43,14 @@ public:
     };
 
 public:
-    Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502);
+    Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus);
     ~Memory();
     void Init();
     void Reset();
     u8* GetRAM();
     u8 Read(u16 address);
     void Write(u16 address, u8 value);
+    u8 ReadOpcode(u16 address);
     Memory_State* GetState();
     GLYNX_Disassembler_Record* GetDisassemblerRecord(u16 address);
     GLYNX_Disassembler_Record* GetOrCreateDisassemblerRecord(u16 address);
@@ -76,6 +78,7 @@ private:
     Suzy* m_suzy;
     Mikey* m_mikey;
     M6502* m_m6502;
+    Bus* m_bus;
     Memory_State m_state;
     GLYNX_Disassembler_Record** m_disassembler;
     u8* m_read_page[256];

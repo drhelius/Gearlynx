@@ -34,7 +34,8 @@ INLINE void Suzy::Clock(u32 cycles)
 
 INLINE u8 Suzy::Read(u16 address)
 {
-    m_bus->InjectCycles(15);
+    m_bus->InjectCycles(k_bus_cycles_suzy_read);
+    m_m6502->OnMemoryAccess();
 
     switch(address)
     {
@@ -231,7 +232,8 @@ INLINE u8 Suzy::Read(u16 address)
 
 INLINE void Suzy::Write(u16 address, u8 value)
 {
-    m_bus->InjectCycles(5);
+    m_bus->InjectCycles(k_bus_cycles_suzy_write);
+    m_m6502->OnMemoryAccess();
 
     switch(address)
     {
@@ -559,6 +561,12 @@ INLINE void Suzy::SpritesGo()
     }
 
     DebugSuzy("SpritesGo finished: total cycles = %d", m_state.sprite_cycles);
+
+    if (m_state.sprite_cycles == 0)
+    {
+        m_state.sprsys_spritesbusy = false;
+        m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
+    }
 }
 
 INLINE void Suzy::DrawSprite()

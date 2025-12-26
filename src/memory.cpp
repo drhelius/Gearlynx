@@ -25,15 +25,17 @@
 #include "suzy.h"
 #include "mikey.h"
 #include "m6502.h"
+#include "bus.h"
 #include "state_serializer.h"
 
-Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502)
+Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus)
 {
     m_media = media;
     m_input = input;
     m_suzy = suzy;
     m_mikey = mikey;
     m_m6502 = m6502;
+    m_bus = bus;
     InitPointer(m_disassembler);
     InitPointer(m_state.ram);
     m_state.MAPCTL = 0;

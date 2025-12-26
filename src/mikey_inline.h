@@ -48,7 +48,8 @@ INLINE bool Mikey::Clock(u32 cycles)
 
 INLINE u8 Mikey::Read(u16 address)
 {
-    m_bus->InjectCycles(10);
+    m_bus->InjectCycles(k_bus_cycles_mikey_read);
+    m_m6502->OnMemoryAccess();
 
     if (address < 0xFD20)
         return ReadTimer(address);
@@ -175,7 +176,8 @@ INLINE u8 Mikey::Read(u16 address)
 
 INLINE void Mikey::Write(u16 address, u8 value)
 {
-    m_bus->InjectCycles(20);
+    m_bus->InjectCycles(k_bus_cycles_mikey_write);
+    m_m6502->OnMemoryAccess();
 
     if (address < 0xFD20)
         WriteTimer(address, value);

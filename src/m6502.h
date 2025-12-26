@@ -41,6 +41,7 @@
 
 class Memory;
 class StateSerializer;
+class Bus;
 
 class M6502
 {
@@ -54,6 +55,7 @@ public:
         EightBitRegister S;
         EightBitRegister P;
         u32 cycles;
+        u32 memory_accesses;
         bool irq_asserted;
         bool irq_pending;
         s32 debug_next_irq;
@@ -80,7 +82,7 @@ public:
     };
 
 public:
-    M6502();
+    M6502(Bus* bus);
     ~M6502();
     void Init(Memory* memory);
     void Reset();
@@ -89,6 +91,7 @@ public:
     void Halt(bool halted);
     bool IsHalted();
     void InjectCycles(unsigned int cycles);
+    void OnMemoryAccess();
     M6502_State* GetState();
     void DisassembleNextOPCode();
     void SetResetValue(int value);
@@ -113,6 +116,7 @@ private:
     opcodeptr m_opcodes[256];
     u8 m_zn_flags_lut[256];
     Memory* m_memory;
+    Bus* m_bus;
     M6502_State m_s;
     bool m_breakpoints_enabled;
     u8 m_breakpoints_irq_enabled;
@@ -124,6 +128,7 @@ private:
     bool m_run_to_breakpoint_requested;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_reset_value;
+    u16 m_prev_opcode_address;
 
 private:
     void HandleIRQ();

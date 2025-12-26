@@ -23,6 +23,7 @@
 #include <assert.h>
 #include "memory.h"
 #include "m6502.h"
+#include "bus.h"
 
 INLINE u8* Memory::GetRAM()
 {
@@ -45,7 +46,11 @@ INLINE u8 Memory::Read(u16 address)
     u8 page = hi(address);
 
     if (IsValidPointer(m_read_page[page]))
+    {
+        m_bus->InjectCycles(k_bus_cycles_ram_read);
+        m_m6502->OnMemoryAccess();
         return m_read_page[page][lo(address)];
+    }
     else
         return (this->*m_read_fn[page])(address);
 }
@@ -70,9 +75,25 @@ INLINE void Memory::Write(u16 address, u8 value)
     u8 page = hi(address);
 
     if (IsValidPointer(m_write_page[page]))
+    {
+        m_bus->InjectCycles(k_bus_cycles_ram_write);
+        m_m6502->OnMemoryAccess();
         m_write_page[page][lo(address)] = value;
+    }
     else
         (this->*m_write_fn[page])(address, value);
+}
+
+INLINE u8 Memory::ReadOpcode(u16 address)
+{
+    if (unlikely(address == 0xFFF9))
+        return m_state.MAPCTL;
+
+    u8 page = hi(address);
+    if (IsValidPointer(m_read_page[page]))
+        return m_read_page[page][lo(address)];
+    else
+        return (this->*m_read_fn[page])(address);
 }
 
 INLINE Memory::Memory_State* Memory::GetState()

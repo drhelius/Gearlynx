@@ -23,14 +23,17 @@
 #include <string.h>
 #include <assert.h>
 #include "m6502.h"
+#include "bus.h"
 #include "memory.h"
 #include "state_serializer.h"
 
-M6502::M6502()
+M6502::M6502(Bus* bus)
 {
+    m_bus = bus;
     InitPointer(m_memory);
     InitOPCodeFunctors();
     m_s.cycles = 0;
+    m_s.memory_accesses = 0;
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_s.debug_next_irq = 0;
@@ -43,6 +46,7 @@ M6502::M6502()
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
     m_reset_value = -1;
+    m_prev_opcode_address = 0xFFFF;
 }
 
 M6502::~M6502()
@@ -83,6 +87,7 @@ void M6502::Reset()
     ClearFlag(FLAG_DECIMAL);
 
     m_s.cycles = 0;
+    m_s.memory_accesses = 0;
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_s.debug_irq_mask = 0;
@@ -91,6 +96,7 @@ void M6502::Reset()
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
+    m_prev_opcode_address = 0xFFFF;
     ClearDisassemblerCallStack();
 }
 
@@ -330,6 +336,7 @@ void M6502::LoadState(std::istream& stream)
 void M6502::Serialize(StateSerializer& s)
 {
     G_SERIALIZE(s, m_s.cycles);
+    G_SERIALIZE(s, m_s.memory_accesses);
     G_SERIALIZE(s, m_s.irq_asserted);
     G_SERIALIZE(s, m_s.irq_pending);
     G_SERIALIZE(s, m_s.debug_next_irq);
