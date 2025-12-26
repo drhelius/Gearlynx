@@ -59,6 +59,22 @@ void gui_debug_memory_reset(void)
     mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", media->GetBIOS(), 0x200, 0xFE00);
 }
 
+void gui_debug_reset_memory_bookmarks(void)
+{
+    for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
+    {
+        mem_edit[i].RemoveBookmarks();
+    }
+}
+
+void gui_debug_reset_memory_watches(void)
+{
+    for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
+    {
+        mem_edit[i].RemoveWatches();
+    }
+}
+
 void gui_debug_window_memory(void)
 {
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)

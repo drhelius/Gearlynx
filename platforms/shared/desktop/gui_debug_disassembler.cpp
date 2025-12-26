@@ -132,6 +132,11 @@ void gui_debug_reset_breakpoints(void)
         emu_debug_irq_breakpoints[i] = false;
 }
 
+void gui_debug_reset_disassembler_bookmarks(void)
+{
+    bookmarks.clear();
+}
+
 void gui_debug_load_symbols_file(const char* file_path)
 {
     std::ifstream file;

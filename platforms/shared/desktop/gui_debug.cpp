@@ -58,6 +58,9 @@ void gui_debug_reset(void)
     gui_debug_memory_reset();
     gui_debug_reset_breakpoints();
     gui_debug_reset_symbols();
+    gui_debug_reset_disassembler_bookmarks();
+    gui_debug_reset_memory_bookmarks();
+    gui_debug_reset_memory_watches();
 }
 
 void gui_debug_callback(void)
