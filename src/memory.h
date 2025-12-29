@@ -48,9 +48,8 @@ public:
     void Init();
     void Reset();
     u8* GetRAM();
-    u8 Read(u16 address);
-    void Write(u16 address, u8 value);
-    u8 ReadOpcode(u16 address);
+    template<bool debug = false> u8 Read(u16 address);
+    template<bool debug = false> void Write(u16 address, u8 value);
     Memory_State* GetState();
     GLYNX_Disassembler_Record* GetDisassemblerRecord(u16 address);
     GLYNX_Disassembler_Record* GetOrCreateDisassemblerRecord(u16 address);

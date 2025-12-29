@@ -35,6 +35,7 @@ INLINE u32 M6502::RunInstruction()
 
     m_s.cycles = 0;
     m_s.memory_accesses = 0;
+    m_s.onebyte_un_nop = false;
 
     if (unlikely(m_s.halted))
     {
@@ -51,38 +52,25 @@ INLINE u32 M6502::RunInstruction()
         return m_s.cycles;
     }
 
-    //u8 opcode = Fetch8();
-
     u16 fetch_address = m_s.PC.GetValue();
-
     bool page_mode = (m_prev_opcode_address != 0xFFFF) && ((m_prev_opcode_address & 0xFF00) == (fetch_address & 0xFF00));
-
-    m_bus->InjectCycles(page_mode ? k_bus_cycles_opcode_page : k_bus_cycles_opcode_normal);
-
-    OnMemoryAccess(); // opcode fetch counts as a memory access
-
-    // Use opcode-specific memory read that skips RAM timing injection
-    u8 opcode = m_memory->ReadOpcode(fetch_address);
     m_prev_opcode_address = fetch_address;
-    m_s.PC.Increment();
 
-
+    u8 opcode = Fetch8();
 
     CheckIRQs();
     (this->*m_opcodes[opcode])();
 
-    if(m_s.irq_pending)
+    if(m_s.irq_pending && !m_s.onebyte_un_nop)
         HandleIRQ();
 
     DisassembleNextOPCode();
 
     m_s.cycles += k_m6502_opcode_cycles[opcode];
 
-    //return m_s.cycles;
+    u32 ticks = (m_s.cycles * k_bus_cycles_int_tick_factor) - (page_mode ? 1 : 0);
 
-    u32 internal_cycles = (m_s.cycles > m_s.memory_accesses) ? (m_s.cycles - m_s.memory_accesses) : 0;
-
-    return internal_cycles;
+    return ticks;
 }
 
 inline void M6502::HandleIRQ()
@@ -129,11 +117,6 @@ INLINE bool M6502::IsHalted()
 INLINE void M6502::InjectCycles(unsigned int cycles)
 {
     m_s.cycles += cycles;
-}
-
-INLINE void M6502::OnMemoryAccess()
-{
-    m_s.memory_accesses++;
 }
 
 INLINE u8 M6502::Fetch8()
@@ -415,7 +398,7 @@ INLINE void M6502::DisassembleNextOPCode()
 
     assert(IsValidPointer(record));
 
-    u8 opcode = m_memory->Read(address);
+    u8 opcode = m_memory->Read<true>(address);
     u8 opcode_size = k_m6502_opcode_sizes[opcode];
 
     bool changed = (record->opcodes[0] != opcode);
@@ -423,7 +406,7 @@ INLINE void M6502::DisassembleNextOPCode()
 
     for (int i = 1; i < opcode_size; i++)
     {
-        u8 mem_byte = m_memory->Read(address + i);
+        u8 mem_byte = m_memory->Read<true>(address + i);
 
         if (record->opcodes[i] != mem_byte)
         {
@@ -508,32 +491,32 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         }
         case GLYNX_OPCode_Type_1b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1));
             break;
         }
         case GLYNX_OPCode_Type_1b_1b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1), m_memory->Read(address + 2));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1), m_memory->Read<true>(address + 2));
             break;
         }
         case GLYNX_OPCode_Type_1b_2b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1), m_memory->Read(address + 2) | (m_memory->Read(address + 3) << 8));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1), m_memory->Read<true>(address + 2) | (m_memory->Read<true>(address + 3) << 8));
             break;
         }
         case GLYNX_OPCode_Type_2b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1) | (m_memory->Read(address + 2) << 8));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1) | (m_memory->Read<true>(address + 2) << 8));
             break;
         }
         case GLYNX_OPCode_Type_2b_2b_2b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read(address + 1) | (m_memory->Read(address + 2) << 8), m_memory->Read(address + 3) | (m_memory->Read(address + 4) << 8), m_memory->Read(address + 5) | (m_memory->Read(address + 6) << 8));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1) | (m_memory->Read<true>(address + 2) << 8), m_memory->Read<true>(address + 3) | (m_memory->Read<true>(address + 4) << 8), m_memory->Read<true>(address + 5) | (m_memory->Read<true>(address + 6) << 8));
             break;
         }
         case GLYNX_OPCode_Type_1b_Relative:
         {
-            s8 rel = m_memory->Read(address + 1);
+            s8 rel = m_memory->Read<true>(address + 1);
             u16 jump_address = address + 2 + rel;
             record->jump = true;
             record->jump_address = jump_address;
@@ -543,8 +526,8 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         }
         case GLYNX_OPCode_Type_1b_1b_Relative:
         {
-            u8 zero_page = m_memory->Read(address + 1);
-            s8 rel = m_memory->Read(address + 2);
+            u8 zero_page = m_memory->Read<true>(address + 1);
+            s8 rel = m_memory->Read<true>(address + 2);
             u16 jump_address = address + 3 + rel;
             record->jump = true;
             record->jump_address = jump_address;
@@ -561,7 +544,7 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
     // JMP $nn, JSR $nn
     if (opcode == 0x4C || opcode == 0x20)
     {
-        u16 jump_address = Address16(m_memory->Read(address + 2), m_memory->Read(address + 1));
+        u16 jump_address = Address16(m_memory->Read<true>(address + 2), m_memory->Read<true>(address + 1));
         record->jump = true;
         record->jump_address = jump_address;
     }

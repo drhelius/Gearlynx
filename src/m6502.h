@@ -61,6 +61,7 @@ public:
         s32 debug_next_irq;
         s32 debug_irq_mask;
         bool halted;
+        bool onebyte_un_nop;
     };
 
     struct GLYNX_Breakpoint
@@ -91,7 +92,6 @@ public:
     void Halt(bool halted);
     bool IsHalted();
     void InjectCycles(unsigned int cycles);
-    void OnMemoryAccess();
     M6502_State* GetState();
     void DisassembleNextOPCode();
     void SetResetValue(int value);

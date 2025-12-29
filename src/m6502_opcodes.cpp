@@ -40,6 +40,7 @@ void M6502::OPCode0x02()
 
 void M6502::OPCode0x03()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -87,6 +88,7 @@ void M6502::OPCode0x0A()
 
 void M6502::OPCode0x0B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -134,6 +136,7 @@ void M6502::OPCode0x12()
 
 void M6502::OPCode0x13()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -181,6 +184,7 @@ void M6502::OPCode0x1A()
 
 void M6502::OPCode0x1B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -235,6 +239,7 @@ void M6502::OPCode0x22()
 
 void M6502::OPCode0x23()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -284,6 +289,7 @@ void M6502::OPCode0x2A()
 
 void M6502::OPCode0x2B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -331,6 +337,7 @@ void M6502::OPCode0x32()
 
 void M6502::OPCode0x33()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -378,6 +385,7 @@ void M6502::OPCode0x3A()
 
 void M6502::OPCode0x3B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -431,6 +439,7 @@ void M6502::OPCode0x42()
 
 void M6502::OPCode0x43()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -478,6 +487,7 @@ void M6502::OPCode0x4A()
 
 void M6502::OPCode0x4B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -525,6 +535,7 @@ void M6502::OPCode0x52()
 
 void M6502::OPCode0x53()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -572,6 +583,7 @@ void M6502::OPCode0x5A()
 
 void M6502::OPCode0x5B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -622,6 +634,7 @@ void M6502::OPCode0x62()
 
 void M6502::OPCode0x63()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -671,6 +684,7 @@ void M6502::OPCode0x6A()
 
 void M6502::OPCode0x6B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -718,6 +732,7 @@ void M6502::OPCode0x72()
 
 void M6502::OPCode0x73()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -767,6 +782,7 @@ void M6502::OPCode0x7A()
 
 void M6502::OPCode0x7B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -814,6 +830,7 @@ void M6502::OPCode0x82()
 
 void M6502::OPCode0x83()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -862,6 +879,7 @@ void M6502::OPCode0x8A()
 
 void M6502::OPCode0x8B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -909,6 +927,7 @@ void M6502::OPCode0x92()
 
 void M6502::OPCode0x93()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -956,6 +975,7 @@ void M6502::OPCode0x9A()
 
 void M6502::OPCode0x9B()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1003,6 +1023,7 @@ void M6502::OPCode0xA2()
 
 void M6502::OPCode0xA3()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1050,6 +1071,7 @@ void M6502::OPCode0xAA()
 
 void M6502::OPCode0xAB()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1097,6 +1119,7 @@ void M6502::OPCode0xB2()
 
 void M6502::OPCode0xB3()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1144,6 +1167,7 @@ void M6502::OPCode0xBA()
 
 void M6502::OPCode0xBB()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1191,6 +1215,7 @@ void M6502::OPCode0xC2()
 
 void M6502::OPCode0xC3()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1238,6 +1263,7 @@ void M6502::OPCode0xCA()
 
 void M6502::OPCode0xCB()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1285,6 +1311,7 @@ void M6502::OPCode0xD2()
 
 void M6502::OPCode0xD3()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1332,6 +1359,7 @@ void M6502::OPCode0xDA()
 
 void M6502::OPCode0xDB()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1379,6 +1407,7 @@ void M6502::OPCode0xE2()
 
 void M6502::OPCode0xE3()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1425,6 +1454,7 @@ void M6502::OPCode0xEA()
 
 void M6502::OPCode0xEB()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1472,6 +1502,7 @@ void M6502::OPCode0xF2()
 
 void M6502::OPCode0xF3()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 
@@ -1521,6 +1552,7 @@ void M6502::OPCode0xFA()
 
 void M6502::OPCode0xFB()
 {
+    m_s.onebyte_un_nop = true;
     UnofficialOPCode();
 }
 

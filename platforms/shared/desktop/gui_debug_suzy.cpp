@@ -46,7 +46,7 @@ void gui_debug_window_suzy_regs(void)
     Input* input = core->GetInput();
     u8 joystick = input->ReadJoystick();
     u8 switches = input->ReadSwitches();
-    u8 sprsys = suzy->Read(SUZY_SPRSYS);
+    u8 sprsys = suzy->Read<true>(SUZY_SPRSYS);
 
     struct
     {

@@ -36,16 +36,13 @@ private:
     u32 m_cycles;
 };
 
-static const u32 k_bus_cycles_opcode_page   = 5;    // Page mode opcode fetch
-static const u32 k_bus_cycles_opcode_normal = 5;    // Normal opcode fetch
-static const u32 k_bus_cycles_ram_read      = 5;    // RAM/ROM data read
-static const u32 k_bus_cycles_ram_write     = 5;    // RAM/ROM data write
-static const u32 k_bus_cycles_suzy_read     = 11;   // Suzy register read (midpoint 9-15)
-static const u32 k_bus_cycles_suzy_write    = 5;    // Suzy register write (blind write)
-static const u32 k_bus_cycles_cart_read     = 14;   // Cart read
-static const u32 k_bus_cycles_mikey_read    = 5;    // Mikey register read
-static const u32 k_bus_cycles_mikey_write   = 5;    // Mikey register write
-static const u32 k_bus_cycles_audio_ram_rw = 12;    // Audio DPRAM (midpoint 5-20)
-static const u32 k_bus_cycles_int_tick_factor = 2;  // Internal CPU cycle to tick scaling
+static const u32 k_bus_cycles_suzy_read         = 7;    // Suzy register read (9-15 ticks, base 5 + 4-10 extra)
+static const u32 k_bus_cycles_suzy_write        = 0;    // Suzy register write (blind write, 5 ticks)
+static const u32 k_bus_cycles_cart_read         = 3;    // Cart read
+static const u32 k_bus_cycles_mikey_read        = 0;    // Mikey register read
+static const u32 k_bus_cycles_mikey_write       = 0;    // Mikey register write
+static const u32 k_bus_cycles_int_tick_factor   = 5;    // Internal CPU cycle to tick scaling
+static const u32 k_bus_cycles_timer             = 2;
+static const u32 k_bus_cycles_audio             = 7;
 
 #endif /* BUS_H */

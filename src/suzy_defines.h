@@ -20,6 +20,11 @@
 #ifndef SUZY_DEFINES_H
 #define SUZY_DEFINES_H
 
+static const u32 k_suzy_ticks_ram_read    = 5;   // Normal RAM read
+static const u32 k_suzy_ticks_ram_write   = 5;   // Normal RAM write
+static const u32 k_suzy_ticks_rmw         = 10;  // Read-modify-write (read + write)
+static const u32 k_suzy_ticks_process     = 4;   // Internal processing overhead per operation
+
 #include "m6502.h"
 
 //#define GLYNX_DEBUG_SUZY

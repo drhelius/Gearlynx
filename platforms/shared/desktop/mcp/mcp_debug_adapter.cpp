@@ -680,20 +680,20 @@ json DebugAdapter::GetMikeyRegisters(u16 address)
     AddRegister(registers, ss, "MSTEREO", MIKEY_MSTEREO, mikey_state->MSTEREO, address);
 
     // Interrupt registers ($FD80-$FD81)
-    AddRegister(registers, ss, "INTRST", MIKEY_INTRST, mikey->Read(MIKEY_INTRST), address);
-    AddRegister(registers, ss, "INTSET", MIKEY_INTSET, mikey->Read(MIKEY_INTSET), address);
+    AddRegister(registers, ss, "INTRST", MIKEY_INTRST, mikey->Read<true>(MIKEY_INTRST), address);
+    AddRegister(registers, ss, "INTSET", MIKEY_INTSET, mikey->Read<true>(MIKEY_INTSET), address);
 
     // Misc registers ($FD84-$FD86)
-    AddRegister(registers, ss, "MAGRDY0", MIKEY_MAGRDY0, mikey->Read(MIKEY_MAGRDY0), address);
-    AddRegister(registers, ss, "MAGRDY1", MIKEY_MAGRDY1, mikey->Read(MIKEY_MAGRDY1), address);
-    AddRegister(registers, ss, "AUDIN", MIKEY_AUDIN, mikey->Read(MIKEY_AUDIN), address);
+    AddRegister(registers, ss, "MAGRDY0", MIKEY_MAGRDY0, mikey->Read<true>(MIKEY_MAGRDY0), address);
+    AddRegister(registers, ss, "MAGRDY1", MIKEY_MAGRDY1, mikey->Read<true>(MIKEY_MAGRDY1), address);
+    AddRegister(registers, ss, "AUDIN", MIKEY_AUDIN, mikey->Read<true>(MIKEY_AUDIN), address);
 
     // System control ($FD87)
     AddRegister(registers, ss, "SYSCTL1", MIKEY_SYSCTL1, mikey_state->SYSCTL1, address);
 
     // Hardware revision ($FD88-$FD89)
-    AddRegister(registers, ss, "MIKEYHREV", MIKEY_MIKEYHREV, mikey->Read(MIKEY_MIKEYHREV), address);
-    AddRegister(registers, ss, "MIKEYSREV", MIKEY_MIKEYSREV, mikey->Read(MIKEY_MIKEYSREV), address);
+    AddRegister(registers, ss, "MIKEYHREV", MIKEY_MIKEYHREV, mikey->Read<true>(MIKEY_MIKEYHREV), address);
+    AddRegister(registers, ss, "MIKEYSREV", MIKEY_MIKEYSREV, mikey->Read<true>(MIKEY_MIKEYSREV), address);
 
     // I/O registers ($FD8A-$FD8B)
     AddRegister(registers, ss, "IODIR", MIKEY_IODIR, mikey_state->IODIR, address);
@@ -711,9 +711,9 @@ json DebugAdapter::GetMikeyRegisters(u16 address)
     AddRegister16(registers, ss, "DISPADR", MIKEY_DISPADRL, mikey_state->DISPADR.value, address);
 
     // Test registers ($FD9C-$FD9E)
-    AddRegister(registers, ss, "MTEST0", MIKEY_MTEST0, mikey->Read(MIKEY_MTEST0), address);
-    AddRegister(registers, ss, "MTEST1", MIKEY_MTEST1, mikey->Read(MIKEY_MTEST1), address);
-    AddRegister(registers, ss, "MTEST2", MIKEY_MTEST2, mikey->Read(MIKEY_MTEST2), address);
+    AddRegister(registers, ss, "MTEST0", MIKEY_MTEST0, mikey->Read<true>(MIKEY_MTEST0), address);
+    AddRegister(registers, ss, "MTEST1", MIKEY_MTEST1, mikey->Read<true>(MIKEY_MTEST1), address);
+    AddRegister(registers, ss, "MTEST2", MIKEY_MTEST2, mikey->Read<true>(MIKEY_MTEST2), address);
 
     // Color palette registers ($FDA0-$FDBF)
     for (int i = 0; i < 16; i++)
@@ -721,8 +721,8 @@ json DebugAdapter::GetMikeyRegisters(u16 address)
         char name_g[16], name_br[16];
         snprintf(name_g, sizeof(name_g), "GREEN%X", i);
         snprintf(name_br, sizeof(name_br), "BLUERED%X", i);
-        AddRegister(registers, ss, name_g, MIKEY_GREEN0 + i, mikey->Read(MIKEY_GREEN0 + i), address);
-        AddRegister(registers, ss, name_br, MIKEY_BLUERED0 + i, mikey->Read(MIKEY_BLUERED0 + i), address);
+        AddRegister(registers, ss, name_g, MIKEY_GREEN0 + i, mikey->Read<true>(MIKEY_GREEN0 + i), address);
+        AddRegister(registers, ss, name_br, MIKEY_BLUERED0 + i, mikey->Read<true>(MIKEY_BLUERED0 + i), address);
     }
 
     if (address != 0xFFFF && registers.empty())
@@ -749,7 +749,7 @@ json DebugAdapter::WriteMikeyRegister(u16 address, u8 value)
     }
 
     Mikey* mikey = m_core->GetMikey();
-    mikey->Write(address, value);
+    mikey->Write<true>(address, value);
 
     result["success"] = true;
     std::ostringstream ss;
@@ -766,8 +766,8 @@ json DebugAdapter::WriteMikeyRegister(u16 address, u8 value)
         int color_index = (address - 0xFDA0) / 2;
         
         u16 color_base = 0xFDA0 + (color_index * 2);
-        u8 green = mikey->Read(color_base) & 0x0F;
-        u8 blue_red = mikey->Read(color_base + 1);
+        u8 green = mikey->Read<true>(color_base) & 0x0F;
+        u8 blue_red = mikey->Read<true>(color_base + 1);
         u8 blue = (blue_red >> 4) & 0x0F;
         u8 red = blue_red & 0x0F;
         
@@ -1093,7 +1093,7 @@ json DebugAdapter::GetSuzyRegisters(u16 address)
     Input* input = m_core->GetInput();
     u8 joystick = input->ReadJoystick();
     u8 switches = input->ReadSwitches();
-    u8 sprsys = suzy->Read(SUZY_SPRSYS);
+    u8 sprsys = suzy->Read<true>(SUZY_SPRSYS);
 
     json registers = json::array();
     std::ostringstream ss;
@@ -1148,8 +1148,8 @@ json DebugAdapter::GetSuzyRegisters(u16 address)
     AddRegister(registers, ss, "SPRINIT", SUZY_SPRINIT, suzy_state->SPRINIT, address);
 
     // Hardware revision ($FC88-$FC89)
-    AddRegister(registers, ss, "SUZYHREV", SUZY_SUZYHREV, suzy->Read(SUZY_SUZYHREV), address);
-    AddRegister(registers, ss, "SUZYSREV", SUZY_SUZYSREV, suzy->Read(SUZY_SUZYSREV), address);
+    AddRegister(registers, ss, "SUZYHREV", SUZY_SUZYHREV, suzy->Read<true>(SUZY_SUZYHREV), address);
+    AddRegister(registers, ss, "SUZYSREV", SUZY_SUZYSREV, suzy->Read<true>(SUZY_SUZYSREV), address);
 
     // Sprite engine control ($FC90-$FC92)
     AddRegister(registers, ss, "SUZYBUSEN", SUZY_SUZYBUSEN, suzy_state->SUZYBUSEN, address);
@@ -1165,10 +1165,10 @@ json DebugAdapter::GetSuzyRegisters(u16 address)
     AddRegister(registers, ss, "RCART1", SUZY_RCART1, 0x00, address);
 
     // Misc registers ($FCC0-$FCC4)
-    AddRegister(registers, ss, "LEDS", SUZY_LEDS, suzy->Read(SUZY_LEDS), address);
-    AddRegister(registers, ss, "PPORTSTAT", SUZY_PPORTSTAT, suzy->Read(SUZY_PPORTSTAT), address);
-    AddRegister(registers, ss, "PPORTDATA", SUZY_PPORTDATA, suzy->Read(SUZY_PPORTDATA), address);
-    AddRegister(registers, ss, "HOWIE", SUZY_HOWIE, suzy->Read(SUZY_HOWIE), address);
+    AddRegister(registers, ss, "LEDS", SUZY_LEDS, suzy->Read<true>(SUZY_LEDS), address);
+    AddRegister(registers, ss, "PPORTSTAT", SUZY_PPORTSTAT, suzy->Read<true>(SUZY_PPORTSTAT), address);
+    AddRegister(registers, ss, "PPORTDATA", SUZY_PPORTDATA, suzy->Read<true>(SUZY_PPORTDATA), address);
+    AddRegister(registers, ss, "HOWIE", SUZY_HOWIE, suzy->Read<true>(SUZY_HOWIE), address);
 
     if (address != 0xFFFF && registers.empty())
     {
@@ -1194,7 +1194,7 @@ json DebugAdapter::WriteSuzyRegister(u16 address, u8 value)
     }
 
     Suzy* suzy = m_core->GetSuzy();
-    suzy->Write(address, value);
+    suzy->Write<true>(address, value);
 
     result["success"] = true;
     std::ostringstream ss;

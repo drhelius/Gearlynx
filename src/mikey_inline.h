@@ -46,10 +46,13 @@ INLINE bool Mikey::Clock(u32 cycles)
     return ret;
 }
 
+template<bool debug>
 INLINE u8 Mikey::Read(u16 address)
 {
-    m_bus->InjectCycles(k_bus_cycles_mikey_read);
-    m_m6502->OnMemoryAccess();
+    if (!debug)
+    {
+        m_bus->InjectCycles(k_bus_cycles_mikey_read);
+    }
 
     if (address < 0xFD20)
         return ReadTimer(address);
@@ -174,10 +177,13 @@ INLINE u8 Mikey::Read(u16 address)
     return 0xFF;
 }
 
+template<bool debug>
 INLINE void Mikey::Write(u16 address, u8 value)
 {
-    m_bus->InjectCycles(k_bus_cycles_mikey_write);
-    m_m6502->OnMemoryAccess();
+    if (!debug)
+    {
+        m_bus->InjectCycles(k_bus_cycles_mikey_write);
+    }
 
     if (address < 0xFD20)
         WriteTimer(address, value);
@@ -403,6 +409,8 @@ inline u8 Mikey::ReadTimer(u16 address)
 {
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
+    m_bus->InjectCycles(k_bus_cycles_timer);
+
     int reg = address & 3;
     int i = (address >> 2) & 7;
     GLYNX_Mikey_Timer* t = &m_state.timers[i];
@@ -429,6 +437,8 @@ inline u8 Mikey::ReadTimer(u16 address)
 inline void Mikey::WriteTimer(u16 address, u8 value)
 {
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
+
+    m_bus->InjectCycles(k_bus_cycles_timer);
 
     int reg = address & 3;
     int i = (address >> 2) & 7;
@@ -498,6 +508,8 @@ inline u8 Mikey::ReadAudio(u16 address)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
+    m_bus->InjectCycles(k_bus_cycles_audio);
+
     int reg = address & 7;
     int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
     GLYNX_Mikey_Audio* c = &m_state.audio[i];
@@ -528,6 +540,8 @@ inline u8 Mikey::ReadAudio(u16 address)
 inline void Mikey::WriteAudio(u16 address, u8 value)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
+
+    m_bus->InjectCycles(k_bus_cycles_audio);
 
 #ifndef GLYNX_DISABLE_VGMRECORDER
     if (m_audio->IsVgmRecording())

@@ -44,7 +44,7 @@ void gui_debug_window_mikey_regs(void)
     GearlynxCore* core = emu_get_core();
     Mikey* mikey = core->GetMikey();
     Mikey::Mikey_State* mikey_state = mikey->GetState();
-    u8 iodat = mikey->Read(MIKEY_IODAT);
+    u8 iodat = mikey->Read<true>(MIKEY_IODAT);
 
     struct {
         const char* name;

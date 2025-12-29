@@ -92,8 +92,8 @@ public:
     void Init(Memory* memory);
     void Reset();
     void Clock(u32 cycles);
-    u8 Read(u16 address);
-    void Write(u16 address, u8 value);
+    template<bool debug = false> u8 Read(u16 address);
+    template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
     bool IsBlitterBusy();
     void SaveState(std::ostream& stream);

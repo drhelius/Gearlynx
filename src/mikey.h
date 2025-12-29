@@ -73,8 +73,8 @@ public:
     void SetAudio(Audio* audio);
     void Reset();
     bool Clock(u32 cycles);
-    u8 Read(u16 address);
-    void Write(u16 address, u8 value);
+    template<bool debug = false> u8 Read(u16 address);
+    template<bool debug = false> void Write(u16 address, u8 value);
     Mikey_State* GetState();
     void SetBuffer(u8* frame_buffer);
     u8* GetBuffer();

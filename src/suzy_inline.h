@@ -32,10 +32,13 @@ INLINE void Suzy::Clock(u32 cycles)
     UpdateMath(cycles);
 }
 
+template<bool debug>
 INLINE u8 Suzy::Read(u16 address)
 {
-    m_bus->InjectCycles(k_bus_cycles_suzy_read);
-    m_m6502->OnMemoryAccess();
+    if (!debug)
+    {
+        m_bus->InjectCycles(k_bus_cycles_suzy_read);
+    }
 
     switch(address)
     {
@@ -206,6 +209,7 @@ INLINE u8 Suzy::Read(u16 address)
         return m_input->ReadSwitches();
     case SUZY_RCART0:      // 0xFCB2
         //DebugSuzy("Reading RCART0");
+        m_bus->InjectCycles(k_bus_cycles_cart_read);
         return m_media->ReadBank0();
     case SUZY_RCART1:      // 0xFCB3
         DebugSuzy("Reading RCART1");
@@ -230,10 +234,13 @@ INLINE u8 Suzy::Read(u16 address)
     return 0xFF;
 }
 
+template<bool debug>
 INLINE void Suzy::Write(u16 address, u8 value)
 {
-    m_bus->InjectCycles(k_bus_cycles_suzy_write);
-    m_m6502->OnMemoryAccess();
+    if (!debug)
+    {
+        m_bus->InjectCycles(k_bus_cycles_suzy_write);
+    }
 
     switch(address)
     {
@@ -581,7 +588,7 @@ INLINE void Suzy::DrawSprite()
     m_state.SPRCOLL = RamRead(m_state.TMPADR.value++);
     m_state.SCBNEXT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
-    m_state.sprite_cycles += 5;
+    m_state.sprite_cycles += 5 * k_suzy_ticks_ram_read;  // 5 bytes from SCB header
 
     if (IS_SET_BIT(m_state.SPRCTL1, 2))
     {
@@ -621,7 +628,7 @@ INLINE void Suzy::DrawSprite()
     m_state.TMPADR.value += 2;
     m_state.VPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
-    m_state.sprite_cycles += 6;
+    m_state.sprite_cycles += 6 * k_suzy_ticks_ram_read;  // 6 bytes for position data
 
     m_state.STRETCH.value = 0;
     m_state.TILT.value = 0;
@@ -632,7 +639,7 @@ INLINE void Suzy::DrawSprite()
         m_state.TMPADR.value += 2;
         m_state.SPRVSIZ.value = RamReadWord(m_state.TMPADR.value);
         m_state.TMPADR.value += 2;
-        m_state.sprite_cycles += 4;
+        m_state.sprite_cycles += 4 * k_suzy_ticks_ram_read;  // 4 bytes for size
     }
     else if (reload_depth == 2)
     {
@@ -642,7 +649,7 @@ INLINE void Suzy::DrawSprite()
         m_state.TMPADR.value += 2;
         m_state.STRETCH.value = RamReadWord(m_state.TMPADR.value);
         m_state.TMPADR.value += 2;
-        m_state.sprite_cycles += 6;
+        m_state.sprite_cycles += 6 * k_suzy_ticks_ram_read;  // 6 bytes for size+stretch
     }
     else if (reload_depth == 3)
     {
@@ -654,14 +661,14 @@ INLINE void Suzy::DrawSprite()
         m_state.TMPADR.value += 2;
         m_state.TILT.value = RamReadWord(m_state.TMPADR.value);
         m_state.TMPADR.value += 2;
-        m_state.sprite_cycles += 8;
+        m_state.sprite_cycles += 8 * k_suzy_ticks_ram_read;  // 8 bytes for size+stretch+tilt
     }
 
     if (reload_palette)
     {
         int colors = 1 << bpp;
         int bytes_to_read = colors >> 1;
-        m_state.sprite_cycles += bytes_to_read;
+        m_state.sprite_cycles += bytes_to_read * k_suzy_ticks_ram_read;  // palette bytes
 
         for (int i = 0; i < bytes_to_read; ++i)
         {
@@ -694,7 +701,7 @@ INLINE void Suzy::DrawSprite()
     while (m_state.SPRDLINE.value != 0)
     {
         u8 sprdoff  = RamRead(m_state.SPRDLINE.value);
-        m_state.sprite_cycles += 1;
+        m_state.sprite_cycles += k_suzy_ticks_ram_read;  // sprdoff byte
         u16 next_ptr = (u16)(m_state.SPRDLINE.value + (u16)sprdoff);
 
         u16 data_begin = (u16)(m_state.SPRDLINE.value + 1);
@@ -958,7 +965,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
             if (is_left)
             {
                 back = (u8)((back & 0x0F) | (collision_id << 4));
-                m_state.sprite_cycles += 2;
+                m_state.sprite_cycles += k_suzy_ticks_rmw + k_suzy_ticks_process;  // left pixel: R-M-W + processing
             }
             else
                 back = (u8)((back & 0xF0) | (collision_id & 0x0F));
@@ -980,7 +987,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
             {
                 new_nib ^= (u8)((video_byte >> 4) & 0x0F);
                 video_byte = (u8)((video_byte & 0x0F) | ((new_nib & 0x0F) << 4));
-                m_state.sprite_cycles += 2;
+                m_state.sprite_cycles += k_suzy_ticks_rmw + k_suzy_ticks_process;  // XOR left pixel: R-M-W + processing
             }
             else
             {
@@ -993,7 +1000,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
             if (is_left)
             {
                 video_byte = (u8)((video_byte & 0x0F) | ((new_nib & 0x0F) << 4));
-                m_state.sprite_cycles += 2;
+                m_state.sprite_cycles += k_suzy_ticks_rmw + k_suzy_ticks_process;  // normal left pixel: R-M-W + processing
             }
             else
                 video_byte = (u8)((video_byte & 0xF0) | (new_nib & 0x0F));
@@ -1023,7 +1030,7 @@ INLINE void Suzy::ShiftRegisterReset(u16 address)
     m_state.shift_register_address = address;
     m_state.shift_register_current = RamRead(address);
     m_state.shift_register_bit = 7;
-    m_state.sprite_cycles += 1;
+    m_state.sprite_cycles += k_suzy_ticks_ram_read;  // initial sprite data byte
 }
 
 INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
@@ -1050,7 +1057,7 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
             m_state.shift_register_address++;
             m_state.shift_register_current = RamRead(m_state.shift_register_address);
             m_state.shift_register_bit = 7;
-            m_state.sprite_cycles += 1;
+            m_state.sprite_cycles += k_suzy_ticks_ram_read;  // next sprite data byte
         }
 
         value = (value << 1) | ((m_state.shift_register_current >> m_state.shift_register_bit) & 1);
