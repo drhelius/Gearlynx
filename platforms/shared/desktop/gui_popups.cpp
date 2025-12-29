@@ -249,10 +249,10 @@ void gui_popup_modal_about(void)
                 add_build_info("define: NDEBUG\n");
                 #endif
                 #if defined(GLYNX_DEBUG)
-                add_build_info("define: GG_DEBUG\n");
+                add_build_info("define: GLYNX_DEBUG\n");
                 #endif
                 #if defined(GLYNX_NO_OPTIMIZATIONS)
-                add_build_info("define: GG_NO_OPTIMIZATIONS\n");
+                add_build_info("define: GLYNX_NO_OPTIMIZATIONS\n");
                 #endif
                 #if defined(GLYNX_DISABLE_DISASSEMBLER)
                 add_build_info("define: GLYNX_DISABLE_DISASSEMBLER\n");
@@ -267,10 +267,10 @@ void gui_popup_modal_about(void)
                 add_build_info("define: __STDC_VERSION__ = %d\n", (int)__STDC_VERSION__);
                 #endif
                 #if defined(GLYNX_LITTLE_ENDIAN)
-                add_build_info("define: GG_LITTLE_ENDIAN");
+                add_build_info("define: GLYNX_LITTLE_ENDIAN");
                 #endif
                 #if defined(GLYNX_BIG_ENDIAN)
-                add_build_info("define: GG_BIG_ENDIAN");
+                add_build_info("define: GLYNX_BIG_ENDIAN");
                 #endif
 
                 ImGui::InputTextMultiline("##build_info", build_info, sizeof(build_info), ImVec2(-1.0f, 100.0f), ImGuiInputTextFlags_ReadOnly);
