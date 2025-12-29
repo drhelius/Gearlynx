@@ -69,6 +69,7 @@ bool emu_init(void)
     emu_debug_disable_breakpoints = false;
     emu_debug_command = Debug_Command_None;
     emu_debug_pc_changed = false;
+    emu_debug_step_frames_pending = 0;
     for (int i = 0; i < 8; i++)
         emu_debug_irq_breakpoints[i] = false;
 
@@ -141,7 +142,15 @@ void emu_update(void)
         if (breakpoint_hit)
             emu_debug_command = Debug_Command_None;
 
-        if (emu_debug_command != Debug_Command_Continue)
+        if (emu_debug_command == Debug_Command_StepFrame && emu_debug_step_frames_pending > 0)
+        {
+            emu_debug_step_frames_pending--;
+            if (emu_debug_step_frames_pending > 0)
+                emu_debug_command = Debug_Command_StepFrame;
+            else
+                emu_debug_command = Debug_Command_None;
+        }
+        else if (emu_debug_command != Debug_Command_Continue)
             emu_debug_command = Debug_Command_None;
 
         update_debug();
@@ -401,6 +410,7 @@ void emu_debug_step_out(void)
 void emu_debug_step_frame(void)
 {
     core->Pause(false);
+    emu_debug_step_frames_pending++;
     emu_debug_command = Debug_Command_StepFrame;
 }
 
