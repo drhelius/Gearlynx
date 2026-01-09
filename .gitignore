@@ -78,3 +78,6 @@ platforms/libretro/libs/
 
 #JetBrains
 .idea
+
+#Value Change Dump files
+*.vcd
