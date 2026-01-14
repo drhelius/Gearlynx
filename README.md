@@ -94,10 +94,11 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - Compressed and hombrew rom support (lnx, lyx, o, and zip).
 - Save states with preview.
 - Configurable low-pass audio filter.
+- VGM recorder.
 - Internal database for automatic rom detection and hardware selection if `Auto` options are selected.
 - Supported platforms (standalone): Windows, Linux, BSD and macOS.
 - Supported platforms (libretro): Windows, Linux, macOS, Raspberry Pi, Android, iOS, tvOS, PlayStation Vita, PlayStation 3, Nintendo 3DS, Nintendo GameCube, Nintendo Wii, Nintendo WiiU, Nintendo Switch, Emscripten, Classic Mini systems (NES, SNES, C64, ...), OpenDingux, RetroFW and QNX.
-- Full debugger with just-in-time disassembler that can handle self-modifying code, CPU breakpoints, memory access breakpoints, code navigation (goto address, JP JR and JSR double clicking), debug symbols, automatic labels, memory editor, Suzy and Mikey register viewer, audio inspector and framebuffer preview.
+- Full debugger with just-in-time disassembler that can handle self-modifying code, CPU and memory breakpoints, code navigation (goto address, JP JR and JSR double clicking), debug symbols, automatic labels, memory editor, memory search, Suzy and Mikey register viewer, audio channels and video inspector.
 - MCP server for AI-assisted debugging with GitHub Copilot, Claude, ChatGPT and similar, exposing tools for execution control, memory inspection, hardware status, and more.
 - Windows and Linux *Portable Mode*.
 - ROM loading from the command line by adding the ROM path as an argument.
