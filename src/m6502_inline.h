@@ -312,12 +312,15 @@ INLINE std::stack<M6502::GLYNX_CallStackEntry>* M6502::GetDisassemblerCallStack(
 INLINE void M6502::PushCallStack(u16 src, u16 dest, u16 back)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    GLYNX_CallStackEntry entry;
-    entry.src = src;
-    entry.dest = dest;
-    entry.back = back;
-    if (m_disassembler_call_stack.size() < 256)
+    if (m_disassembler_call_stack_size < 256)
+    {
+        GLYNX_CallStackEntry entry;
+        entry.src = src;
+        entry.dest = dest;
+        entry.back = back;
         m_disassembler_call_stack.push(entry);
+        m_disassembler_call_stack_size++;
+    }
 #else
     UNUSED(src);
     UNUSED(dest);
@@ -328,8 +331,11 @@ INLINE void M6502::PushCallStack(u16 src, u16 dest, u16 back)
 INLINE void M6502::PopCallStack()
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (!m_disassembler_call_stack.empty())
+    if (m_disassembler_call_stack_size > 0)
+    {
         m_disassembler_call_stack.pop();
+        m_disassembler_call_stack_size--;
+    }
 #endif
 }
 

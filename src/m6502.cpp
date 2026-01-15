@@ -45,6 +45,7 @@ M6502::M6502(Bus* bus)
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
+    m_disassembler_call_stack_size = 0;
     m_reset_value = -1;
     m_prev_opcode_address = 0xFFFF;
 }
@@ -249,6 +250,7 @@ void M6502::ClearDisassemblerCallStack()
 {
     while(!m_disassembler_call_stack.empty())
         m_disassembler_call_stack.pop();
+    m_disassembler_call_stack_size = 0;
 }
 
 void M6502::CheckMemoryBreakpoints(u16 address, bool read)

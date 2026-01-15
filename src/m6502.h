@@ -127,6 +127,7 @@ private:
     GLYNX_Breakpoint m_run_to_breakpoint;
     bool m_run_to_breakpoint_requested;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
+    int m_disassembler_call_stack_size;
     int m_reset_value;
     u16 m_prev_opcode_address;
 
