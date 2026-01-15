@@ -8,6 +8,7 @@ SOURCES_CXX :=  $(CORE_DIR)/libretro.cpp \
                 $(SOURCE_DIR)/m6502.cpp \
                 $(SOURCE_DIR)/m6502_functors.cpp \
                 $(SOURCE_DIR)/m6502_opcodes.cpp \
+                $(SOURCE_DIR)/lcd_screen.cpp \
                 $(SOURCE_DIR)/media.cpp \
                 $(SOURCE_DIR)/memory.cpp \
                 $(SOURCE_DIR)/mikey.cpp \

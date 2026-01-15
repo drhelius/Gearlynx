@@ -14,6 +14,7 @@ SOURCES_CXX := \
     $(SRC_DIR)/m6502.cpp \
     $(SRC_DIR)/m6502_functors.cpp \
     $(SRC_DIR)/m6502_opcodes.cpp \
+    $(SRC_DIR)/lcd_screen.cpp \
     $(SRC_DIR)/media.cpp \
     $(SRC_DIR)/memory.cpp \
     $(SRC_DIR)/mikey.cpp \

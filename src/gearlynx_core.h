@@ -88,6 +88,7 @@ private:
     template<bool debugger>
     bool RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug);
     void PrepareForHomebrew();
+    void RotateFrameBuffer(u8* frame_buffer, GLYNX_Rotation rotation);
     bool SaveState(std::ostream& stream, size_t& size, bool screenshot);
     bool LoadState(std::istream& stream);
     std::string GetSaveStatePath(const char* path, int index);

@@ -580,7 +580,7 @@ static void update_debug_framebuffers(void)
     u16 vidbas = core->GetSuzy()->GetState()->VIDBAS.value;
     u16 dispadr = core->GetMikey()->GetState()->DISPADR.value;
     u8* ram = core->GetMemory()->GetRAM();
-    u32* palette = core->GetMikey()->GetRGBA8888Palette();
+    u32* palette = core->GetMikey()->GetLcdScreen()->GetRGBA8888Palette();
     if (!palette)
         return;
 

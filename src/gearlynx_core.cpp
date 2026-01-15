@@ -363,10 +363,10 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
             header.screenshot_height = runtime_info.screen_height;
 
             int bytes_per_pixel = 2;
-            if (m_mikey->GetPixelFormat() == GLYNX_PIXEL_RGBA8888)
+            if (m_mikey->GetLcdScreen()->GetPixelFormat() == GLYNX_PIXEL_RGBA8888)
                 bytes_per_pixel = 4;
 
-            u8* frame_buffer = m_mikey->GetBuffer();
+            u8* frame_buffer = m_mikey->GetLcdScreen()->GetBuffer();
 
             header.screenshot_size = header.screenshot_width * header.screenshot_height * bytes_per_pixel;
             stream.write(reinterpret_cast<const char*>(frame_buffer), header.screenshot_size);
@@ -667,4 +667,6 @@ void GearlynxCore::PrepareForHomebrew()
     m_mikey->GetState()->timers[2].control_a = 0x1F;
 
     m_mikey->GetState()->DISPCTL = 0x09;
+    m_mikey->GetState()->PBKUP = 41;
+    m_mikey->GetLcdScreen()->ConfigureLineTiming();
 }

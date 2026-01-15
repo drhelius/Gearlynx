@@ -22,8 +22,8 @@
 #include <ostream>
 #include "mikey.h"
 #include "memory.h"
-#include "no_bios.h"
 #include "state_serializer.h"
+#include "lcd_screen.h"
 
 Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
 {
@@ -31,24 +31,19 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
     m_media = media;
     m_m6502 = m6502;
     m_bus = bus;
-    InitPointer(m_memory);
     InitPointer(m_audio);
-    InitPointer(m_frame_buffer);
-    InitPointer(m_ram);
-    m_pixel_format = GLYNX_PIXEL_RGBA8888;
-    Reset();
+    InitPointer(m_lcd_screen);
 }
 
 Mikey::~Mikey()
 {
+    SafeDelete(m_lcd_screen);
 }
 
 void Mikey::Init(Memory* memory, GLYNX_Pixel_Format pixel_format)
 {
-    m_memory = memory;
-    m_pixel_format = pixel_format;
-    m_ram = m_memory->GetRAM();
-    InitPalettes();
+    m_lcd_screen = new LcdScreen(this, memory, m_bus);
+    m_lcd_screen->Init(pixel_format);
     Reset();
 }
 
@@ -60,41 +55,13 @@ void Mikey::SetAudio(Audio* audio)
 void Mikey::Reset()
 {
     memset(&m_state, 0, sizeof(Mikey_State));
-    memset(m_host_palette, 0, sizeof(m_host_palette));
+
+    m_lcd_screen->Reset();
 
     ResetPalette();
     ResetTimers();
     ResetAudio();
     ResetUART();
-
-    m_debug_cycles = 0;
-}
-
-void Mikey::InitPalettes()
-{
-    for (int i = 0; i < 4096; ++i)
-    {
-        u8 green = ((i >> 8) & 0x0F) * 255 / 15;
-        u8 blue = ((i >> 4) & 0x0F) * 255 / 15;
-        u8 red = (i & 0x0F) * 255 / 15;
-
-        #ifdef GLYNX_LITTLE_ENDIAN
-        m_rgba8888_palette[i] = (u32)red | ((u32)green << 8) | ((u32)blue << 16) | ((u32)255 << 24);
-        #else
-        m_rgba8888_palette[i] = ((u32)255) | ((u32)blue << 8) | ((u32)green << 16) | ((u32)red << 24);
-        #endif
-
-        green  = ((i >> 8) & 0x0F) * 63 / 15;
-        blue   = ((i >> 4) & 0x0F) * 31 / 15;
-        red    = (i & 0x0F) * 31 / 15;
-        u16 rgb565 = (red << 11) | (green << 5) | blue;
-
-        #ifdef GLYNX_LITTLE_ENDIAN
-        m_rgb565_palette[i] = rgb565;
-        #else
-        m_rgb565_palette[i] = (rgb565 >> 8) | ((rgb565 & 0xFF) << 8);
-        #endif
-    }
 }
 
 void Mikey::ResetTimers()
@@ -110,6 +77,8 @@ void Mikey::ResetTimers()
         m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
         m_state.timers[i].internal_pending_ticks = 0;
     }
+
+    m_lcd_screen->ConfigureLineTiming();
 }
 
 void Mikey::ResetAudio()
@@ -186,197 +155,50 @@ void Mikey::HorizontalBlank()
     if (line >= 0 && line < 102)
     {
         //DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
-        LineDMA(line);
-    }
-    // else
-    // {
-    //     DebugMikey("===> Skiping VBLANK line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
-    // }
+        m_lcd_screen->ResetLine(line);
 
-    // Typically end of hcount 104
-    if (timer_2_counter == timer_2_backup)
+        // End of line 0
+        if (line == 0)
+        {
+            DebugMikey("===> Rest signal goes high");
+            m_state.rest = true;
+        }
+    }
+
+    // Enf of line 102, start of 2nd vblank line
+    if (timer_2_counter == (timer_2_backup - 2))
     {
         DebugMikey("===> Rest signal goes low");
         m_state.rest = false;
-        m_state.frame_ready = true;
     }
-    // Typically end of hcount 103, start of 3rd vblank line
+    // End of line 103, start of 3rd vblank line
     else if (timer_2_counter == (timer_2_backup - 1))
     {
         DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
         m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;
+        m_lcd_screen->FirstDMA();
     }
-    // Typically end of hcount 101
-    else if (timer_2_counter == (timer_2_backup - 3))
+    // End of line 104, end of vblank
+    else if (timer_2_counter == timer_2_backup)
     {
-        DebugMikey("===> Rest signal goes high");
-        m_state.rest = true;
+        m_state.frame_ready = true;
     }
-
-    // At the end of the last vblank line
-    if (timer_2_counter == (timer_2_backup - 2))
-    {
-        m_state.render_line = 0;
-    }
-    else
-        m_state.render_line++;
-}
-
-void Mikey::VerticalBlank()
-{
-    DebugMikey("===> VBLANK. DISPADR %04X. Cycles: %d", m_state.dispadr_latch, m_debug_cycles);
-    //m_state.frame_ready = true;
-    //m_state.render_line = 0;
-    m_debug_cycles = 0;
-
-    GLYNX_Rotation rotation = m_media->GetRotation();
-    if (rotation != NO_ROTATION)
-        RotateFrameBuffer(rotation);
-}
-
-void Mikey::LineDMA(int line)
-{
-    if (IS_SET_BIT(m_state.DISPCTL, 0))
-    {
-        if (m_pixel_format == GLYNX_PIXEL_RGB565)
-            LineDMATemplate<2>(line);
-        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
-            LineDMATemplate<4>(line);
-    }
-    else
-    {
-        if (m_pixel_format == GLYNX_PIXEL_RGB565)
-            LineDMABlankTemplate<2>(line);
-        else if (m_pixel_format == GLYNX_PIXEL_RGBA8888)
-            LineDMABlankTemplate<4>(line);
-    }
-}
-
-template <int bytes_per_pixel>
-void Mikey::LineDMATemplate(int line)
-{
-    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
-
-    u8* ram = m_memory->GetRAM();
-    u16 line_offset = (u16)(m_state.dispadr_latch + (line * (GLYNX_SCREEN_WIDTH / 2)));
-    u8* src_line_ptr = ram + line_offset;
-    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
-    u16* palette = m_host_palette;
-    u8* src = src_line_ptr;
-
-    // RGB565
-    if (bytes_per_pixel == 2)
-    {
-        u16* dst16 = (u16*)(dst_line_ptr);
-
-        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
-        {
-            u8 byte = *src++;
-            u8 color0 = byte >> 4;
-            u8 color1 = byte & 0x0F;
-            u16 idx0 = palette[color0] & 0x0FFF;
-            u16 idx1 = palette[color1] & 0x0FFF;
-
-            dst16[0] = m_rgb565_palette[idx0];
-            dst16[1] = m_rgb565_palette[idx1];
-            dst16 += 2;
-        }
-    }
-    // RGBA8888
-    else
-    {
-        u32* dst32 = (u32*)(dst_line_ptr);
-
-        for (int x = 0; x < GLYNX_SCREEN_WIDTH; x += 2)
-        {
-            u8 byte = *src++;
-            u8 color0 = byte >> 4;
-            u8 color1 = byte & 0x0F;
-            u16 idx0 = palette[color0] & 0x0FFF;
-            u16 idx1 = palette[color1] & 0x0FFF;
-
-            dst32[0] = m_rgba8888_palette[idx0];
-            dst32[1] = m_rgba8888_palette[idx1];
-            dst32 += 2;
-        }
-    }
-}
-
-template <int bytes_per_pixel>
-void Mikey::LineDMABlankTemplate(int line)
-{
-    assert(line >= 0 && line < GLYNX_SCREEN_HEIGHT);
-
-    u8* dst_line_ptr = m_frame_buffer + (line * GLYNX_SCREEN_WIDTH * bytes_per_pixel);
-    size_t line_size = GLYNX_SCREEN_WIDTH * bytes_per_pixel;
-    memset(dst_line_ptr, 0, line_size);
-}
-
-void Mikey::RotateFrameBuffer(GLYNX_Rotation rotation)
-{
-    if (rotation == NO_ROTATION)
-        return;
-
-    const int width = GLYNX_SCREEN_WIDTH;
-    const int height = GLYNX_SCREEN_HEIGHT;
-    const int pixel_count = width * height;
-
-    if (m_pixel_format == GLYNX_PIXEL_RGB565)
-    {
-        const u16* src = reinterpret_cast<const u16*>(m_frame_buffer);
-        u16* dst = reinterpret_cast<u16*>(m_rotated_frame_buffer);
-
-        for (int y = 0; y < height; ++y)
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                const int src_index = y * width + x;
-                const int dst_index = (rotation == ROTATE_LEFT)
-                                      ? (width - 1 - x) * height + y
-                                      : x * height + (height - 1 - y);
-                dst[dst_index] = src[src_index];
-            }
-        }
-
-        memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u16));
-        return;
-    }
-
-    const u32* src = reinterpret_cast<const u32*>(m_frame_buffer);
-    u32* dst = reinterpret_cast<u32*>(m_rotated_frame_buffer);
-
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            const int src_index = y * width + x;
-            const int dst_index = (rotation == ROTATE_LEFT)
-                                  ? (width - 1 - x) * height + y
-                                  : x * height + (height - 1 - y);
-            dst[dst_index] = src[src_index];
-        }
-    }
-
-    memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u32));
-}
-
-void Mikey::RenderNoBiosScreen(u8* frame_buffer)
-{
-    int byte_count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * (m_pixel_format == GLYNX_PIXEL_RGB565 ? 2 : 4);
-    u8* no_bios_image = (m_pixel_format == GLYNX_PIXEL_RGB565) ? (u8*)k_no_bios_rgb565 : (u8*)k_no_bios_rgba8888;
-    memcpy(frame_buffer, no_bios_image, byte_count);
 }
 
 void Mikey::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+
+    m_lcd_screen->SaveState(stream);
 }
 
 void Mikey::LoadState(std::istream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+
+    m_lcd_screen->LoadState(stream);
 }
 
 void Mikey::Serialize(StateSerializer& s)
@@ -471,6 +293,4 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.render_line);
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
-
-    G_SERIALIZE_ARRAY(s, m_host_palette, 16);
 }

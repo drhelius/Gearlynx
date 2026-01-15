@@ -27,11 +27,12 @@
 #include "m6502.h"
 #include "bit_ops.h"
 #include "bus.h"
+#include "lcd_screen.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
-    m_debug_cycles += cycles;
     UpdateTimers(cycles);
+    UpdateVideo(cycles);
     UpdateAudio(cycles);
     UpdateIRQs();
 
@@ -167,7 +168,7 @@ INLINE u8 Mikey::Read(u16 address)
             DebugMikey("Reading MTEST2 (unused): FF");
             return 0xFF;
         default:
-            assert(false && "Unhandled Mikey Read Address");
+            //assert(false && "Unhandled Mikey Read Address");
             DebugMikey("Register READ called with unknown address: %04X", address);
             return 0xFF;
         }
@@ -322,6 +323,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_PBKUP:         // 0xFD93
             DebugMikey("Setting PBKUP to %02X (was %02X)", value, m_state.PBKUP);
             m_state.PBKUP = value;
+            m_lcd_screen->ConfigureLineTiming();
             break;
         case MIKEY_DISPADRL:      // 0xFD94
             DebugMikey("Setting DISPADR low to %02X (was %02X)", value, m_state.DISPADR.low);
@@ -353,29 +355,9 @@ INLINE Mikey::Mikey_State* Mikey::GetState()
     return &m_state;
 }
 
-INLINE void Mikey::SetBuffer(u8* frame_buffer)
+INLINE LcdScreen* Mikey::GetLcdScreen()
 {
-    m_frame_buffer = frame_buffer;
-}
-
-INLINE u8* Mikey::GetBuffer()
-{
-    return m_frame_buffer;
-}
-
-INLINE u32* Mikey::GetRGBA8888Palette()
-{
-    return m_rgba8888_palette;
-}
-
-INLINE u16* Mikey::GetRGB565Palette()
-{
-    return m_rgb565_palette;
-}
-
-INLINE GLYNX_Pixel_Format Mikey::GetPixelFormat()
-{
-    return m_pixel_format;
+    return m_lcd_screen;
 }
 
 inline u8 Mikey::ReadColor(u16 address)
@@ -401,7 +383,7 @@ inline void Mikey::WriteColor(u16 address, u8 value)
     else
         m_state.colors[color_index].bluered = value;
 
-    m_host_palette[color_index] = ((m_state.colors[color_index].green & 0x0F) << 8) | (m_state.colors[color_index].bluered & 0xFF);
+    m_lcd_screen->UpdatePalette(color_index, ((m_state.colors[color_index].green & 0x0F) << 8) | (m_state.colors[color_index].bluered & 0xFF));
 }
 
 
@@ -449,6 +431,8 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
     case 0:
         DebugMikey("Setting Timer %d Backup to %02X (was %02X)", i, value, t->backup);
         t->backup = value;
+        if (i == 0) // HCOUNT timer
+            m_lcd_screen->ConfigureLineTiming();
         break;
     case 1:
     {
@@ -470,6 +454,9 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         {
             t->internal_cycles = 0;
             t->internal_pending_ticks = 0;
+
+            if (i == 0) // HCOUNT timer
+                m_lcd_screen->ConfigureLineTiming();
         }
 
         // Timer 4 (UART) does NOT use CTRLA[7] for its IRQ; it's masked by SERCTL
@@ -772,8 +759,6 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
 
         if (likely(i == 0))
             HorizontalBlank();
-        else if (i == 2)
-            VerticalBlank();
         else if (i == 4)
             UartClock();
 
@@ -1125,6 +1110,11 @@ inline void Mikey::UartClock()
 
         UartRelevelIRQ();
     }
+}
+
+INLINE void Mikey::UpdateVideo(u32 cycles)
+{
+    m_lcd_screen->Update(cycles);
 }
 
 #endif /* MIKEY_INLINE_H */

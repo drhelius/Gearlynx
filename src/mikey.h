@@ -31,6 +31,7 @@ class M6502;
 class Suzy;
 class Audio;
 class Bus;
+class LcdScreen;
 class StateSerializer;
 
 class Mikey
@@ -76,17 +77,11 @@ public:
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
     Mikey_State* GetState();
-    void SetBuffer(u8* frame_buffer);
-    u8* GetBuffer();
-    u32* GetRGBA8888Palette();
-    u16* GetRGB565Palette();
-    GLYNX_Pixel_Format GetPixelFormat();
-    void RenderNoBiosScreen(u8* frame_buffer);
+    LcdScreen* GetLcdScreen();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
 private:
-    void InitPalettes();
     void ResetTimers();
     void ResetAudio();
     void ResetUART();
@@ -114,32 +109,17 @@ private:
     void UartBeginFrame(u8 data);
     void UartClock();
     void HorizontalBlank();
-    void VerticalBlank();
-    void LineDMA(int line);
-    template <int bytes_per_pixel>
-    void LineDMATemplate(int line);
-    template <int bytes_per_pixel>
-    void LineDMABlankTemplate(int line);
-    void RotateFrameBuffer(GLYNX_Rotation rotation);
+    void UpdateVideo(u32 cycles);
     void Serialize(StateSerializer& s);
 
 private:
     Media* m_media;
     Suzy* m_suzy;
-    Memory* m_memory;
     M6502* m_m6502;
     Audio* m_audio;
     Bus* m_bus;
+    LcdScreen* m_lcd_screen;
     Mikey_State m_state;
-    u8* m_ram;
-    u16 m_host_palette[16] = {};
-    u8* m_frame_buffer;
-    u8 m_rotated_frame_buffer[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4] = {};
-    GLYNX_Pixel_Format m_pixel_format;
-    u32 m_rgba8888_palette[4096] = {};
-    u16 m_rgb565_palette[4096] = {};
-
-    u32 m_debug_cycles;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

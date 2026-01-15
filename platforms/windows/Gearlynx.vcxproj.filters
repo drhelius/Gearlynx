@@ -198,6 +198,12 @@
     <ClInclude Include="..\..\src\input_inline.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\lcd_screen.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\lcd_screen_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\log.h">
       <Filter>core</Filter>
     </ClInclude>
@@ -375,6 +381,9 @@
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\input.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\lcd_screen.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\m6502.cpp">

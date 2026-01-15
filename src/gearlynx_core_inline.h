@@ -32,7 +32,7 @@ INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int*
 {
     if (!m_media->IsBiosLoaded())
     {
-        m_mikey->RenderNoBiosScreen(frame_buffer);
+        m_mikey->GetLcdScreen()->RenderNoBiosScreen(frame_buffer);
         return false;
     }
 
@@ -54,7 +54,7 @@ INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int*
 template<bool debugger>
 bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
-    m_mikey->SetBuffer(frame_buffer);
+    m_mikey->GetLcdScreen()->SetBuffer(frame_buffer);
 
     if (debugger)
     {
@@ -105,8 +105,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
         while (!stop);
 
-        //Debug("RunToVBlankTemplate: Exiting after %u cycles", failsafe_cycle_count);
-
+        m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
         m_audio->EndFrame(sample_buffer, sample_count);
 
         return m_m6502->BreakpointHit() || m_m6502->RunToBreakpointHit();
@@ -137,6 +136,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
         while (!stop);
 
+        m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
         m_audio->EndFrame(sample_buffer, sample_count);
 
         return false;

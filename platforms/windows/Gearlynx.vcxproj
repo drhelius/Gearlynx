@@ -31,6 +31,8 @@
     <ClInclude Include="..\..\src\gearlynx_core.h" />
     <ClInclude Include="..\..\src\input.h" />
     <ClInclude Include="..\..\src\input_inline.h" />
+    <ClInclude Include="..\..\src\lcd_screen.h" />
+    <ClInclude Include="..\..\src\lcd_screen_inline.h" />
     <ClInclude Include="..\..\src\log.h" />
     <ClInclude Include="..\..\src\m6502.h" />
     <ClInclude Include="..\..\src\m6502_inline.h" />
@@ -104,6 +106,7 @@
     <ClCompile Include="..\..\src\media.cpp" />
     <ClCompile Include="..\..\src\gearlynx_core.cpp" />
     <ClCompile Include="..\..\src\input.cpp" />
+    <ClCompile Include="..\..\src\lcd_screen.cpp" />
     <ClCompile Include="..\..\src\m6502.cpp" />
     <ClCompile Include="..\..\src\m6502_functors.cpp" />
     <ClCompile Include="..\..\src\m6502_opcodes.cpp" />
