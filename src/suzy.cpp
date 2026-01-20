@@ -135,7 +135,7 @@ void Suzy::MathRunDivide()
 
     m_state.sprsys_unsafe = true;
     m_state.sprsys_mathbusy = true;
-    m_state.math_cycles = 162 + (14 * l_zero16(divisor));
+    m_state.math_cycles = 176 + (14 * l_zero16(divisor));
 }
 
 void Suzy::ComputeQuadLUT()

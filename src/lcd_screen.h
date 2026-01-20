@@ -38,6 +38,7 @@ public:
     void Reset();
     void Update(u32 cycles);
     void ResetLine(u8 line);
+    void ClearLine(u8 line);
     void FirstDMA();
     void ConfigureLineTiming();
     void UpdatePalette(int index, u16 color);
@@ -48,6 +49,7 @@ public:
     u16* GetRGB565Palette();
     GLYNX_Pixel_Format GetPixelFormat();
     void RenderNoBiosScreen(u8* frame_buffer);
+    void SetVBlank(bool vblank);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -80,6 +82,7 @@ private:
     u32 m_pixel_count;
     u32 m_pixel_buffer_read_pos;
     u32 m_line_dst_offset;
+    bool m_in_vblank;
     GLYNX_Pixel_Format m_pixel_format;
     u32 m_rgba8888_palette[4096] = {};
     u16 m_rgb565_palette[4096] = {};

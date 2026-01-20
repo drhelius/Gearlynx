@@ -148,40 +148,58 @@ void Mikey::ResetPalette()
 
 void Mikey::HorizontalBlank()
 {
-    u8 timer_2_counter = m_state.timers[2].counter;
-    u8 timer_2_backup = m_state.timers[2].backup;
-    int line = 101 - timer_2_counter;
+    m_state.refresh_cycle_counter = 0;
 
-    if (line >= 0 && line < 102)
+    u8 counter = m_state.timers[2].counter;
+    u8 backup = m_state.timers[2].backup;
+
+    int first_visible_counter = (backup >= 104) ? 102 : (backup - 2);
+
+    // Start of vblank 0
+    if (counter == 0)
     {
-        //DebugMikey("===> Rendering line %d: DISPADR %04X. Timer 2 counter: %d. Cycles: %d", m_state.render_line, m_state.dispadr_latch, timer_2_counter, m_debug_cycles);
-        m_lcd_screen->ResetLine(line);
+        m_lcd_screen->SetVBlank(true);
+        m_state.rest = true;
 
-        // End of line 0
-        if (line == 0)
+        // Clear lines that won't be rendered when backup < 104
+        if (backup < 104)
         {
-            DebugMikey("===> Rest signal goes high");
-            m_state.rest = true;
+            int visible_lines = backup - 2;
+            for (int line = visible_lines; line < 102; line++)
+            {
+                m_lcd_screen->ClearLine(line);
+            }
         }
     }
-
-    // Enf of line 102, start of 2nd vblank line
-    if (timer_2_counter == (timer_2_backup - 2))
+    // Start of vblank 1
+    else if (counter == backup)
     {
-        DebugMikey("===> Rest signal goes low");
         m_state.rest = false;
     }
-    // End of line 103, start of 3rd vblank line
-    else if (timer_2_counter == (timer_2_backup - 1))
+    // Start of vblank 2
+    else if (counter == (backup - 1))
     {
-        DebugMikey("===> Latching DISPADR %04X", m_state.DISPADR.value);
         m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;
         m_lcd_screen->FirstDMA();
     }
-    // End of line 104, end of vblank
-    else if (timer_2_counter == timer_2_backup)
+    // Visible lines
+    else if (counter <= first_visible_counter && counter >= 1)
     {
-        m_state.frame_ready = true;
+        int visible_line = first_visible_counter - counter;
+
+        // Start of visible line 0 (end of vblank)
+        if (visible_line == 0)
+        {
+            m_lcd_screen->SetVBlank(false);
+            m_state.frame_ready = true;
+        }
+        // Start of visible line 1
+        else if (visible_line == 1)
+        {
+            m_state.rest = true;
+        }
+
+        m_lcd_screen->ResetLine(visible_line);
     }
 }
 
@@ -293,4 +311,5 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.render_line);
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
+    G_SERIALIZE(s, m_state.refresh_cycle_counter);
 }

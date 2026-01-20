@@ -50,21 +50,19 @@ void LcdScreen::Reset()
     memset(m_screen_buffer, 0, sizeof(m_screen_buffer));
     memset(m_current_palette, 0, sizeof(m_current_palette));
     memset(m_dma_buffer, 0, sizeof(m_dma_buffer));
-
     m_current_cycle = 0;
     m_current_line = 0;
     m_rendering_offset = 80;
     m_line_cycles = 0;
-
     m_dma_next_at = 0;
     m_dma_current_src_addr = 0;
     m_dma_burst_count = 0;
     m_dma_buffer_half = 0;
-
     m_pixel_next_at = 0;
     m_pixel_count = 0;
     m_pixel_buffer_read_pos = 0;
     m_line_dst_offset = 0;
+    m_in_vblank = false;
 }
 
 void LcdScreen::InitPalettes()
@@ -208,4 +206,5 @@ void LcdScreen::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_pixel_count);
     G_SERIALIZE(s, m_pixel_buffer_read_pos);
     G_SERIALIZE(s, m_line_dst_offset);
+    G_SERIALIZE(s, m_in_vblank);
 }

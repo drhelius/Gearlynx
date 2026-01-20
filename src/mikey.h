@@ -65,6 +65,7 @@ public:
         u32 render_line;
         u16 dispadr_latch;
         bool rest;
+        u32 refresh_cycle_counter;
     };
 
 public:
@@ -128,6 +129,9 @@ static const int k_mikey_timer_forward_links[8] = { 2, 3, 4, 5, -1, 7, -1, 8 };
 static const int k_mikey_timer_backward_links[8] = { -1, 11, 0, 1, 2, 3, -1, 5 };
 static const int k_mikey_audio_forward_links[4] = { 1, 2, 3, -1 };
 static const int k_mikey_audio_backward_links[4] = { -1, 0, 1, 2 };
+
+static const u32 k_mikey_refresh_period_cycles = 256;
+static const u32 k_mikey_refresh_inject_cycles = 4;
 
 #include "mikey_inline.h"
 

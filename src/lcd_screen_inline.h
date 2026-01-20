@@ -27,6 +27,9 @@
 
 INLINE void LcdScreen::Update(u32 cycles)
 {
+    if (m_in_vblank)
+        return;
+
     m_current_cycle += cycles;
 
     if (m_dma_burst_count >= k_dma_bursts_per_line && m_pixel_count >= GLYNX_SCREEN_WIDTH)
@@ -57,6 +60,12 @@ INLINE void LcdScreen::ResetLine(u8 line)
     m_pixel_count = 0;
     m_pixel_buffer_read_pos = 0;
     m_line_dst_offset = m_current_line * GLYNX_SCREEN_WIDTH;
+}
+
+INLINE void LcdScreen::ClearLine(u8 line)
+{
+    u32 offset = line * GLYNX_SCREEN_WIDTH;
+    memset(&m_screen_buffer[offset], 0, GLYNX_SCREEN_WIDTH * sizeof(u16));
 }
 
 INLINE void LcdScreen::FirstDMA()
@@ -105,6 +114,11 @@ INLINE u16* LcdScreen::GetRGB565Palette()
 INLINE GLYNX_Pixel_Format LcdScreen::GetPixelFormat()
 {
     return m_pixel_format;
+}
+
+INLINE void LcdScreen::SetVBlank(bool vblank)
+{
+    m_in_vblank = vblank;
 }
 
 INLINE void LcdScreen::DoDMA()

@@ -452,7 +452,11 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
 
         if (prescaler_changed || enable_count_rising)
         {
-            t->internal_cycles = 0;
+            if (enable_count_rising)
+                t->internal_cycles = (t->internal_period_cycles / 2);
+            else
+                t->internal_cycles = 0;
+
             t->internal_pending_ticks = 0;
 
             if (i == 0) // HCOUNT timer
@@ -573,7 +577,10 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
 
         if (prescaler_changed || enable_count_rising)
         {
-            c->internal_cycles = 0;
+            if (enable_count_rising)
+                c->internal_cycles = (c->internal_period_cycles / 2);
+            else
+                c->internal_cycles = 0;
             c->internal_pending_ticks = 0;
             CalculateCutoff(i);
         }
@@ -1115,6 +1122,14 @@ inline void Mikey::UartClock()
 INLINE void Mikey::UpdateVideo(u32 cycles)
 {
     m_lcd_screen->Update(cycles);
+
+    m_state.refresh_cycle_counter += cycles;
+
+    while (m_state.refresh_cycle_counter >= k_mikey_refresh_period_cycles)
+    {
+        m_state.refresh_cycle_counter -= k_mikey_refresh_period_cycles;
+        m_bus->InjectCycles(k_mikey_refresh_inject_cycles);
+    }
 }
 
 #endif /* MIKEY_INLINE_H */

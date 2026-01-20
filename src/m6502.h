@@ -62,6 +62,9 @@ public:
         s32 debug_irq_mask;
         bool halted;
         bool onebyte_un_nop;
+        u8 page_mode_discounts;
+        u32 last_ticks;
+        u64 total_ticks;
     };
 
     struct GLYNX_Breakpoint
@@ -108,6 +111,7 @@ public:
     void ClearDisassemblerCallStack();
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
     void CheckMemoryBreakpoints(u16 address, bool read);
+    void SetPageModeEnabled(bool enabled);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -129,7 +133,9 @@ private:
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_disassembler_call_stack_size;
     int m_reset_value;
+    bool m_stream_open;
     u16 m_prev_opcode_address;
+    u8 m_page_mode_tick_discount;
 
 private:
     void HandleIRQ();
@@ -139,8 +145,12 @@ private:
     void PushCallStack(u16 src, u16 dest, u16 back);
     void PopCallStack();
 
-    u8 Fetch8();
-    u16 Fetch16();
+    u8 FetchOpcode8();
+    u8 FetchOperand8();
+    u16 FetchOperand16();
+    void NotifyBusBreak();
+    u8 MemRead8(u16 address);
+    void MemWrite8(u16 address, u8 value);
     u16 Address16(u8 high, u8 low);
     bool PageCrossed(u16 old_address, u16 new_address);
     u16 ZeroPageX();

@@ -94,6 +94,7 @@ inline void Memory::SetMapCtl(u8 MAPCTL)
     if (m_state.MAPCTL != MAPCTL)
     {
         m_state.MAPCTL = MAPCTL;
+        m_m6502->SetPageModeEnabled(IS_NOT_SET_BIT(MAPCTL, 7));
         RebuildMemoryMap();
     }
 }

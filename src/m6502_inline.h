@@ -36,6 +36,7 @@ INLINE u32 M6502::RunInstruction()
     m_s.cycles = 0;
     m_s.memory_accesses = 0;
     m_s.onebyte_un_nop = false;
+    m_s.page_mode_discounts = 0;
 
     if (unlikely(m_s.halted))
     {
@@ -52,11 +53,7 @@ INLINE u32 M6502::RunInstruction()
         return m_s.cycles;
     }
 
-    u16 fetch_address = m_s.PC.GetValue();
-    bool page_mode = (m_prev_opcode_address != 0xFFFF) && ((m_prev_opcode_address & 0xFF00) == (fetch_address & 0xFF00));
-    m_prev_opcode_address = fetch_address;
-
-    u8 opcode = Fetch8();
+    u8 opcode = FetchOpcode8();
 
     CheckIRQs();
     (this->*m_opcodes[opcode])();
@@ -68,7 +65,10 @@ INLINE u32 M6502::RunInstruction()
 
     m_s.cycles += k_m6502_opcode_cycles[opcode];
 
-    u32 ticks = (m_s.cycles * k_bus_cycles_int_tick_factor) - (page_mode ? 1 : 0);
+    u32 ticks = (m_s.cycles * k_bus_cycles_int_tick_factor) - (u32)m_s.page_mode_discounts;
+
+    m_s.last_ticks = ticks;
+    m_s.total_ticks += ticks;
 
     return ticks;
 }
@@ -81,8 +81,8 @@ inline void M6502::HandleIRQ()
     SetFlag(FLAG_INTERRUPT);
     ClearFlag(FLAG_DECIMAL);
 
-    m_s.PC.SetLow(m_memory->Read(0xFFFE));
-    m_s.PC.SetHigh(m_memory->Read(0xFFFF));
+    m_s.PC.SetLow(MemRead8(0xFFFE));
+    m_s.PC.SetHigh(MemRead8(0xFFFF));
 
     m_s.cycles += 7;
 
@@ -119,20 +119,80 @@ INLINE void M6502::InjectCycles(unsigned int cycles)
     m_s.cycles += cycles;
 }
 
-INLINE u8 M6502::Fetch8()
+INLINE void M6502::SetPageModeEnabled(bool enabled)
 {
-    u8 value = m_memory->Read(m_s.PC.GetValue());
+    m_page_mode_tick_discount = enabled ? 1 : 0;
+}
+
+INLINE u8 M6502::FetchOpcode8()
+{
+    const u16 addr = m_s.PC.GetValue();
+
+    bool page_mode = m_stream_open && ((addr & 0x0F) != 0);
+
+    u8 value = m_memory->Read(addr);
     m_s.PC.Increment();
+
+    m_stream_open = true;
+
+    if (page_mode)
+        m_s.page_mode_discounts += m_page_mode_tick_discount;
+
     return value;
 }
 
-INLINE u16 M6502::Fetch16()
+INLINE u8 M6502::FetchOperand8()
 {
-    u16 pc = m_s.PC.GetValue();
-    u8 l = m_memory->Read(pc);
-    u8 h = m_memory->Read(pc + 1);
-    m_s.PC.SetValue(pc + 2);
-    return Address16(h, l);
+    const u16 addr = m_s.PC.GetValue();
+
+    bool page_mode = m_stream_open && ((addr & 0x0F) != 0);
+
+    u8 value = m_memory->Read(addr);
+    m_s.PC.Increment();
+
+    if (page_mode)
+        m_s.page_mode_discounts += m_page_mode_tick_discount;
+
+    return value;
+}
+
+INLINE u16 M6502::FetchOperand16()
+{
+    const u16 addr = m_s.PC.GetValue();
+
+    u8 discounts = 0;
+    if (m_stream_open)
+    {
+        if ((addr & 0x0F) != 0)
+            discounts++;
+        if (((addr + 1) & 0x0F) != 0)
+            discounts++;
+    }
+
+    const u8 l = m_memory->Read(addr);
+    const u8 h = m_memory->Read(addr + 1);
+    m_s.PC.SetValue(addr + 2);
+
+    m_s.page_mode_discounts += discounts * m_page_mode_tick_discount;
+
+    return (static_cast<u16>(h) << 8) | l;
+}
+
+INLINE void M6502::NotifyBusBreak()
+{
+    m_stream_open = false;
+}
+
+INLINE u8 M6502::MemRead8(u16 address)
+{
+    m_stream_open = false;
+    return m_memory->Read(address);
+}
+
+INLINE void M6502::MemWrite8(u16 address, u8 value)
+{
+    m_stream_open = false;
+    m_memory->Write(address, value);
 }
 
 INLINE u16 M6502::Address16(u8 high, u8 low)
@@ -188,109 +248,109 @@ INLINE bool M6502::IsNotSetFlag(u8 flag)
 
 INLINE void M6502::StackPush16(u16 value)
 {
-    m_memory->Write(STACK_ADDR | m_s.S.GetValue(), static_cast<u8>(value >> 8));
+    MemWrite8(STACK_ADDR | m_s.S.GetValue(), static_cast<u8>(value >> 8));
     m_s.S.Decrement();
-    m_memory->Write(STACK_ADDR | m_s.S.GetValue(), static_cast<u8>(value & 0x00FF));
+    MemWrite8(STACK_ADDR | m_s.S.GetValue(), static_cast<u8>(value & 0x00FF));
     m_s.S.Decrement();
 }
 
 INLINE void M6502::StackPush8(u8 value)
 {
-    m_memory->Write(STACK_ADDR | m_s.S.GetValue(), value);
+    MemWrite8(STACK_ADDR | m_s.S.GetValue(), value);
     m_s.S.Decrement();
 }
 
 INLINE u16 M6502::StackPop16()
 {
     m_s.S.Increment();
-    u8 l = m_memory->Read(STACK_ADDR | m_s.S.GetValue());
+    u8 l = MemRead8(STACK_ADDR | m_s.S.GetValue());
     m_s.S.Increment();
-    u8 h = m_memory->Read(STACK_ADDR | m_s.S.GetValue());
+    u8 h = MemRead8(STACK_ADDR | m_s.S.GetValue());
     return Address16(h, l);
 }
 
 INLINE u8 M6502::StackPop8()
 {
     m_s.S.Increment();
-    return m_memory->Read(STACK_ADDR | m_s.S.GetValue());
+    return MemRead8(STACK_ADDR | m_s.S.GetValue());
 }
 
 INLINE u8 M6502::ImmediateAddressing()
 {
-    return Fetch8();
+    return FetchOperand8();
 }
 
 INLINE u16 M6502::ZeroPageAddressing()
 {
-    return ZERO_PAGE_ADDR | Fetch8();
+    return ZERO_PAGE_ADDR | FetchOperand8();
 }
 
 INLINE u16 M6502::ZeroPageAddressing(EightBitRegister* reg)
 {
-    return ZERO_PAGE_ADDR | ((Fetch8() + reg->GetValue()) & 0xFF);
+    return ZERO_PAGE_ADDR | ((FetchOperand8() + reg->GetValue()) & 0xFF);
 }
 
 INLINE u16 M6502::ZeroPageRelativeAddressing()
 {
     u16 address = ZeroPageAddressing();
-    s8 offset = static_cast<s8>(Fetch8());
+    s8 offset = static_cast<s8>(FetchOperand8());
     return address + offset;
 }
 
 INLINE u16 M6502::ZeroPageIndirectAddressing()
 {
     u16 address = ZeroPageAddressing();
-    u8 l = m_memory->Read(address);
-    u8 h = m_memory->Read((address + 1) & 0x20FF);
+    u8 l = MemRead8(address);
+    u8 h = MemRead8((address + 1) & 0x20FF);
     return Address16(h, l);
 }
 
 INLINE u16 M6502::ZeroPageIndexedIndirectAddressing()
 {
     u16 address = (ZeroPageAddressing() + m_s.X.GetValue()) & 0x20FF;
-    u8 l = m_memory->Read(address);
-    u8 h = m_memory->Read((address + 1) & 0x20FF);
+    u8 l = MemRead8(address);
+    u8 h = MemRead8((address + 1) & 0x20FF);
     return Address16(h, l);
 }
 
 INLINE u16 M6502::ZeroPageIndirectIndexedAddressing()
 {
     u16 address = ZeroPageAddressing();
-    u8 l = m_memory->Read(address);
-    u8 h = m_memory->Read((address + 1) & 0x20FF);
+    u8 l = MemRead8(address);
+    u8 h = MemRead8((address + 1) & 0x20FF);
     return Address16(h, l) + m_s.Y.GetValue();
 }
 
 INLINE s8 M6502::RelativeAddressing()
 {
-    return static_cast<s8>(Fetch8());
+    return static_cast<s8>(FetchOperand8());
 }
 
 INLINE u16 M6502::AbsoluteAddressing()
 {
-    return Fetch16();
+    return FetchOperand16();
 }
 
 INLINE u16 M6502::AbsoluteAddressing(EightBitRegister* reg)
 {
-    u16 address = Fetch16();
+    u16 address = FetchOperand16();
     u16 result = address + reg->GetValue();
     return result;
 }
 
 INLINE u16 M6502::AbsoluteIndirectAddressing()
 {
-    u16 address = Fetch16();
-    u8 l = m_memory->Read(address);
-    u8 h = m_memory->Read(address + 1);
+    u16 address = FetchOperand16();
+    u8 l = MemRead8(address);
+    u8 h = MemRead8(address + 1);
     return Address16(h, l);
 }
 
 INLINE u16 M6502::AbsoluteIndexedIndirectAddressing()
 {
-    u16 address = Fetch16() + m_s.X.GetValue();
-    u8 l = m_memory->Read(address);
-    u8 h = m_memory->Read(address + 1);
+    u16 address = FetchOperand16() + m_s.X.GetValue();
+    u8 l = MemRead8(address);
+    u8 h = MemRead8(address + 1);
     return Address16(h, l);
 }
 

@@ -39,6 +39,10 @@ M6502::M6502(Bus* bus)
     m_s.debug_next_irq = 0;
     m_s.debug_irq_mask = 0;
     m_s.halted = false;
+    m_s.onebyte_un_nop = false;
+    m_s.page_mode_discounts = 0;
+    m_s.last_ticks = 0;
+    m_s.total_ticks = 0;
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = 0;
     m_cpu_breakpoint_hit = false;
@@ -48,6 +52,8 @@ M6502::M6502(Bus* bus)
     m_disassembler_call_stack_size = 0;
     m_reset_value = -1;
     m_prev_opcode_address = 0xFFFF;
+    m_stream_open = false;
+    m_page_mode_tick_discount = 0;
 }
 
 M6502::~M6502()
@@ -93,11 +99,17 @@ void M6502::Reset()
     m_s.irq_pending = 0;
     m_s.debug_irq_mask = 0;
     m_s.halted = false;
+    m_s.onebyte_un_nop = false;
+    m_s.page_mode_discounts = 0;
+    m_s.last_ticks = 0;
+    m_s.total_ticks = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
     m_prev_opcode_address = 0xFFFF;
+    m_stream_open = false;
+    m_page_mode_tick_discount = 0;
     ClearDisassemblerCallStack();
 }
 
@@ -344,4 +356,8 @@ void M6502::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_s.debug_next_irq);
     G_SERIALIZE(s, m_s.debug_irq_mask);
     G_SERIALIZE(s, m_s.halted);
+    G_SERIALIZE(s, m_s.onebyte_un_nop);
+    G_SERIALIZE(s, m_s.page_mode_discounts);
+    G_SERIALIZE(s, m_stream_open);
+    G_SERIALIZE(s, m_page_mode_tick_discount);
 }

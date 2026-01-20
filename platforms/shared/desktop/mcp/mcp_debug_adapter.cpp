@@ -148,7 +148,7 @@ void DebugAdapter::ClearBreakpointByAddress(u16 address, u16 end_address)
     {
         M6502::GLYNX_Breakpoint& bp = (*breakpoints)[i];
 
-        if (end_address > 0 && end_address > address)
+        if (end_address > 0 && end_address >= address)
         {
             if (bp.range && bp.address1 == address && bp.address2 == end_address)
                 breakpoints->erase(breakpoints->begin() + i);
@@ -612,6 +612,10 @@ json DebugAdapter::Get6502Status()
 
     // CPU IRQ line status
     status["IRQ_line_asserted"] = cpu->irq_asserted;
+
+    // Last instruction ticks
+    status["last_ticks"] = cpu->last_ticks;
+    status["total_ticks"] = cpu->total_ticks;
 
     return status;
 }
