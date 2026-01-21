@@ -21,8 +21,9 @@
 #define BACKERS_H
 
 static const char * BACKERS_STR = 
-" · Waldemar Pawlaszek (laoo)"
+" · Waldemar Pawlaszek (laoo, Felix author)"
 "\n · Bastian Schick (42Bastian)"
+"\n · LLeny (Holani author)"
 "\n · Michael Mellor (dinglyburrow)"
 "\n · Libretro / RetroArch team"
 "\n · Orange Kryptonite (OrangeKryptonite)"
