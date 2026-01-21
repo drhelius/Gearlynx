@@ -82,7 +82,7 @@ INLINE void LcdScreen::ConfigureLineTiming()
     u32 t0_period = state->timers[0].internal_period_cycles;
 
     m_line_cycles = (t0_backup + 1) * t0_period;
-    m_rendering_offset = m_line_cycles > 2500 ? 576 : 0;
+    m_rendering_offset = MAX(0, (int)m_line_cycles - 1920);
 }
 
 INLINE void LcdScreen::UpdatePalette(int index, u16 color)
