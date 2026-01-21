@@ -481,8 +481,6 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
     case 2:
         DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
         t->counter = value;
-        t->internal_cycles = 0;
-        t->internal_pending_ticks = 0;
         break;
     case 3:
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
@@ -596,8 +594,6 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
     }
     case 6:
         c->counter = value;
-        c->internal_cycles = 0;
-        c->internal_pending_ticks = 0;
         break;
     case 7:
         if (IS_NOT_SET_BIT(c->other, 1) && IS_SET_BIT(value, 1))
