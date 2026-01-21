@@ -84,11 +84,7 @@ void LcdScreen::InitPalettes()
         red    = (i & 0x0F) * 31 / 15;
         u16 rgb565 = (red << 11) | (green << 5) | blue;
 
-        #ifdef GLYNX_LITTLE_ENDIAN
         m_rgb565_palette[i] = rgb565;
-        #else
-        m_rgb565_palette[i] = (rgb565 >> 8) | ((rgb565 & 0xFF) << 8);
-        #endif
     }
 }
 
