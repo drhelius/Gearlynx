@@ -108,6 +108,9 @@
     <ClInclude Include="..\shared\desktop\gui_debug_disassembler.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\gui_debug_lcd.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
     <ClInclude Include="..\shared\desktop\gui_debug_m6502.h">
       <Filter>desktop</Filter>
     </ClInclude>
@@ -321,6 +324,9 @@
       <Filter>desktop</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\gui_debug_disassembler.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\gui_debug_lcd.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\gui_debug_m6502.cpp">

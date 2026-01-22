@@ -60,6 +60,7 @@
     <ClInclude Include="..\shared\desktop\gui_debug.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_constants.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_disassembler.h" />
+    <ClInclude Include="..\shared\desktop\gui_debug_lcd.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_m6502.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_memeditor.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_memory.h" />
@@ -124,6 +125,7 @@
     <ClCompile Include="..\shared\desktop\gui_actions.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_disassembler.cpp" />
+    <ClCompile Include="..\shared\desktop\gui_debug_lcd.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_m6502.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_memeditor.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_memory.cpp" />
