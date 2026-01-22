@@ -35,6 +35,7 @@ Media::Media()
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
     m_forced_rotation = NO_ROTATION;
+    m_forced_console_type = GLYNX_CONSOLE_AUTO;
     HardReset();
 }
 
@@ -82,6 +83,7 @@ void Media::HardReset()
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
     m_rotation = NO_ROTATION;
+    m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = NO_EEPROM;
     m_type = MEDIA_LYNX;
     m_audin = false;
@@ -156,6 +158,21 @@ GLYNX_Rotation Media::GetRotation()
         return m_forced_rotation;
     else
         return m_rotation;
+}
+
+void Media::ForceConsoleType(GLYNX_Console_Type type)
+{
+    m_forced_console_type = type;
+}
+
+GLYNX_Console_Type Media::GetConsoleType()
+{
+    if (m_forced_console_type != GLYNX_CONSOLE_AUTO)
+        return m_forced_console_type;
+    else if (m_console_type != GLYNX_CONSOLE_AUTO)
+        return m_console_type;
+    else
+        return GLYNX_CONSOLE_MODEL_II;
 }
 
 Media::GLYNX_Media_EEPROM Media::GetEEPROM()
@@ -532,6 +549,12 @@ void Media::GatherInfoFromDB()
             {
                 Debug("Forcing EEPROM to database value: 93C46");
                 m_eeprom = EEPROM_93C46;
+            }
+
+            if (k_game_database[i].console_type != GLYNX_CONSOLE_AUTO)
+            {
+                Debug("Forcing console type to database value: %s", k_game_database[i].console_type == GLYNX_CONSOLE_MODEL_I ? "Lynx I" : "Lynx II");
+                m_console_type = k_game_database[i].console_type;
             }
         }
         else

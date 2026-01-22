@@ -18,9 +18,21 @@
  */
 
 #include "m6502.h"
+#include "m6502_timing.h"
 
-void M6502::InitOPCodeFunctors()
+void M6502::InitOPCodeFunctors(bool is_lynx2)
 {
+    if (is_lynx2)
+    {
+        m_opcode_cycles = k_m6502_opcode_cycles_lynx2;
+        m_opcode_sizes = k_m6502_opcode_sizes_lynx2;
+    }
+    else
+    {
+        m_opcode_cycles = k_m6502_opcode_cycles_lynx1;
+        m_opcode_sizes = k_m6502_opcode_sizes_lynx1;
+    }
+
     m_opcodes[0x00] = &M6502::OPCode0x00;
     m_opcodes[0x01] = &M6502::OPCode0x01;
     m_opcodes[0x02] = &M6502::OPCode0x02;
@@ -292,4 +304,48 @@ void M6502::InitOPCodeFunctors()
     m_opcodes[0xFD] = &M6502::OPCode0xFD;
     m_opcodes[0xFE] = &M6502::OPCode0xFE;
     m_opcodes[0xFF] = &M6502::OPCode0xFF;
+
+    // Lynx I
+    if (!is_lynx2)
+    {
+        // RMB0-RMB7 (0x07, 0x17, 0x27, 0x37, 0x47, 0x57, 0x67, 0x77)
+        m_opcodes[0x07] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x17] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x27] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x37] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x47] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x57] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x67] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x77] = &M6502::OPCodes_LynxI_NOP;
+
+        // SMB0-SMB7 (0x87, 0x97, 0xA7, 0xB7, 0xC7, 0xD7, 0xE7, 0xF7)
+        m_opcodes[0x87] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x97] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xA7] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xB7] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xC7] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xD7] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xE7] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xF7] = &M6502::OPCodes_LynxI_NOP;
+
+        // BBR0-BBR7 (0x0F, 0x1F, 0x2F, 0x3F, 0x4F, 0x5F, 0x6F, 0x7F)
+        m_opcodes[0x0F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x1F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x2F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x3F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x4F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x5F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x6F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x7F] = &M6502::OPCodes_LynxI_NOP;
+
+        // BBS0-BBS7 (0x8F, 0x9F, 0xAF, 0xBF, 0xCF, 0xDF, 0xEF, 0xFF)
+        m_opcodes[0x8F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0x9F] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xAF] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xBF] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xCF] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xDF] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xEF] = &M6502::OPCodes_LynxI_NOP;
+        m_opcodes[0xFF] = &M6502::OPCodes_LynxI_NOP;
+    }
 }

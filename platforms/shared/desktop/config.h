@@ -59,6 +59,7 @@ struct config_Emulator
     int window_height = 600;
     bool status_messages = false;
     int mcp_tcp_port = 7777;
+    int console_type = 0;
 };
 
 struct config_Video

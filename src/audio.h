@@ -40,7 +40,7 @@ public:
     Audio(Mikey* mikey);
     ~Audio();
     void Init();
-    void Reset();
+    void Reset(bool is_lynx2);
     void Clock(u32 cycles);
     void EndFrame(s16* sample_buffer, int* sample_count);
     void Mute(bool mute);
@@ -68,6 +68,7 @@ private:
     GLYNX_Audio_Channel m_channel[4];
     VgmRecorder m_vgm_recorder;
     bool m_vgm_recording_enabled;
+    bool m_is_lynx2;
 };
 
 #include "audio_inline.h"

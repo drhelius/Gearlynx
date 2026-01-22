@@ -254,6 +254,19 @@ static void menu_emulator(void)
     {
         gui_in_use = true;
 
+        if (ImGui::BeginMenu("Console Type"))
+        {
+            ImGui::PushItemWidth(120.0f);
+            if (ImGui::Combo("##console_type", &config_emulator.console_type, "Auto\0Lynx I\0Lynx II\0\0"))
+            {
+                emu_force_console_type(config_emulator.console_type);
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
         if (ImGui::BeginMenu("BIOS"))
         {
             if (ImGui::MenuItem("Load BIOS..."))

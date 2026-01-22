@@ -39,6 +39,7 @@ Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m650
     InitPointer(m_disassembler);
     InitPointer(m_state.ram);
     m_state.MAPCTL = 0;
+    m_is_lynx2 = true;
 
     for (int i = 0; i < 256; i++)
     {
@@ -75,12 +76,13 @@ void Memory::Init()
 
     m_state.ram = new u8[0x10000];
 
-    Reset();
+    Reset(true);
 }
 
-void Memory::Reset()
+void Memory::Reset(bool is_lynx2)
 {
     m_state.MAPCTL = 0;
+    m_is_lynx2 = is_lynx2;
 
     for (int i = 0; i < 0x10000; i++)
         m_state.ram[i] = rand() & 0xFF;

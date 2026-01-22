@@ -63,7 +63,7 @@ INLINE u32 M6502::RunInstruction()
 
     DisassembleNextOPCode();
 
-    m_s.cycles += k_m6502_opcode_cycles[opcode];
+    m_s.cycles += m_opcode_cycles[opcode];
 
     u32 ticks = (m_s.cycles * k_bus_cycles_int_tick_factor) - (u32)m_s.page_mode_discounts;
 
@@ -465,7 +465,7 @@ INLINE void M6502::DisassembleNextOPCode()
     assert(IsValidPointer(record));
 
     u8 opcode = m_memory->Read<true>(address);
-    u8 opcode_size = k_m6502_opcode_sizes[opcode];
+    u8 opcode_size = m_opcode_sizes[opcode];
 
     bool changed = (record->opcodes[0] != opcode);
     record->opcodes[0] = opcode;
@@ -520,7 +520,7 @@ INLINE void M6502::DisassembleNextOPCode()
 INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record, u8 opcode, u16 address)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    u8 opcode_size = k_m6502_opcode_sizes[opcode];
+    u8 opcode_size = m_opcode_sizes[opcode];
 
     record->address = address;
     record->rom = (address >= 0xFE00) && IS_NOT_SET_BIT(m_memory->GetState()->MAPCTL, 2);

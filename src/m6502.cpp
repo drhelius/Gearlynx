@@ -23,6 +23,7 @@
 #include <string.h>
 #include <assert.h>
 #include "m6502.h"
+#include "m6502_timing.h"
 #include "bus.h"
 #include "memory.h"
 #include "state_serializer.h"
@@ -31,7 +32,8 @@ M6502::M6502(Bus* bus)
 {
     m_bus = bus;
     InitPointer(m_memory);
-    InitOPCodeFunctors();
+    m_opcode_cycles = k_m6502_opcode_cycles_lynx2;
+    m_opcode_sizes = k_m6502_opcode_sizes_lynx2;
     m_s.cycles = 0;
     m_s.memory_accesses = 0;
     m_s.irq_asserted = false;
@@ -66,8 +68,10 @@ void M6502::Init(Memory* memory)
     CreateZNFlagsTable();
 }
 
-void M6502::Reset()
+void M6502::Reset(bool is_lynx2)
 {
+    InitOPCodeFunctors(is_lynx2);
+
     m_s.PC.SetLow(m_memory->Read(0xFFFC));
     m_s.PC.SetHigh(m_memory->Read(0xFFFD));
     m_s.debug_next_irq = 1;

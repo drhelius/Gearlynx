@@ -44,7 +44,7 @@ void Mikey::Init(Memory* memory, GLYNX_Pixel_Format pixel_format)
 {
     m_lcd_screen = new LcdScreen(this, memory, m_bus);
     m_lcd_screen->Init(pixel_format);
-    Reset();
+    Reset(true);
 }
 
 void Mikey::SetAudio(Audio* audio)
@@ -52,9 +52,11 @@ void Mikey::SetAudio(Audio* audio)
     m_audio = audio;
 }
 
-void Mikey::Reset()
+void Mikey::Reset(bool is_lynx2)
 {
     memset(&m_state, 0, sizeof(Mikey_State));
+
+    m_is_lynx2 = is_lynx2;
 
     m_lcd_screen->Reset();
 

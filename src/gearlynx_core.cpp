@@ -197,7 +197,8 @@ void GearlynxCore::ResetROM(bool preserve_ram)
 
 void GearlynxCore::ResetSound()
 {
-    m_audio->Reset();
+    bool is_lynx2 = (m_media->GetConsoleType() != GLYNX_CONSOLE_MODEL_I);
+    m_audio->Reset(is_lynx2);
 }
 
 // void GearlynxCore::SaveRam()
@@ -623,11 +624,14 @@ void GearlynxCore::Reset()
     m_total_cycles = 0;
 
     m_media->Reset();
+
+    bool is_lynx2 = (m_media->GetConsoleType() == GLYNX_CONSOLE_MODEL_II);
+
     m_suzy->Reset();
-    m_mikey->Reset();
-    m_memory->Reset();
-    m_m6502->Reset();
-    m_audio->Reset();
+    m_mikey->Reset(is_lynx2);
+    m_memory->Reset(is_lynx2);
+    m_m6502->Reset(is_lynx2);
+    m_audio->Reset(is_lynx2);
     m_bus->Reset();
     m_input->Reset();
 

@@ -32,36 +32,50 @@ inline void Audio::Clock(u32 cycles)
         m_cycles -= GLYNX_AUDIO_CYCLES_PER_SAMPLE;
         Mikey::Mikey_State* state = m_mikey->GetState();
 
-        // MSTEREO ($FD50) controls channel routing to each ear (bit=1 disables)
-        // MPAN ($FD44) enables attenuation per channel/ear (bit=1 enables)
-        // ATTEN_X ($FD40-$FD43) sets volume per channel: bits 7-4=left, 3-0=right (0=silent, 15=full).
-
-        u8 mstereo = state->MSTEREO;
-        u8 mpan = state->MPAN;
-        const u8* atten = &state->ATTEN_A;
-
-        for (int ch = 0; ch < 4; ch++)
+        // Lynx II
+        if (likely(m_is_lynx2))
         {
-            s8 sample = state->audio[ch].internal_mix ? state->audio[ch].output : 0;
-            u8 ch_atten = atten[ch];
+            // MSTEREO ($FD50) controls channel routing to each ear (bit=1 disables)
+            // MPAN ($FD44) enables attenuation per channel/ear (bit=1 enables)
+            // ATTEN_X ($FD40-$FD43) sets volume per channel: bits 7-4=left, 3-0=right (0=silent, 15=full).
 
-            // Left
-            if (IS_NOT_SET_BIT(mstereo, 4 + ch))
-            {
-                s32 att = IS_SET_BIT(mpan, 4 + ch) ? (ch_atten >> 4) : 15;
-                m_channel[ch].buffer[m_buffer_pos + 0] = (sample * att) / 15;
-            }
-            else
-                m_channel[ch].buffer[m_buffer_pos + 0] = 0;
+            u8 mstereo = state->MSTEREO;
+            u8 mpan = state->MPAN;
+            const u8* atten = &state->ATTEN_A;
 
-            // Right
-            if (IS_NOT_SET_BIT(mstereo, ch))
+            for (int ch = 0; ch < 4; ch++)
             {
-                s32 att = IS_SET_BIT(mpan, ch) ? (ch_atten & 0x0F) : 15;
-                m_channel[ch].buffer[m_buffer_pos + 1] = (sample * att) / 15;
+                s8 sample = state->audio[ch].internal_mix ? state->audio[ch].output : 0;
+                u8 ch_atten = atten[ch];
+
+                // Left
+                if (IS_NOT_SET_BIT(mstereo, 4 + ch))
+                {
+                    s32 att = IS_SET_BIT(mpan, 4 + ch) ? (ch_atten >> 4) : 15;
+                    m_channel[ch].buffer[m_buffer_pos + 0] = (sample * att) / 15;
+                }
+                else
+                    m_channel[ch].buffer[m_buffer_pos + 0] = 0;
+
+                // Right
+                if (IS_NOT_SET_BIT(mstereo, ch))
+                {
+                    s32 att = IS_SET_BIT(mpan, ch) ? (ch_atten & 0x0F) : 15;
+                    m_channel[ch].buffer[m_buffer_pos + 1] = (sample * att) / 15;
+                }
+                else
+                    m_channel[ch].buffer[m_buffer_pos + 1] = 0;
             }
-            else
-                m_channel[ch].buffer[m_buffer_pos + 1] = 0;
+        }
+        // Lynx I
+        else
+        {
+            for (int ch = 0; ch < 4; ch++)
+            {
+                s8 sample = state->audio[ch].internal_mix ? state->audio[ch].output : 0;
+                m_channel[ch].buffer[m_buffer_pos + 0] = sample;
+                m_channel[ch].buffer[m_buffer_pos + 1] = sample;
+            }
         }
 
         m_buffer_pos += 2;

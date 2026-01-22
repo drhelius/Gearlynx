@@ -1579,3 +1579,9 @@ void M6502::OPCode0xFF()
     // BBS7 ZP,rr
     OPcodes_Branch(IS_SET_BIT(MemRead8(ZeroPageAddressing()), 7));
 }
+
+void M6502::OPCodes_LynxI_NOP()
+{
+    m_s.onebyte_un_nop = true;
+    UnofficialOPCode();
+}

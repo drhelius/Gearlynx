@@ -73,7 +73,7 @@ public:
     ~Mikey();
     void Init(Memory* memory, GLYNX_Pixel_Format pixel_format);
     void SetAudio(Audio* audio);
-    void Reset();
+    void Reset(bool is_lynx2);
     bool Clock(u32 cycles);
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
@@ -121,6 +121,7 @@ private:
     Bus* m_bus;
     LcdScreen* m_lcd_screen;
     Mikey_State m_state;
+    bool m_is_lynx2;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

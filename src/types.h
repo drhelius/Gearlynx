@@ -53,6 +53,13 @@ struct GLYNX_Runtime_Info
     float frame_time;
 };
 
+enum GLYNX_Console_Type
+{
+    GLYNX_CONSOLE_AUTO = 0,
+    GLYNX_CONSOLE_MODEL_I,
+    GLYNX_CONSOLE_MODEL_II
+};
+
 enum GLYNX_Bios_State
 {
     BIOS_LOAD_OK = 0,

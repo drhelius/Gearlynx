@@ -224,6 +224,11 @@ void emu_force_rotation(int rotation)
     core->GetMedia()->ForceRotation((GLYNX_Rotation)rotation);
 }
 
+void emu_force_console_type(int console_type)
+{
+    core->GetMedia()->ForceConsoleType((GLYNX_Console_Type)console_type);
+}
+
 void emu_audio_mute(bool mute)
 {
     audio_enabled = !mute;

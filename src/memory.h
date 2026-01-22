@@ -46,7 +46,7 @@ public:
     Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus);
     ~Memory();
     void Init();
-    void Reset();
+    void Reset(bool is_lynx2);
     u8* GetRAM();
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
@@ -86,6 +86,7 @@ private:
     typedef void (Memory::*PageWriteFn)(u16 addr, u8 v);
     PageReadFn m_read_fn[256];
     PageWriteFn m_write_fn[256];
+    bool m_is_lynx2;
 };
 
 #include "memory_inline.h"

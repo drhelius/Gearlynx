@@ -28,7 +28,8 @@ Audio::Audio(Mikey* mikey)
     m_mikey = mikey;
     m_mute = false;
     m_vgm_recording_enabled = false;
-    Reset();
+    m_is_lynx2 = true;
+    Reset(true);
 }
 
 Audio::~Audio()
@@ -37,7 +38,7 @@ Audio::~Audio()
 
 void Audio::Init()
 {
-    Reset();
+    Reset(true);
 
     for (int i = 0; i < 4; i++)
     {
@@ -48,8 +49,9 @@ void Audio::Init()
     SetLowpassCutoff(1000.0f);
 }
 
-void Audio::Reset()
+void Audio::Reset(bool is_lynx2)
 {
+    m_is_lynx2 = is_lynx2;
     m_cycles = 0;
     m_buffer_pos = 0;
     m_frame_samples = 0;

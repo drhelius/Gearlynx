@@ -60,6 +60,8 @@ public:
     u32 GetCRC();
     void ForceRotation(GLYNX_Rotation rotation);
     GLYNX_Rotation GetRotation();
+    void ForceConsoleType(GLYNX_Console_Type type);
+    GLYNX_Console_Type GetConsoleType();
     GLYNX_Media_EEPROM GetEEPROM();
     GLYNX_Media_Type GetType();
     bool GetAudin();
@@ -116,6 +118,8 @@ private:
     bool m_shift_register_bit;
     GLYNX_Rotation m_rotation;
     GLYNX_Rotation m_forced_rotation;
+    GLYNX_Console_Type m_console_type;
+    GLYNX_Console_Type m_forced_console_type;
     GLYNX_Media_EEPROM m_eeprom;
     GLYNX_Media_Type m_type;
     bool m_audin;

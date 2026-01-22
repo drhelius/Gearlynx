@@ -45,7 +45,12 @@ INLINE u8 Memory::Read(u16 address)
     }
 
     if (unlikely(address == 0xFFF9))
-        return m_state.MAPCTL;
+    {
+        if (likely(m_is_lynx2))
+            return (m_state.MAPCTL | 0x70) ^ 0x80;
+        else
+            return m_state.MAPCTL;
+    }
 
     u8 page = hi(address);
 

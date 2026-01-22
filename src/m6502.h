@@ -89,7 +89,7 @@ public:
     M6502(Bus* bus);
     ~M6502();
     void Init(Memory* memory);
-    void Reset();
+    void Reset(bool is_lynx2);
     u32 RunInstruction();
     void AssertIRQ(bool asserted, u8 irq_mask);
     void Halt(bool halted);
@@ -118,6 +118,8 @@ public:
 private:
     typedef void (M6502::*opcodeptr) (void);
     opcodeptr m_opcodes[256];
+    const u8* m_opcode_cycles;
+    const u8* m_opcode_sizes;
     u8 m_zn_flags_lut[256];
     Memory* m_memory;
     Bus* m_bus;
@@ -217,8 +219,9 @@ private:
     void OPCodes_Transfer(EightBitRegister* source, EightBitRegister* dest);
     void OPCodes_TRB(u16 address);
     void OPCodes_TSB(u16 address);
+    void OPCodes_LynxI_NOP();
 
-    void InitOPCodeFunctors();
+    void InitOPCodeFunctors(bool is_lynx2);
 
     void OPCode0x00(); void OPCode0x01(); void OPCode0x02(); void OPCode0x03();
     void OPCode0x04(); void OPCode0x05(); void OPCode0x06(); void OPCode0x07();

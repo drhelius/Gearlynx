@@ -106,6 +106,7 @@ bool gui_init(void)
     set_style();
 
     emu_force_rotation(config_video.rotation);
+    emu_force_console_type(config_emulator.console_type);
     emu_audio_mute(!config_audio.enable);
     emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
     for (int i = 0; i < 4; i++)
