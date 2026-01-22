@@ -168,6 +168,7 @@ struct config_Debug
     bool show_suzy_regs = false;
     bool show_suzy_math_regs = false;
     bool show_frame_buffers = false;
+    bool show_lcd = false;
     bool show_uart = false;
     bool trace_counter = true;
     bool trace_registers = true;

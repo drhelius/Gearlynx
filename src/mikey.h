@@ -62,7 +62,6 @@ public:
         u8 irq_pending;
         u8 irq_mask;
         bool frame_ready;
-        u32 render_line;
         u16 dispadr_latch;
         bool rest;
         u32 refresh_cycle_counter;

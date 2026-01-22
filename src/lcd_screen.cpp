@@ -48,21 +48,7 @@ void LcdScreen::Init(GLYNX_Pixel_Format pixel_format)
 void LcdScreen::Reset()
 {
     memset(m_screen_buffer, 0, sizeof(m_screen_buffer));
-    memset(m_current_palette, 0, sizeof(m_current_palette));
-    memset(m_dma_buffer, 0, sizeof(m_dma_buffer));
-    m_current_cycle = 0;
-    m_current_line = 0;
-    m_rendering_offset = 80;
-    m_line_cycles = 0;
-    m_dma_next_at = 0;
-    m_dma_current_src_addr = 0;
-    m_dma_burst_count = 0;
-    m_dma_buffer_half = 0;
-    m_pixel_next_at = 0;
-    m_pixel_count = 0;
-    m_pixel_buffer_read_pos = 0;
-    m_line_dst_offset = 0;
-    m_in_vblank = false;
+    memset(&m_state, 0, sizeof(m_state));
 }
 
 void LcdScreen::InitPalettes()
@@ -185,22 +171,22 @@ void LcdScreen::LoadState(std::istream& stream)
 void LcdScreen::Serialize(StateSerializer& s)
 {
     G_SERIALIZE_ARRAY(s, m_screen_buffer, GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT);
-    G_SERIALIZE_ARRAY(s, m_current_palette, 16);
-    G_SERIALIZE_ARRAY(s, m_dma_buffer, 32);
+    G_SERIALIZE_ARRAY(s, m_state.current_palette, 16);
+    G_SERIALIZE_ARRAY(s, m_state.dma_buffer, 32);
 
-    G_SERIALIZE(s, m_current_cycle);
-    G_SERIALIZE(s, m_current_line);
-    G_SERIALIZE(s, m_rendering_offset);
-    G_SERIALIZE(s, m_line_cycles);
+    G_SERIALIZE(s, m_state.current_cycle);
+    G_SERIALIZE(s, m_state.current_line);
+    G_SERIALIZE(s, m_state.rendering_offset);
+    G_SERIALIZE(s, m_state.line_cycles);
 
-    G_SERIALIZE(s, m_dma_next_at);
-    G_SERIALIZE(s, m_dma_current_src_addr);
-    G_SERIALIZE(s, m_dma_burst_count);
-    G_SERIALIZE(s, m_dma_buffer_half);
+    G_SERIALIZE(s, m_state.dma_next_at);
+    G_SERIALIZE(s, m_state.dma_current_src_addr);
+    G_SERIALIZE(s, m_state.dma_burst_count);
+    G_SERIALIZE(s, m_state.dma_buffer_half);
 
-    G_SERIALIZE(s, m_pixel_next_at);
-    G_SERIALIZE(s, m_pixel_count);
-    G_SERIALIZE(s, m_pixel_buffer_read_pos);
-    G_SERIALIZE(s, m_line_dst_offset);
-    G_SERIALIZE(s, m_in_vblank);
+    G_SERIALIZE(s, m_state.pixel_next_at);
+    G_SERIALIZE(s, m_state.pixel_count);
+    G_SERIALIZE(s, m_state.pixel_buffer_read_pos);
+    G_SERIALIZE(s, m_state.line_dst_offset);
+    G_SERIALIZE(s, m_state.in_vblank);
 }

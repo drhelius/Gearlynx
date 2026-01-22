@@ -310,7 +310,6 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.irq_pending);
     G_SERIALIZE(s, m_state.irq_mask);
     G_SERIALIZE(s, m_state.frame_ready);
-    G_SERIALIZE(s, m_state.render_line);
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
     G_SERIALIZE(s, m_state.refresh_cycle_counter);

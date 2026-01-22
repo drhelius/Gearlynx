@@ -107,6 +107,7 @@ public:
     json WriteMikeyRegister(u16 address, u8 value);
     json GetMikeyTimers(int timer = -1);
     json GetMikeyAudio(int channel = -1);
+    json GetLcdStatus();
     json GetSuzyRegisters(u16 address = 0xFFFF);
     json WriteSuzyRegister(u16 address, u8 value);
     json GetUARTStatus();

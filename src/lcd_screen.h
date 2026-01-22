@@ -32,6 +32,26 @@ class Bus;
 class LcdScreen
 {
 public:
+    struct LcdScreen_State
+    {
+        u32 current_cycle;
+        u32 current_line;
+        u32 rendering_offset;
+        u32 line_cycles;
+        u32 dma_next_at;
+        u16 dma_current_src_addr;
+        u32 dma_burst_count;
+        u32 dma_buffer_half;
+        u32 pixel_next_at;
+        u32 pixel_count;
+        u32 pixel_buffer_read_pos;
+        u32 line_dst_offset;
+        bool in_vblank;
+        u16 current_palette[16];
+        u8 dma_buffer[32];
+    };
+
+public:
     LcdScreen(Mikey* mikey, Memory* memory, Bus* bus);
     ~LcdScreen();
     void Init(GLYNX_Pixel_Format pixel_format);
@@ -50,6 +70,7 @@ public:
     GLYNX_Pixel_Format GetPixelFormat();
     void RenderNoBiosScreen(u8* frame_buffer);
     void SetVBlank(bool vblank);
+    LcdScreen_State* GetState();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -68,21 +89,7 @@ private:
     u8* m_frame_buffer;
     u16 m_screen_buffer[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT] = {};
     u8 m_rotated_frame_buffer[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4] = {};
-    u16 m_current_palette[16] = {};
-    u8 m_dma_buffer[32] = {};
-    u32 m_current_cycle;
-    u32 m_current_line;
-    u32 m_rendering_offset;
-    u32 m_line_cycles;
-    u32 m_dma_next_at;
-    u16 m_dma_current_src_addr;
-    u32 m_dma_burst_count;
-    u32 m_dma_buffer_half;
-    u32 m_pixel_next_at;
-    u32 m_pixel_count;
-    u32 m_pixel_buffer_read_pos;
-    u32 m_line_dst_offset;
-    bool m_in_vblank;
+    LcdScreen_State m_state;
     GLYNX_Pixel_Format m_pixel_format;
     u32 m_rgba8888_palette[4096] = {};
     u16 m_rgb565_palette[4096] = {};

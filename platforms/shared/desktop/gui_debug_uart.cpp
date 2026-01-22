@@ -40,7 +40,7 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(220, 444), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(220, 426), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();

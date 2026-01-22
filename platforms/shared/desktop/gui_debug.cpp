@@ -31,6 +31,7 @@
 #include "gui_debug_suzy.h"
 #include "gui_debug_timers.h"
 #include "gui_debug_uart.h"
+#include "gui_debug_lcd.h"
 #include "emu.h"
 #include "config.h"
 
@@ -96,6 +97,8 @@ void gui_debug_windows(void)
             gui_debug_window_suzy_math_regs();
         if (config_debug.show_frame_buffers)
             gui_debug_window_frame_buffers();
+        if (config_debug.show_lcd)
+            gui_debug_window_lcd();
         if (config_debug.show_uart)
             gui_debug_window_uart();
 

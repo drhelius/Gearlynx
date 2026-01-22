@@ -637,6 +637,15 @@ void McpServer::HandleToolsList(const json& request)
     });
 
     tools.push_back({
+        {"name", "get_lcd_status"},
+        {"description", "Get LCD status (line number, type VISIBLE/VBLANK, cycle). Pixel and DMA info only on visible lines."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", json::object()}
+        }}
+    });
+
+    tools.push_back({
         {"name", "get_screenshot"},
         {"description", "Capture current Atari Lynx screen frame as base64-encoded PNG image"},
         {"inputSchema", {
@@ -1541,6 +1550,10 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     else if (normalizedTool == "get_uart_status")
     {
         return m_debugAdapter.GetUARTStatus();
+    }
+    else if (normalizedTool == "get_lcd_status")
+    {
+        return m_debugAdapter.GetLcdStatus();
     }
     else if (normalizedTool == "get_screenshot")
     {

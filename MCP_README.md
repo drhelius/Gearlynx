@@ -244,6 +244,7 @@ The server exposes tools organized in the following categories:
 - `get_suzy_registers` - Get all Suzy registers ($FC00-$FCFF) or filter by specific address
 - `write_suzy_register` - Write to a Suzy register
 - `get_uart_status` - Get UART (ComLynx) status
+- `get_lcd_status` - Get LCD status. Pixel and DMA info only on visible lines
 
 ### Screen Capture
 - `get_screenshot` - Capture current screen frame as base64 PNG

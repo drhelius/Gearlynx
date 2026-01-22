@@ -2259,6 +2259,101 @@ json DebugAdapter::MemorySearch(int area, const std::string& op, const std::stri
     return result;
 }
 
+json DebugAdapter::GetLcdStatus()
+{
+    Mikey* mikey = m_core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
+    LcdScreen* lcd = mikey->GetLcdScreen();
+    LcdScreen::LcdScreen_State* lcd_state = lcd->GetState();
+
+    // Calculate line info (same logic as gui_debug_lcd.cpp)
+    u8 timer2_counter = mikey_state->timers[2].counter;
+    u8 timer2_backup = mikey_state->timers[2].backup;
+    int first_visible_counter = (timer2_backup >= 104) ? 102 : (timer2_backup - 2);
+    int current_line = timer2_backup - timer2_counter;
+
+    json result;
+    std::ostringstream ss;
+    ss << std::hex << std::uppercase << std::setfill('0');
+
+    // Line Status
+    json line_status;
+    line_status["line_number"] = current_line;
+    ss << std::setw(2) << current_line;
+    line_status["line_number_hex"] = ss.str();
+    ss.str("");
+
+    // Determine line type: VISIBLE or VBLANK
+    bool is_vblank = lcd_state->in_vblank;
+    if (timer2_counter >= 1 && timer2_counter <= first_visible_counter)
+    {
+        line_status["type"] = "VISIBLE";
+        line_status["visible_line"] = (int)lcd_state->current_line;
+    }
+    else if (timer2_counter > first_visible_counter)
+    {
+        int vblank_n = timer2_backup - timer2_counter;
+        line_status["type"] = "VBLANK";
+        line_status["vblank_line"] = vblank_n;
+    }
+    else
+    {
+        int num_start_vblank = timer2_backup - first_visible_counter;
+        line_status["type"] = "VBLANK";
+        line_status["vblank_line"] = num_start_vblank;
+    }
+
+    line_status["cycle"] = lcd_state->current_cycle;
+    line_status["cycles_per_line"] = lcd_state->line_cycles;
+    result["line"] = line_status;
+
+    // Only include pixel and DMA info during visible lines
+    if (!is_vblank)
+    {
+        // Pixel Processing
+        json pixel;
+        pixel["count"] = lcd_state->pixel_count;
+        pixel["total"] = GLYNX_SCREEN_WIDTH;
+        pixel["next_at_cycle"] = lcd_state->pixel_next_at;
+
+        if (lcd_state->pixel_next_at > lcd_state->current_cycle)
+            pixel["cycles_until_next"] = lcd_state->pixel_next_at - lcd_state->current_cycle;
+        else
+            pixel["cycles_until_next"] = 0;
+
+        // Next pixel info (pen and color)
+        if (lcd_state->pixel_count < GLYNX_SCREEN_WIDTH)
+        {
+            u8 pen = lcd_state->dma_buffer[lcd_state->pixel_buffer_read_pos];
+            u16 color = lcd_state->current_palette[pen];
+            pixel["next_pen"] = pen;
+            ss << std::setw(3) << (color & 0x0FFF);
+            pixel["next_color_rgb444"] = ss.str();
+            ss.str("");
+        }
+
+        result["pixel"] = pixel;
+
+        // Video DMA
+        json dma;
+        ss << std::setw(4) << lcd_state->dma_current_src_addr;
+        dma["source_address"] = ss.str();
+        ss.str("");
+        dma["burst_count"] = lcd_state->dma_burst_count;
+        dma["bursts_per_line"] = k_dma_bursts_per_line;
+        dma["next_at_cycle"] = lcd_state->dma_next_at;
+
+        if (lcd_state->dma_burst_count < k_dma_bursts_per_line && lcd_state->dma_next_at > lcd_state->current_cycle)
+            dma["cycles_until_next"] = lcd_state->dma_next_at - lcd_state->current_cycle;
+        else
+            dma["cycles_until_next"] = 0;
+
+        result["dma"] = dma;
+    }
+
+    return result;
+}
+
 void DebugAdapter::AddRegister(json& registers, std::ostringstream& ss, const char* name, u16 addr, u8 value, u16 filter_address)
 {
     if (filter_address != 0xFFFF && filter_address != addr)

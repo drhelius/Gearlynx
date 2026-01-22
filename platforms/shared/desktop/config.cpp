@@ -140,6 +140,7 @@ void config_read(void)
     config_debug.show_suzy_regs = read_bool("Debug", "SuzyRegs", false);
     config_debug.show_suzy_math_regs = read_bool("Debug", "SuzyMathRegs", false);
     config_debug.show_frame_buffers = read_bool("Debug", "FrameBuffers", false);
+    config_debug.show_lcd = read_bool("Debug", "LCD", false);
     config_debug.show_uart = read_bool("Debug", "UART", false);
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
@@ -299,6 +300,7 @@ void config_write(void)
     write_bool("Debug", "SuzyMathRegs", config_debug.show_suzy_math_regs);
     write_bool("Debug", "TraceLogger", config_debug.show_trace_logger);
     write_bool("Debug", "FrameBuffers", config_debug.show_frame_buffers);
+    write_bool("Debug", "LCD", config_debug.show_lcd);
     write_bool("Debug", "UART", config_debug.show_uart);
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);

@@ -35,7 +35,7 @@ void gui_debug_window_mikey_regs(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(210, 162), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(328, 340), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(328, 344), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Mikey Registers", &config_debug.show_mikey_regs);
 

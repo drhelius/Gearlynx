@@ -35,6 +35,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/gui_debug_timers.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_trace_logger.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_uart.cpp \
+    $(DESKTOP_SRC_DIR)/gui_debug_lcd.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_debug_adapter.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_server.cpp \
     $(DESKTOP_SRC_DIR)/renderer.cpp \
