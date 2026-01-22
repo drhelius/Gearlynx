@@ -474,7 +474,7 @@ static void main_window(void)
     {
         flags |= ImGuiWindowFlags_AlwaysAutoResize;
 
-        ImGui::SetNextWindowPos(ImVec2(594, 26), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(602, 26), ImGuiCond_FirstUseEver);
 
         ImGui::Begin("Output###debug_output", &config_debug.show_screen, flags);
         gui_main_window_hovered = ImGui::IsWindowHovered();
