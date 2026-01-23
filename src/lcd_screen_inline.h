@@ -27,10 +27,10 @@
 
 INLINE void LcdScreen::Update(u32 cycles)
 {
+    m_state.current_cycle += cycles;
+
     if (m_state.in_vblank)
         return;
-
-    m_state.current_cycle += cycles;
 
     if (m_state.dma_burst_count >= k_dma_bursts_per_line && m_state.pixel_count >= GLYNX_SCREEN_WIDTH)
         return;
@@ -49,10 +49,14 @@ INLINE void LcdScreen::Update(u32 cycles)
     }
 }
 
-INLINE void LcdScreen::ResetLine(u8 line)
+INLINE void LcdScreen::ResetLine(u32 cycles)
+{
+    m_state.current_cycle = cycles;
+}
+
+INLINE void LcdScreen::ResetVisibleLine(u8 line)
 {
     m_state.current_line = line;
-    m_state.current_cycle = 0;
     m_state.dma_next_at = m_state.rendering_offset + 8;
     m_state.dma_burst_count = 0;
     m_state.dma_buffer_half = 16;

@@ -57,7 +57,8 @@ public:
     void Init(GLYNX_Pixel_Format pixel_format);
     void Reset();
     void Update(u32 cycles);
-    void ResetLine(u8 line);
+    void ResetLine(u32 cycles);
+    void ResetVisibleLine(u8 line);
     void ClearLine(u8 line);
     void FirstDMA();
     void ConfigureLineTiming();

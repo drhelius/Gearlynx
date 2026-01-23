@@ -201,8 +201,10 @@ void Mikey::HorizontalBlank()
             m_state.rest = true;
         }
 
-        m_lcd_screen->ResetLine(visible_line);
+        m_lcd_screen->ResetVisibleLine(visible_line);
     }
+
+    m_lcd_screen->ResetLine(m_state.timers[0].internal_cycles);
 }
 
 void Mikey::SaveState(std::ostream& stream)
