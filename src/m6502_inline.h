@@ -31,6 +31,7 @@ INLINE u32 M6502::RunInstruction()
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_memory_breakpoint_hit = false;
+    m_cpu_breakpoint_hit = false;
 #endif
 
     m_s.cycles = 0;
