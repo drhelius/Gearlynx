@@ -2266,10 +2266,9 @@ json DebugAdapter::GetLcdStatus()
     LcdScreen* lcd = mikey->GetLcdScreen();
     LcdScreen::LcdScreen_State* lcd_state = lcd->GetState();
 
-    // Calculate line info (same logic as gui_debug_lcd.cpp)
+    // Calculate line info
     u8 timer2_counter = mikey_state->timers[2].counter;
     u8 timer2_backup = mikey_state->timers[2].backup;
-    int first_visible_counter = (timer2_backup >= 104) ? 102 : (timer2_backup - 2);
     int current_line = timer2_backup - timer2_counter;
 
     json result;
@@ -2284,45 +2283,44 @@ json DebugAdapter::GetLcdStatus()
     ss.str("");
 
     // Determine line type: VISIBLE or VBLANK
+    // Visualization: Lines 0-2 are VBLANK, Lines 3-104 are VISIBLE 0-101
     bool is_vblank = lcd_state->in_vblank;
-    if (timer2_counter >= 1 && timer2_counter <= first_visible_counter)
+    if (current_line >= 3 && current_line <= (timer2_backup + 1))
     {
+        // Visible lines 3-104 (VISIBLE 0-101)
         line_status["type"] = "VISIBLE";
-        line_status["visible_line"] = (int)lcd_state->current_line;
-    }
-    else if (timer2_counter > first_visible_counter)
-    {
-        int vblank_n = timer2_backup - timer2_counter;
-        line_status["type"] = "VBLANK";
-        line_status["vblank_line"] = vblank_n;
+        line_status["visible_line"] = current_line - 3;
     }
     else
     {
-        int num_start_vblank = timer2_backup - first_visible_counter;
+        // VBLANK lines 0-2
         line_status["type"] = "VBLANK";
-        line_status["vblank_line"] = num_start_vblank;
+        line_status["vblank_line"] = current_line;
     }
 
     line_status["cycle"] = lcd_state->current_cycle;
     line_status["cycles_per_line"] = lcd_state->line_cycles;
     result["line"] = line_status;
 
-    // Only include pixel and DMA info during visible lines
+    // Pixel Processing
+    json pixel;
     if (!is_vblank)
     {
-        // Pixel Processing
-        json pixel;
+        bool pixel_active = lcd_state->pixel_count < GLYNX_SCREEN_WIDTH;
+
         pixel["count"] = lcd_state->pixel_count;
         pixel["total"] = GLYNX_SCREEN_WIDTH;
         pixel["next_at_cycle"] = lcd_state->pixel_next_at;
 
-        if (lcd_state->pixel_next_at > lcd_state->current_cycle)
+        if (pixel_active && lcd_state->pixel_next_at > lcd_state->current_cycle)
             pixel["cycles_until_next"] = lcd_state->pixel_next_at - lcd_state->current_cycle;
-        else
+        else if (pixel_active)
             pixel["cycles_until_next"] = 0;
+        else
+            pixel["cycles_until_next"] = "N/A";
 
         // Next pixel info (pen and color)
-        if (lcd_state->pixel_count < GLYNX_SCREEN_WIDTH)
+        if (pixel_active)
         {
             u8 pen = lcd_state->dma_buffer[lcd_state->pixel_buffer_read_pos];
             u16 color = lcd_state->current_palette[pen];
@@ -2331,11 +2329,21 @@ json DebugAdapter::GetLcdStatus()
             pixel["next_color_rgb444"] = ss.str();
             ss.str("");
         }
+    }
+    else
+    {
+        pixel["count"] = "N/A (VBLANK)";
+        pixel["next_at_cycle"] = "N/A (VBLANK)";
+        pixel["cycles_until_next"] = "N/A (VBLANK)";
+    }
+    result["pixel"] = pixel;
 
-        result["pixel"] = pixel;
+    // Video DMA
+    json dma;
+    if (!is_vblank)
+    {
+        bool dma_active = lcd_state->dma_burst_count < k_dma_bursts_per_line;
 
-        // Video DMA
-        json dma;
         ss << std::setw(4) << lcd_state->dma_current_src_addr;
         dma["source_address"] = ss.str();
         ss.str("");
@@ -2343,13 +2351,21 @@ json DebugAdapter::GetLcdStatus()
         dma["bursts_per_line"] = k_dma_bursts_per_line;
         dma["next_at_cycle"] = lcd_state->dma_next_at;
 
-        if (lcd_state->dma_burst_count < k_dma_bursts_per_line && lcd_state->dma_next_at > lcd_state->current_cycle)
+        if (dma_active && lcd_state->dma_next_at > lcd_state->current_cycle)
             dma["cycles_until_next"] = lcd_state->dma_next_at - lcd_state->current_cycle;
-        else
+        else if (dma_active)
             dma["cycles_until_next"] = 0;
-
-        result["dma"] = dma;
+        else
+            dma["cycles_until_next"] = "N/A";
     }
+    else
+    {
+        dma["source_address"] = "N/A (VBLANK)";
+        dma["burst_count"] = "N/A (VBLANK)";
+        dma["next_at_cycle"] = "N/A (VBLANK)";
+        dma["cycles_until_next"] = "N/A (VBLANK)";
+    }
+    result["dma"] = dma;
 
     return result;
 }

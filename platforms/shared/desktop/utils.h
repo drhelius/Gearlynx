@@ -195,4 +195,14 @@ static inline bool SliderIntWithSteps(const char* label, int* v, int v_min, int 
     return value_changed;
 }
 
+static inline ImVec4 color_444_to_float(u16 color)
+{
+    ImVec4 ret;
+    ret.w = 1.0f;
+    ret.x = (1.0f / 15.0f) * (color & 0xF);
+    ret.z = (1.0f / 15.0f) * ((color >> 4) & 0xF);
+    ret.y = (1.0f / 15.0f) * ((color >> 8) & 0xF);
+    return ret;
+}
+
 #endif /* UTILS_H */

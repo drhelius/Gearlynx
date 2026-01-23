@@ -29,8 +29,6 @@
 #include "emu.h"
 #include "utils.h"
 
-static ImVec4 color_444_to_float(u16 color);
-
 void gui_debug_window_mikey_regs(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
@@ -205,14 +203,4 @@ void gui_debug_window_mikey_colors(void)
     ImGui::PopFont();
     ImGui::End();
     ImGui::PopStyleVar();
-}
-
-static ImVec4 color_444_to_float(u16 color)
-{
-    ImVec4 ret;
-    ret.w = 0;
-    ret.x = (1.0f / 15.0f) * (color & 0xF);
-    ret.z = (1.0f / 15.0f) * ((color >> 4) & 0xF);
-    ret.y = (1.0f / 15.0f) * ((color >> 8) & 0xF);
-    return ret;
 }

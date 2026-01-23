@@ -28,8 +28,6 @@
 #include "emu.h"
 #include "utils.h"
 
-static ImVec4 color_444_to_float(u16 color);
-
 void gui_debug_window_lcd(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
@@ -45,10 +43,9 @@ void gui_debug_window_lcd(void)
     LcdScreen* lcd = mikey->GetLcdScreen();
     LcdScreen::LcdScreen_State* lcd_state = lcd->GetState();
 
-    // Use timer2 counter/backup to compute line number (like HorizontalBlank)
+    // Use timer2 counter/backup to compute line number
     u8 timer2_counter = mikey_state->timers[2].counter;
     u8 timer2_backup = mikey_state->timers[2].backup;
-    int first_visible_counter = (timer2_backup >= 104) ? 102 : (timer2_backup - 2);
 
     // Current Line Status
     ImGui::TextColored(magenta, "LINE STATUS");
@@ -61,23 +58,16 @@ void gui_debug_window_lcd(void)
 
     // Line Type: VISIBLE N or VBLANK N
     ImGui::TextColored(orange, "LINE TYPE      "); ImGui::SameLine();
-    if (timer2_counter >= 1 && timer2_counter <= first_visible_counter)
+    if (current_line >= 3 && current_line <= (timer2_backup + 1))
     {
-        // Visible lines: use lcd_state->current_line set by ResetLine()
-        ImGui::TextColored(green, "VISIBLE %d", lcd_state->current_line);
-    }
-    else if (timer2_counter > first_visible_counter)
-    {
-        // VBLANK at start of frame: VBLANK N where N = backup - counter (0, 1, 2, ...)
-        int vblank_n = timer2_backup - timer2_counter;
-        ImGui::TextColored(yellow, "VBLANK %d", vblank_n);
+        // Visible lines 3-104 (VISIBLE 0-101)
+        int visible_line = current_line - 3;
+        ImGui::TextColored(green, "VISIBLE %d", visible_line);
     }
     else
     {
-        // counter == 0: last VBLANK line before frame restart
-        // VBLANK N where N = number of start vblank lines
-        int num_start_vblank = timer2_backup - first_visible_counter;
-        ImGui::TextColored(yellow, "VBLANK %d", num_start_vblank);
+        // VBLANK lines 0-2
+        ImGui::TextColored(yellow, "VBLANK %d", current_line);
     }
 
     ImGui::TextColored(orange, "CURRENT CYCLE  "); ImGui::SameLine();
@@ -122,17 +112,22 @@ void gui_debug_window_lcd(void)
     }
 
     ImGui::TextColored(orange, "NEXT PIXEL AT  "); ImGui::SameLine();
-    ImGui::Text("%d", lcd_state->pixel_next_at);
+    if (lcd_state->in_vblank)
+        ImGui::TextColored(gray, "N/A (VBLANK)");
+    else
+        ImGui::Text("%d", lcd_state->pixel_next_at);
 
     ImGui::TextColored(orange, "CYCLES TO PIXEL"); ImGui::SameLine();
-    if (pixel_active)
+    if (lcd_state->in_vblank)
+        ImGui::TextColored(gray, "N/A (VBLANK)");
+    else if (pixel_active)
         ImGui::TextColored(cyan, "%d", cycles_to_next_pixel);
     else
         ImGui::TextColored(gray, "N/A");
 
     ImGui::NewLine();
 
-    // Video DMA Status
+
     ImGui::TextColored(magenta, "VIDEO DMA");
     ImGui::Separator();
 
@@ -146,7 +141,10 @@ void gui_debug_window_lcd(void)
     }
 
     ImGui::TextColored(orange, "DMA SOURCE ADDR"); ImGui::SameLine();
-    ImGui::Text("$%04X", lcd_state->dma_current_src_addr);
+    if (lcd_state->in_vblank)
+        ImGui::TextColored(gray, "N/A (VBLANK)");
+    else
+        ImGui::Text("$%04X", lcd_state->dma_current_src_addr);
 
     ImGui::TextColored(orange, "DMA BURST COUNT"); ImGui::SameLine();
     if (lcd_state->in_vblank)
@@ -155,10 +153,15 @@ void gui_debug_window_lcd(void)
         ImGui::Text("%02d / %d", lcd_state->dma_burst_count, k_dma_bursts_per_line);
 
     ImGui::TextColored(orange, "NEXT DMA AT    "); ImGui::SameLine();
-    ImGui::Text("%d", lcd_state->dma_next_at);
+    if (lcd_state->in_vblank)
+        ImGui::TextColored(gray, "N/A (VBLANK)");
+    else
+        ImGui::Text("%d", lcd_state->dma_next_at);
 
     ImGui::TextColored(orange, "CYCLES TO DMA  "); ImGui::SameLine();
-    if (dma_active)
+    if (lcd_state->in_vblank)
+        ImGui::TextColored(gray, "N/A (VBLANK)");
+    else if (dma_active)
         ImGui::TextColored(cyan, "%d", cycles_to_next_dma);
     else
         ImGui::TextColored(gray, "N/A");
@@ -167,14 +170,4 @@ void gui_debug_window_lcd(void)
 
     ImGui::End();
     ImGui::PopStyleVar();
-}
-
-static ImVec4 color_444_to_float(u16 color)
-{
-    ImVec4 ret;
-    ret.w = 1.0f;
-    ret.x = (1.0f / 15.0f) * (color & 0xF);
-    ret.z = (1.0f / 15.0f) * ((color >> 4) & 0xF);
-    ret.y = (1.0f / 15.0f) * ((color >> 8) & 0xF);
-    return ret;
 }
