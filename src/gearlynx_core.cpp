@@ -665,12 +665,10 @@ void GearlynxCore::PrepareForHomebrew()
     m_m6502->GetState()->PC.SetValue(boot_address);
     m_m6502->DisassembleNextOPCode();
 
-    m_mikey->GetState()->timers[0].backup = 0x9E;
-    m_mikey->GetState()->timers[0].control_a = 0x18;
-    m_mikey->GetState()->timers[2].backup = 0x68;
-    m_mikey->GetState()->timers[2].control_a = 0x1F;
-
-    m_mikey->GetState()->DISPCTL = 0x09;
-    m_mikey->GetState()->PBKUP = 41;
-    m_mikey->GetLcdScreen()->ConfigureLineTiming();
+    m_mikey->Write(MIKEY_TIM0BKUP, 0x9E);
+    m_mikey->Write(MIKEY_TIM0CTLA, 0x18);
+    m_mikey->Write(MIKEY_TIM2BKUP, 0x68);
+    m_mikey->Write(MIKEY_TIM2CTLA, 0x1F);
+    m_mikey->Write(MIKEY_DISPCTL, 0x09);
+    m_mikey->Write(MIKEY_PBKUP, 0x29);
 }
