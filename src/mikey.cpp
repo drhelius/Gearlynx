@@ -182,7 +182,6 @@ void Mikey::HorizontalBlank()
     else if (counter == (backup - 1))
     {
         m_state.dispadr_latch = m_state.DISPADR.value & 0xFFFC;
-        m_lcd_screen->FirstDMA();
     }
     // Visible lines
     else if (counter <= first_visible_counter && counter >= 1)
@@ -192,6 +191,7 @@ void Mikey::HorizontalBlank()
         // Start of visible line 0 (end of vblank)
         if (visible_line == 0)
         {
+            m_lcd_screen->FirstDMA();
             m_lcd_screen->SetVBlank(false);
             m_state.frame_ready = true;
         }
