@@ -528,7 +528,7 @@ static void set_variabless(void)
         { "gearlynx_aspect_ratio", "Aspect Ratio; 1:1 PAR|4:3 DAR|16:9 DAR|16:10 DAR" },
         { "gearlynx_rotation", "Screen Rotation; Auto|Left|Right" },
         { "gearlynx_console_type", "Console Type; Auto|Lynx I|Lynx II" },
-        { "gearlynx_lowpass_filter", "Audio Low-Pass Filter (Hz); 3500|500|1000|1500|2000|2500|3000|3500|4000|4500|5000" },
+        { "gearlynx_lowpass_filter", "Audio Low-Pass Filter (Hz); 3000|500|1000|1500|2000|2500|3000|3500|4000|4500|5000" },
         { "gearlynx_audio_ch0_volume", "Audio Channel 0 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
         { "gearlynx_audio_ch1_volume", "Audio Channel 1 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
         { "gearlynx_audio_ch2_volume", "Audio Channel 2 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
