@@ -41,8 +41,6 @@ INLINE u32 M6502::RunInstruction()
 
     if (unlikely(m_s.halted))
     {
-        m_s.cycles = 4;
-
         if (m_s.irq_asserted)
         {
             m_s.halted = false;
@@ -50,21 +48,23 @@ INLINE u32 M6502::RunInstruction()
             if(m_s.irq_pending)
                 HandleIRQ();
         }
-
-        return m_s.cycles;
+        else
+            return 1;
     }
+    else
+    {
+        u8 opcode = FetchOpcode8();
 
-    u8 opcode = FetchOpcode8();
+        CheckIRQs();
+        (this->*m_opcodes[opcode])();
 
-    CheckIRQs();
-    (this->*m_opcodes[opcode])();
+        if(m_s.irq_pending && !m_s.onebyte_un_nop)
+            HandleIRQ();
 
-    if(m_s.irq_pending && !m_s.onebyte_un_nop)
-        HandleIRQ();
+        DisassembleNextOPCode();
 
-    DisassembleNextOPCode();
-
-    m_s.cycles += m_opcode_cycles[opcode];
+        m_s.cycles += m_opcode_cycles[opcode];
+    }
 
     u32 ticks = (m_s.cycles * k_bus_cycles_int_tick_factor) - (u32)m_s.page_mode_discounts;
 
