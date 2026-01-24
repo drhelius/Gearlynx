@@ -28,7 +28,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
     </tr>
   </thead>
   <tbody>
-    <!-- <tr>
+    <tr>
       <td rowspan="4"><strong>Windows</strong></td>
       <td>Desktop x64</td>
       <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-desktop-windows-x64.zip">Gearlynx-1.0.0-desktop-windows-x64.zip</a></td>
@@ -77,7 +77,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
     <tr>
       <td>MCP x64</td>
       <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-linux-x64.mcpb">Gearlynx-1.0.0-mcpb-linux-x64.mcpb</a></td>
-    </tr> -->
+    </tr>
     <tr>
       <td><strong>Dev Builds</strong></td>
       <td>All platforms</td>
