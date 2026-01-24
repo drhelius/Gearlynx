@@ -481,7 +481,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
     case 2:
         DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
         t->counter = value;
-        t->internal_cycles = (t->internal_period_cycles );
+        t->internal_cycles = (t->internal_period_cycles / 2);
         break;
     case 3:
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
