@@ -53,11 +53,11 @@ void gui_debug_window_lcd(void)
 
     // Current Line = backup - counter (absolute position in frame)
     int current_line = timer2_backup - timer2_counter;
-    ImGui::TextColored(orange, "CURRENT LINE   "); ImGui::SameLine();
+    ImGui::TextColored(violet, "CURRENT LINE   "); ImGui::SameLine();
     ImGui::Text("%03d ($%02X)", current_line, current_line);
 
     // Line Type: VISIBLE N or VBLANK N
-    ImGui::TextColored(orange, "LINE TYPE      "); ImGui::SameLine();
+    ImGui::TextColored(violet, "LINE TYPE      "); ImGui::SameLine();
     if (current_line >= 3 && current_line <= (timer2_backup + 1))
     {
         // Visible lines 3-104 (VISIBLE 0-101)
@@ -67,11 +67,11 @@ void gui_debug_window_lcd(void)
     else
     {
         // VBLANK lines 0-2
-        ImGui::TextColored(yellow, "VBLANK %d", current_line);
+        ImGui::TextColored(red, "VBLANK %d", current_line);
     }
 
-    ImGui::TextColored(orange, "CURRENT CYCLE  "); ImGui::SameLine();
-    ImGui::Text("%d / %d", lcd_state->current_cycle, lcd_state->line_cycles);
+    ImGui::TextColored(violet, "CURRENT CYCLE  "); ImGui::SameLine();
+    ImGui::Text("%04d / %d", lcd_state->current_cycle, lcd_state->line_cycles);
 
     ImGui::NewLine();
 
@@ -88,7 +88,7 @@ void gui_debug_window_lcd(void)
             cycles_to_next_pixel = lcd_state->pixel_next_at - lcd_state->current_cycle;
     }
 
-    ImGui::TextColored(orange, "PIXEL COUNT    "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PIXEL COUNT    "); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
@@ -101,7 +101,7 @@ void gui_debug_window_lcd(void)
         u16 color = lcd_state->current_palette[pen];
         ImVec4 float_color = color_444_to_float(color);
 
-        ImGui::TextColored(orange, "NEXT PIXEL     "); ImGui::SameLine();
+        ImGui::TextColored(violet, "NEXT PIXEL     "); ImGui::SameLine();
         ImGui::Text("%02d -> $%03X", pen, color & 0x0FFF); ImGui::SameLine();
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -110,18 +110,23 @@ void gui_debug_window_lcd(void)
         draw_list->AddCircleFilled(center, radius, ImGui::ColorConvertFloat4ToU32(float_color));
         ImGui::NewLine();
     }
+    else
+    {
+        ImGui::TextColored(violet, "NEXT PIXEL     "); ImGui::SameLine();
+        ImGui::TextColored(gray, lcd_state->in_vblank ? "N/A (VBLANK)" : "N/A");
+    }
 
-    ImGui::TextColored(orange, "NEXT PIXEL AT  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "NEXT PIXEL AT  "); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
         ImGui::Text("%d", lcd_state->pixel_next_at);
 
-    ImGui::TextColored(orange, "CYCLES TO PIXEL"); ImGui::SameLine();
+    ImGui::TextColored(violet, "CYCLES TO PIXEL"); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else if (pixel_active)
-        ImGui::TextColored(cyan, "%d", cycles_to_next_pixel);
+        ImGui::TextColored(yellow, "%d", cycles_to_next_pixel);
     else
         ImGui::TextColored(gray, "N/A");
 
@@ -140,29 +145,29 @@ void gui_debug_window_lcd(void)
             cycles_to_next_dma = lcd_state->dma_next_at - lcd_state->current_cycle;
     }
 
-    ImGui::TextColored(orange, "DMA SOURCE ADDR"); ImGui::SameLine();
+    ImGui::TextColored(violet, "DMA SOURCE ADDR"); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
         ImGui::Text("$%04X", lcd_state->dma_current_src_addr);
 
-    ImGui::TextColored(orange, "DMA BURST COUNT"); ImGui::SameLine();
+    ImGui::TextColored(violet, "DMA BURST COUNT"); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
         ImGui::Text("%02d / %d", lcd_state->dma_burst_count, k_dma_bursts_per_line);
 
-    ImGui::TextColored(orange, "NEXT DMA AT    "); ImGui::SameLine();
+    ImGui::TextColored(violet, "NEXT DMA AT    "); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
         ImGui::Text("%d", lcd_state->dma_next_at);
 
-    ImGui::TextColored(orange, "CYCLES TO DMA  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "CYCLES TO DMA  "); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else if (dma_active)
-        ImGui::TextColored(cyan, "%d", cycles_to_next_dma);
+        ImGui::TextColored(yellow, "%d", cycles_to_next_dma);
     else
         ImGui::TextColored(gray, "N/A");
 
