@@ -14,7 +14,7 @@ This is an open source project with its ongoing development made possible thanks
 
 Don't hesitate to report bugs or ask for new features by [opening an issue](https://github.com/drhelius/Gearlynx/issues).
 
-<img src="http://www.geardome.com/files/gearlynx/gearlynx_debug_06.png">
+<img src="http://www.geardome.com/files/gearlynx/gearlynx_debug_07.png">
 
 ## Downloads
 
