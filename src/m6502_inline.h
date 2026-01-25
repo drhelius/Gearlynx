@@ -49,7 +49,7 @@ INLINE u32 M6502::RunInstruction()
                 HandleIRQ();
         }
         else
-            return 1;
+            return 8;
     }
     else
     {
