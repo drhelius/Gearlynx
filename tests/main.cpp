@@ -27,9 +27,9 @@ int excluded_tests[] = { };
 bool run_file(const char* filename);
 bool run_test(RSJresource& test);
 
-GearlynxCore* core = nullptr;
-M6502* cpu = nullptr;
-Memory* memory = nullptr;
+GearlynxCore* core = NULL;
+M6502* cpu = NULL;
+Memory* memory = NULL;
 
 int main(int argc, char* argv[])
 {
