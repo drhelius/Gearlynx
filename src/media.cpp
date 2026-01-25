@@ -34,7 +34,7 @@ Media::Media()
     InitPointer(m_bank_data[1]);
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
-    m_forced_rotation = NO_ROTATION;
+    m_forced_rotation = GLYNX_ROTATION_AUTO;
     m_forced_console_type = GLYNX_CONSOLE_AUTO;
     HardReset();
 }
@@ -82,7 +82,7 @@ void Media::HardReset()
     m_page_offset_mask[1] = 0;
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
-    m_rotation = NO_ROTATION;
+    m_rotation = GLYNX_ROTATION_AUTO;
     m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = NO_EEPROM;
     m_type = MEDIA_LYNX;
@@ -154,10 +154,12 @@ void Media::ForceRotation(GLYNX_Rotation rotation)
 
 GLYNX_Rotation Media::GetRotation()
 {
-    if (m_forced_rotation != NO_ROTATION)
+    if (m_forced_rotation != GLYNX_ROTATION_AUTO)
         return m_forced_rotation;
-    else
+    else if (m_rotation != GLYNX_ROTATION_AUTO)
         return m_rotation;
+    else
+        return GLYNX_ROTATION_DISABLED;
 }
 
 void Media::ForceConsoleType(GLYNX_Console_Type type)
@@ -531,12 +533,12 @@ void Media::GatherInfoFromDB()
             if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
             {
                 Debug("Forcing rotation to database value: Rotate LEFT");
-                m_rotation = ROTATE_LEFT;
+                m_rotation = GLYNX_ROTATION_LEFT;
             }
             else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT)
             {
                 Debug("Forcing rotation to database value: Rotate RIGHT");
-                m_rotation = ROTATE_RIGHT;
+                m_rotation = GLYNX_ROTATION_RIGHT;
             }
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN)
@@ -669,7 +671,7 @@ void Media::DefaultLynxHeader()
 
     m_bank_page_size[0] = (m_rom_size + 255) >> 8;
     m_bank_page_size[1] = 0;
-    m_rotation = NO_ROTATION;
+    m_rotation = GLYNX_ROTATION_AUTO;
     m_audin = false;
     m_eeprom = NO_EEPROM;
 }
@@ -783,16 +785,16 @@ GLYNX_Rotation Media::ReadHeaderRotation(u8 rotation)
     {
         case 0:
             Debug("Header rotation: No rotation");
-            return NO_ROTATION;
+            return GLYNX_ROTATION_AUTO;
         case 1:
             Debug("Header rotation: Rotate left");
-            return ROTATE_LEFT;
+            return GLYNX_ROTATION_LEFT;
         case 2:
             Debug("Header rotation: Rotate right");
-            return ROTATE_RIGHT;
+            return GLYNX_ROTATION_RIGHT;
         default:
             Debug("Invalid rotation value in header: %d", rotation);
-            return NO_ROTATION;
+            return GLYNX_ROTATION_AUTO;
     }
 }
 

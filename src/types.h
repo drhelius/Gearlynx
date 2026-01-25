@@ -96,9 +96,10 @@ enum GLYNX_Keys
 
 enum GLYNX_Rotation
 {
-    NO_ROTATION = 0,
-    ROTATE_LEFT = 1,
-    ROTATE_RIGHT = 2
+    GLYNX_ROTATION_AUTO = 0,
+    GLYNX_ROTATION_LEFT = 1,
+    GLYNX_ROTATION_RIGHT = 2,
+    GLYNX_ROTATION_DISABLED = 3
 };
 
 struct GLYNX_Cartridge_Header

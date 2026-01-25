@@ -455,14 +455,17 @@ json DebugAdapter::GetMediaInfo()
     GLYNX_Rotation rotation = media->GetRotation();
     switch (rotation)
     {
-        case NO_ROTATION:
-            info["rotation"] = "None";
+        case GLYNX_ROTATION_AUTO:
+            info["rotation"] = "Auto";
             break;
-        case ROTATE_LEFT:
+        case GLYNX_ROTATION_LEFT:
             info["rotation"] = "90 CCW";
             break;
-        case ROTATE_RIGHT:
+        case GLYNX_ROTATION_RIGHT:
             info["rotation"] = "90 CW";
+            break;
+        case GLYNX_ROTATION_DISABLED:
+            info["rotation"] = "Disabled";
             break;
         default:
             info["rotation"] = "Unknown";

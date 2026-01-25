@@ -110,7 +110,7 @@ void LcdScreen::RenderNoBiosScreen(u8* frame_buffer)
 
 void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
 {
-    if (rotation == NO_ROTATION)
+    if (rotation == GLYNX_ROTATION_DISABLED)
         return;
 
     const int width = GLYNX_SCREEN_WIDTH;
@@ -127,7 +127,7 @@ void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
             for (int x = 0; x < width; ++x)
             {
                 const int src_index = y * width + x;
-                const int dst_index = (rotation == ROTATE_LEFT)
+                const int dst_index = (rotation == GLYNX_ROTATION_LEFT)
                                       ? (width - 1 - x) * height + y
                                       : x * height + (height - 1 - y);
                 dst[dst_index] = src[src_index];
@@ -146,7 +146,7 @@ void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
         for (int x = 0; x < width; ++x)
         {
             const int src_index = y * width + x;
-            const int dst_index = (rotation == ROTATE_LEFT)
+            const int dst_index = (rotation == GLYNX_ROTATION_LEFT)
                                   ? (width - 1 - x) * height + y
                                   : x * height + (height - 1 - y);
             dst[dst_index] = src[src_index];

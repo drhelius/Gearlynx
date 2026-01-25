@@ -121,7 +121,7 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
 {
     GLYNX_Rotation rotation = m_media->GetRotation();
 
-    if (rotation == ROTATE_LEFT || rotation == ROTATE_RIGHT)
+    if (rotation == GLYNX_ROTATION_LEFT || rotation == GLYNX_ROTATION_RIGHT)
     {
         runtime_info.screen_width = GLYNX_SCREEN_HEIGHT;
         runtime_info.screen_height = GLYNX_SCREEN_WIDTH;
