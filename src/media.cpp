@@ -401,6 +401,24 @@ u8 Media::ReadBank1()
     return data;
 }
 
+u8 Media::PeekBank0()
+{
+    if (m_bank_data[0] == NULL || m_bank_size[0] == 0)
+        return 0xFF;
+
+    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
+    return m_bank_data[0][address & m_bank_mask[0]];
+}
+
+u8 Media::PeekBank1()
+{
+    if (m_bank_data[1] == NULL || m_bank_size[1] == 0)
+        return 0xFF;
+
+    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
+    return m_bank_data[1][address & m_bank_mask[1]];
+}
+
 void Media::WriteBank0(u8 value)
 {
     assert(false);

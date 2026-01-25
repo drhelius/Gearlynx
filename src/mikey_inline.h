@@ -130,14 +130,17 @@ INLINE u8 Mikey::Read(u16 address)
             u8 ret = m_state.uart.rx_data;
             DebugMikey("Reading SERDAT (RX): %02X", ret);
 
-            if (m_state.uart.rxq_count > 0)
+            if (!debug)
             {
-                m_state.uart.rxq_head ^= 1;
-                m_state.uart.rxq_count--;
-            }
+                if (m_state.uart.rxq_count > 0)
+                {
+                    m_state.uart.rxq_head ^= 1;
+                    m_state.uart.rxq_count--;
+                }
 
-            UartRxReflectHead();
-            UartRelevelIRQ();
+                UartRxReflectHead();
+                UartRelevelIRQ();
+            }
             return ret;
         }
         case MIKEY_SDONEACK:      // 0xFD90

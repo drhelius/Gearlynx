@@ -24,9 +24,16 @@
 #include "gearlynx.h"
 #include "gui.h"
 #include "gui_debug_constants.h"
+#include "gui_debug_widgets.h"
 #include "config.h"
 #include "emu.h"
 #include "utils.h"
+
+static void MikeyWriteCallback8(u16 address, u8 value, void* user_data)
+{
+    Mikey* mikey = (Mikey*)user_data;
+    mikey->Write<true>(address, value);
+}
 
 void gui_debug_timers_init(void)
 {
@@ -40,11 +47,12 @@ void gui_debug_window_timers(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(240, 310), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(248, 312), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey Timers", &config_debug.show_mikey_timers);
 
     GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+    Mikey* mikey = core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
 
     if (ImGui::BeginTabBar("##timer_tabs", ImGuiTabBarFlags_None))
     {
@@ -81,21 +89,20 @@ void gui_debug_window_timers(void)
                 ImGui::TextColored(magenta, "%s", k_timer_names[t]);
                 ImGui::Separator();
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 0); ImGui::SameLine();
-                ImGui::TextColored(orange, "BACKUP    "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->backup, BYTE_TO_BINARY(timer->backup));
+                u16 base_addr = k_base_addr + (t * 4);
+                char addr_str[8];
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 1); ImGui::SameLine();
-                ImGui::TextColored(orange, "CONTROL A "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->control_a, BYTE_TO_BINARY(timer->control_a));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 0);
+                EditableRegister8("BACKUP    ", addr_str, base_addr + 0, timer->backup, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 2); ImGui::SameLine();
-                ImGui::TextColored(orange, "COUNTER   "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->counter, BYTE_TO_BINARY(timer->counter));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 1);
+                EditableRegister8("CONTROL A ", addr_str, base_addr + 1, timer->control_a, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (t * 4) + 3); ImGui::SameLine();
-                ImGui::TextColored(orange, "CONTROL B "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", timer->control_b, BYTE_TO_BINARY(timer->control_b));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 2);
+                EditableRegister8("COUNTER   ", addr_str, base_addr + 2, timer->counter, MikeyWriteCallback8, mikey);
+
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 3);
+                EditableRegister8("CONTROL B ", addr_str, base_addr + 3, timer->control_b, MikeyWriteCallback8, mikey);
 
                 ImGui::Separator();
 

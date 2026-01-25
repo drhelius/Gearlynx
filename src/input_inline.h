@@ -108,4 +108,14 @@ INLINE u8 Input::ReadSwitches()
     return (u8)(m_state >> 8);
 }
 
+INLINE void Input::WriteJoystick(u8 value)
+{
+    m_state = (m_state & 0xFF00) | value;
+}
+
+INLINE void Input::WriteSwitches(u8 value)
+{
+    m_state = (m_state & 0x00FF) | ((u16)value << 8);
+}
+
 #endif /* INPUT_INLINE_H */

@@ -75,6 +75,8 @@ public:
     GLYNX_Bios_State LoadBios(const char* path);
     u8 ReadBank0();
     u8 ReadBank1();
+    u8 PeekBank0();
+    u8 PeekBank1();
     void WriteBank0(u8 value);
     void WriteBank1(u8 value);
     void ShiftRegisterStrobe(bool strobe);

@@ -24,10 +24,53 @@
 #include "gearlynx.h"
 #include "gui_debug_constants.h"
 #include "gui_debug_memory.h"
+#include "gui_debug_widgets.h"
 #include "gui.h"
 #include "config.h"
 #include "emu.h"
 #include "utils.h"
+
+enum M6502RegId
+{
+    M6502RegId_A = 0,
+    M6502RegId_S = 1,
+    M6502RegId_X = 2,
+    M6502RegId_Y = 3,
+    M6502RegId_P = 4
+};
+
+static void M6502WriteCallback8(u16 reg_id, u8 value, void* user_data)
+{
+    M6502::M6502_State* cpu = (M6502::M6502_State*)user_data;
+    switch (reg_id)
+    {
+        case M6502RegId_A: cpu->A.SetValue(value); break;
+        case M6502RegId_S: cpu->S.SetValue(value); break;
+        case M6502RegId_X: cpu->X.SetValue(value); break;
+        case M6502RegId_Y: cpu->Y.SetValue(value); break;
+        case M6502RegId_P: cpu->P.SetValue(value); break;
+    }
+}
+
+static void M6502WriteCallback1(u16 reg_id, u8 bit_index, bool value, void* user_data)
+{
+    M6502::M6502_State* cpu = (M6502::M6502_State*)user_data;
+    if (reg_id == M6502RegId_P)
+    {
+        u8 p = cpu->P.GetValue();
+        if (value)
+            p |= (1 << bit_index);
+        else
+            p &= ~(1 << bit_index);
+        cpu->P.SetValue(p);
+    }
+}
+
+static void MemoryWriteCallback8(u16 address, u8 value, void* user_data)
+{
+    Memory* memory = (Memory*)user_data;
+    memory->Write<true>(address, value);
+}
 
 void gui_debug_window_m6502(void)
 {
@@ -40,14 +83,32 @@ void gui_debug_window_m6502(void)
 
     GearlynxCore* core = emu_get_core();
     M6502::M6502_State* cpu = core->GetM6502()->GetState();
-    Memory::Memory_State* mem = core->GetMemory()->GetState();
+    Memory* memory = core->GetMemory();
+    Memory::Memory_State* mem = memory->GetState();
     Mikey::Mikey_State* mikey = core->GetMikey()->GetState();
 
     if (ImGui::BeginTable("m6502", 1, ImGuiTableFlags_BordersInnerH))
     {
         ImGui::TableNextColumn();
-        ImGui::TextColored(orange, "   N V - B D I Z C");
-        ImGui::Text("   " BYTE_TO_BINARY_PATTERN_ALL_SPACED, BYTE_TO_BINARY(cpu->P.GetValue()));
+        u8 p = cpu->P.GetValue();
+        ImGui::Text("  ");
+        ImGui::SameLine(0, 0); ImGui::TextColored(orange, "N");
+        ImGui::SameLine(); ImGui::TextColored(orange, "V");
+        ImGui::SameLine(); ImGui::TextColored(orange, "-");
+        ImGui::SameLine(); ImGui::TextColored(orange, "B");
+        ImGui::SameLine(); ImGui::TextColored(orange, "D");
+        ImGui::SameLine(); ImGui::TextColored(orange, "I");
+        ImGui::SameLine(); ImGui::TextColored(orange, "Z");
+        ImGui::SameLine(); ImGui::TextColored(orange, "C");
+        ImGui::Text("  ");
+        ImGui::SameLine(0, 0); EditableRegister1(M6502RegId_P, 7, (p >> 7) & 1, M6502WriteCallback1, cpu);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 6, (p >> 6) & 1, M6502WriteCallback1, cpu);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 5, (p >> 5) & 1, nullptr, cpu, gray, gray);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 4, (p >> 4) & 1, M6502WriteCallback1, cpu);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 3, (p >> 3) & 1, M6502WriteCallback1, cpu);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 2, (p >> 2) & 1, M6502WriteCallback1, cpu);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 1, (p >> 1) & 1, M6502WriteCallback1, cpu);
+        ImGui::SameLine(); EditableRegister1(M6502RegId_P, 0, p & 1, M6502WriteCallback1, cpu);
 
         ImGui::TableNextColumn();
         ImGui::TextColored(yellow, "     PC"); ImGui::SameLine();
@@ -79,27 +140,31 @@ void gui_debug_window_m6502(void)
         {
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  A"); ImGui::SameLine();
-            ImGui::Text("   $%02X", cpu->A.GetValue());
+            ImGui::Text("  "); ImGui::SameLine(0, 0);
+            EditableRegister8(NULL, NULL, M6502RegId_A, cpu->A.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  S"); ImGui::SameLine();
-            ImGui::Text("   $%02X", cpu->S.GetValue());
+            ImGui::Text("  "); ImGui::SameLine(0, 0);
+            EditableRegister8(NULL, NULL, M6502RegId_S, cpu->S.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  X"); ImGui::SameLine();
-            ImGui::Text("   $%02X", cpu->X.GetValue());
+            ImGui::Text("  "); ImGui::SameLine(0, 0);
+            EditableRegister8(NULL, NULL, M6502RegId_X, cpu->X.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  Y"); ImGui::SameLine();
-            ImGui::Text("   $%02X", cpu->Y.GetValue());
+            ImGui::Text("  "); ImGui::SameLine(0, 0);
+            EditableRegister8(NULL, NULL, M6502RegId_Y, cpu->Y.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(violet, "MAPCTL"); ImGui::SameLine();
-            ImGui::Text("$%02X", mem->MAPCTL);
+            EditableRegister8(NULL, NULL, 0xFFF9, mem->MAPCTL, MemoryWriteCallback8, memory, EditableRegisterFlags_None);
             ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mem->MAPCTL));
 
             ImGui::TableNextColumn();

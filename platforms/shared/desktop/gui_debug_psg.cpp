@@ -27,6 +27,7 @@
 #include "gui.h"
 #include "gui_debug_constants.h"
 #include "gui_debug_memeditor.h"
+#include "gui_debug_widgets.h"
 #include "config.h"
 #include "emu.h"
 #include "utils.h"
@@ -34,6 +35,12 @@
 static bool exclusive_channel[4] = { false, false, false, false };
 static float* wave_buffer_left = NULL;
 static float* wave_buffer_right = NULL;
+
+static void MikeyWriteCallback8(u16 address, u8 value, void* user_data)
+{
+    Mikey* mikey = (Mikey*)user_data;
+    mikey->Write<true>(address, value);
+}
 
 void gui_debug_psg_init(void)
 {
@@ -51,11 +58,12 @@ void gui_debug_window_psg(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(244, 470), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(250, 470), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey Audio", &config_debug.show_psg);
 
     GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+    Mikey* mikey = core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
 
     if (ImGui::BeginTabBar("##audio_tabs", ImGuiTabBarFlags_None))
     {
@@ -198,41 +206,35 @@ void gui_debug_window_psg(void)
 
                 ImGui::Separator();
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 0); ImGui::SameLine();
-                ImGui::TextColored(orange, "VOLUME    "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->volume, BYTE_TO_BINARY(channel->volume));
+                u16 base_addr = k_base_addr + (c * 8);
+                char addr_str[8];
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 1); ImGui::SameLine();
-                ImGui::TextColored(orange, "FEEDBACK  "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->feedback, BYTE_TO_BINARY(channel->feedback));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 0);
+                EditableRegister8("VOLUME    ", addr_str, base_addr + 0, channel->volume, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 2); ImGui::SameLine();
-                ImGui::TextColored(orange, "OUTPUT    "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", (u8)channel->output, BYTE_TO_BINARY(channel->output));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 1);
+                EditableRegister8("FEEDBACK  ", addr_str, base_addr + 1, channel->feedback, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 3); ImGui::SameLine();
-                ImGui::TextColored(orange, "LFSR LOW  "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->lfsr_low, BYTE_TO_BINARY(channel->lfsr_low));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 2);
+                EditableRegister8("OUTPUT    ", addr_str, base_addr + 2, (u8)channel->output, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 4); ImGui::SameLine();
-                ImGui::TextColored(orange, "BACKUP    "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->backup, BYTE_TO_BINARY(channel->backup));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 3);
+                EditableRegister8("LFSR LOW  ", addr_str, base_addr + 3, channel->lfsr_low, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 5); ImGui::SameLine();
-                ImGui::TextColored(orange, "CONTROL   "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->control, BYTE_TO_BINARY(channel->control));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 4);
+                EditableRegister8("BACKUP    ", addr_str, base_addr + 4, channel->backup, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 6); ImGui::SameLine();
-                ImGui::TextColored(orange, "COUNTER   "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->counter, BYTE_TO_BINARY(channel->counter));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 5);
+                EditableRegister8("CONTROL   ", addr_str, base_addr + 5, channel->control, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "%04X ", k_base_addr + (c * 8) + 7); ImGui::SameLine();
-                ImGui::TextColored(orange, "OTHER     "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", channel->other, BYTE_TO_BINARY(channel->other));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 6);
+                EditableRegister8("COUNTER   ", addr_str, base_addr + 6, channel->counter, MikeyWriteCallback8, mikey);
 
-                ImGui::TextColored(cyan, "FD%02X ", 0x40 + c); ImGui::SameLine();
-                ImGui::TextColored(orange, "ATTEN     "); ImGui::SameLine();
-                ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", ch_atten, BYTE_TO_BINARY(ch_atten));
+                snprintf(addr_str, sizeof(addr_str), "%04X", base_addr + 7);
+                EditableRegister8("OTHER     ", addr_str, base_addr + 7, channel->other, MikeyWriteCallback8, mikey);
+
+                snprintf(addr_str, sizeof(addr_str), "FD%02X", 0x40 + c);
+                EditableRegister8("ATTEN     ", addr_str, MIKEY_ATTEN_A + c, ch_atten, MikeyWriteCallback8, mikey);
 
                 ImGui::Separator();
 
@@ -311,13 +313,8 @@ void gui_debug_window_psg(void)
         {
             ImGui::PushFont(gui_default_font);
 
-            ImGui::TextColored(cyan, "FD50 "); ImGui::SameLine();
-            ImGui::TextColored(orange, "MSTEREO "); ImGui::SameLine();
-            ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->MSTEREO, BYTE_TO_BINARY(mikey_state->MSTEREO));
-
-            ImGui::TextColored(cyan, "FD44 "); ImGui::SameLine();
-            ImGui::TextColored(orange, "MPAN    "); ImGui::SameLine();
-            ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->MPAN, BYTE_TO_BINARY(mikey_state->MPAN));
+            EditableRegister8("MSTEREO ", "FD50", MIKEY_MSTEREO, mikey_state->MSTEREO, MikeyWriteCallback8, mikey);
+            EditableRegister8("MPAN    ", "FD44", MIKEY_MPAN, mikey_state->MPAN, MikeyWriteCallback8, mikey);
 
             ImGui::Separator();
 

@@ -29,8 +29,8 @@
 class StateSerializer
 {
 public:
-    StateSerializer(std::ostream& stream) : m_output_stream(&stream), m_input_stream(nullptr), m_is_saving(true) {}
-    StateSerializer(std::istream& stream) : m_output_stream(nullptr), m_input_stream(&stream), m_is_saving(false) {}
+    StateSerializer(std::ostream& stream) : m_output_stream(&stream), m_input_stream(NULL), m_is_saving(true) {}
+    StateSerializer(std::istream& stream) : m_output_stream(NULL), m_input_stream(&stream), m_is_saving(false) {}
 
     inline bool IsSaving() const { return m_is_saving; }
     inline bool IsLoading() const { return !m_is_saving; }

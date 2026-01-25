@@ -24,9 +24,16 @@
 #include "gearlynx.h"
 #include "gui.h"
 #include "gui_debug_constants.h"
+#include "gui_debug_widgets.h"
 #include "config.h"
 #include "emu.h"
 #include "utils.h"
+
+static void MikeyWriteCallback8(u16 address, u8 value, void* user_data)
+{
+    Mikey* mikey = (Mikey*)user_data;
+    mikey->Write<true>(address, value);
+}
 
 void gui_debug_uart_init(void)
 {
@@ -40,22 +47,18 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(220, 426), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(230, 426), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+    Mikey* mikey = core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
 
     ImGui::PushFont(gui_default_font);
 
 
-    ImGui::TextColored(cyan, "FD8C "); ImGui::SameLine();
-    ImGui::TextColored(orange, "SERCTL "); ImGui::SameLine();
-    ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->SERCTL, BYTE_TO_BINARY(mikey_state->SERCTL));
-
-    ImGui::TextColored(cyan, "FD8D "); ImGui::SameLine();
-    ImGui::TextColored(orange, "SERDAT "); ImGui::SameLine();
-    ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->SERDAT, BYTE_TO_BINARY(mikey_state->SERDAT));
+    EditableRegister8("SERCTL ", "FD8C", MIKEY_SERCTL, mikey_state->SERCTL, MikeyWriteCallback8, mikey);
+    EditableRegister8("SERDAT ", "FD8D", MIKEY_SERDAT, mikey_state->SERDAT, MikeyWriteCallback8, mikey);
 
     ImGui::Separator();
 

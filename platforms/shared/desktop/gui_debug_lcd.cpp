@@ -23,6 +23,7 @@
 #include "imgui.h"
 #include "gearlynx.h"
 #include "gui_debug_constants.h"
+#include "gui_debug_widgets.h"
 #include "gui.h"
 #include "config.h"
 #include "emu.h"

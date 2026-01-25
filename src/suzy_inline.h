@@ -209,11 +209,25 @@ INLINE u8 Suzy::Read(u16 address)
         return m_input->ReadSwitches();
     case SUZY_RCART0:      // 0xFCB2
         //DebugSuzy("Reading RCART0");
-        m_bus->InjectCycles(k_bus_cycles_cart_read);
-        return m_media->ReadBank0();
+        if (!debug)
+        {
+            m_bus->InjectCycles(k_bus_cycles_cart_read);
+            return m_media->ReadBank0();
+        }
+        else
+        {
+            return m_media->PeekBank0();
+        }
     case SUZY_RCART1:      // 0xFCB3
         DebugSuzy("Reading RCART1");
-        return m_media->ReadBank1();
+        if (!debug)
+        {
+            return m_media->ReadBank1();
+        }
+        else
+        {
+            return m_media->PeekBank1();
+        }
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Reading LEDS (unused)");
         return 0xFF;

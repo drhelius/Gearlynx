@@ -141,6 +141,9 @@
     <ClInclude Include="..\shared\desktop\gui_debug_uart.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\gui_debug_widgets.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
     <ClInclude Include="..\shared\desktop\gui_filedialogs.h">
       <Filter>desktop</Filter>
     </ClInclude>

@@ -38,6 +38,8 @@ public:
     void KeyReleased(GLYNX_Keys key);
     u8 ReadJoystick();
     u8 ReadSwitches();
+    void WriteJoystick(u8 value);
+    void WriteSwitches(u8 value);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

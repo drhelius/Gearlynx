@@ -24,6 +24,7 @@
 #include "gui_popups.h"
 #include "gui_actions.h"
 #include "gui_debug_disassembler.h"
+#include "gui_debug_widgets.h"
 #include "config.h"
 #include "application.h"
 #include "emu.h"
