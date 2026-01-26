@@ -80,6 +80,7 @@ const GLYNX_Game_DB_Entry k_game_database[] =
     { 0xF83397F9, "European Soccer Challenge (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
     { 0x6BCEAA9C, "Eye of the Beholder (USA) (Proto)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
     { 0xAE8C70F0, "Eye of the Beholder (USA) (Proto)", GLYNX_CONSOLE_AUTO, 524288, 0, 0, 0 },
+    { 0xF1B307CB, "Eye of the Beholder (USA)", GLYNX_CONSOLE_AUTO, 524288, 0, 0, 0 },
     { 0x9034EE27, "Fat Bobby (USA, Europe)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },
     { 0x7E4B5945, "Fidelity Ultimate Chess Challenge, The (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
     { 0x494CC568, "Gates of Zendocon (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
