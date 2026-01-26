@@ -58,6 +58,7 @@ static int current_screen_width = 0;
 static int current_screen_height = 0;
 static float current_aspect_ratio = 0.0f;
 static float aspect_ratio = 0.0f;
+static float current_fps = 60.0f;
 
 static bool allow_up_down = false;
 static bool input_updated = false;
@@ -269,7 +270,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
     info->geometry.max_width    = 160;
     info->geometry.max_height   = 160;
     info->geometry.aspect_ratio = aspect_ratio == 0.0f ? (float)runtime_info.screen_width / (float)runtime_info.screen_height : aspect_ratio;
-    info->timing.fps            = 60.0f;
+    info->timing.fps            = current_fps;
     info->timing.sample_rate    = 44100.0;
 }
 
@@ -289,13 +290,18 @@ void retro_run(void)
 
     core->GetRuntimeInfo(runtime_info);
 
-    if ((runtime_info.screen_width != current_screen_width) ||
-        (runtime_info.screen_height != current_screen_height) ||
-        (aspect_ratio != current_aspect_ratio))
+    float new_fps = runtime_info.frame_time > 0.0f ? (1000.0f / runtime_info.frame_time) : 60.0f;
+    bool fps_changed = fabsf(new_fps - current_fps) > 0.1f;
+    bool geometry_changed = (runtime_info.screen_width != current_screen_width) ||
+                            (runtime_info.screen_height != current_screen_height) ||
+                            (aspect_ratio != current_aspect_ratio);
+
+    if (fps_changed || geometry_changed)
     {
         current_screen_width = runtime_info.screen_width;
         current_screen_height = runtime_info.screen_height;
         current_aspect_ratio = aspect_ratio;
+        current_fps = new_fps;
 
         retro_system_av_info info;
         info.geometry.base_width   = runtime_info.screen_width;
@@ -303,9 +309,18 @@ void retro_run(void)
         info.geometry.max_width    = runtime_info.screen_width;
         info.geometry.max_height   = runtime_info.screen_height;
         info.geometry.aspect_ratio = (aspect_ratio == 0.0f ? (float)runtime_info.screen_width / (float)runtime_info.screen_height : aspect_ratio);
-        info.timing.fps            = runtime_info.frame_time > 0.0f ? (1.0f / runtime_info.frame_time) : 60.0f;
+        info.timing.fps            = current_fps;
+        info.timing.sample_rate    = 44100.0;
 
-        environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry);
+        if (fps_changed)
+        {
+            log_cb(RETRO_LOG_INFO, "Refresh rate changed to %.2f Hz\n", current_fps);
+            environ_cb(RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, &info);
+        }
+        else
+        {
+            environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry);
+        }
     }
 
     video_cb((uint8_t*)frame_buffer, runtime_info.screen_width, runtime_info.screen_height, runtime_info.screen_width * sizeof(u8) * 2);
