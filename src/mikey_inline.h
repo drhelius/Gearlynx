@@ -31,9 +31,9 @@
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
-    UpdateTimers(cycles);
     UpdateVideo(cycles);
     UpdateAudio(cycles);
+    UpdateTimers(cycles);
     UpdateIRQs();
 
     bool ret = m_state.frame_ready;
@@ -456,7 +456,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         if (prescaler_changed || enable_count_rising)
         {
             if (enable_count_rising)
-                t->internal_cycles = (t->internal_period_cycles / 2);
+                t->internal_cycles = (t->internal_period_cycles / 2) + 1;
             else
                 t->internal_cycles = 0;
 
@@ -484,7 +484,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
     case 2:
         DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
         t->counter = value;
-        t->internal_cycles = (t->internal_period_cycles / 2);
+        t->internal_cycles = (t->internal_period_cycles / 2) + 1;
         break;
     case 3:
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
