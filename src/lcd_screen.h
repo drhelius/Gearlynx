@@ -60,6 +60,7 @@ public:
     void ResetLine(u32 cycles);
     void ResetVisibleLine(u8 line);
     void ClearLine(u8 line);
+    void FinishLine();
     void FirstDMA();
     void ConfigureLineTiming();
     void UpdatePalette(int index, u16 color);

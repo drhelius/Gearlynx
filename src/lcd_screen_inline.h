@@ -72,6 +72,17 @@ INLINE void LcdScreen::ClearLine(u8 line)
     memset(&m_screen_buffer[offset], 0, GLYNX_SCREEN_WIDTH * sizeof(u16));
 }
 
+INLINE void LcdScreen::FinishLine()
+{
+    if (m_state.in_vblank)
+        return;
+
+    while (m_state.pixel_count < GLYNX_SCREEN_WIDTH)
+    {
+        DrawPixel();
+    }
+}
+
 INLINE void LcdScreen::FirstDMA()
 {
     m_state.dma_current_src_addr = m_mikey->GetState()->dispadr_latch;
