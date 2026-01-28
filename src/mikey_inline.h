@@ -28,6 +28,7 @@
 #include "bit_ops.h"
 #include "bus.h"
 #include "lcd_screen.h"
+#include "eeprom.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
@@ -80,8 +81,11 @@ INLINE u8 Mikey::Read(u16 address)
             DebugMikey("Reading MAGRDY1 (unused): 00");
             return 0x00;
         case MIKEY_AUDIN:         // 0xFD86
-            DebugMikey("Reading AUDIN (unused): 80");
-            return 0x80;
+        {
+            u8 ret = 0x80;
+            DebugMikey("Reading AUDIN: %02X", ret);
+            return ret;
+        }
         case MIKEY_SYSCTL1:       // 0xFD87
             DebugMikey("Reading write-only SYSCTL1: FF");
             return 0xFF;
@@ -96,16 +100,37 @@ INLINE u8 Mikey::Read(u16 address)
         case MIKEY_IODAT:         // 0xFD8B
         {
             u8 ret = 0x00;
+
+            // Bit 0: External power input
             if (IS_SET_BIT(m_state.IODIR, 0))
                 ret |= IS_SET_BIT(m_state.IODAT, 0) ? 0x01 : 0x00;
+            else
+                ret |= 0x01;  // Input defaults to high (power connected)
+
+            // Bit 1: Cart address data output (0 turns cart power on)
             if (IS_SET_BIT(m_state.IODIR, 1))
                 ret |= IS_SET_BIT(m_state.IODAT, 1) ? 0x02 : 0x00;
+            // else input reads low
+
+            // Bit 2: No expansion (input high when ComLynx cable present)
             if (IS_SET_BIT(m_state.IODIR, 2))
                 ret |= IS_SET_BIT(m_state.IODAT, 2) ? 0x04 : 0x00;
+            // else input reads low (no cable)
+
+            // Bit 3: Rest signal (output with REST signal gating)
             if (IS_SET_BIT(m_state.IODIR, 3))
                 ret |= (IS_SET_BIT(m_state.IODAT, 3) && m_state.rest) ? 0x08 : 0x00;
+            // else input reads low
+
+            // Bit 4: AUDIN - Audio input / EEPROM data / Cart AUDIN
+            // When configured as input, defaults to high (EEPROM write done / cart ready)
+            // EEPROM can override this when actively sending data
             if (IS_SET_BIT(m_state.IODIR, 4))
                 ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
+            else if (m_media->GetEEPROMInstance()->IsAvailable())
+                ret |= m_media->GetEEPROMInstance()->OutputBit() ? 0x10 : 0x00;
+            else
+                ret |= 0x10;  // Input defaults to high (ready/done signal)
 
             //DebugMikey("Reading IODAT: %02X", ret);
 
@@ -236,11 +261,36 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_IODIR:         // 0xFD8A
             DebugMikey("Setting IODIR to %02X (was %02X)", value, m_state.IODIR);
             m_state.IODIR = value;
+
+            if (IS_SET_BIT(m_state.IODIR, 4))
+            {
+                m_media->SetBank1WriteEnable(IS_SET_BIT(m_state.IODAT, 4));
+                m_media->SetAudinValue(IS_SET_BIT(m_state.IODAT, 4));
+            }
+            else
+            {
+                m_media->SetBank1WriteEnable(false);
+                m_media->SetAudinValue(false);
+            }
+
+            if (m_media->GetEEPROMInstance()->IsAvailable())
+                m_media->GetEEPROMInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
+
             break;
         case MIKEY_IODAT:         // 0xFD8B
             DebugMikey("Setting IODAT to %02X (was %02X)", value, m_state.IODAT);
             m_media->ShiftRegisterBit(IS_SET_BIT(value, 1));
             m_state.IODAT = value;
+
+            if (IS_SET_BIT(m_state.IODIR, 4))
+            {
+                m_media->SetBank1WriteEnable(IS_SET_BIT(m_state.IODAT, 4));
+                m_media->SetAudinValue(IS_SET_BIT(m_state.IODAT, 4));
+            }
+
+            if (m_media->GetEEPROMInstance()->IsAvailable())
+                m_media->GetEEPROMInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
+
             break;
         case MIKEY_SERCTL:        // 0xFD8C
         {

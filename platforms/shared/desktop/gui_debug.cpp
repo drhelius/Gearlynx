@@ -32,6 +32,8 @@
 #include "gui_debug_timers.h"
 #include "gui_debug_uart.h"
 #include "gui_debug_lcd.h"
+#include "gui_debug_eeprom.h"
+#include "gui_debug_cart.h"
 #include "emu.h"
 #include "config.h"
 
@@ -101,6 +103,10 @@ void gui_debug_windows(void)
             gui_debug_window_lcd();
         if (config_debug.show_uart)
             gui_debug_window_uart();
+        if (config_debug.show_eeprom)
+            gui_debug_window_eeprom();
+        if (config_debug.show_cart)
+            gui_debug_window_cart();
 
         gui_debug_memory_watches_window();
         gui_debug_memory_search_window();

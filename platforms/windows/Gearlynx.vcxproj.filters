@@ -108,6 +108,12 @@
     <ClInclude Include="..\shared\desktop\gui_debug_disassembler.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\gui_debug_eeprom.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\gui_debug_cart.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
     <ClInclude Include="..\shared\desktop\gui_debug_lcd.h">
       <Filter>desktop</Filter>
     </ClInclude>
@@ -181,6 +187,12 @@
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\media.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\media_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\eeprom.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\common.h">
@@ -329,6 +341,12 @@
     <ClCompile Include="..\shared\desktop\gui_debug_disassembler.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
+    <ClCompile Include="..\shared\desktop\gui_debug_eeprom.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\gui_debug_cart.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
     <ClCompile Include="..\shared\desktop\gui_debug_lcd.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
@@ -411,6 +429,9 @@
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\suzy.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\eeprom.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\vgm_recorder.cpp">

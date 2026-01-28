@@ -13,4 +13,5 @@ SOURCES_CXX :=  $(CORE_DIR)/libretro.cpp \
                 $(SOURCE_DIR)/memory.cpp \
                 $(SOURCE_DIR)/mikey.cpp \
                 $(SOURCE_DIR)/suzy.cpp \
+                $(SOURCE_DIR)/eeprom.cpp \
                 $(SOURCE_DIR)/vgm_recorder.cpp

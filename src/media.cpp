@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <assert.h>
 #include "media.h"
+#include "eeprom.h"
 #include "miniz.h"
 #include "crc.h"
 #include "game_db.h"
@@ -32,6 +33,8 @@ Media::Media()
     InitPointer(m_rom);
     InitPointer(m_bank_data[0]);
     InitPointer(m_bank_data[1]);
+    InitPointer(m_shadow_ram);
+    InitPointer(m_eeprom_instance);
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
     m_forced_rotation = GLYNX_ROTATION_AUTO;
@@ -42,10 +45,14 @@ Media::Media()
 Media::~Media()
 {
     SafeDeleteArray(m_rom);
+    SafeDeleteArray(m_shadow_ram);
+    SafeDelete(m_eeprom_instance);
 }
 
 void Media::Init()
 {
+    m_eeprom_instance = new EEPROM();
+    m_shadow_ram = new u8[SHADOW_RAM_SIZE];
     HardReset();
 }
 
@@ -55,19 +62,28 @@ void Media::Reset()
     m_page_offset = 0;
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
+    m_bank1_write_enable = false;
+    m_eeprom_instance->SetType(m_eeprom);
+    m_eeprom_instance->Reset();
+    memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
 }
 
 void Media::HardReset()
 {
     SafeDeleteArray(m_rom);
+    memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
     m_rom_size = 0;
     m_ready = false;
     m_file_path[0] = 0;
     m_file_directory[0] = 0;
     m_file_name[0] = 0;
     m_file_extension[0] = 0;
+    m_header_name[0] = 0;
+    m_header_manufacturer[0] = 0;
     InitPointer(m_bank_data[0]);
     InitPointer(m_bank_data[1]);
+    InitPointer(m_bank_data_a[0]);
+    InitPointer(m_bank_data_a[1]);
     m_bank_size[0] = 0;
     m_bank_size[1] = 0;
     m_bank_mask[0] = 0;
@@ -82,119 +98,19 @@ void Media::HardReset()
     m_page_offset_mask[1] = 0;
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
+    m_bank1_is_ram = false;
+    m_bank1_dirty = false;
+    m_bank1_write_enable = false;
     m_rotation = GLYNX_ROTATION_AUTO;
     m_console_type = GLYNX_CONSOLE_AUTO;
-    m_eeprom = NO_EEPROM;
+    m_eeprom = GLYNX_EEPROM_NONE;
     m_type = MEDIA_LYNX;
     m_audin = false;
+    m_audin_value = false;
     m_homebrew_boot_address = 0;
     m_homebrew_size = 0;
+    m_epyx_headerless = 0;
     m_crc = 0;
-}
-
-u32 Media::GetCRC()
-{
-    return m_crc;
-}
-
-bool Media::IsReady()
-{
-    return m_ready;
-}
-
-bool Media::IsBiosLoaded()
-{
-    return m_is_bios_loaded;
-}
-
-bool Media::IsBiosValid()
-{
-    return m_is_bios_valid;
-}
-
-int Media::GetROMSize()
-{
-    return m_rom_size;
-}
-
-const char* Media::GetFilePath()
-{
-    return m_file_path;
-}
-
-const char* Media::GetFileDirectory()
-{
-    return m_file_directory;
-}
-
-const char* Media::GetFileName()
-{
-    return m_file_name;
-}
-
-const char* Media::GetFileExtension()
-{
-    return m_file_extension;
-}
-
-u8* Media::GetROM()
-{
-    return m_rom;
-}
-
-u8* Media::GetBIOS()
-{
-    return m_bios;
-}
-
-void Media::ForceRotation(GLYNX_Rotation rotation)
-{
-    m_forced_rotation = rotation;
-}
-
-GLYNX_Rotation Media::GetRotation()
-{
-    if (m_forced_rotation != GLYNX_ROTATION_AUTO)
-        return m_forced_rotation;
-    else if (m_rotation != GLYNX_ROTATION_AUTO)
-        return m_rotation;
-    else
-        return GLYNX_ROTATION_DISABLED;
-}
-
-void Media::ForceConsoleType(GLYNX_Console_Type type)
-{
-    m_forced_console_type = type;
-}
-
-GLYNX_Console_Type Media::GetConsoleType()
-{
-    if (m_forced_console_type != GLYNX_CONSOLE_AUTO)
-        return m_forced_console_type;
-    else if (m_console_type != GLYNX_CONSOLE_AUTO)
-        return m_console_type;
-    else
-        return GLYNX_CONSOLE_MODEL_II;
-}
-
-Media::GLYNX_Media_EEPROM Media::GetEEPROM()
-{
-    return m_eeprom;
-}
-
-Media::GLYNX_Media_Type Media::GetType()
-{
-    return m_type;
-}
-
-bool Media::GetAudin()
-{
-    return m_audin;
-}
-
-u16 Media::GetHomebrewBootAddress()
-{
-    return m_homebrew_boot_address;
 }
 
 bool Media::LoadFromFile(const char* path)
@@ -374,85 +290,6 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
     }
 }
 
-u8 Media::ReadBank0()
-{
-    assert(m_bank_data[0] != NULL && m_bank_size[0] > 0);
-
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
-    u8 data = m_bank_data[0][address & m_bank_mask[0]];
-
-    if (!m_shift_register_strobe)
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-
-    return data;
-}
-
-u8 Media::ReadBank1()
-{
-    assert(false);
-    assert(m_bank_data[1] != NULL && m_bank_size[1] > 0);
-
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    u8 data = m_bank_data[1][address & m_bank_mask[1]];
-
-    if (!m_shift_register_strobe)
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-
-    return data;
-}
-
-u8 Media::PeekBank0()
-{
-    if (m_bank_data[0] == NULL || m_bank_size[0] == 0)
-        return 0xFF;
-
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
-    return m_bank_data[0][address & m_bank_mask[0]];
-}
-
-u8 Media::PeekBank1()
-{
-    if (m_bank_data[1] == NULL || m_bank_size[1] == 0)
-        return 0xFF;
-
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    return m_bank_data[1][address & m_bank_mask[1]];
-}
-
-void Media::WriteBank0(u8 value)
-{
-    assert(false);
-    Debug("WARNING: WriteBank0 called with value: %02X", value);
-}
-
-void Media::WriteBank1(u8 value)
-{
-    assert(false);
-    Debug("WARNING: WriteBank1 called with value: %02X", value);
-}
-
-void Media::ShiftRegisterStrobe(bool strobe)
-{
-    if (strobe)
-        m_page_offset = 0;
-
-    // Detect rising edge (0 -> 1)
-    if (strobe && !m_shift_register_strobe)
-    {
-        // Serially shift in a bit to the address shift register
-        m_address_shift <<= 1;
-        m_address_shift |= (m_shift_register_bit ? 1 : 0);
-        m_address_shift &= 0xFF;
-    }
-
-    m_shift_register_strobe = strobe;
-}
-
-void Media::ShiftRegisterBit(bool bit)
-{
-    m_shift_register_bit = bit;
-}
-
 bool Media::LoadFromZipFile(const u8* buffer, int size)
 {
     Debug("Loading from ZIP file... Size: %d", size);
@@ -542,11 +379,8 @@ void Media::GatherInfoFromDB()
                 m_bank_page_size[0] = k_game_database[i].bank0_page_size;
             }
 
-            if (k_game_database[i].bank1_page_size != 0)
-            {
-                Debug("Forcing bank1 page size to database value: %d", k_game_database[i].bank1_page_size);
-                m_bank_page_size[1] = k_game_database[i].bank1_page_size;
-            }
+            Debug("Forcing bank1 page size to database value: %d", k_game_database[i].bank1_page_size);
+            m_bank_page_size[1] = k_game_database[i].bank1_page_size;
 
             if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
             {
@@ -568,7 +402,7 @@ void Media::GatherInfoFromDB()
             if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46)
             {
                 Debug("Forcing EEPROM to database value: 93C46");
-                m_eeprom = EEPROM_93C46;
+                m_eeprom = GLYNX_EEPROM_93C46;
             }
 
             if (k_game_database[i].console_type != GLYNX_CONSOLE_AUTO)
@@ -640,6 +474,10 @@ bool Media::GatherLynxHeader(const u8* buffer)
     m_rotation = ReadHeaderRotation(header.rotation);
     m_audin = (header.audin == 1);
     m_eeprom = ReadHeaderEEPROM(header.eeprom);
+    strncpy(m_header_name, header.name, 31);
+    m_header_name[31] = 0;
+    strncpy(m_header_manufacturer, header.manufacturer, 15);
+    m_header_manufacturer[15] = 0;
 
     return true;
 }
@@ -691,7 +529,45 @@ void Media::DefaultLynxHeader()
     m_bank_page_size[1] = 0;
     m_rotation = GLYNX_ROTATION_AUTO;
     m_audin = false;
-    m_eeprom = NO_EEPROM;
+    m_audin_value = false;
+    m_eeprom = GLYNX_EEPROM_NONE;
+}
+
+int Media::DetectEpyxHeaderless()
+{
+    if (m_bank_data[0] == NULL || m_bank_size[0] < (u32)EPYX_HEADER_OLD)
+        return 0;
+
+    int headerless = EPYX_HEADER_OLD;
+
+    for (int i = 0; i < EPYX_HEADER_OLD; i++)
+    {
+        u8 data = m_bank_data[0][i & m_bank_mask[0]];
+
+        if (data != 0x00)
+        {
+            if (i < EPYX_HEADER_NEW)
+            {
+                // Less than 410 zeros -> not headerless
+                headerless = 0;
+                break;
+            }
+            else
+            {
+                // At least 410 zeros -> new EPYX type
+                headerless = EPYX_HEADER_NEW;
+                break;
+            }
+        }
+    }
+
+    if (headerless > 0)
+    {
+        Log("EPYX headerless cart detected (%d zeros)", headerless);
+        m_type = MEDIA_EPYX_HEADERLESS;
+    }
+
+    return headerless;
 }
 
 void Media::SetupBanks()
@@ -706,16 +582,12 @@ void Media::SetupBanks()
             Debug("Using shadow RAM for bank1");
 
             // Shadow RAM: 64K, page size 256
-            const u32 kShadowPages = 256;
-            const u32 kShadowPageSize = 256;
-            const u32 kShadowSize = kShadowPages * kShadowPageSize;
-            InitPointer(m_bank_data[1]);
-            //m_bank_data[1] = new u8[kShadowSize];
-            //std::fill(m_bank_data[1], m_bank_data[1] + kShadowSize, 0xFF);
-            m_bank_size[1] = kShadowSize;
+            m_bank_data[1] = m_shadow_ram;
+            m_bank_size[1] = SHADOW_RAM_SIZE;
             m_address_shift_bits[1] = 8;
             m_page_offset_mask[1] = 0xFF;
             m_bank_mask[1] = 0xFFFF;
+            m_bank1_is_ram = true;
             continue;
         }
 
@@ -756,6 +628,33 @@ void Media::SetupBanks()
 
         Debug("Bank %d: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X", bank, m_address_shift_bits[bank], m_page_offset_mask[bank], m_bank_mask[bank]);
     }
+
+    // For AUDIN carts, setup alternative banks (Bank0A, Bank1A)
+    if (m_audin)
+    {
+        // Calculate ROM offset for Bank0A
+        // Use m_bank_page_size[1] to get actual ROM Bank1 size
+        // When Bank1 is shadow RAM (page_size == 0), there is no Bank1 data in ROM
+        u32 bank1_rom_size = m_bank_page_size[1] * 256;
+        u32 offset = m_bank_size[0] + bank1_rom_size;
+
+        // Bank0A starts after Bank1 ROM data
+        if (m_rom_size > offset)
+        {
+            m_bank_data_a[0] = m_rom + offset;
+            Debug("Bank0A: Offset: 0x%X", offset);
+        }
+
+        // Bank1A starts after Bank0A (same size as Bank0)
+        offset += m_bank_size[0];
+        if (m_rom_size > offset)
+        {
+            m_bank_data_a[1] = m_rom + offset;
+            Debug("Bank1A: Offset: 0x%X", offset);
+        }
+    }
+
+    m_epyx_headerless = DetectEpyxHeaderless();
 }
 
 void Media::GatherDataFromPath(const char* path)
@@ -805,48 +704,48 @@ GLYNX_Rotation Media::ReadHeaderRotation(u8 rotation)
             Debug("Header rotation: No rotation");
             return GLYNX_ROTATION_AUTO;
         case 1:
-            Debug("Header rotation: Rotate left");
-            return GLYNX_ROTATION_LEFT;
-        case 2:
             Debug("Header rotation: Rotate right");
             return GLYNX_ROTATION_RIGHT;
+        case 2:
+            Debug("Header rotation: Rotate left");
+            return GLYNX_ROTATION_LEFT;
         default:
             Debug("Invalid rotation value in header: %d", rotation);
             return GLYNX_ROTATION_AUTO;
     }
 }
 
-Media::GLYNX_Media_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
+GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
 {
     switch (eeprom)
     {
         case 0:
             Debug("Header EEPROM: No EEPROM");
-            return NO_EEPROM;
+            return GLYNX_EEPROM_NONE;
         case 1:
             Debug("Header EEPROM: 93C46");
-            return EEPROM_93C46;
+            return GLYNX_EEPROM_93C46;
         case 2:
             Debug("Header EEPROM: 93C56");
-            return EEPROM_93C56;
+            return GLYNX_EEPROM_93C56;
         case 3:
             Debug("Header EEPROM: 93C66");
-            return EEPROM_93C66;
+            return GLYNX_EEPROM_93C66;
         case 4:
             Debug("Header EEPROM: 93C76");
-            return EEPROM_93C76;
+            return GLYNX_EEPROM_93C76;
         case 5:
             Debug("Header EEPROM: 93C86");
-            return EEPROM_93C86;
+            return GLYNX_EEPROM_93C86;
         case 0x40:
             Debug("Header EEPROM: SD");
-            return EEPROM_SD;
+            return GLYNX_EEPROM_SD;
         case 0x80:
             Debug("Header EEPROM: 8-bit");
-            return EEPROM_8BIT;
+            return GLYNX_EEPROM_8BIT;
         default:
             Debug("Invalid EEPROM value in header: %d", eeprom);
-            return NO_EEPROM;
+            return GLYNX_EEPROM_NONE;
     }
 }
 
@@ -895,12 +794,16 @@ void Media::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+    if (m_eeprom != GLYNX_EEPROM_NONE)
+        m_eeprom_instance->SaveState(stream);
 }
 
 void Media::LoadState(std::istream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+    if (m_eeprom != GLYNX_EEPROM_NONE)
+        m_eeprom_instance->LoadState(stream);
 }
 
 void Media::Serialize(StateSerializer& s)
@@ -909,4 +812,12 @@ void Media::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_page_offset);
     G_SERIALIZE(s, m_shift_register_strobe);
     G_SERIALIZE(s, m_shift_register_bit);
+    G_SERIALIZE(s, m_bank1_dirty);
+    G_SERIALIZE(s, m_bank1_write_enable);
+    G_SERIALIZE(s, m_audin_value);
+
+    if (m_bank1_is_ram && m_bank1_dirty && m_bank_data[1] != NULL && m_bank_size[1] > 0)
+    {
+        G_SERIALIZE_ARRAY(s, m_bank_data[1], m_bank_size[1]);
+    }
 }

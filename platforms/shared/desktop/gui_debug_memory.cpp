@@ -50,13 +50,33 @@ void gui_debug_memory_reset(void)
     GearlynxCore* core = emu_get_core();
     Memory* memory = core->GetMemory();
     Media* media = core->GetMedia();
+    EEPROM* eeprom = media->GetEEPROMInstance();
     u8* ram = memory->GetRAM();
 
     mem_edit[MEMORY_EDITOR_RAM].Reset("RAM", ram, 0x10000);
     mem_edit[MEMORY_EDITOR_ZERO_PAGE].Reset("ZP", ram, 0x100);
     mem_edit[MEMORY_EDITOR_STACK].Reset("STACK", ram + 0x100, 0x100, 0x100);
-    mem_edit[MEMORY_EDITOR_CART].Reset("CART", media->GetROM(), media->GetROMSize());
+    if (media->GetBankSize(0) > 0)
+        mem_edit[MEMORY_EDITOR_BANK0].Reset("BANK0", media->GetBankData(0), media->GetBankSize(0));
+    else
+        mem_edit[MEMORY_EDITOR_BANK0].Reset("BANK0", NULL, 0);
+    if (media->GetBankDataA(0) != NULL && media->GetBankSize(0) > 0)
+        mem_edit[MEMORY_EDITOR_BANK0A].Reset("BANK0A", media->GetBankDataA(0), media->GetBankSize(0));
+    else
+        mem_edit[MEMORY_EDITOR_BANK0A].Reset("BANK0A", NULL, 0);
+    if (media->GetBankSize(1) > 0)
+        mem_edit[MEMORY_EDITOR_BANK1].Reset("BANK1", media->GetBankData(1), media->GetBankSize(1));
+    else
+        mem_edit[MEMORY_EDITOR_BANK1].Reset("BANK1", NULL, 0);
+    if (media->GetBankDataA(1) != NULL && media->GetBankSize(1) > 0)
+        mem_edit[MEMORY_EDITOR_BANK1A].Reset("BANK1A", media->GetBankDataA(1), media->GetBankSize(1));
+    else
+        mem_edit[MEMORY_EDITOR_BANK1A].Reset("BANK1A", NULL, 0);
     mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", media->GetBIOS(), 0x200, 0xFE00);
+    if (eeprom->IsAvailable())
+        mem_edit[MEMORY_EDITOR_EEPROM].Reset("EEPROM", eeprom->GetData(), eeprom->GetSize());
+    else
+        mem_edit[MEMORY_EDITOR_EEPROM].Reset("EEPROM", NULL, 0);
 }
 
 void gui_debug_reset_memory_bookmarks(void)
@@ -163,10 +183,19 @@ static void draw_tabs(void)
 {
     GearlynxCore* core = emu_get_core();
     Media* media = core->GetMedia();
+    EEPROM* eeprom = media->GetEEPROMInstance();
 
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
-        if (i == MEMORY_EDITOR_CART && !IsValidPointer(media->GetROM()))
+        if (i == MEMORY_EDITOR_BANK0 && media->GetBankSize(0) == 0)
+            continue;
+        if (i == MEMORY_EDITOR_BANK0A && (media->GetBankDataA(0) == NULL || media->GetBankSize(0) == 0))
+            continue;
+        if (i == MEMORY_EDITOR_BANK1 && media->GetBankSize(1) == 0)
+            continue;
+        if (i == MEMORY_EDITOR_BANK1A && (media->GetBankDataA(1) == NULL || media->GetBankSize(1) == 0))
+            continue;
+        if (i == MEMORY_EDITOR_EEPROM && !eeprom->IsAvailable())
             continue;
 
         if (ImGui::BeginTabItem(mem_edit[i].GetTitle(), NULL, mem_edit_select == i ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))

@@ -78,6 +78,7 @@ public:
     template<bool debug = false> void Write(u16 address, u8 value);
     Mikey_State* GetState();
     LcdScreen* GetLcdScreen();
+    bool SwitchAudInValue();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 

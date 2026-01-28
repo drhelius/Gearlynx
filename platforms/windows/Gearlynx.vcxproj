@@ -24,6 +24,8 @@
     <ClInclude Include="..\..\src\bit_ops.h" />
     <ClInclude Include="..\..\src\bus.h" />
     <ClInclude Include="..\..\src\media.h" />
+    <ClInclude Include="..\..\src\media_inline.h" />
+    <ClInclude Include="..\..\src\eeprom.h" />
     <ClInclude Include="..\..\src\common.h" />
     <ClInclude Include="..\..\src\defines.h" />
     <ClInclude Include="..\..\src\game_db.h" />
@@ -60,6 +62,8 @@
     <ClInclude Include="..\shared\desktop\gui_debug.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_constants.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_disassembler.h" />
+    <ClInclude Include="..\shared\desktop\gui_debug_eeprom.h" />
+    <ClInclude Include="..\shared\desktop\gui_debug_cart.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_lcd.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_m6502.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_memeditor.h" />
@@ -115,6 +119,7 @@
     <ClCompile Include="..\..\src\memory.cpp" />
     <ClCompile Include="..\..\src\mikey.cpp" />
     <ClCompile Include="..\..\src\suzy.cpp" />
+    <ClCompile Include="..\..\src\eeprom.cpp" />
     <ClCompile Include="..\..\src\vgm_recorder.cpp" />
     <ClCompile Include="..\shared\dependencies\miniz\miniz.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -126,6 +131,8 @@
     <ClCompile Include="..\shared\desktop\gui_actions.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_disassembler.cpp" />
+    <ClCompile Include="..\shared\desktop\gui_debug_eeprom.cpp" />
+    <ClCompile Include="..\shared\desktop\gui_debug_cart.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_lcd.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_m6502.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_memeditor.cpp" />

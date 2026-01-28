@@ -170,6 +170,8 @@ struct config_Debug
     bool show_frame_buffers = false;
     bool show_lcd = false;
     bool show_uart = false;
+    bool show_eeprom = false;
+    bool show_cart = false;
     bool trace_counter = true;
     bool trace_registers = true;
     bool trace_flags = true;

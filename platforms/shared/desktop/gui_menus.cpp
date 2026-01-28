@@ -805,8 +805,16 @@ static void menu_debug(void)
 
         ImGui::MenuItem("Show Suzy Registers", "", &config_debug.show_suzy_regs, config_debug.debug);
         ImGui::MenuItem("Show Suzy Math Registers", "", &config_debug.show_suzy_math_regs, config_debug.debug);
+
+        ImGui::Separator();
+
         ImGui::MenuItem("Show Framebuffers", "", &config_debug.show_frame_buffers, config_debug.debug);
         ImGui::MenuItem("Show LCD / Video DMA", "", &config_debug.show_lcd, config_debug.debug);
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Show EEPROM", "", &config_debug.show_eeprom, config_debug.debug);
+        ImGui::MenuItem("Show Cartridge", "", &config_debug.show_cart, config_debug.debug);
 
         ImGui::Separator();
 

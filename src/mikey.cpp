@@ -151,6 +151,7 @@ void Mikey::ResetPalette()
 void Mikey::HorizontalBlank()
 {
     m_state.refresh_cycle_counter = 0;
+    m_lcd_screen->FinishLine();
 
     u8 counter = m_state.timers[2].counter;
     u8 backup = m_state.timers[2].backup;
@@ -205,6 +206,11 @@ void Mikey::HorizontalBlank()
     }
 
     m_lcd_screen->ResetLine(m_state.timers[0].internal_cycles);
+}
+
+bool Mikey::SwitchAudInValue()
+{
+    return IS_SET_BIT(m_state.IODIR, 4) && IS_SET_BIT(m_state.IODAT, 4);
 }
 
 void Mikey::SaveState(std::ostream& stream)

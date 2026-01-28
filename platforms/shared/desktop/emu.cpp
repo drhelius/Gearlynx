@@ -353,9 +353,55 @@ void emu_get_info(char* info, int buffer_size)
         const char* filename = media->GetFileName();
         u32 crc = media->GetCRC();
         int rom_size = media->GetROMSize();
-        int rom_banks = 0;// TODO: media->GetROMBankCount();
+        const char* header_name = media->GetHeaderName();
+        const char* header_manufacturer = media->GetHeaderManufacturer();
+        u16 bank0_page_size = media->GetHeaderBank0PageSize();
+        u16 bank1_page_size = media->GetHeaderBank1PageSize();
+        GLYNX_Rotation rotation = media->GetRotation();
+        bool audin = media->GetAudin();
+        GLYNX_EEPROM eeprom = media->GetEEPROM();
 
-        snprintf(info, buffer_size, "File Name: %s\nCRC: %08X\nROM Size: %d bytes, %d KB\nROM Banks: %d\nScreen Resolution: %dx%d", filename, crc, rom_size, rom_size / 1024, rom_banks, runtime.screen_width, runtime.screen_height);
+        const char* rotation_str = "None";
+        switch (rotation)
+        {
+            case GLYNX_ROTATION_LEFT: rotation_str = "Left"; break;
+            case GLYNX_ROTATION_RIGHT: rotation_str = "Right"; break;
+            default: rotation_str = "None"; break;
+        }
+
+        const char* eeprom_str = "None";
+        int eeprom_base = eeprom & 0x0F;
+        switch (eeprom_base)
+        {
+            case GLYNX_EEPROM_93C46: eeprom_str = "93C46"; break;
+            case GLYNX_EEPROM_93C56: eeprom_str = "93C56"; break;
+            case GLYNX_EEPROM_93C66: eeprom_str = "93C66"; break;
+            case GLYNX_EEPROM_93C76: eeprom_str = "93C76"; break;
+            case GLYNX_EEPROM_93C86: eeprom_str = "93C86"; break;
+            default: eeprom_str = "None"; break;
+        }
+
+        snprintf(info, buffer_size,
+            "File Name: %s\n"
+            "CRC: %08X\n"
+            "ROM Size: %d bytes (%d KB)\n"
+            "Screen: %dx%d\n"
+            "Header Name: %s\n"
+            "Header Manufacturer: %s\n"
+            "Bank0 Page Size: %d\n"
+            "Bank1 Page Size: %d\n"
+            "Rotation: %s\n"
+            "AUDIN: %s\n"
+            "EEPROM: %s%s",
+            filename, crc, rom_size, rom_size / 1024,
+            runtime.screen_width, runtime.screen_height,
+            header_name[0] ? header_name : "(none)",
+            header_manufacturer[0] ? header_manufacturer : "(none)",
+            bank0_page_size, bank1_page_size,
+            rotation_str,
+            audin ? "Yes" : "No",
+            eeprom_str,
+            (eeprom & GLYNX_EEPROM_8BIT) ? " (8-bit)" : "");
     }
     else
     {

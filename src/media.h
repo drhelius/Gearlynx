@@ -22,27 +22,21 @@
 
 #include "common.h"
 
+#define EPYX_HEADER_OLD 512
+#define EPYX_HEADER_NEW 410
+#define SHADOW_RAM_SIZE (256 * 256) // 64K
+
 class StateSerializer;
+class EEPROM;
 
 class Media
 {
 public:
-    enum GLYNX_Media_EEPROM
-    {
-        NO_EEPROM = 0,
-        EEPROM_93C46 = 1,
-        EEPROM_93C56 = 2,
-        EEPROM_93C66 = 3,
-        EEPROM_93C76 = 4,
-        EEPROM_93C86 = 5,
-        EEPROM_SD = 0x40,
-        EEPROM_8BIT = 0x80
-    };
-
     enum GLYNX_Media_Type
     {
         MEDIA_LYNX = 0,
-        MEDIA_HOMEBREW = 1
+        MEDIA_HOMEBREW = 1,
+        MEDIA_EPYX_HEADERLESS = 2
     };
 
 public:
@@ -62,25 +56,56 @@ public:
     GLYNX_Rotation GetRotation();
     void ForceConsoleType(GLYNX_Console_Type type);
     GLYNX_Console_Type GetConsoleType();
-    GLYNX_Media_EEPROM GetEEPROM();
+    GLYNX_EEPROM GetEEPROM();
     GLYNX_Media_Type GetType();
     bool GetAudin();
     u16 GetHomebrewBootAddress();
+    int GetEpyxHeaderless();
     const char* GetFilePath();
     const char* GetFileDirectory();
     const char* GetFileName();
     const char* GetFileExtension();
+    const char* GetHeaderName();
+    const char* GetHeaderManufacturer();
+    u16 GetHeaderBank0PageSize();
+    u16 GetHeaderBank1PageSize();
     bool LoadFromFile(const char* path);
     bool LoadFromBuffer(const u8* buffer, int size, const char* path);
     GLYNX_Bios_State LoadBios(const char* path);
     u8 ReadBank0();
     u8 ReadBank1();
+    u8 ReadBank0A();
+    u8 ReadBank1A();
     u8 PeekBank0();
     u8 PeekBank1();
+    u8 PeekBank0A();
+    u8 PeekBank1A();
     void WriteBank0(u8 value);
     void WriteBank1(u8 value);
+    void WriteBank0A(u8 value);
+    void WriteBank1A(u8 value);
+    void SetBank1WriteEnable(bool enable);
+    bool IsBank1WriteEnabled();
     void ShiftRegisterStrobe(bool strobe);
     void ShiftRegisterBit(bool bit);
+    void SetAudinValue(bool value);
+    bool GetAudinValue();
+    u16 GetCounterValue();
+    u32 GetAddressShift();
+    bool GetShiftRegisterStrobe();
+    bool GetShiftRegisterBit();
+    u32 GetBankSize(int bank);
+    u32 GetBankMask(int bank);
+    u32 GetAddressShiftBits(int bank);
+    u32 GetPageOffsetMask(int bank);
+    u8* GetBankData(int bank);
+    u8* GetBankDataA(int bank);
+    u8* GetBank1Data();
+    u32 GetBank1Size();
+    bool IsBank1RAM();
+    bool IsBank1Dirty();
+    void ClearBank1Dirty();
+    EEPROM* GetEEPROMInstance();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -91,10 +116,11 @@ private:
     bool GatherLynxHeader(const u8* buffer);
     bool GatherBS93Header(const u8* buffer);
     void DefaultLynxHeader();
+    int DetectEpyxHeaderless();
     void SetupBanks();
     void GatherDataFromPath(const char* path);
     GLYNX_Rotation ReadHeaderRotation(u8 rotation);
-    GLYNX_Media_EEPROM ReadHeaderEEPROM(u8 eeprom);
+    GLYNX_EEPROM ReadHeaderEEPROM(u8 eeprom);
     bool IsValidFile(const char* path);
 
 private:
@@ -108,7 +134,10 @@ private:
     char m_file_directory[512];
     char m_file_name[512];
     char m_file_extension[512];
+    char m_header_name[32];
+    char m_header_manufacturer[16];
     u8* m_bank_data[2];
+    u8* m_bank_data_a[2];
     u32 m_bank_size[2];
     u32 m_bank_mask[2];
     u32 m_bank_page_size[2];
@@ -118,16 +147,25 @@ private:
     u32 m_page_offset_mask[2];
     bool m_shift_register_strobe;
     bool m_shift_register_bit;
+    bool m_bank1_is_ram;
+    bool m_bank1_dirty;
+    bool m_bank1_write_enable;
+    u8* m_shadow_ram;
     GLYNX_Rotation m_rotation;
     GLYNX_Rotation m_forced_rotation;
     GLYNX_Console_Type m_console_type;
     GLYNX_Console_Type m_forced_console_type;
-    GLYNX_Media_EEPROM m_eeprom;
+    GLYNX_EEPROM m_eeprom;
+    EEPROM* m_eeprom_instance;
     GLYNX_Media_Type m_type;
     bool m_audin;
+    bool m_audin_value;
     u16 m_homebrew_boot_address;
     u16 m_homebrew_size;
+    int m_epyx_headerless;
     u32 m_crc;
 };
+
+#include "media_inline.h"
 
 #endif /* MEDIA_H */

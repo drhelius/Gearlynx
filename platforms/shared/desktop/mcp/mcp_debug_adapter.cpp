@@ -27,6 +27,7 @@
 #include "../gui_debug_memory.h"
 #include "../gui_debug_memeditor.h"
 #include "../config.h"
+#include "mikey_defines.h"
 #include <cstring>
 #include <sstream>
 #include <iomanip>
@@ -379,6 +380,7 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
 
     Memory* memory = m_core->GetMemory();
     Media* media = m_core->GetMedia();
+    EEPROM* eeprom = media->GetEEPROMInstance();
 
     switch (area)
     {
@@ -400,10 +402,28 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
             info.size = 0x100;
             info.cpu_offset = 0x0100;
             break;
-        case MEMORY_EDITOR_CART:
-            info.name = "CART";
-            info.data = media->GetROM();
-            info.size = media->GetROMSize();
+        case MEMORY_EDITOR_BANK0:
+            info.name = "BANK0";
+            info.data = media->GetBankData(0);
+            info.size = media->GetBankSize(0);
+            info.cpu_offset = 0x0000;
+            break;
+        case MEMORY_EDITOR_BANK0A:
+            info.name = "BANK0A";
+            info.data = media->GetBankDataA(0);
+            info.size = (media->GetBankDataA(0) != NULL) ? media->GetBankSize(0) : 0;
+            info.cpu_offset = 0x0000;
+            break;
+        case MEMORY_EDITOR_BANK1:
+            info.name = "BANK1";
+            info.data = media->GetBankData(1);
+            info.size = media->GetBankSize(1);
+            info.cpu_offset = 0x0000;
+            break;
+        case MEMORY_EDITOR_BANK1A:
+            info.name = "BANK1A";
+            info.data = media->GetBankDataA(1);
+            info.size = (media->GetBankDataA(1) != NULL) ? media->GetBankSize(1) : 0;
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BIOS:
@@ -411,6 +431,15 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
             info.data = media->GetBIOS();
             info.size = GLYNX_BIOS_SIZE;
             info.cpu_offset = 0xFE00;
+            break;
+        case MEMORY_EDITOR_EEPROM:
+            info.name = "EEPROM";
+            if (eeprom->IsAvailable())
+            {
+                info.data = eeprom->GetData();
+                info.size = eeprom->GetSize();
+            }
+            info.cpu_offset = 0x0000;
             break;
         default:
             break;
@@ -473,38 +502,46 @@ json DebugAdapter::GetMediaInfo()
     }
 
     // EEPROM type
-    Media::GLYNX_Media_EEPROM eeprom = media->GetEEPROM();
+    GLYNX_EEPROM eeprom = media->GetEEPROM();
     u8 eeprom_base = eeprom & 0x3F;
     switch (eeprom_base)
     {
-        case Media::NO_EEPROM:
+        case GLYNX_EEPROM_NONE:
             info["eeprom"] = "None";
             break;
-        case Media::EEPROM_93C46:
+        case GLYNX_EEPROM_93C46:
             info["eeprom"] = "93C46";
             break;
-        case Media::EEPROM_93C56:
+        case GLYNX_EEPROM_93C56:
             info["eeprom"] = "93C56";
             break;
-        case Media::EEPROM_93C66:
+        case GLYNX_EEPROM_93C66:
             info["eeprom"] = "93C66";
             break;
-        case Media::EEPROM_93C76:
+        case GLYNX_EEPROM_93C76:
             info["eeprom"] = "93C76";
             break;
-        case Media::EEPROM_93C86:
+        case GLYNX_EEPROM_93C86:
             info["eeprom"] = "93C86";
             break;
         default:
             info["eeprom"] = "Unknown";
             break;
     }
-    info["eeprom_sd"] = (eeprom & Media::EEPROM_SD) != 0;
-    info["eeprom_8bit"] = (eeprom & Media::EEPROM_8BIT) != 0;
+    info["eeprom_sd"] = (eeprom & GLYNX_EEPROM_SD) != 0;
+    info["eeprom_8bit"] = (eeprom & GLYNX_EEPROM_8BIT) != 0;
 
     info["audin"] = media->GetAudin();
     info["bios_loaded"] = media->IsBiosLoaded();
     info["bios_valid"] = media->IsBiosValid();
+
+    // Header data
+    json header;
+    header["name"] = media->GetHeaderName();
+    header["manufacturer"] = media->GetHeaderManufacturer();
+    header["bank0_page_size"] = media->GetHeaderBank0PageSize();
+    header["bank1_page_size"] = media->GetHeaderBank1PageSize();
+    info["header"] = header;
 
     if (type == Media::MEDIA_HOMEBREW)
     {
@@ -1273,6 +1310,175 @@ json DebugAdapter::GetUARTStatus()
     status["data"] = data;
 
     return status;
+}
+
+static const char* get_eeprom_type_name(GLYNX_EEPROM type)
+{
+    s32 base_type = type & 0x0F;
+
+    switch (base_type)
+    {
+        case GLYNX_EEPROM_93C46:
+            return "93C46";
+        case GLYNX_EEPROM_93C56:
+            return "93C56";
+        case GLYNX_EEPROM_93C66:
+            return "93C66";
+        case GLYNX_EEPROM_93C76:
+            return "93C76";
+        case GLYNX_EEPROM_93C86:
+            return "93C86";
+        default:
+            return "Unknown";
+    }
+}
+
+json DebugAdapter::GetCartStatus()
+{
+    Media* media = m_core->GetMedia();
+    bool ready = media->IsReady();
+
+    json result;
+    std::ostringstream ss;
+    ss << std::hex << std::uppercase << std::setfill('0');
+
+    result["ready"] = ready;
+
+    // Address generation
+    json address_gen;
+    if (ready)
+    {
+        ss << std::setw(2) << (int)media->GetAddressShift();
+        address_gen["addr_shift"] = ss.str();
+        ss.str("");
+
+        ss << std::setw(3) << media->GetCounterValue();
+        address_gen["page_offset"] = ss.str();
+        ss.str("");
+        address_gen["page_offset_decimal"] = (int)media->GetCounterValue();
+
+        address_gen["strobe"] = media->GetShiftRegisterStrobe();
+        address_gen["shift_bit"] = media->GetShiftRegisterBit();
+    }
+    result["address_generation"] = address_gen;
+
+    // Bank 0
+    json bank0;
+    if (ready && media->GetBankSize(0) > 0)
+    {
+        bank0["size_kb"] = media->GetBankSize(0) / 1024;
+        bank0["type"] = "ROM";
+        ss << std::setw(2) << (int)media->PeekBank0();
+        bank0["peek_value"] = ss.str();
+        ss.str("");
+        if (media->GetBankDataA(0) != NULL)
+        {
+            ss << std::setw(2) << (int)media->PeekBank0A();
+            bank0["peek_value_a"] = ss.str();
+            ss.str("");
+        }
+    }
+    result["bank0"] = bank0;
+
+    // Bank 1
+    json bank1;
+    if (ready && media->GetBankSize(1) > 0)
+    {
+        bank1["size_kb"] = media->GetBankSize(1) / 1024;
+        bank1["type"] = media->IsBank1RAM() ? "RAM" : "ROM";
+
+        if (media->IsBank1RAM())
+        {
+            bank1["write_enabled"] = media->IsBank1WriteEnabled();
+        }
+
+        ss << std::setw(2) << (int)media->PeekBank1();
+        bank1["peek_value"] = ss.str();
+        ss.str("");
+        if (media->GetBankDataA(1) != NULL)
+        {
+            ss << std::setw(2) << (int)media->PeekBank1A();
+            bank1["peek_value_a"] = ss.str();
+            ss.str("");
+        }
+    }
+    result["bank1"] = bank1;
+
+    // AUDIN
+    json audin;
+    if (ready)
+    {
+        audin["active"] = media->GetAudin();
+        if (media->GetAudin())
+        {
+            audin["value"] = media->GetAudinValue();
+        }
+    }
+    result["audin"] = audin;
+
+    return result;
+}
+
+json DebugAdapter::GetEepromStatus()
+{
+    Media* media = m_core->GetMedia();
+    Mikey* mikey = m_core->GetMikey();
+    EEPROM* eeprom = media->GetEEPROMInstance();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
+
+    json result;
+    std::ostringstream ss;
+    ss << std::hex << std::uppercase << std::setfill('0');
+
+    bool available = eeprom->IsAvailable();
+    result["available"] = available;
+
+    // Info
+    json info;
+    if (available)
+    {
+        GLYNX_EEPROM type = eeprom->GetType();
+        info["type"] = get_eeprom_type_name(type);
+        info["size_bytes"] = eeprom->GetSize();
+        info["mode"] = (type & GLYNX_EEPROM_8BIT) ? "8-bit" : "16-bit";
+    }
+    result["info"] = info;
+
+    // State
+    json state;
+    if (available)
+    {
+        state["dirty"] = eeprom->IsDirty();
+        state["output_bit"] = eeprom->OutputBit();
+    }
+    result["state"] = state;
+
+    // IO Pins
+    json io_pins;
+    u8 iodir = mikey_state->IODIR;
+    u8 iodat = mikey_state->IODAT;
+    u8 iodat_read = mikey->Read<true>(MIKEY_IODAT);
+
+    ss << std::setw(2) << (int)iodir;
+    io_pins["IODIR"] = ss.str();
+    ss.str("");
+
+    ss << std::setw(2) << (int)iodat_read;
+    io_pins["IODAT"] = ss.str();
+    ss.str("");
+
+    // CS on bit 2, CLK on bit 1, DI on bit 0
+    bool cs = IS_SET_BIT(iodat, 2) && IS_SET_BIT(iodir, 2);
+    bool clk = IS_SET_BIT(iodat, 1);
+    bool di = IS_SET_BIT(iodat, 0);
+
+    io_pins["CS"] = cs;
+    io_pins["CLK"] = clk;
+    io_pins["DI"] = di;
+
+    result["io_pins"] = io_pins;
+
+    return result;
 }
 
 // Base64 encoding table

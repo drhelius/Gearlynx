@@ -212,21 +212,33 @@ INLINE u8 Suzy::Read(u16 address)
         if (!debug)
         {
             m_bus->InjectCycles(k_bus_cycles_cart_read);
-            return m_media->ReadBank0();
+            if (m_media->GetAudin() && m_media->GetAudinValue())
+                return m_media->ReadBank0A();
+            else
+                return m_media->ReadBank0();
         }
         else
         {
-            return m_media->PeekBank0();
+            if (m_media->GetAudin() && m_media->GetAudinValue())
+                return m_media->PeekBank0A();
+            else
+                return m_media->PeekBank0();
         }
     case SUZY_RCART1:      // 0xFCB3
         DebugSuzy("Reading RCART1");
         if (!debug)
         {
-            return m_media->ReadBank1();
+            if (m_media->GetAudin() && m_media->GetAudinValue())
+                return m_media->ReadBank1A();
+            else
+                return m_media->ReadBank1();
         }
         else
         {
-            return m_media->PeekBank1();
+            if (m_media->GetAudin() && m_media->GetAudinValue())
+                return m_media->PeekBank1A();
+            else
+                return m_media->PeekBank1();
         }
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Reading LEDS (unused)");
@@ -534,11 +546,17 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_RCART0:      // 0xFCB2
         DebugSuzy("Writing to RCART0: %02X", value);
-        m_media->WriteBank0(value);
+        if (m_media->GetAudin() && m_media->GetAudinValue())
+            m_media->WriteBank0A(value);
+        else
+            m_media->WriteBank0(value);
         break;
     case SUZY_RCART1:      // 0xFCB3
         DebugSuzy("Writing to RCART1: %02X", value);
-        m_media->WriteBank1(value);
+        if (m_media->GetAudin() && m_media->GetAudinValue())
+            m_media->WriteBank1A(value);
+        else
+            m_media->WriteBank1(value);
         break;
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Writing to LEDS (unused): %02X", value);
@@ -710,7 +728,7 @@ INLINE void Suzy::DrawSprite()
     s32 dy = pos.up ? -1 : +1;
 
     s32 cur_y = base_vpos;
-    m_state.VSIZACUM.value = pos.up ? 0 : m_state.VSIZOFF.value; // 8.8 accumulator persistente en registro
+    m_state.VSIZACUM.value = m_state.VSIZOFF.value;
 
     while (m_state.SPRDLINE.value != 0)
     {
@@ -732,7 +750,7 @@ INLINE void Suzy::DrawSprite()
             if (pos.left != start_pos.left)
                 start_x += dx;
 
-            u32 haccum_init = pos.left ? 0u : m_state.HSIZOFF.value;
+            u32 haccum_init = m_state.HSIZOFF.value;
 
             if (literal_only)
             {
@@ -774,7 +792,7 @@ INLINE void Suzy::DrawSprite()
             dy = pos.up   ? -1 : +1;
 
             cur_y  = base_vpos;
-            m_state.VSIZACUM.value = pos.up ? 0 : m_state.VSIZOFF.value;
+            m_state.VSIZACUM.value = m_state.VSIZOFF.value;
 
             if (pos.up != start_pos.up)
                 cur_y += dy;

@@ -124,6 +124,18 @@ struct GLYNX_BS93_Header
     u8 bs93[4];
 };
 
+enum GLYNX_EEPROM
+{
+    GLYNX_EEPROM_NONE = 0,
+    GLYNX_EEPROM_93C46 = 1,
+    GLYNX_EEPROM_93C56 = 2,
+    GLYNX_EEPROM_93C66 = 3,
+    GLYNX_EEPROM_93C76 = 4,
+    GLYNX_EEPROM_93C86 = 5,
+    GLYNX_EEPROM_SD = 0x40,
+    GLYNX_EEPROM_8BIT = 0x80
+};
+
 struct GLYNX_SaveState_Header
 {
     u32 magic;
