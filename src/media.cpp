@@ -53,6 +53,7 @@ void Media::Init()
 {
     m_eeprom_instance = new EEPROM();
     m_shadow_ram = new u8[SHADOW_RAM_SIZE];
+    memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
     HardReset();
 }
 
@@ -71,7 +72,6 @@ void Media::Reset()
 void Media::HardReset()
 {
     SafeDeleteArray(m_rom);
-    memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
     m_rom_size = 0;
     m_ready = false;
     m_file_path[0] = 0;
