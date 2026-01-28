@@ -7,7 +7,7 @@ This server provides tools for game development, rom hacking, reverse engineerin
 ## Features
 
 - **Full Debugger Access**: 6502 CPU registers, memory inspection, breakpoints, and execution control
-- **Multiple Memory Areas**: Access RAM, Zero Page, Stack, Cartridge ROM, and BIOS
+- **Multiple Memory Areas**: Access RAM, Zero Page, Stack, Bank 0/0A/1/1A, BIOS, and EEPROM
 - **Disassembly**: View disassembled 6502 code for any address range
 - **Hardware Inspection**: 6502 CPU, Mikey (timers, audio, display), Suzy (sprites, math), UART (ComLynx)
 - **Frame Buffer Capture**: Capture VIDBAS (Suzy) and DISPADR (Mikey) frame buffers
@@ -109,6 +109,22 @@ If you prefer to build from source or configure manually:
 
 2. **Restart Claude Desktop**
 
+### STDIO Mode with Claude Code
+
+1. **Add the Gearlynx MCP server** using the CLI:
+   ```bash
+   claude mcp add --transport stdio gearlynx -- /path/to/gearlynx --mcp-stdio
+   ```
+
+   **Important:** Update the path to match your build location.
+
+2. **Verify the server was added**:
+   ```bash
+   claude mcp list
+   ```
+
+3. **Start debugging**: Open Claude Code and start chatting about the game state. The emulator will auto-start when tools are invoked.
+
 ### HTTP Mode
 
 1. **Start the emulator manually** with HTTP transport:
@@ -148,11 +164,12 @@ If you prefer to build from source or configure manually:
    }
    ```
 
-4. **Restart your AI client** and start debugging
+4. **Or configure Claude Code**:
+   ```bash
+   claude mcp add --transport http gearlynx http://localhost:7777/mcp
+   ```
 
-> **Note:** The MCP HTTP Server must be running standalone before connecting the AI client.
-
-## Usage Examples
+5. **Restart your AI client** and start debugging
 
 Once configured, you can ask your AI assistant:
 
@@ -201,7 +218,7 @@ The server exposes tools organized in the following categories:
 - `write_6502_register` - Write to a 6502 CPU register (PC, A, X, Y, S, P)
 
 ### Memory Operations
-- `list_memory_areas` - List memory editor tabs (RAM, Zero Page, Stack, Cartridge, BIOS) with CPU address ranges
+- `list_memory_areas` - List memory editor tabs (RAM, Zero Page, Stack, Bank 0/0A/1/1A, BIOS, EEPROM) with CPU address ranges
 - `read_memory` - Read from specific memory area
 - `write_memory` - Write to specific memory area
 - `get_memory_selection` - Get current memory selection range
@@ -244,6 +261,8 @@ The server exposes tools organized in the following categories:
 - `get_suzy_registers` - Get all Suzy registers ($FC00-$FCFF) or filter by specific address
 - `write_suzy_register` - Write to a Suzy register
 - `get_uart_status` - Get UART (ComLynx) status
+- `get_cart_status` - Get cartridge status (address generation, bank 0/1 info, AUDIN)
+- `get_eeprom_status` - Get EEPROM status (type, size, mode, state, IO pins)
 - `get_lcd_status` - Get LCD status. Pixel and DMA info only on visible lines
 
 ### Screen Capture
