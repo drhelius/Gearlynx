@@ -981,6 +981,13 @@ inline void Mikey::CalculateCutoff(u8 channel)
 {
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
+    // When channel is disabled games can use direct PCM writes
+    if (IS_NOT_SET_BIT(c->control, 3))
+    {
+        c->internal_mix = true;
+        return;
+    }
+
     if (c->internal_period_cycles != 0)
     {
         u32 cycles = (c->backup + 1) * c->internal_period_cycles;
