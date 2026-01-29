@@ -29,8 +29,7 @@ class EEPROM
 public:
     EEPROM();
     ~EEPROM();
-    void Reset();
-    void SetType(GLYNX_EEPROM type);
+    void Reset(GLYNX_EEPROM type);
     GLYNX_EEPROM GetType();
     bool IsAvailable();
     s32 GetSize();
@@ -46,6 +45,7 @@ public:
     void LoadState(std::istream& stream);
 
 private:
+    void SetType(GLYNX_EEPROM type);
     void Serialize(StateSerializer& s);
 
 private:
@@ -67,6 +67,7 @@ private:
     bool m_audin_output;
     bool m_readonly;
     bool m_dirty;
+    bool m_programming;
     s32 m_busy_count;
     bool m_last_cs;
     bool m_last_clk;

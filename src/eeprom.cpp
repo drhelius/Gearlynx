@@ -25,15 +25,14 @@
 
 EEPROM::EEPROM()
 {
-    m_type = GLYNX_EEPROM_NONE;
-    Reset();
+    Reset(GLYNX_EEPROM_NONE);
 }
 
 EEPROM::~EEPROM()
 {
 }
 
-void EEPROM::Reset()
+void EEPROM::Reset(GLYNX_EEPROM type)
 {
     m_state = EE_NONE;
     m_data = 0;
@@ -42,7 +41,8 @@ void EEPROM::Reset()
     m_audin_output = true;
     m_readonly = true;
     m_dirty = false;
-    m_busy_count = 0;
+    m_programming = false;
+    m_busy_count = 100;  // Start in ready state
     m_last_cs = false;
     m_last_clk = false;
     m_addr_bits = 0;
@@ -50,6 +50,7 @@ void EEPROM::Reset()
     m_iodir = 0;
     m_iodat = 0;
     std::memset(m_rom_data, 0xFF, sizeof(m_rom_data));
+    SetType(type);
 }
 
 void EEPROM::SetType(GLYNX_EEPROM type)
@@ -80,7 +81,9 @@ void EEPROM::SetType(GLYNX_EEPROM type)
     if (m_type & GLYNX_EEPROM_8BIT)
         m_addr_bits++;
 
-    m_done_mask = 1 << (m_addr_bits + 3);
+    // done_mask: after receiving (1 start + 2 opcode + addr_bits) bits,
+    // the MSB is at position (addr_bits + 2)
+    m_done_mask = 1 << (m_addr_bits + 2);
 
     Debug("EEPROM type set: %d, addr_bits: %d, done_mask: 0x%04X", m_type, m_addr_bits, m_done_mask);
 }
@@ -146,28 +149,49 @@ void EEPROM::ProcessEepromCounter(u16 counter)
     // CLK from counter bit 1
     bool clk = IS_SET_BIT(counter, 1);
 
-    // CS falling edge resets state
-    if (!cs)
-    {
-        m_state = EE_NONE;
-        m_audin_output = true;  // High when idle
-    }
-
-    // Only process on rising CLK edge when CS is high
-    if (!cs || !clk || m_last_clk)
-    {
-        m_last_cs = cs;
-        m_last_clk = clk;
-        return;
-    }
-
-    m_last_cs = cs;
-    m_last_clk = clk;
-
     // DI comes from IODAT bit 4 (AUDIN) when IODIR bit 4 is set (output)
     bool di = false;
     if (IS_SET_BIT(m_iodir, 4))
         di = IS_SET_BIT(m_iodat, 4);
+
+    // CS falling edge resets command state
+    if (!cs && m_last_cs)
+    {
+        Debug("EEPROM: CS LOW, state was %d data=%04X", m_state, m_data);
+        m_state = EE_NONE;
+        m_data = 0;
+    }
+
+    // CS rising edge - prepare for start bit detection
+    if (cs && !m_last_cs)
+    {
+        Debug("EEPROM: CS HIGH");
+        m_state = EE_NONE;
+        m_data = 0;
+    }
+
+    m_last_cs = cs;
+
+    // Only process data on rising CLK edge when CS is high
+    if (!cs || !clk || m_last_clk)
+    {
+        m_last_clk = clk;
+        return;
+    }
+
+    m_last_clk = clk;
+
+    // In EE_NONE state, look for start bit (DI = 1)
+    if (m_state == EE_NONE)
+    {
+        if (di)
+        {
+            Debug("EEPROM: START mask=%04X", m_done_mask);
+            m_data = 0x01;  // Start bit
+            m_state = EE_ADDR;
+        }
+        return;
+    }
 
     // Shift in data bit
     m_data = (m_data << 1) | (di ? 1 : 0);
@@ -175,29 +199,13 @@ void EEPROM::ProcessEepromCounter(u16 counter)
     switch (m_state)
     {
         case EE_NONE:
-            // When CS goes high, check if AUDIN is configured as input
-            if (cs)
-            {
-                if (di && IS_SET_BIT(m_iodir, 4))
-                {
-                    // Start bit received with AUDIN as output - go to EE_ADDR
-                    m_data = 0x01;
-                    m_state = EE_ADDR;
-                }
-                else if (IS_NOT_SET_BIT(m_iodir, 4))
-                {
-                    // AUDIN is input mode - go to EE_BUSY for polling
-                    m_state = EE_BUSY;
-                    m_read_data = 0x0000;  // RDY = low (busy)
-                    m_audin_output = false;
-                    m_busy_count = 0;
-                }
-            }
+            // Should not reach here - start detection handled above
             break;
 
         case EE_ADDR:
             if (m_data & m_done_mask)
             {
+                Debug("EEPROM: CMD data=%04X mask=%04X", m_data, m_done_mask);
                 // Extract opcode (2 bits after start bit)
                 s32 opcode = (m_data >> m_addr_bits) & 0x03;
                 m_addr = m_data & ((1 << m_addr_bits) - 1);
@@ -211,6 +219,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                         else
                             m_read_data = m_rom_data[m_addr];
                         m_audin_output = false;  // Dummy bit
+                        m_programming = false;   // Reading, not programming
                         m_state = EE_WAIT;
                         Debug("EEPROM READ addr: 0x%02X, data: 0x%04X", m_addr, m_read_data);
                         break;
@@ -256,6 +265,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                             Debug("EEPROM ERASE addr: 0x%02X", m_addr);
                         }
                         m_busy_count = 0;
+                        m_programming = true;    // Programming mode
                         m_audin_output = false;  // Busy
                         m_state = EE_WAIT;
                         break;
@@ -283,6 +293,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                         m_dirty = true;
                     }
                     m_busy_count = 0;
+                    m_programming = true;    // Programming mode
                     m_audin_output = false;  // Busy (ready signal)
                     m_state = EE_WAIT;
                 }
@@ -290,9 +301,20 @@ void EEPROM::ProcessEepromCounter(u16 counter)
             break;
 
         case EE_WAIT:
-            // Shift out read data - use done_mask >> 1 for proper bit position
-            m_audin_output = (m_read_data & (m_done_mask >> 1)) != 0;
-            m_read_data <<= 1;
+            if (m_programming)
+            {
+                // Programming mode (WRITE/ERASE): just stay in busy/ready state
+                // m_audin_output is managed by ProcessBusy()
+            }
+            else
+            {
+                // Read mode: shift out read data from MSB
+                if (m_type & GLYNX_EEPROM_8BIT)
+                    m_audin_output = (m_read_data & 0x80) != 0;
+                else
+                    m_audin_output = (m_read_data & 0x8000) != 0;
+                m_read_data <<= 1;
+            }
             break;
 
         case EE_BUSY:
@@ -307,13 +329,13 @@ void EEPROM::ProcessBusy()
         return;
 
     // After write/erase, simulate busy period then go ready
-    // Works for both EE_WAIT (after write/erase command) and EE_BUSY (polling mode)
-    if ((m_state == EE_WAIT || m_state == EE_BUSY) && m_busy_count < 100)
+    if (m_programming && m_busy_count < 100)
     {
         m_busy_count++;
         if (m_busy_count >= 100)
         {
             m_audin_output = true;  // Ready
+            m_programming = false;  // Done programming
         }
     }
 }
@@ -370,6 +392,7 @@ void EEPROM::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_audin_output);
     G_SERIALIZE(s, m_readonly);
     G_SERIALIZE(s, m_dirty);
+    G_SERIALIZE(s, m_programming);
     G_SERIALIZE(s, m_busy_count);
     G_SERIALIZE(s, m_last_cs);
     G_SERIALIZE(s, m_last_clk);
