@@ -120,13 +120,16 @@ void gui_debug_window_uart(void)
     ImGui::Separator();
 
     ImGui::TextColored(violet, "HOLDING REG  "); ImGui::SameLine();
-    ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->uart.tx_hold_data, BYTE_TO_BINARY(mikey_state->uart.tx_hold_data));
+    ImGui::Text("$%02X ", mikey_state->uart.tx_hold_data); ImGui::SameLine(0, 0);
+    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->uart.tx_hold_data));
 
     ImGui::TextColored(violet, "TX DATA      "); ImGui::SameLine();
-    ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->uart.tx_data, BYTE_TO_BINARY(mikey_state->uart.tx_data));
+    ImGui::Text("$%02X ", mikey_state->uart.tx_data); ImGui::SameLine(0, 0);
+    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->uart.tx_data));
 
     ImGui::TextColored(violet, "RX DATA      "); ImGui::SameLine();
-    ImGui::Text("$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->uart.rx_data, BYTE_TO_BINARY(mikey_state->uart.rx_data));
+    ImGui::Text("$%02X ", mikey_state->uart.rx_data); ImGui::SameLine(0, 0);
+    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->uart.rx_data));
 
     ImGui::TextColored(violet, "TX BIT IDX   "); ImGui::SameLine();
     ImGui::TextColored(white, "%d", mikey_state->uart.tx_bit_index);

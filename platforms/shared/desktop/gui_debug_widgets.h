@@ -150,21 +150,13 @@ inline bool EditableRegister8(
         if (flags & EditableRegisterFlags_ShowBinary)
         {
             ImGui::SameLine();
-            ImGui::TextDisabled("(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(current_value));
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(current_value));
         }
     }
     else
     {
-        char value_str[48];
-        if (flags & EditableRegisterFlags_ShowBinary)
-        {
-            snprintf(value_str, sizeof(value_str), "$%02X (" BYTE_TO_BINARY_PATTERN_SPACED ")",
-                     current_value, BYTE_TO_BINARY(current_value));
-        }
-        else
-        {
-            snprintf(value_str, sizeof(value_str), "$%02X", current_value);
-        }
+        char value_str[16];
+        snprintf(value_str, sizeof(value_str), "$%02X", current_value);
 
         if (write_callback != nullptr)
         {
@@ -178,6 +170,12 @@ inline bool EditableRegister8(
         else
         {
             ImGui::Text("%s", value_str);
+        }
+
+        if (flags & EditableRegisterFlags_ShowBinary)
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(current_value));
         }
     }
 
@@ -259,26 +257,15 @@ inline bool EditableRegister16(
         if (flags & EditableRegisterFlags_ShowBinary)
         {
             ImGui::SameLine();
-            ImGui::TextDisabled("(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")",
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")",
                      BYTE_TO_BINARY((current_value >> 8) & 0xFF),
                      BYTE_TO_BINARY(current_value & 0xFF));
         }
     }
     else
     {
-        char value_str[80];
-        if (flags & EditableRegisterFlags_ShowBinary)
-        {
-            snprintf(value_str, sizeof(value_str),
-                     "$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")",
-                     current_value,
-                     BYTE_TO_BINARY((current_value >> 8) & 0xFF),
-                     BYTE_TO_BINARY(current_value & 0xFF));
-        }
-        else
-        {
-            snprintf(value_str, sizeof(value_str), "$%04X", current_value);
-        }
+        char value_str[16];
+        snprintf(value_str, sizeof(value_str), "$%04X", current_value);
 
         if (write_callback != nullptr)
         {
@@ -292,6 +279,14 @@ inline bool EditableRegister16(
         else
         {
             ImGui::Text("%s", value_str);
+        }
+
+        if (flags & EditableRegisterFlags_ShowBinary)
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")",
+                     BYTE_TO_BINARY((current_value >> 8) & 0xFF),
+                     BYTE_TO_BINARY(current_value & 0xFF));
         }
     }
 

@@ -36,7 +36,9 @@ enum M6502RegId
     M6502RegId_S = 1,
     M6502RegId_X = 2,
     M6502RegId_Y = 3,
-    M6502RegId_P = 4
+    M6502RegId_P = 4,
+    M6502RegId_PC = 5,
+    M6502RegId_SP = 6
 };
 
 static void M6502WriteCallback8(u16 reg_id, u8 value, void* user_data)
@@ -70,6 +72,16 @@ static void MemoryWriteCallback8(u16 address, u8 value, void* user_data)
 {
     Memory* memory = (Memory*)user_data;
     memory->Write<true>(address, value);
+}
+
+static void M6502WriteCallback16(u16 reg_id, u16 value, void* user_data)
+{
+    M6502::M6502_State* cpu = (M6502::M6502_State*)user_data;
+    switch (reg_id)
+    {
+        case M6502RegId_PC: cpu->PC.SetValue(value); break;
+        case M6502RegId_SP: cpu->S.SetValue(value & 0xFF); break;
+    }
 }
 
 void gui_debug_window_m6502(void)
@@ -112,23 +124,21 @@ void gui_debug_window_m6502(void)
 
         ImGui::TableNextColumn();
         ImGui::TextColored(yellow, "     PC"); ImGui::SameLine();
+        ImGui::Text("  "); ImGui::SameLine(0, 0);
+        EditableRegister16(NULL, NULL, M6502RegId_PC, cpu->PC.GetValue(), M6502WriteCallback16, cpu, EditableRegisterFlags_None);
         if (ImGui::IsItemClicked())
             gui_debug_memory_goto(MEMORY_EDITOR_RAM, cpu->PC.GetValue());
-        ImGui::Text("= $%04X", cpu->PC.GetValue());
-        if (ImGui::IsItemClicked())
-            gui_debug_memory_goto(MEMORY_EDITOR_RAM, cpu->PC.GetValue());
-        ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(cpu->PC.GetHigh()), BYTE_TO_BINARY(cpu->PC.GetLow()));
+        ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(cpu->PC.GetHigh()), BYTE_TO_BINARY(cpu->PC.GetLow()));
         if (ImGui::IsItemClicked())
             gui_debug_memory_goto(MEMORY_EDITOR_RAM, cpu->PC.GetValue());
 
         ImGui::TableNextColumn();
         ImGui::TextColored(yellow, "     SP"); ImGui::SameLine();
+        ImGui::Text("  "); ImGui::SameLine(0, 0);
+        EditableRegister16(NULL, NULL, M6502RegId_SP, STACK_ADDR | cpu->S.GetValue(), M6502WriteCallback16, cpu, EditableRegisterFlags_None);
         if (ImGui::IsItemClicked())
             gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
-        ImGui::Text("= $%04X", STACK_ADDR | cpu->S.GetValue());
-        if (ImGui::IsItemClicked())
-            gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
-        ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(0x21), BYTE_TO_BINARY(cpu->S.GetValue()));
+        ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(0x01), BYTE_TO_BINARY(cpu->S.GetValue()));
         if (ImGui::IsItemClicked())
             gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
 
@@ -142,35 +152,35 @@ void gui_debug_window_m6502(void)
             ImGui::TextColored(cyan, "  A"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_A, cpu->A.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
+            ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  S"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_S, cpu->S.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
+            ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  X"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_X, cpu->X.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
+            ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "  Y"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_Y, cpu->Y.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
+            ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(violet, "MAPCTL"); ImGui::SameLine();
             EditableRegister8(NULL, NULL, 0xFFF9, mem->MAPCTL, MemoryWriteCallback8, memory, EditableRegisterFlags_None);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mem->MAPCTL));
+            ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mem->MAPCTL));
 
             ImGui::TableNextColumn();
             ImGui::TextColored(blue, "IRQPEN"); ImGui::SameLine();
             ImGui::Text("$%02X", mikey->irq_pending);
-            ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mikey->irq_pending));
+            ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(mikey->irq_pending));
 
             bool suzy_visible = !(mem->MAPCTL & 0x01);
             bool mikey_visible = !(mem->MAPCTL & 0x02);

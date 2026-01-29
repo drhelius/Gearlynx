@@ -161,10 +161,12 @@ void gui_debug_window_frame_buffers(void)
     Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
 
     ImGui::TextColored(orange, "VIDBAS    "); ImGui::SameLine();
-    ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", suzy_state->VIDBAS.value, BYTE_TO_BINARY(suzy_state->VIDBAS.high), BYTE_TO_BINARY(suzy_state->VIDBAS.low));
+    ImGui::Text("$%04X ", suzy_state->VIDBAS.value); ImGui::SameLine(0, 0);
+    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(suzy_state->VIDBAS.high), BYTE_TO_BINARY(suzy_state->VIDBAS.low));
 
     ImGui::TextColored(orange, "DISPADR   "); ImGui::SameLine();
-    ImGui::Text("$%04X (" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", mikey_state->DISPADR.value, BYTE_TO_BINARY(mikey_state->DISPADR.high), BYTE_TO_BINARY(mikey_state->DISPADR.low));
+    ImGui::Text("$%04X ", mikey_state->DISPADR.value); ImGui::SameLine(0, 0);
+    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->DISPADR.high), BYTE_TO_BINARY(mikey_state->DISPADR.low));
 
     ImGui::NewLine();
 
