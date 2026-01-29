@@ -157,7 +157,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
     // CS falling edge resets command state
     if (!cs && m_last_cs)
     {
-        Debug("EEPROM: CS LOW, state was %d data=%04X", m_state, m_data);
+        //Debug("EEPROM: CS LOW, state was %d data=%04X", m_state, m_data);
         m_state = EE_NONE;
         m_data = 0;
     }
@@ -165,7 +165,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
     // CS rising edge - prepare for start bit detection
     if (cs && !m_last_cs)
     {
-        Debug("EEPROM: CS HIGH");
+        //Debug("EEPROM: CS HIGH");
         m_state = EE_NONE;
         m_data = 0;
     }
@@ -186,7 +186,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
     {
         if (di)
         {
-            Debug("EEPROM: START mask=%04X", m_done_mask);
+            //Debug("EEPROM: START mask=%04X", m_done_mask);
             m_data = 0x01;  // Start bit
             m_state = EE_ADDR;
         }
@@ -205,7 +205,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
         case EE_ADDR:
             if (m_data & m_done_mask)
             {
-                Debug("EEPROM: CMD data=%04X mask=%04X", m_data, m_done_mask);
+                //Debug("EEPROM: CMD data=%04X mask=%04X", m_data, m_done_mask);
                 // Extract opcode (2 bits after start bit)
                 s32 opcode = (m_data >> m_addr_bits) & 0x03;
                 m_addr = m_data & ((1 << m_addr_bits) - 1);
@@ -221,13 +221,13 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                         m_audin_output = false;  // Dummy bit
                         m_programming = false;   // Reading, not programming
                         m_state = EE_WAIT;
-                        Debug("EEPROM READ addr: 0x%02X, data: 0x%04X", m_addr, m_read_data);
+                        //Debug("EEPROM READ addr: 0x%02X, data: 0x%04X", m_addr, m_read_data);
                         break;
 
                     case 0x01:  // WRITE
                         m_data = 0x01;
                         m_state = EE_DATA;
-                        Debug("EEPROM WRITE addr: 0x%02X", m_addr);
+                        //Debug("EEPROM WRITE addr: 0x%02X", m_addr);
                         break;
 
                     case 0x00:  // Extended commands
@@ -237,17 +237,17 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                             {
                                 case 0x00:  // EWDS - Erase/Write Disable
                                     m_readonly = true;
-                                    Debug("EEPROM EWDS");
+                                    //Debug("EEPROM EWDS");
                                     break;
                                 case 0x03:  // EWEN - Erase/Write Enable
                                     m_readonly = false;
-                                    Debug("EEPROM EWEN");
+                                    //Debug("EEPROM EWEN");
                                     break;
                                 case 0x01:  // WRAL - Write All
-                                    Debug("EEPROM WRAL (not implemented)");
+                                    //Debug("EEPROM WRAL (not implemented)");
                                     break;
                                 case 0x02:  // ERAL - Erase All
-                                    Debug("EEPROM ERAL (not implemented)");
+                                    //Debug("EEPROM ERAL (not implemented)");
                                     break;
                             }
                         }
@@ -262,7 +262,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                             else
                                 m_rom_data[m_addr] = 0xFFFF;
                             m_dirty = true;
-                            Debug("EEPROM ERASE addr: 0x%02X", m_addr);
+                            //Debug("EEPROM ERASE addr: 0x%02X", m_addr);
                         }
                         m_busy_count = 0;
                         m_programming = true;    // Programming mode
@@ -283,12 +283,12 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                         if (m_type & GLYNX_EEPROM_8BIT)
                         {
                             ((u8*)m_rom_data)[m_addr] = m_data & 0xFF;
-                            Debug("EEPROM WRITE data: 0x%02X", m_data & 0xFF);
+                            //Debug("EEPROM WRITE data: 0x%02X", m_data & 0xFF);
                         }
                         else
                         {
                             m_rom_data[m_addr] = m_data & 0xFFFF;
-                            Debug("EEPROM WRITE data: 0x%04X", m_data & 0xFFFF);
+                            //Debug("EEPROM WRITE data: 0x%04X", m_data & 0xFFFF);
                         }
                         m_dirty = true;
                     }
