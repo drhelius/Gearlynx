@@ -128,7 +128,7 @@ void gui_debug_window_m6502(void)
         ImGui::Text("= $%04X", STACK_ADDR | cpu->S.GetValue());
         if (ImGui::IsItemClicked())
             gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
-        ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY(0x21), BYTE_TO_BINARY(cpu->S.GetValue()));
+        ImGui::Text(" " BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED " ", BYTE_TO_BINARY((STACK_ADDR >> 8) & 0xFF), BYTE_TO_BINARY(cpu->S.GetValue()));
         if (ImGui::IsItemClicked())
             gui_debug_memory_goto(MEMORY_EDITOR_STACK, STACK_ADDR | cpu->S.GetValue());
 
