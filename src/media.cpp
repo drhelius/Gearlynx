@@ -35,6 +35,10 @@ Media::Media()
     InitPointer(m_bank_data[1]);
     InitPointer(m_shadow_ram);
     InitPointer(m_eeprom_instance);
+    InitPointer(m_decrypt_buffer_a);
+    InitPointer(m_decrypt_buffer_b);
+    InitPointer(m_decrypt_buffer_tmp);
+    InitPointer(m_decrypt_buffer_sub);
     m_is_bios_loaded = false;
     m_is_bios_valid = false;
     m_forced_rotation = GLYNX_ROTATION_AUTO;
@@ -47,6 +51,10 @@ Media::~Media()
     SafeDeleteArray(m_rom);
     SafeDeleteArray(m_shadow_ram);
     SafeDelete(m_eeprom_instance);
+    SafeDeleteArray(m_decrypt_buffer_a);
+    SafeDeleteArray(m_decrypt_buffer_b);
+    SafeDeleteArray(m_decrypt_buffer_tmp);
+    SafeDeleteArray(m_decrypt_buffer_sub);
 }
 
 void Media::Init()
@@ -54,6 +62,10 @@ void Media::Init()
     m_eeprom_instance = new EEPROM();
     m_shadow_ram = new u8[SHADOW_RAM_SIZE];
     memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
+    m_decrypt_buffer_a = new u8[EPYX_DECRYPT_BLOCK_SIZE];
+    m_decrypt_buffer_b = new u8[EPYX_DECRYPT_BLOCK_SIZE];
+    m_decrypt_buffer_tmp = new u8[EPYX_DECRYPT_BLOCK_SIZE];
+    m_decrypt_buffer_sub = new u8[EPYX_DECRYPT_BLOCK_SIZE];
     HardReset();
 }
 
@@ -64,9 +76,8 @@ void Media::Reset()
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
     m_bank1_write_enable = false;
-    m_eeprom_instance->SetType(m_eeprom);
-    m_eeprom_instance->Reset();
     memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
+    m_eeprom_instance->Reset(m_eeprom);
 }
 
 void Media::HardReset()
@@ -222,6 +233,9 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     if (m_type == MEDIA_LYNX)
         SetupBanks();
+
+    m_epyx_headerless = DetectEpyxHeaderless();
+    m_eeprom_instance->Reset(m_eeprom);
 
     m_ready = true;
 
@@ -565,6 +579,7 @@ int Media::DetectEpyxHeaderless()
     {
         Log("EPYX headerless cart detected (%d zeros)", headerless);
         m_type = MEDIA_EPYX_HEADERLESS;
+        m_homebrew_boot_address = 0x200;
     }
 
     return headerless;
@@ -653,8 +668,6 @@ void Media::SetupBanks()
             Debug("Bank1A: Offset: 0x%X", offset);
         }
     }
-
-    m_epyx_headerless = DetectEpyxHeaderless();
 }
 
 void Media::GatherDataFromPath(const char* path)
@@ -820,4 +833,191 @@ void Media::Serialize(StateSerializer& s)
     {
         G_SERIALIZE_ARRAY(s, m_bank_data[1], m_bank_size[1]);
     }
+}
+
+// EPYX decryption based on Wookie's work:
+// http://atariage.com/forums/topic/129030-lynx-encryption/
+
+static const u8 k_epyx_public_mod[EPYX_DECRYPT_BLOCK_SIZE] =
+{
+    0x35, 0xB5, 0xA3, 0x94, 0x28, 0x06, 0xD8, 0xA2, 0x26, 0x95,
+    0xD7, 0x71, 0xB2, 0x3C, 0xFD, 0x56, 0x1C, 0x4A, 0x19, 0xB6,
+    0xA3, 0xB0, 0x26, 0x00, 0x36, 0x5A, 0x30, 0x6E, 0x3C, 0x4D,
+    0x63, 0x38, 0x1B, 0xD4, 0x1C, 0x13, 0x64, 0x89, 0x36, 0x4C,
+    0xF2, 0xBA, 0x2A, 0x58, 0xF4, 0xFE, 0xE1, 0xFD, 0xAC, 0x7E,
+    0x79
+};
+
+void Media::DecryptDoubleValue(u8* result, int length)
+{
+    int x = 0;
+    for (int i = length - 1; i >= 0; i--)
+    {
+        x += 2 * result[i];
+        result[i] = (u8)(x & 0xFF);
+        x >>= 8;
+    }
+}
+
+int Media::DecryptMinusEquals(u8* result, const u8* value, int length)
+{
+    int x = 0;
+
+    for (int i = length - 1; i >= 0; i--)
+    {
+        x += result[i] - value[i];
+        m_decrypt_buffer_sub[i] = (u8)(x & 0xFF);
+        x >>= 8;
+    }
+
+    if (x >= 0)
+    {
+        memcpy(result, m_decrypt_buffer_sub, length);
+        return 1;
+    }
+
+    return 0;
+}
+
+void Media::DecryptPlusEquals(u8* result, const u8* value, int length)
+{
+    int carry = 0;
+    for (int i = length - 1; i >= 0; i--)
+    {
+        int tmp = result[i] + value[i] + carry;
+        carry = (tmp >= 256) ? 1 : 0;
+        result[i] = (u8)tmp;
+    }
+}
+
+void Media::DecryptMontgomery(u8* L, const u8* M, const u8* N, const u8* modulus, int length)
+{
+    memset(L, 0, length);
+
+    for (int i = 0; i < length; i++)
+    {
+        u8 tmp = N[i];
+
+        for (int j = 0; j < 8; j++)
+        {
+            DecryptDoubleValue(L, length);
+
+            u8 increment = (tmp & 0x80) >> 7;
+            tmp <<= 1;
+
+            if (increment != 0)
+            {
+                DecryptPlusEquals(L, M, length);
+                int carry = DecryptMinusEquals(L, modulus, length);
+                if (carry != 0)
+                    DecryptMinusEquals(L, modulus, length);
+            }
+            else
+            {
+                DecryptMinusEquals(L, modulus, length);
+            }
+        }
+    }
+}
+
+int Media::DecryptBlock(int accumulator, u8* result, const u8* encrypted, int length)
+{
+    memset(m_decrypt_buffer_a, 0, length);
+    memset(m_decrypt_buffer_b, 0, length);
+    memset(m_decrypt_buffer_tmp, 0, length);
+
+    // Copy encrypted block in reverse order
+    for (int i = length - 1; i >= 0; i--)
+        m_decrypt_buffer_b[i] = encrypted[length - 1 - i];
+
+    // Montgomery multiplication: A = B^2 mod modulus
+    DecryptMontgomery(m_decrypt_buffer_a, m_decrypt_buffer_b, m_decrypt_buffer_b, k_epyx_public_mod, length);
+
+    // TMP = B^2
+    memcpy(m_decrypt_buffer_tmp, m_decrypt_buffer_a, length);
+
+    // Montgomery multiplication: A = B^3 mod modulus
+    DecryptMontgomery(m_decrypt_buffer_a, m_decrypt_buffer_b, m_decrypt_buffer_tmp, k_epyx_public_mod, length);
+
+    // Accumulate and output decrypted bytes
+    for (int i = length - 1; i > 0; i--)
+    {
+        accumulator += m_decrypt_buffer_a[i];
+        accumulator &= 0xFF;
+        *result = (u8)accumulator;
+        result++;
+    }
+
+    return accumulator;
+}
+
+int Media::DecryptFrame(u8* result, const u8* encrypted, int length)
+{
+    int accumulator = 0;
+    int blocks = 256 - encrypted[0];
+
+    const u8* eptr = encrypted + 1;
+    u8* rptr = result;
+
+    for (int i = 0; i < blocks; i++)
+    {
+        accumulator = DecryptBlock(accumulator, rptr, eptr, length);
+        rptr += (length - 1);
+        eptr += length;
+    }
+
+    return blocks;
+}
+
+int Media::DecryptEpyxLoader(u8* output, int max_size)
+{
+    if (m_type != MEDIA_EPYX_HEADERLESS || m_epyx_headerless == 0)
+        return 0;
+
+    if (m_bank_data[0] == NULL || m_bank_size[0] == 0)
+        return 0;
+
+    Debug("Decrypting EPYX loader...");
+
+    // Read encrypted data from cart starting after header zeros
+    u8 encrypted[256];
+    u8 decrypted[256];
+    int read_offset = m_epyx_headerless;
+
+    // First byte is block count (inverted)
+    encrypted[0] = m_bank_data[0][read_offset & m_bank_mask[0]];
+    int block_count = 256 - encrypted[0];
+
+    Debug("EPYX loader: %d encrypted blocks", block_count);
+
+    if (block_count <= 0 || block_count > 5)
+    {
+        Error("Invalid EPYX block count: %d", block_count);
+        return 0;
+    }
+
+    // Read encrypted blocks (51 bytes per block)
+    int encrypted_size = 1 + (EPYX_DECRYPT_BLOCK_SIZE * block_count);
+    for (int i = 1; i < encrypted_size; i++)
+    {
+        encrypted[i] = m_bank_data[0][(read_offset + i) & m_bank_mask[0]];
+    }
+
+    // Decrypt the frame
+    DecryptFrame(decrypted, encrypted, EPYX_DECRYPT_BLOCK_SIZE);
+
+    // Calculate decrypted size (50 bytes per block, since we skip one byte per block)
+    int decrypted_size = (EPYX_DECRYPT_BLOCK_SIZE - 1) * block_count;
+
+    if (decrypted_size > max_size)
+    {
+        Error("EPYX decrypted size %d exceeds buffer %d", decrypted_size, max_size);
+        decrypted_size = max_size;
+    }
+
+    memcpy(output, decrypted, decrypted_size);
+
+    Debug("EPYX loader decrypted: %d bytes", decrypted_size);
+
+    return decrypted_size;
 }

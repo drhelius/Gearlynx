@@ -635,7 +635,7 @@ void GearlynxCore::Reset()
     m_bus->Reset();
     m_input->Reset();
 
-    if (m_media->GetType() == Media::MEDIA_HOMEBREW)
+    if (m_media->GetType() != Media::MEDIA_LYNX)
         PrepareForHomebrew();
 }
 
@@ -644,23 +644,44 @@ void GearlynxCore::PrepareForHomebrew()
     u16 boot_address = m_media->GetHomebrewBootAddress();
     int size = m_media->GetROMSize();
 
-    if (size <= 0)
-        return;
-
     u8* ram = m_memory->GetRAM();
-    u8* rom = m_media->GetROM();
-
     const int ram_size = 0x10000;
-    const int start = (int)boot_address;
-    const int first = MIN(size, ram_size - start);
-    const int left  = size - first;
 
     memset(ram, 0, ram_size);
 
-    if (first > 0)
-        memcpy(ram + start, rom, first);
-    if (left  > 0)
-        memcpy(ram, rom + first, MIN(left, ram_size));
+    if (m_media->GetType() == Media::MEDIA_EPYX_HEADERLESS)
+    {
+        u8 decrypted[256];
+        int decrypted_size = m_media->DecryptEpyxLoader(decrypted, sizeof(decrypted));
+
+        if (decrypted_size > 0)
+        {
+            Debug("EPYX headerless: copying %d decrypted bytes to 0x%04X", decrypted_size, boot_address);
+            memcpy(ram + boot_address, decrypted, decrypted_size);
+        }
+        else
+        {
+            Error("EPYX headerless decryption failed");
+            return;
+        }
+    }
+    else
+    {
+        // For BS93 homebrew: copy ROM directly to RAM at boot address
+        if (size <= 0)
+            return;
+
+        u8* rom = m_media->GetROM();
+
+        const int start = (int)boot_address;
+        const int first = MIN(size, ram_size - start);
+        const int left  = size - first;
+
+        if (first > 0)
+            memcpy(ram + start, rom, first);
+        if (left  > 0)
+            memcpy(ram, rom + first, MIN(left, ram_size));
+    }
 
     m_m6502->GetState()->PC.SetValue(boot_address);
     m_m6502->DisassembleNextOPCode();

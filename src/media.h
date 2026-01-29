@@ -24,6 +24,7 @@
 
 #define EPYX_HEADER_OLD 512
 #define EPYX_HEADER_NEW 410
+#define EPYX_DECRYPT_BLOCK_SIZE 51
 #define SHADOW_RAM_SIZE (256 * 256) // 64K
 
 class StateSerializer;
@@ -61,6 +62,7 @@ public:
     bool GetAudin();
     u16 GetHomebrewBootAddress();
     int GetEpyxHeaderless();
+    int DecryptEpyxLoader(u8* output, int max_size);
     const char* GetFilePath();
     const char* GetFileDirectory();
     const char* GetFileName();
@@ -122,6 +124,12 @@ private:
     GLYNX_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_EEPROM ReadHeaderEEPROM(u8 eeprom);
     bool IsValidFile(const char* path);
+    void DecryptDoubleValue(u8* result, int length);
+    int DecryptMinusEquals(u8* result, const u8* value, int length);
+    void DecryptPlusEquals(u8* result, const u8* value, int length);
+    void DecryptMontgomery(u8* L, const u8* M, const u8* N, const u8* modulus, int length);
+    int DecryptBlock(int accumulator, u8* result, const u8* encrypted, int length);
+    int DecryptFrame(u8* result, const u8* encrypted, int length);
 
 private:
     u8* m_rom;
@@ -164,6 +172,10 @@ private:
     u16 m_homebrew_size;
     int m_epyx_headerless;
     u32 m_crc;
+    u8* m_decrypt_buffer_a;
+    u8* m_decrypt_buffer_b;
+    u8* m_decrypt_buffer_tmp;
+    u8* m_decrypt_buffer_sub;
 };
 
 #include "media_inline.h"
