@@ -128,7 +128,11 @@ INLINE u8 Mikey::Read(u16 address)
             if (IS_SET_BIT(m_state.IODIR, 4))
                 ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
             else if (m_media->GetEEPROMInstance()->IsAvailable())
+            {
+                if (!debug)
+                    m_media->GetEEPROMInstance()->ProcessBusy();
                 ret |= m_media->GetEEPROMInstance()->OutputBit() ? 0x10 : 0x00;
+            }
             else
                 ret |= 0x10;  // Input defaults to high (ready/done signal)
 

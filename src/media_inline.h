@@ -22,6 +22,7 @@
 
 #include <assert.h>
 #include "media.h"
+#include "eeprom.h"
 
 INLINE u32 Media::GetCRC()
 {
@@ -224,7 +225,11 @@ INLINE bool Media::IsBank1WriteEnabled()
 INLINE void Media::ShiftRegisterStrobe(bool strobe)
 {
     if (strobe)
+    {
         m_page_offset = 0;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 
     // Detect rising edge (0 -> 1)
     if (strobe && !m_shift_register_strobe)
@@ -251,7 +256,11 @@ INLINE u8 Media::ReadBank0()
     u8 data = m_bank_data[0][address & m_bank_mask[0]];
 
     if (!m_shift_register_strobe)
+    {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 
     return data;
 }
@@ -265,7 +274,11 @@ INLINE u8 Media::ReadBank1()
     u8 data = m_bank_data[1][address & m_bank_mask[1]];
 
     if (!m_shift_register_strobe)
+    {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 
     return data;
 }
@@ -290,8 +303,15 @@ INLINE u8 Media::PeekBank1()
 
 INLINE void Media::WriteBank0(u8 value)
 {
-    // Bank0 is ROM, writes are ignored
-    Debug("WARNING: WriteBank0 called with value: %02X (ignored - ROM)", value);
+    UNUSED(value);
+    // Bank0 is ROM, writes are ignored but counter still advances
+    // This is used by games for EEPROM clocking
+    if (!m_shift_register_strobe)
+    {
+        m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 }
 
 INLINE void Media::WriteBank1(u8 value)
@@ -306,7 +326,11 @@ INLINE void Media::WriteBank1(u8 value)
     {
         Debug("WARNING: WriteBank1 called but bank1 write is disabled. Value: %02X", value);
         if (!m_shift_register_strobe)
+        {
             m_page_offset = (m_page_offset + 1) & 0x7FF;
+            if (m_eeprom_instance->IsAvailable())
+                m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+        }
         return;
     }
 
@@ -316,7 +340,11 @@ INLINE void Media::WriteBank1(u8 value)
     m_bank_data[1][address & m_bank_mask[1]] = value;
 
     if (!m_shift_register_strobe)
+    {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 }
 
 INLINE u8 Media::ReadBank0A()
@@ -328,7 +356,11 @@ INLINE u8 Media::ReadBank0A()
     u8 data = m_bank_data_a[0][address & m_bank_mask[0]];
 
     if (!m_shift_register_strobe)
+    {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 
     return data;
 }
@@ -342,7 +374,11 @@ INLINE u8 Media::ReadBank1A()
     u8 data = m_bank_data_a[1][address & m_bank_mask[1]];
 
     if (!m_shift_register_strobe)
+    {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 
     return data;
 }
@@ -367,8 +403,15 @@ INLINE u8 Media::PeekBank1A()
 
 INLINE void Media::WriteBank0A(u8 value)
 {
-    // Bank0A is ROM, writes are ignored
-    Debug("WARNING: WriteBank0A called with value: %02X (ignored - ROM)", value);
+    UNUSED(value);
+    // Bank0A is ROM, writes are ignored but counter still advances
+    // This is used by games for EEPROM clocking
+    if (!m_shift_register_strobe)
+    {
+        m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 }
 
 INLINE void Media::WriteBank1A(u8 value)
@@ -382,7 +425,11 @@ INLINE void Media::WriteBank1A(u8 value)
     if (!m_bank1_write_enable)
     {
         if (!m_shift_register_strobe)
+        {
             m_page_offset = (m_page_offset + 1) & 0x7FF;
+            if (m_eeprom_instance->IsAvailable())
+                m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+        }
         return;
     }
 
@@ -392,7 +439,11 @@ INLINE void Media::WriteBank1A(u8 value)
     m_bank_data_a[1][address & m_bank_mask[1]] = value;
 
     if (!m_shift_register_strobe)
+    {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
+        if (m_eeprom_instance->IsAvailable())
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+    }
 }
 
 INLINE u8* Media::GetBankData(int bank)
