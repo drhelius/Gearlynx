@@ -63,7 +63,7 @@ void gui_debug_window_cart(void)
         if (media->GetShiftRegisterStrobe())
             ImGui::TextColored(green, "HIGH (1)");
         else
-            ImGui::TextColored(gray, "LOW  (0)");
+            ImGui::TextColored(red, "LOW  (0)");
     }
     else
         ImGui::TextColored(gray, "N/A");
@@ -74,7 +74,7 @@ void gui_debug_window_cart(void)
         if (media->GetShiftRegisterBit())
             ImGui::TextColored(green, "HIGH (1)");
         else
-            ImGui::TextColored(gray, "LOW  (0)");
+            ImGui::TextColored(red, "LOW  (0)");
     }
     else
         ImGui::TextColored(gray, "N/A");
@@ -82,7 +82,7 @@ void gui_debug_window_cart(void)
     ImGui::NewLine();
 
     // Bank 0
-    ImGui::TextColored(magenta, "BANK 0 (ROM)");
+    ImGui::TextColored(magenta, "BANK 0");
     ImGui::Separator();
 
     ImGui::TextColored(violet, "SIZE          "); ImGui::SameLine();
@@ -172,7 +172,7 @@ void gui_debug_window_cart(void)
         if (media->GetAudinValue())
             ImGui::TextColored(green, "HIGH (1)");
         else
-            ImGui::TextColored(gray, "LOW  (0)");
+            ImGui::TextColored(red, "LOW  (0)");
     }
     else
         ImGui::TextColored(gray, "N/A");

@@ -135,19 +135,19 @@ void gui_debug_window_eeprom(void)
     if (cs)
         ImGui::TextColored(green, "HIGH (1)");
     else
-        ImGui::TextColored(gray, "LOW  (0)");
+        ImGui::TextColored(red, "LOW  (0)");
 
     ImGui::TextColored(violet, "CLK (IO1)     "); ImGui::SameLine();
     if (clk)
         ImGui::TextColored(green, "HIGH (1)");
     else
-        ImGui::TextColored(gray, "LOW  (0)");
+        ImGui::TextColored(red, "LOW  (0)");
 
     ImGui::TextColored(violet, "DI (IO0)      "); ImGui::SameLine();
     if (di)
         ImGui::TextColored(green, "HIGH (1)");
     else
-        ImGui::TextColored(gray, "LOW  (0)");
+        ImGui::TextColored(red, "LOW  (0)");
 
     ImGui::PopFont();
 
