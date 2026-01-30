@@ -184,6 +184,7 @@ struct config_Debug
     bool dis_replace_symbols = true;
     bool dis_replace_labels = true;
     int font_size = 0;
+    int scale = 2;
     bool multi_viewport = false;
     bool single_instance = false;
 };
