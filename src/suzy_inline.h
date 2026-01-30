@@ -730,7 +730,7 @@ INLINE void Suzy::DrawSprite()
     s32 cur_y = base_vpos;
     m_state.VSIZACUM.value = m_state.VSIZOFF.value;
 
-    while (m_state.SPRDLINE.value != 0)
+    while (true)
     {
         u8 sprdoff  = RamRead(m_state.SPRDLINE.value);
         m_state.sprite_cycles += k_suzy_ticks_ram_read;  // sprdoff byte
@@ -764,7 +764,7 @@ INLINE void Suzy::DrawSprite()
             cur_y += dy;
 
             m_state.TILTACUM.value = (u16)(m_state.TILTACUM.value + m_state.TILT.value);
-            s32 tilt_carry = (s16)m_state.TILTACUM.value >> 8; // desplazamiento aritmético (tilt con signo)
+            s32 tilt_carry = (s16)m_state.TILTACUM.value >> 8;
             base_hpos += tilt_carry;
             m_state.TILTACUM.value &= 0x00FF;
 
