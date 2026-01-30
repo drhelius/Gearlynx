@@ -1127,6 +1127,17 @@ static void disassembler_menu(void)
         ImGui::MenuItem("Opcodes", NULL, &config_debug.dis_show_mem);
         ImGui::MenuItem("Symbols", NULL, &config_debug.dis_show_symbols);
         ImGui::MenuItem("Segment", NULL, &config_debug.dis_show_segment);
+
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Run Ahead"))
+        {
+            ImGui::PushItemWidth(200.0f);
+            ImGui::SliderInt("##lookahead", &config_debug.dis_look_ahead_count, 0, 100, "%d instructions");
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMenu();
     }
 

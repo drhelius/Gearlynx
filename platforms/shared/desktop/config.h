@@ -183,6 +183,7 @@ struct config_Debug
     bool dis_show_auto_symbols = true;
     bool dis_replace_symbols = true;
     bool dis_replace_labels = true;
+    int dis_look_ahead_count = 20;
     int font_size = 0;
     int scale = 2;
     bool multi_viewport = false;

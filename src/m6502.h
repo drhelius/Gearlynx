@@ -97,6 +97,8 @@ public:
     void InjectCycles(unsigned int cycles);
     M6502_State* GetState();
     void DisassembleNextOPCode();
+    void DisassembleAhead(int count);
+    void DisassembleAhead(u16 start_address, int count, int depth);
     void SetResetValue(int value);
     void EnableBreakpoints(bool enable, u8 irqs);
     bool BreakpointHit();

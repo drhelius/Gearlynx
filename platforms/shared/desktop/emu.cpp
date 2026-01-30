@@ -137,7 +137,13 @@ void emu_update(void)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
 
         if (breakpoint_hit || emu_debug_command == Debug_Command_StepFrame || emu_debug_command == Debug_Command_Step)
-                emu_debug_pc_changed = true;
+        {
+            emu_debug_pc_changed = true;
+
+            if (config_debug.dis_look_ahead_count > 0)
+                core->GetM6502()->DisassembleAhead(config_debug.dis_look_ahead_count);
+
+        }
 
         if (breakpoint_hit)
             emu_debug_command = Debug_Command_None;
