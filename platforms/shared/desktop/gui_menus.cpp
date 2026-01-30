@@ -432,7 +432,6 @@ static void menu_emulator(void)
         if (ImGui::BeginMenu("Hotkeys"))
         {
             hotkey_configuration_item("Open ROM:", &config_hotkeys[config_HotkeyIndex_OpenROM]);
-            hotkey_configuration_item("Reload ROM:", &config_hotkeys[config_HotkeyIndex_ReloadROM]);
             hotkey_configuration_item("Quit:", &config_hotkeys[config_HotkeyIndex_Quit]);
             hotkey_configuration_item("Reset:", &config_hotkeys[config_HotkeyIndex_Reset]);
             hotkey_configuration_item("Pause:", &config_hotkeys[config_HotkeyIndex_Pause]);
@@ -455,6 +454,7 @@ static void menu_emulator(void)
 
         if (ImGui::BeginMenu("Debug Hotkeys"))
         {
+            hotkey_configuration_item("Reload ROM:", &config_hotkeys[config_HotkeyIndex_ReloadROM]);
             hotkey_configuration_item("Step Into:", &config_hotkeys[config_HotkeyIndex_DebugStepInto]);
             hotkey_configuration_item("Step Over:", &config_hotkeys[config_HotkeyIndex_DebugStepOver]);
             hotkey_configuration_item("Step Out:", &config_hotkeys[config_HotkeyIndex_DebugStepOut]);
