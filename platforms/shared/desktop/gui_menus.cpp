@@ -432,6 +432,7 @@ static void menu_emulator(void)
         if (ImGui::BeginMenu("Hotkeys"))
         {
             hotkey_configuration_item("Open ROM:", &config_hotkeys[config_HotkeyIndex_OpenROM]);
+            hotkey_configuration_item("Reload ROM:", &config_hotkeys[config_HotkeyIndex_ReloadROM]);
             hotkey_configuration_item("Quit:", &config_hotkeys[config_HotkeyIndex_Quit]);
             hotkey_configuration_item("Reset:", &config_hotkeys[config_HotkeyIndex_Reset]);
             hotkey_configuration_item("Pause:", &config_hotkeys[config_HotkeyIndex_Pause]);
@@ -467,6 +468,20 @@ static void menu_emulator(void)
             gui_popup_modal_hotkey();
 
             ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Single Instance", "", &config_debug.single_instance);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("RESTART REQUIRED");
+            ImGui::NewLine();
+            ImGui::Text("When enabled, opening a ROM while another instance is running");
+            ImGui::Text("will send the ROM to the running instance instead of");
+            ImGui::Text("starting a new one.");
+            ImGui::EndTooltip();
         }
 
         ImGui::EndMenu();
@@ -742,6 +757,13 @@ static void menu_debug(void)
 
         ImGui::Separator();
 
+        if (ImGui::MenuItem("Reload ROM", config_hotkeys[config_HotkeyIndex_ReloadROM].str, false, config_debug.debug && !emu_is_empty()))
+        {
+            gui_action_reload_rom();
+        }
+
+        ImGui::Separator();
+
         if (ImGui::BeginMenu("MCP Server", config_debug.debug))
         {
             bool mcp_running = emu_mcp_is_running();
@@ -793,18 +815,24 @@ static void menu_debug(void)
 
         ImGui::Separator();
 
-        ImGui::MenuItem("Show Mikey 65C02", "", &config_debug.show_processor, config_debug.debug);
-        ImGui::MenuItem("Show Mikey 65C02 Call Stack", "", &config_debug.show_call_stack, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Registers", "", &config_debug.show_mikey_regs, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Timers", "", &config_debug.show_mikey_timers, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Color Registers", "", &config_debug.show_mikey_colors, config_debug.debug);
-        ImGui::MenuItem("Show Mikey Audio", "", &config_debug.show_psg, config_debug.debug);
-        ImGui::MenuItem("Show Mikey UART", "", &config_debug.show_uart, config_debug.debug);
+        if (ImGui::BeginMenu("Mikey", config_debug.debug))
+        {
+            ImGui::MenuItem("Show 65C02", "", &config_debug.show_processor);
+            ImGui::MenuItem("Show 65C02 Call Stack", "", &config_debug.show_call_stack);
+            ImGui::MenuItem("Show Registers", "", &config_debug.show_mikey_regs);
+            ImGui::MenuItem("Show Timers", "", &config_debug.show_mikey_timers);
+            ImGui::MenuItem("Show Color Registers", "", &config_debug.show_mikey_colors);
+            ImGui::MenuItem("Show Audio", "", &config_debug.show_psg);
+            ImGui::MenuItem("Show UART", "", &config_debug.show_uart);
+            ImGui::EndMenu();
+        }
 
-        ImGui::Separator();
-
-        ImGui::MenuItem("Show Suzy Registers", "", &config_debug.show_suzy_regs, config_debug.debug);
-        ImGui::MenuItem("Show Suzy Math Registers", "", &config_debug.show_suzy_math_regs, config_debug.debug);
+        if (ImGui::BeginMenu("Suzy", config_debug.debug))
+        {
+            ImGui::MenuItem("Show Registers", "", &config_debug.show_suzy_regs);
+            ImGui::MenuItem("Show Math Registers", "", &config_debug.show_suzy_math_regs);
+            ImGui::EndMenu();
+        }
 
         ImGui::Separator();
 
@@ -822,10 +850,16 @@ static void menu_debug(void)
 
 #if defined(__APPLE__) || defined(_WIN32)
         ImGui::Separator();
-        ImGui::MenuItem("Multi-Viewport (Restart required)", "", &config_debug.multi_viewport, config_debug.debug);
+        ImGui::MenuItem("Multi-Viewport", "", &config_debug.multi_viewport, config_debug.debug);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("RESTART REQUIRED");
+            ImGui::NewLine();
+            ImGui::Text("Enables docking of debug windows outside of main window.");
+            ImGui::EndTooltip();
+        }
 #endif
-
-        ImGui::MenuItem("Single Instance (Restart required)", "", &config_debug.single_instance);
 
         ImGui::Separator();
 
