@@ -104,6 +104,9 @@ bool emu_load_rom(const char* file_path)
 
     load_ram();
 
+    if (config_debug.debug && (config_debug.dis_look_ahead_count > 0))
+        core->GetM6502()->DisassembleAhead(config_debug.dis_look_ahead_count);
+
     update_savestates_data();
 
     return true;
