@@ -370,6 +370,9 @@ static void draw_controls(void)
     }
 
     ImGui::PopFont();
+
+    ImGui::SameLine();
+    ImGui::TextColored(emu_is_debug_idle() ? red : green, emu_is_debug_idle() ? "   PAUSED" : "   RUNNING");
 }
 
 static void draw_breakpoints(void)
