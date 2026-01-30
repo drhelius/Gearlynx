@@ -639,7 +639,7 @@ INLINE void M6502::DisassembleAhead(int count)
     DisassembleAhead(m_s.PC.GetValue(), count, 0);
 }
 
-INLINE void M6502::DisassembleAhead(u16 start_address, int count, int depth)
+inline void M6502::DisassembleAhead(u16 start_address, int count, int depth)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (depth > 3)
