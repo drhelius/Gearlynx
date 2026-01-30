@@ -1148,6 +1148,14 @@ static void disassembler_menu(void)
             gui_debug_go_back();
         }
 
+        if (ImGui::MenuItem("Go To PC"))
+        {
+            M6502* processor = emu_get_core()->GetM6502();
+            M6502::M6502_State* proc_state = processor->GetState();
+            u16 pc = proc_state->PC.GetValue();
+            request_goto_address(pc);
+        }
+
         if (ImGui::BeginMenu("Go To Address..."))
         {
             bool go = false;
