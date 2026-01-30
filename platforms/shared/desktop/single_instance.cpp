@@ -54,6 +54,7 @@ static std::string s_mailbox_path;
 static std::string s_mailbox_tmp_path;
 static bool s_is_primary = false;
 static bool s_initialized = false;
+static bool s_disabled = false;
 static bool s_pending_load = false;
 static char s_pending_rom_path[4096];
 static char s_pending_symbol_path[4096];
@@ -73,6 +74,17 @@ static void signal_handler(int sig)
 {
     if (sig == SIGUSR1)
         s_signal_received = 1;
+}
+
+static bool is_temp_dir_accessible(const std::string& base_path)
+{
+    std::string test_file = base_path + ".test";
+    FILE* f = fopen(test_file.c_str(), "w");
+    if (!f)
+        return false;
+    fclose(f);
+    unlink(test_file.c_str());
+    return true;
 }
 #endif
 
@@ -181,16 +193,30 @@ void single_instance_init(const char* app_name)
 
     s_initialized = true;
     s_is_primary = false;
+    s_disabled = false;
     s_pending_load = false;
     s_pending_rom_path[0] = '\0';
     s_pending_symbol_path[0] = '\0';
 
 #if defined(_WIN32)
     char temp_path[MAX_PATH];
-    GetTempPathA(MAX_PATH, temp_path);
+    if (GetTempPathA(MAX_PATH, temp_path) == 0)
+    {
+        Log("Single instance mode disabled: unable to access temp directory");
+        s_disabled = true;
+        s_is_primary = true;
+        return;
+    }
     std::string base_path = std::string(temp_path) + app_name + "_";
 #else
     std::string base_path = std::string("/tmp/") + app_name + "_";
+    if (!is_temp_dir_accessible(base_path))
+    {
+        Log("Single instance mode disabled: unable to access temp directory");
+        s_disabled = true;
+        s_is_primary = true;
+        return;
+    }
 #endif
 
     s_lock_path = base_path + k_lock_filename;
@@ -240,7 +266,7 @@ void single_instance_destroy(void)
 
 bool single_instance_try_lock(void)
 {
-    if (!s_initialized)
+    if (!s_initialized || s_disabled)
         return true;
 
     cleanup_stale_lock();
@@ -340,7 +366,7 @@ bool single_instance_is_primary(void)
 
 void single_instance_send_message(const char* rom_path, const char* symbol_path)
 {
-    if (!s_initialized)
+    if (!s_initialized || s_disabled)
         return;
 
     // Write to temp file first, then rename for atomicity
@@ -402,7 +428,7 @@ void single_instance_send_message(const char* rom_path, const char* symbol_path)
 
 void single_instance_poll(void)
 {
-    if (!s_initialized || !s_is_primary)
+    if (!s_initialized || s_disabled || !s_is_primary)
         return;
 
     bool should_check = false;
