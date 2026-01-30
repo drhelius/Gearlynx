@@ -50,6 +50,7 @@ EXTERN void application_trigger_fullscreen(bool fullscreen);
 EXTERN void application_trigger_fit_to_content(int width, int height);
 EXTERN void application_update_title_with_rom(const char* rom);
 EXTERN void application_assign_gamepad(int device_index);
+EXTERN bool application_check_single_instance(const char* rom_file, const char* symbol_file);
 
 #undef APPLICATION_IMPORT
 #undef EXTERN

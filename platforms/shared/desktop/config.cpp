@@ -156,6 +156,7 @@ void config_read(void)
     config_debug.dis_replace_labels = read_bool("Debug", "DisReplaceLabels", true);
     config_debug.font_size = read_int("Debug", "FontSize", 0);
     config_debug.multi_viewport = read_bool("Debug", "MultiViewport", false);
+    config_debug.single_instance = read_bool("Debug", "SingleInstance", false);
 
     config_emulator.maximized = read_bool("Emulator", "Maximized", false);
     config_emulator.fullscreen = read_bool("Emulator", "FullScreen", false);
@@ -318,6 +319,7 @@ void config_write(void)
     write_bool("Debug", "DisReplaceLabels", config_debug.dis_replace_labels);
     write_int("Debug", "FontSize", config_debug.font_size);
     write_bool("Debug", "MultiViewport", config_debug.multi_viewport);
+    write_bool("Debug", "SingleInstance", config_debug.single_instance);
 
     write_bool("Emulator", "Maximized", config_emulator.maximized);
     write_bool("Emulator", "FullScreen", config_emulator.fullscreen);

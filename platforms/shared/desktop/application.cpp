@@ -27,6 +27,7 @@
 #include "renderer.h"
 #include "emu.h"
 #include "utils.h"
+#include "single_instance.h"
 
 #define APPLICATION_IMPORT
 #include "application.h"
@@ -62,6 +63,7 @@ static void sdl_add_gamepads(void);
 static void sdl_remove_gamepad(SDL_JoystickID instance_id);
 static void handle_mouse_cursor(void);
 static void handle_menu(void);
+static void handle_single_instance(void);
 static void run_emulator(void);
 static void render(void);
 static void frame_throttle(void);
@@ -83,9 +85,6 @@ int application_init(const char* rom_file, const char* symbol_file, bool force_f
 {
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Desktop App", GLYNX_TITLE, GLYNX_VERSION);
-
-    config_init();
-    config_read();
 
     application_show_menu = true;
 
@@ -158,13 +157,12 @@ int application_init(const char* rom_file, const char* symbol_file, bool force_f
 void application_destroy(void)
 {
     save_window_size();
-    config_write();
     emu_destroy();
-    config_destroy();
     renderer_destroy();
     ImGui_ImplSDL2_Shutdown();
     gui_destroy();
     sdl_destroy();
+    single_instance_destroy();
 }
 
 void application_mainloop(void)
@@ -177,6 +175,7 @@ void application_mainloop(void)
         sdl_events();
         handle_mouse_cursor();
         handle_menu();
+        handle_single_instance();
         run_emulator();
         render();
         frame_time_end = SDL_GetPerformanceCounter();
@@ -280,6 +279,25 @@ void application_assign_gamepad(int device_index)
 
     application_gamepad = controller;
     Debug("Game controller %d assigned", device_index);
+}
+
+bool application_check_single_instance(const char* rom_file, const char* symbol_file)
+{
+    if (!config_debug.single_instance)
+        return true;
+
+    single_instance_init(GLYNX_TITLE);
+
+    if (!single_instance_try_lock())
+    {
+        if (rom_file != NULL || symbol_file != NULL)
+            single_instance_send_message(rom_file, symbol_file);
+
+        single_instance_destroy();
+        return false;
+    }
+
+    return true;
 }
 
 static bool sdl_init(void)
@@ -476,6 +494,27 @@ static void handle_menu(void)
         application_show_menu = config_emulator.always_show_menu;
     else
         application_show_menu = true;
+}
+
+static void handle_single_instance(void)
+{
+    if (!config_debug.single_instance || !single_instance_is_primary())
+        return;
+
+    single_instance_poll();
+
+    static char s_pending_rom_path[4096];
+    static char s_pending_symbol_path[4096];
+    if (single_instance_get_pending_load(s_pending_rom_path, sizeof(s_pending_rom_path), s_pending_symbol_path, sizeof(s_pending_symbol_path)))
+    {
+        if (s_pending_rom_path[0] != '\0')
+            gui_load_rom(s_pending_rom_path);
+        if (s_pending_symbol_path[0] != '\0')
+        {
+            gui_debug_reset_symbols();
+            gui_debug_load_symbols_file(s_pending_symbol_path);
+        }
+    }
 }
 
 static void sdl_events(void)

@@ -105,6 +105,7 @@
     <ClInclude Include="..\shared\desktop\mcp\mcp_manager.h" />
     <ClInclude Include="..\shared\desktop\mcp\mcp_server.h" />
     <ClInclude Include="..\shared\desktop\mcp\mcp_transport.h" />
+    <ClInclude Include="..\shared\desktop\single_instance.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp" />
@@ -184,6 +185,7 @@
     <ClCompile Include="..\shared\desktop\sound_queue.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_debug_adapter.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp" />
+    <ClCompile Include="..\shared\desktop\single_instance.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

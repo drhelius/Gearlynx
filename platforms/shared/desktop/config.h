@@ -184,6 +184,7 @@ struct config_Debug
     bool dis_replace_labels = true;
     int font_size = 0;
     bool multi_viewport = false;
+    bool single_instance = false;
 };
 
 EXTERN mINI::INIFile* config_ini_file;

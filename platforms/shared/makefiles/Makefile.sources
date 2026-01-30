@@ -43,6 +43,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/renderer.cpp \
     $(DESKTOP_SRC_DIR)/emu.cpp \
     $(DESKTOP_SRC_DIR)/sound_queue.cpp \
+    $(DESKTOP_SRC_DIR)/single_instance.cpp \
     $(SRC_DIR)/gearlynx_core.cpp \
     $(SRC_DIR)/audio.cpp \
     $(SRC_DIR)/bus.cpp \

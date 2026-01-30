@@ -285,6 +285,9 @@
     <ClInclude Include="..\shared\desktop\mcp\mcp_transport.h">
       <Filter>desktop\mcp</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\single_instance.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\shared\desktop\imgui\imgui.cpp">
@@ -442,6 +445,9 @@
     </ClCompile>
     <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp">
       <Filter>desktop\mcp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\single_instance.cpp">
+      <Filter>desktop</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -825,6 +825,8 @@ static void menu_debug(void)
         ImGui::MenuItem("Multi-Viewport (Restart required)", "", &config_debug.multi_viewport, config_debug.debug);
 #endif
 
+        ImGui::MenuItem("Single Instance (Restart required)", "", &config_debug.single_instance);
+
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Font Size", config_debug.debug))
