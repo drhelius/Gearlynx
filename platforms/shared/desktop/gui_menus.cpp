@@ -556,8 +556,10 @@ static void menu_video(void)
 
         if (ImGui::BeginMenu("Screen Ghosting"))
         {
-            ImGui::MenuItem("Enable Screen Ghosting", "", &config_video.mix_frames);
-            ImGui::SliderFloat("##screen_ghosting", &config_video.mix_frames_intensity, 0.0f, 1.0f, "Intensity = %.2f");
+            ImGui::MenuItem("Enable Screen Ghosting", "", &config_video.ghosting);
+            ImGui::SliderFloat("##screen_ghosting", &config_video.ghosting_intensity, 0.0f, 1.0f, "Flicker = %.2f");
+            ImGui::SliderInt("##screen_ghosting_history", &config_video.ghosting_history, 2, 8, "Frame History = %d");
+            ImGui::SliderFloat("##screen_ghosting_response", &config_video.ghosting_response, 0.0f, 1.0f, "Trails = %.2f");
             ImGui::EndMenu();
         }
 

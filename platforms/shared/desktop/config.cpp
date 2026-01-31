@@ -209,8 +209,10 @@ void config_read(void)
     config_video.rotation = read_int("Video", "Rotation", 0);
     config_video.fps = read_bool("Video", "FPS", false);
     config_video.bilinear = read_bool("Video", "Bilinear", false);
-    config_video.mix_frames = read_bool("Video", "MixFrames", true);
-    config_video.mix_frames_intensity = read_float("Video", "MixFramesIntensity", 0.60f);
+    config_video.ghosting = read_bool("Video", "Ghosting", true);
+    config_video.ghosting_intensity = read_float("Video", "GhostingIntensity", 0.90f);
+    config_video.ghosting_history = read_int("Video", "GhostingHistory", 6);
+    config_video.ghosting_response = read_float("Video", "GhostingResponse", 0.85f);
     config_video.scanlines_type = read_int("Video", "ScanlinesType", 2);
     config_video.scanlines_filter = read_bool("Video", "ScanlinesFilter", true);
     config_video.scanlines_intensity = read_float("Video", "ScanlinesIntensity", 0.80f);
@@ -360,8 +362,10 @@ void config_write(void)
     write_int("Video", "Rotation", config_video.rotation);
     write_bool("Video", "FPS", config_video.fps);
     write_bool("Video", "Bilinear", config_video.bilinear);
-    write_bool("Video", "MixFrames", config_video.mix_frames);
-    write_float("Video", "MixFramesIntensity", config_video.mix_frames_intensity);
+    write_bool("Video", "Ghosting", config_video.ghosting);
+    write_float("Video", "GhostingIntensity", config_video.ghosting_intensity);
+    write_int("Video", "GhostingHistory", config_video.ghosting_history);
+    write_float("Video", "GhostingResponse", config_video.ghosting_response);
     write_int("Video", "ScanlinesType", config_video.scanlines_type);
     write_bool("Video", "ScanlinesFilter", config_video.scanlines_filter);
     write_float("Video", "ScanlinesIntensity", config_video.scanlines_intensity);

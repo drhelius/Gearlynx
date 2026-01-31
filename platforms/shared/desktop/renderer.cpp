@@ -36,6 +36,11 @@
 #include "renderer.h"
 
 static uint32_t system_texture;
+static uint32_t history_textures[MAX_FRAME_HISTORY];
+static uint32_t history_fbo[MAX_FRAME_HISTORY];
+static uint32_t persistence_texture;
+static uint32_t persistence_fbo;
+static int frame_history_index = 0;
 static uint32_t scanlines_horizontal_texture;
 static uint32_t scanlines_vertical_texture;
 static uint32_t scanlines_grid_texture;
@@ -64,6 +69,7 @@ static void init_ogl_emu(void);
 static void init_ogl_debug(void);
 static void init_ogl_savestates(void);
 static void init_scanlines_texture(void);
+static void init_frame_history(void);
 static void render_gui(void);
 static void render_emu_normal(void);
 static void render_emu_mix(void);
@@ -109,6 +115,15 @@ void renderer_destroy(void)
     glDeleteTextures(1, &scanlines_vertical_texture);
     glDeleteTextures(1, &scanlines_grid_texture);
 
+    for (int i = 0; i < MAX_FRAME_HISTORY; i++)
+    {
+        glDeleteTextures(1, &history_textures[i]);
+        glDeleteFramebuffers(1, &history_fbo[i]);
+    }
+
+    glDeleteTextures(1, &persistence_texture);
+    glDeleteFramebuffers(1, &persistence_fbo);
+
     for (int s = 0; s < 64; s++)
         glDeleteTextures(1, &renderer_emu_debug_huc6270_sprites[s]);
 
@@ -136,7 +151,7 @@ void renderer_render(void)
 
     update_savestates_texture();
 
-    if (config_video.mix_frames)
+    if (config_video.ghosting)
         render_emu_mix();
     else
         render_emu_normal();
@@ -197,6 +212,7 @@ static void init_ogl_emu(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
+    init_frame_history();
     init_scanlines_texture();
 }
 
@@ -257,6 +273,43 @@ static void init_scanlines_texture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 }
 
+static void init_frame_history(void)
+{
+    for (int i = 0; i < MAX_FRAME_HISTORY; i++)
+    {
+        glGenTextures(1, &history_textures[i]);
+        glBindTexture(GL_TEXTURE_2D, history_textures[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glGenFramebuffers(1, &history_fbo[i]);
+        glBindFramebuffer(GL_FRAMEBUFFER, history_fbo[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, history_textures[i], 0);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    glGenTextures(1, &persistence_texture);
+    glBindTexture(GL_TEXTURE_2D, persistence_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glGenFramebuffers(1, &persistence_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, persistence_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, persistence_texture, 0);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    frame_history_index = 0;
+}
+
 static void render_gui(void)
 {
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
@@ -277,32 +330,86 @@ static void render_emu_normal(void)
 
 static void render_emu_mix(void)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_object);
+    int history_count = config_video.ghosting_history;
+    if (history_count < 2) history_count = 2;
+    if (history_count > MAX_FRAME_HISTORY) history_count = MAX_FRAME_HISTORY;
 
-    float alpha = 0.15f + (0.50f * (1.0f - config_video.mix_frames_intensity));
+    glBindFramebuffer(GL_FRAMEBUFFER, history_fbo[frame_history_index]);
+    glDisable(GL_BLEND);
+    update_system_texture();
+    render_quad();
+    frame_history_index = (frame_history_index + 1) % history_count;
+
+    float intensity = config_video.ghosting_intensity;
+    float response = config_video.ghosting_response;
+
+    float weights[MAX_FRAME_HISTORY];
+    float total_weight = 0.0f;
+
+    for (int i = 0; i < history_count; i++)
+    {
+        float base_decay = 0.5f + (intensity * 0.5f);
+        float weight = 1.0f;
+        for (int j = 0; j < i; j++)
+        {
+            weight *= base_decay;
+        }
+        weights[i] = weight;
+        total_weight += weight;
+    }
+
+    for (int i = 0; i < history_count; i++)
+    {
+        weights[i] /= total_weight;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_object);
 
     if (first_frame)
     {
         first_frame = false;
-        alpha = 1.0f;
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glDisable(GL_BLEND);
+        glBindTexture(GL_TEXTURE_2D, history_textures[(frame_history_index + history_count - 1) % history_count]);
+        render_quad();
+
+        glBindFramebuffer(GL_FRAMEBUFFER, persistence_fbo);
+        glBindTexture(GL_TEXTURE_2D, history_textures[(frame_history_index + history_count - 1) % history_count]);
+        render_quad();
     }
+    else
+    {
+        float trail_weight = response * 0.95f;
+        float new_weight = 1.0f - trail_weight;
 
-    static bool round_error = false; 
-    float round_color = 1.0f - (round_error ? 0.03f : 0.0f);
-    round_error = !round_error;
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-    glEnable(GL_BLEND);
-    glColor4f(round_color, round_color, round_color, alpha);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
 
-    update_system_texture();
+        glBindTexture(GL_TEXTURE_2D, persistence_texture);
+        glColor4f(trail_weight, trail_weight, trail_weight, 1.0f);
+        render_quad();
 
-    render_quad();
+        for (int i = 0; i < history_count; i++)
+        {
+            int frame_idx = (frame_history_index + history_count - 1 - i) % history_count;
+            float frame_weight = weights[i] * new_weight;
 
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    glDisable(GL_BLEND);
+            glBindTexture(GL_TEXTURE_2D, history_textures[frame_idx]);
+            glColor4f(frame_weight, frame_weight, frame_weight, 1.0f);
+            render_quad();
+        }
+
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        glDisable(GL_BLEND);
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_buffer_object);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, persistence_fbo);
+        glBlitFramebuffer(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT,
+                          0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

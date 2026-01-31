@@ -70,8 +70,10 @@ struct config_Video
     int rotation = 0;
     bool fps = false;
     bool bilinear = false;
-    bool mix_frames = true;
-    float mix_frames_intensity = 0.60f;
+    bool ghosting = true;
+    float ghosting_intensity = 0.90f;
+    int ghosting_history = 6;
+    float ghosting_response = 0.85f;
     int scanlines_type = 2;
     bool scanlines_filter = true;
     float scanlines_intensity = 0.80f;
