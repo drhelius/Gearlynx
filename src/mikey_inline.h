@@ -424,7 +424,7 @@ inline u8 Mikey::ReadColor(u16 address)
     int color_index = address & 0xF;
 
     if (address < MIKEY_BLUERED0)
-        return m_state.colors[color_index].green;
+        return m_state.colors[color_index].green & 0x0F;
     else
         return m_state.colors[color_index].bluered;
 }
