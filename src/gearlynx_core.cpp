@@ -649,6 +649,13 @@ void GearlynxCore::PrepareForHomebrew()
 
     memset(ram, 0, ram_size);
 
+    M6502::M6502_State* cpu = m_m6502->GetState();
+    cpu->A.SetValue(0x00);
+    cpu->X.SetValue(0x00);
+    cpu->Y.SetValue(0x00);
+    cpu->S.SetValue(0xFF);
+    cpu->P.SetValue(0x34);
+
     if (m_media->GetType() == Media::MEDIA_EPYX_HEADERLESS)
     {
         u8 decrypted[256];
@@ -683,7 +690,7 @@ void GearlynxCore::PrepareForHomebrew()
             memcpy(ram, rom + first, MIN(left, ram_size));
     }
 
-    m_m6502->GetState()->PC.SetValue(boot_address);
+    cpu->PC.SetValue(boot_address);
     m_m6502->DisassembleNextOPCode();
 
     m_mikey->Write(MIKEY_TIM0BKUP, 0x9E);
