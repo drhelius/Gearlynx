@@ -106,10 +106,10 @@ void Mikey::ResetAudio()
 
     m_state.MSTEREO = 0x00;
     m_state.MPAN = 0x00;
-    m_state.ATTEN_A = 0xFF;
-    m_state.ATTEN_B = 0xFF;
-    m_state.ATTEN_C = 0xFF;
-    m_state.ATTEN_D = 0xFF;
+    m_state.ATTEN_A = 0x00;
+    m_state.ATTEN_B = 0x00;
+    m_state.ATTEN_C = 0x00;
+    m_state.ATTEN_D = 0x00;
 }
 
 void Mikey::ResetUART()
