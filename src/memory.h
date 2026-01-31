@@ -64,8 +64,12 @@ private:
     void RebuildMemoryMap();
     u8 SuzyRead(u16 address);
     void SuzyWrite(u16 address, u8 value);
+    u8 SuzyReadDebug(u16 address);
+    void SuzyWriteDebug(u16 address, u8 value);
     u8 MikeyRead(u16 address);
     void MikeyWrite(u16 address, u8 value);
+    u8 MikeyReadDebug(u16 address);
+    void MikeyWriteDebug(u16 address, u8 value);
     u8 BiosRead(u16 address);
     u8 LastPageRead(u16 address);
     void LastPageWrite(u16 address, u8 value);
@@ -86,6 +90,8 @@ private:
     typedef void (Memory::*PageWriteFn)(u16 addr, u8 v);
     PageReadFn m_read_fn[256];
     PageWriteFn m_write_fn[256];
+    PageReadFn m_read_fn_debug[256];
+    PageWriteFn m_write_fn_debug[256];
     bool m_is_lynx2;
 };
 

@@ -47,6 +47,8 @@ Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m650
         m_write_page[i] = NULL;
         m_read_fn[i] = NULL;
         m_write_fn[i] = NULL;
+        m_read_fn_debug[i] = NULL;
+        m_write_fn_debug[i] = NULL;
     }
 }
 
@@ -144,12 +146,16 @@ void Memory::SetupDefaultMemoryMap()
         m_write_page[i] = m_state.ram + (i << 8);
         m_read_fn[i] = NULL;
         m_write_fn[i] = NULL;
+        m_read_fn_debug[i] = NULL;
+        m_write_fn_debug[i] = NULL;
     }
 
     m_read_page[0xFF] = NULL;
     m_write_page[0xFF] = NULL;
     m_read_fn[0xFF] = &Memory::LastPageRead;
     m_write_fn[0xFF] = &Memory::LastPageWrite;
+    m_read_fn_debug[0xFF] = &Memory::LastPageRead;
+    m_write_fn_debug[0xFF] = &Memory::LastPageWrite;
 
     RebuildMemoryMap();
 }
@@ -172,6 +178,26 @@ u8 Memory::MikeyRead(u16 address)
 void Memory::MikeyWrite(u16 address, u8 value)
 {
     m_mikey->Write(address, value);
+}
+
+u8 Memory::SuzyReadDebug(u16 address)
+{
+    return m_suzy->Read<true>(address);
+}
+
+void Memory::SuzyWriteDebug(u16 address, u8 value)
+{
+    m_suzy->Write<true>(address, value);
+}
+
+u8 Memory::MikeyReadDebug(u16 address)
+{
+    return m_mikey->Read<true>(address);
+}
+
+void Memory::MikeyWriteDebug(u16 address, u8 value)
+{
+    m_mikey->Write<true>(address, value);
 }
 
 u8 Memory::BiosRead(u16 address)

@@ -56,6 +56,8 @@ INLINE u8 Memory::Read(u16 address)
 
     if (IsValidPointer(m_read_page[page]))
         return m_read_page[page][lo(address)];
+    else if (debug)
+        return (this->*m_read_fn_debug[page])(address);
     else
         return (this->*m_read_fn[page])(address);
 }
@@ -85,6 +87,8 @@ INLINE void Memory::Write(u16 address, u8 value)
 
     if (IsValidPointer(m_write_page[page]))
         m_write_page[page][lo(address)] = value;
+    else if (debug)
+        (this->*m_write_fn_debug[page])(address, value);
     else
         (this->*m_write_fn[page])(address, value);
 }
@@ -116,6 +120,8 @@ inline void Memory::RebuildMemoryMap()
         m_write_page[0xFC] = m_state.ram + 0xFC00;
         m_read_fn[0xFC] = NULL;
         m_write_fn[0xFC] = NULL;
+        m_read_fn_debug[0xFC] = NULL;
+        m_write_fn_debug[0xFC] = NULL;
     }
     // SUZY visible
     else
@@ -125,6 +131,8 @@ inline void Memory::RebuildMemoryMap()
         m_write_page[0xFC] = NULL;
         m_read_fn[0xFC] = &Memory::SuzyRead;
         m_write_fn[0xFC] = &Memory::SuzyWrite;
+        m_read_fn_debug[0xFC] = &Memory::SuzyReadDebug;
+        m_write_fn_debug[0xFC] = &Memory::SuzyWriteDebug;
     }
 
     // MIKEY not visible
@@ -135,6 +143,8 @@ inline void Memory::RebuildMemoryMap()
         m_write_page[0xFD] = m_state.ram + 0xFD00;
         m_read_fn[0xFD] = NULL;
         m_write_fn[0xFD] = NULL;
+        m_read_fn_debug[0xFD] = NULL;
+        m_write_fn_debug[0xFD] = NULL;
     }
     // MIKEY visible
     else
@@ -144,6 +154,8 @@ inline void Memory::RebuildMemoryMap()
         m_write_page[0xFD] = NULL;
         m_read_fn[0xFD] = &Memory::MikeyRead;
         m_write_fn[0xFD] = &Memory::MikeyWrite;
+        m_read_fn_debug[0xFD] = &Memory::MikeyReadDebug;
+        m_write_fn_debug[0xFD] = &Memory::MikeyWriteDebug;
     }
 
     // BIOS not visible
@@ -154,6 +166,8 @@ inline void Memory::RebuildMemoryMap()
         m_write_page[0xFE] = m_state.ram + 0xFE00;
         m_read_fn[0xFE] = NULL;
         m_write_fn[0xFE] = NULL;
+        m_read_fn_debug[0xFE] = NULL;
+        m_write_fn_debug[0xFE] = NULL;
     }
     // BIOS visible
     else
@@ -163,6 +177,8 @@ inline void Memory::RebuildMemoryMap()
         m_write_page[0xFE] = m_state.ram + 0xFE00;
         m_read_fn[0xFE] = &Memory::BiosRead;
         m_write_fn[0xFE] = NULL;
+        m_read_fn_debug[0xFE] = &Memory::BiosRead;
+        m_write_fn_debug[0xFE] = NULL;
     }
 }
 
