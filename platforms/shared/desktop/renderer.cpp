@@ -472,7 +472,10 @@ static void update_emu_texture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    if ((config_video.scanlines_type > 0) && config_video.scanlines_filter)
+    bool scanlines_filter = (config_video.scale >= 2) || (config_video.ratio != 0) ||
+        ((config_video.scale == 1) && (config_video.scale_manual >= 3) && (config_video.scale_manual & 1));
+
+    if ((config_video.scanlines_type > 0) && scanlines_filter)
     {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -486,23 +489,29 @@ static void update_emu_texture(void)
 
 static void render_quad(void)
 {
+    int viewportWidth = current_runtime.screen_width * FRAME_BUFFER_SCALE;
+    int viewportHeight = current_runtime.screen_height * FRAME_BUFFER_SCALE;
+
+    float tex_h = (float)current_runtime.screen_width / (float)SYSTEM_TEXTURE_WIDTH;
+    float tex_v = (float)current_runtime.screen_height / (float)SYSTEM_TEXTURE_HEIGHT;
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    glOrtho(0, 1.0, 0, 1.0, -1, 1);
+    glOrtho(0, viewportWidth, 0, viewportHeight, -1, 1);
 
     glMatrixMode(GL_MODELVIEW);
-    glViewport(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT);
+    glViewport(0, 0, viewportWidth, viewportHeight);
 
     glBegin(GL_QUADS);
     glTexCoord2d(0.0, 0.0);
     glVertex2d(0.0, 0.0);
-    glTexCoord2d(1.0, 0.0);
-    glVertex2d(1.0, 0.0);
-    glTexCoord2d(1.0, 1.0);
-    glVertex2d(1.0, 1.0);
-    glTexCoord2d(0.0, 1.0);
-    glVertex2d(0.0, 1.0);
+    glTexCoord2d(tex_h, 0.0);
+    glVertex2d(viewportWidth, 0.0);
+    glTexCoord2d(tex_h, tex_v);
+    glVertex2d(viewportWidth, viewportHeight);
+    glTexCoord2d(0.0, tex_v);
+    glVertex2d(0.0, viewportHeight);
     glEnd();
 }
 

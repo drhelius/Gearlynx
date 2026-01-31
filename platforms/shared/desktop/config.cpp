@@ -214,8 +214,7 @@ void config_read(void)
     config_video.ghosting_history = read_int("Video", "GhostingHistory", 6);
     config_video.ghosting_response = read_float("Video", "GhostingResponse", 0.85f);
     config_video.scanlines_type = read_int("Video", "ScanlinesType", 2);
-    config_video.scanlines_filter = read_bool("Video", "ScanlinesFilter", true);
-    config_video.scanlines_intensity = read_float("Video", "ScanlinesIntensity", 0.80f);
+    config_video.scanlines_intensity = read_float("Video", "ScanlinesPower", 0.65f);
     config_video.background_color[0] = read_float("Video", "BackgroundColorR", 0.1f);
     config_video.background_color[1] = read_float("Video", "BackgroundColorG", 0.1f);
     config_video.background_color[2] = read_float("Video", "BackgroundColorB", 0.1f);
@@ -367,8 +366,7 @@ void config_write(void)
     write_int("Video", "GhostingHistory", config_video.ghosting_history);
     write_float("Video", "GhostingResponse", config_video.ghosting_response);
     write_int("Video", "ScanlinesType", config_video.scanlines_type);
-    write_bool("Video", "ScanlinesFilter", config_video.scanlines_filter);
-    write_float("Video", "ScanlinesIntensity", config_video.scanlines_intensity);
+    write_float("Video", "ScanlinesPower", config_video.scanlines_intensity);
     write_float("Video", "BackgroundColorR", config_video.background_color[0]);
     write_float("Video", "BackgroundColorG", config_video.background_color[1]);
     write_float("Video", "BackgroundColorB", config_video.background_color[2]);
