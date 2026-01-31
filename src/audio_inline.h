@@ -37,7 +37,8 @@ inline void Audio::Clock(u32 cycles)
         {
             // MSTEREO ($FD50) controls channel routing to each ear (bit=1 disables)
             // MPAN ($FD44) enables attenuation per channel/ear (bit=1 enables)
-            // ATTEN_X ($FD40-$FD43) sets volume per channel: bits 7-4=left, 3-0=right (0=silent, 15=full).
+            // ATTEN_X ($FD40-$FD43) sets attenuation per channel: bits 7-4=left, 3-0=right
+            // Attenuation value: 0=full volume, 15=silence
 
             u8 mstereo = state->MSTEREO;
             u8 mpan = state->MPAN;
@@ -51,7 +52,7 @@ inline void Audio::Clock(u32 cycles)
                 // Left
                 if (IS_NOT_SET_BIT(mstereo, 4 + ch))
                 {
-                    s32 att = IS_SET_BIT(mpan, 4 + ch) ? (ch_atten >> 4) : 15;
+                    s32 att = IS_SET_BIT(mpan, 4 + ch) ? (15 - (ch_atten >> 4)) : 15;
                     m_channel[ch].buffer[m_buffer_pos + 0] = (sample * att) / 15;
                 }
                 else
@@ -60,7 +61,7 @@ inline void Audio::Clock(u32 cycles)
                 // Right
                 if (IS_NOT_SET_BIT(mstereo, ch))
                 {
-                    s32 att = IS_SET_BIT(mpan, ch) ? (ch_atten & 0x0F) : 15;
+                    s32 att = IS_SET_BIT(mpan, ch) ? (15 - (ch_atten & 0x0F)) : 15;
                     m_channel[ch].buffer[m_buffer_pos + 1] = (sample * att) / 15;
                 }
                 else
