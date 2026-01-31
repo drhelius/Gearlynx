@@ -71,9 +71,9 @@ struct config_Video
     bool fps = false;
     bool bilinear = false;
     bool ghosting = true;
-    float ghosting_intensity = 0.90f;
+    float ghosting_intensity = 0.95f;
     int ghosting_history = 6;
-    float ghosting_response = 0.85f;
+    float ghosting_response = 0.65f;
     int scanlines_type = 2;
     float scanlines_intensity = 0.65f;
     float background_color[3] = {0.1f, 0.1f, 0.1f};
