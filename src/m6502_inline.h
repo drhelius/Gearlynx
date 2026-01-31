@@ -302,7 +302,7 @@ INLINE u16 M6502::ZeroPageIndirectAddressing()
 {
     u16 address = ZeroPageAddressing();
     u8 l = MemRead8(address);
-    u8 h = MemRead8((address + 1) & 0x20FF);
+    u8 h = MemRead8((address + 1) & 0x00FF);
     return Address16(h, l);
 }
 
