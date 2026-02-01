@@ -57,7 +57,7 @@ INLINE void LcdScreen::ResetLine(u32 cycles)
 INLINE void LcdScreen::ResetVisibleLine(u8 line)
 {
     m_state.current_line = line;
-    m_state.dma_next_at = m_state.rendering_offset + 8;
+    m_state.dma_next_at = m_state.rendering_offset + 12;
     m_state.dma_burst_count = 0;
     m_state.dma_buffer_half = 16;
     m_state.pixel_next_at = m_state.rendering_offset;
