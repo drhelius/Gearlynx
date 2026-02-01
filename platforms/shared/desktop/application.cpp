@@ -244,6 +244,7 @@ void application_trigger_fullscreen(bool fullscreen)
                 SDL_ERROR("SDL_SetWindowFullscreen");
                 break;
             case 2:  // Borderless windowed
+            {
                 SDL_SetWindowFullscreen(application_sdl_window, 0);
                 SDL_ERROR("SDL_SetWindowFullscreen");
 
@@ -268,6 +269,7 @@ void application_trigger_fullscreen(bool fullscreen)
 
                 borderless_active = true;
                 break;
+            }
             default:
                 Error("Invalid fullscreen mode: %d", config_emulator.fullscreen_mode);
                 break;
