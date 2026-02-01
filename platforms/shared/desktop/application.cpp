@@ -236,9 +236,21 @@ void application_trigger_fullscreen(bool fullscreen)
         switch (config_emulator.fullscreen_mode)
         {
             case 0:  // Exclusive (SDL_WINDOW_FULLSCREEN)
+            {
+                int display = SDL_GetWindowDisplayIndex(application_sdl_window);
+                SDL_ERROR("SDL_GetWindowDisplayIndex");
+
+                SDL_DisplayMode mode;
+                SDL_GetDesktopDisplayMode(display, &mode);
+                SDL_ERROR("SDL_GetDesktopDisplayMode");
+
+                SDL_SetWindowDisplayMode(application_sdl_window, &mode);
+                SDL_ERROR("SDL_SetWindowDisplayMode");
+
                 SDL_SetWindowFullscreen(application_sdl_window, SDL_WINDOW_FULLSCREEN);
                 SDL_ERROR("SDL_SetWindowFullscreen");
                 break;
+            }
             case 1:  // Fake Exclusive (SDL_WINDOW_FULLSCREEN_DESKTOP)
                 SDL_SetWindowFullscreen(application_sdl_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
                 SDL_ERROR("SDL_SetWindowFullscreen");
