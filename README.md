@@ -79,6 +79,12 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
       <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.0.0/Gearlynx-1.0.0-mcpb-linux-x64.mcpb">Gearlynx-1.0.0-mcpb-linux-x64.mcpb</a></td>
     </tr>
     <tr>
+      <td><strong>RetroArch</strong></td>
+      <td>All platforms</td>
+      <td><a href="https://docs.libretro.com/library/gearlynx/">Libretro core documentation</a></td>
+      <td></td>
+    </tr>
+    <tr>
       <td><strong>Dev Builds</strong></td>
       <td>All platforms</td>
       <td><a href="https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml">GitHub Actions</a></td>
