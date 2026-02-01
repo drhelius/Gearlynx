@@ -499,6 +499,25 @@ static void menu_video(void)
             application_trigger_fullscreen(config_emulator.fullscreen);
         }
 
+#if !defined(__APPLE__)
+        if (ImGui::BeginMenu("Fullscreen Mode"))
+        {
+            ImGui::PushItemWidth(130.0f);
+            if (ImGui::Combo("##fullscreen_mode", &config_emulator.fullscreen_mode, "Exclusive\0Fake Exclusive\0Borderless\0\0"))
+            {
+                if (config_emulator.fullscreen)
+                {
+                    application_trigger_fullscreen(false);
+                    application_trigger_fullscreen(true);
+                }
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+#endif
+
+        ImGui::Separator();
+
         ImGui::MenuItem("Always Show Menu", config_hotkeys[config_HotkeyIndex_ShowMainMenu].str, &config_emulator.always_show_menu);
         if (ImGui::IsItemHovered())
         {
