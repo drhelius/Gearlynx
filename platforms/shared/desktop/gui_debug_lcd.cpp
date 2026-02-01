@@ -57,6 +57,9 @@ void gui_debug_window_lcd(void)
     ImGui::TextColored(violet, "CURRENT LINE   "); ImGui::SameLine();
     ImGui::Text("%03d ($%02X)", current_line, current_line);
 
+    ImGui::TextColored(violet, "CURRENT CYCLE  "); ImGui::SameLine();
+    ImGui::Text("%04d / %04d", lcd_state->current_cycle, lcd_state->line_cycles);
+
     // Line Type: VISIBLE N or VBLANK N
     ImGui::TextColored(violet, "LINE TYPE      "); ImGui::SameLine();
     if (current_line >= 3 && current_line <= (timer2_backup + 1))
@@ -71,13 +74,10 @@ void gui_debug_window_lcd(void)
         ImGui::TextColored(red, "VBLANK %d", current_line);
     }
 
-    ImGui::TextColored(violet, "CURRENT CYCLE  "); ImGui::SameLine();
-    ImGui::Text("%04d / %d", lcd_state->current_cycle, lcd_state->line_cycles);
-
     ImGui::NewLine();
 
     // Pixel Processing
-    ImGui::TextColored(magenta, "PIXEL PROCESSING");
+    ImGui::TextColored(magenta, "PIXEL TRANSFER");
     ImGui::Separator();
 
     u32 cycles_to_next_pixel = 0;
@@ -93,7 +93,7 @@ void gui_debug_window_lcd(void)
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
-        ImGui::Text("%03d / %d", lcd_state->pixel_count, GLYNX_SCREEN_WIDTH);
+        ImGui::Text("%03d / %03d", lcd_state->pixel_count, GLYNX_SCREEN_WIDTH);
 
     // Show current pen color being read
     if (!lcd_state->in_vblank && lcd_state->pixel_count < GLYNX_SCREEN_WIDTH)
@@ -146,17 +146,17 @@ void gui_debug_window_lcd(void)
             cycles_to_next_dma = lcd_state->dma_next_at - lcd_state->current_cycle;
     }
 
-    ImGui::TextColored(violet, "DMA SOURCE ADDR"); ImGui::SameLine();
+    ImGui::TextColored(violet, "DMA COUNT      "); ImGui::SameLine();
+    if (lcd_state->in_vblank)
+        ImGui::TextColored(gray, "N/A (VBLANK)");
+    else
+        ImGui::Text("%02d / %02d", lcd_state->dma_burst_count, k_dma_bursts_per_line);
+
+    ImGui::TextColored(violet, "NEXT DMA ADDR  "); ImGui::SameLine();
     if (lcd_state->in_vblank)
         ImGui::TextColored(gray, "N/A (VBLANK)");
     else
         ImGui::Text("$%04X", lcd_state->dma_current_src_addr);
-
-    ImGui::TextColored(violet, "DMA BURST COUNT"); ImGui::SameLine();
-    if (lcd_state->in_vblank)
-        ImGui::TextColored(gray, "N/A (VBLANK)");
-    else
-        ImGui::Text("%02d / %d", lcd_state->dma_burst_count, k_dma_bursts_per_line);
 
     ImGui::TextColored(violet, "NEXT DMA AT    "); ImGui::SameLine();
     if (lcd_state->in_vblank)
