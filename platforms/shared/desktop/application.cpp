@@ -46,6 +46,7 @@ static Uint64 frame_time_end = 0;
 static int monitor_refresh_rate = 60;
 static int vsync_frames_per_emu_frame = 1;
 static int vsync_frame_counter = 0;
+static int last_vsync_state = -1;
 static bool input_gamepad_shortcut_prev[config_HotkeyIndex_COUNT] = { };
 static Uint32 mouse_last_motion_time = 0;
 static const Uint32 mouse_hide_timeout_ms = 1500;
@@ -76,6 +77,8 @@ static void handle_menu(void);
 static void handle_single_instance(void);
 static void run_emulator(void);
 static bool should_run_emu_frame(void);
+static bool should_use_vsync(void);
+static void update_vsync_state(void);
 static void render(void);
 static void frame_throttle(void);
 static void update_frame_pacing(void);
@@ -1189,6 +1192,8 @@ static void run_emulator(void)
     config_emulator.paused = emu_is_paused();
     emu_audio_sync = config_audio.sync;
     emu_update();
+
+    update_vsync_state();
 }
 
 static bool should_run_emu_frame(void)
@@ -1196,11 +1201,7 @@ static bool should_run_emu_frame(void)
     if (config_video.sync && !emu_is_empty() && !emu_is_paused()
         && !emu_is_debug_idle() && emu_is_audio_open() && !config_emulator.ffwd)
     {
-        GLYNX_Runtime_Info runtime;
-        emu_get_runtime(runtime);
-        int emu_fps = (runtime.frame_time > 0.0f) ? (int)(1000.0f / runtime.frame_time) : 60;
-
-        if (emu_fps >= 58 && emu_fps <= 62)
+        if (should_use_vsync())
         {
             bool should_run = (vsync_frame_counter == 0);
             vsync_frame_counter++;
@@ -1211,6 +1212,32 @@ static bool should_run_emu_frame(void)
     }
 
     return true;
+}
+
+static bool should_use_vsync(void)
+{
+    if (emu_is_empty())
+        return false;
+
+    GLYNX_Runtime_Info runtime;
+    emu_get_runtime(runtime);
+    int emu_fps = (runtime.frame_time > 0.0f) ? (int)(1000.0f / runtime.frame_time) : 60;
+    return (emu_fps >= 58 && emu_fps <= 62);
+}
+
+static void update_vsync_state(void)
+{
+    if (config_video.sync && !emu_is_empty())
+    {
+        int current_state = should_use_vsync() ? 1 : 0;
+
+        if (current_state != last_vsync_state)
+        {
+            SDL_GL_SetSwapInterval(current_state);
+            last_vsync_state = current_state;
+            Debug("Game FPS changed, vsync %s", current_state ? "enabled" : "disabled");
+        }
+    }
 }
 
 static void render(void)
@@ -1332,7 +1359,10 @@ static void recreate_gl_context_for_display_change(void)
     {
         SDL_GL_MakeCurrent(application_sdl_window, gl_context);
         SDL_GL_DeleteContext(old_context);
-        SDL_GL_SetSwapInterval(1);
+
+        bool enable_vsync = config_video.sync && should_use_vsync();
+        SDL_GL_SetSwapInterval(enable_vsync ? 1 : 0);
+
         ImGui_ImplSDL2_InitForOpenGL(application_sdl_window, gl_context);
         renderer_init();
         update_frame_pacing();
