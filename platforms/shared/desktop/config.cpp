@@ -210,6 +210,7 @@ void config_read(void)
     config_video.rotation = read_int("Video", "Rotation", 0);
     config_video.fps = read_bool("Video", "FPS", false);
     config_video.bilinear = read_bool("Video", "Bilinear", false);
+    config_video.sync = read_bool("Video", "Sync", true);
     config_video.ghosting = read_bool("Video", "Ghosting", true);
     config_video.ghosting_intensity = read_float("Video", "GhostingIntensity", 0.95f);
     config_video.ghosting_history = read_int("Video", "GhostingHistory", 6);
@@ -363,6 +364,7 @@ void config_write(void)
     write_int("Video", "Rotation", config_video.rotation);
     write_bool("Video", "FPS", config_video.fps);
     write_bool("Video", "Bilinear", config_video.bilinear);
+    write_bool("Video", "Sync", config_video.sync);
     write_bool("Video", "Ghosting", config_video.ghosting);
     write_float("Video", "GhostingIntensity", config_video.ghosting_intensity);
     write_int("Video", "GhostingHistory", config_video.ghosting_history);

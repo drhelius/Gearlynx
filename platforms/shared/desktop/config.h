@@ -71,6 +71,7 @@ struct config_Video
     int rotation = 0;
     bool fps = false;
     bool bilinear = false;
+    bool sync = true;
     bool ghosting = true;
     float ghosting_intensity = 0.95f;
     int ghosting_history = 6;

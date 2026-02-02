@@ -562,6 +562,16 @@ static void menu_video(void)
 
         ImGui::MenuItem("Show FPS", "", &config_video.fps);
 
+        if (ImGui::MenuItem("Vertical Sync", "", &config_video.sync))
+        {
+            application_set_vsync(config_video.sync);
+
+            if (config_video.sync)
+            {
+                config_audio.sync = true;
+            }
+        }
+
         ImGui::Separator();
 
         ImGui::MenuItem("Bilinear Filtering", "", &config_video.bilinear);

@@ -24,6 +24,7 @@
 #include "config.h"
 #include "emu.h"
 #include "gearlynx.h"
+#include "application.h"
 
 void gui_action_reset(void)
 {
@@ -73,10 +74,12 @@ void gui_action_ffwd(void)
     if (config_emulator.ffwd)
     {
         gui_set_status_message("Fast Forward ON", 3000);
+        application_set_vsync(false);
     }
     else
     {
         gui_set_status_message("Fast Forward OFF", 3000);
+        application_set_vsync(config_video.sync);
         emu_audio_reset();
     }
 }
