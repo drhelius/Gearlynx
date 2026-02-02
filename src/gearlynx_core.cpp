@@ -185,14 +185,26 @@ bool GearlynxCore::IsPaused()
 
 void GearlynxCore::ResetROM(bool preserve_ram)
 {
-    UNUSED(preserve_ram);
-
     if (!m_media->IsReady())
         return;
+
+    using namespace std;
+    stringstream stream;
+
+    if (preserve_ram)
+        m_media->SaveRam(stream);
 
     Log("Gearlynx RESET");
     Reset();
     m_m6502->DisassembleNextOPCode();
+
+    if (preserve_ram)
+    {
+        stream.seekg(0, stream.end);
+        s32 size = (s32)stream.tellg();
+        stream.seekg(0, stream.beg);
+        m_media->LoadRam(stream, size);
+    }
 }
 
 void GearlynxCore::ResetSound()
@@ -201,25 +213,105 @@ void GearlynxCore::ResetSound()
     m_audio->Reset(is_lynx2);
 }
 
-// void GearlynxCore::SaveRam()
-// {
-//     SaveRam(NULL);
-// }
+void GearlynxCore::SaveRam()
+{
+    SaveRam(NULL);
+}
 
-// void GearlynxCore::SaveRam(const char*, bool)
-// {
-//     // TODO Implement save ram
-// }
+void GearlynxCore::SaveRam(const char* path, bool full_path)
+{
+    if (m_media->IsReady() && m_media->IsSaveMemoryDirty())
+    {
+        using namespace std;
+        string final_path;
 
-// void GearlynxCore::LoadRam()
-// {
-//     LoadRam(NULL);
-// }
+        if (IsValidPointer(path))
+        {
+            final_path = path;
+            if (!full_path)
+            {
+                final_path += "/";
+                final_path += m_media->GetFileName();
+            }
+        }
+        else
+            final_path = m_media->GetFilePath();
 
-// void GearlynxCore::LoadRam(const char*, bool)
-// {
-//     // TODO Implement load ram
-// }
+        if (!full_path)
+        {
+            string::size_type i = final_path.rfind('.', final_path.length());
+            if (i != string::npos)
+                final_path.replace(i, final_path.length() - i, ".sav");
+        }
+
+        Log("Saving RAM file: %s", final_path.c_str());
+
+        ofstream file;
+        open_ofstream_utf8(file, final_path.c_str(), ios::out | ios::binary);
+        m_media->SaveRam(file);
+
+        Debug("RAM saved");
+    }
+}
+
+void GearlynxCore::LoadRam()
+{
+    LoadRam(NULL);
+}
+
+void GearlynxCore::LoadRam(const char* path, bool full_path)
+{
+    if (m_media->IsReady())
+    {
+        using namespace std;
+        string final_path;
+
+        if (IsValidPointer(path))
+        {
+            final_path = path;
+            if (!full_path)
+            {
+                final_path += "/";
+                final_path += m_media->GetFileName();
+            }
+        }
+        else
+            final_path = m_media->GetFilePath();
+
+        if (!full_path)
+        {
+            string::size_type i = final_path.rfind('.', final_path.length());
+            if (i != string::npos)
+                final_path.replace(i, final_path.length() - i, ".sav");
+        }
+
+        Log("Loading RAM file: %s", final_path.c_str());
+
+        ifstream file;
+        open_ifstream_utf8(file, final_path.c_str(), ios::in | ios::binary);
+
+        if (!file.fail())
+        {
+            file.seekg(0, file.end);
+            s32 file_size = (s32)file.tellg();
+            file.seekg(0, file.beg);
+
+            if (m_media->LoadRam(file, file_size))
+            {
+                Debug("RAM loaded");
+            }
+            else
+            {
+                Error("Failed to load RAM from %s", final_path.c_str());
+                Error("Invalid RAM size: %d", file_size);
+            }
+        }
+        else
+        {
+            Log("RAM file doesn't exist: %s", final_path.c_str());
+        }
+    }
+}
 
 std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
 {

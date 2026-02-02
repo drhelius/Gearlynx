@@ -121,7 +121,7 @@ void gui_debug_window_cart(void)
         if (media->IsBank1RAM())
             ImGui::TextColored(yellow, "RAM");
         else
-            ImGui::Text("ROM");
+            ImGui::TextColored(blue, "ROM");
     }
     else
         ImGui::TextColored(gray, "N/A");

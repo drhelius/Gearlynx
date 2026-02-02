@@ -175,6 +175,26 @@ void gui_file_dialog_choose_savestate_path(void)
     }
 }
 
+void gui_file_dialog_choose_savefile_path(void)
+{
+    nfdchar_t *outPath;
+    nfdpickfolderu8args_t args = { };
+    args.defaultPath = config_emulator.savefiles_path.c_str();
+    file_dialog_set_native_window(application_sdl_window, &args.parentWindow);
+
+    nfdresult_t result = NFD_PickFolderU8_With(&outPath, &args);
+    if (result == NFD_OKAY)
+    {
+        strncpy_fit(gui_savefiles_path, outPath, sizeof(gui_savefiles_path));
+        config_emulator.savefiles_path.assign(outPath);
+        NFD_FreePath(outPath);
+    }
+    else if (result != NFD_CANCEL)
+    {
+        Error("Save Files Path Error: %s", NFD_GetError());
+    }
+}
+
 void gui_file_dialog_choose_screenshot_path(void)
 {
     nfdchar_t *outPath;

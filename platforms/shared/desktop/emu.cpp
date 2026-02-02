@@ -99,6 +99,7 @@ bool emu_load_rom(const char* file_path)
     reset_buffers();
 
     save_ram();
+
     if (!core->LoadROM(file_path))
         return false;
 
@@ -272,22 +273,18 @@ bool emu_is_audio_open(void)
 
 void emu_save_ram(const char* file_path)
 {
-    // TODO Implement save ram to file
-    // if (!emu_is_empty())
-    //     core->SaveRam(file_path, true);
-    UNUSED(file_path);
+    if (!emu_is_empty())
+        core->SaveRam(file_path, true);
 }
 
 void emu_load_ram(const char* file_path)
 {
-    // TODO Implement load ram from file
-    // if (!emu_is_empty())
-    // {
-    //     save_ram();
-    //     core->ResetROM(&config);
-    //     core->LoadRam(file_path, true);
-    // }
-    UNUSED(file_path);
+    if (!emu_is_empty())
+    {
+        save_ram();
+        core->ResetROM(false);
+        core->LoadRam(file_path, true);
+    }
 }
 
 void emu_save_state_slot(int index)
@@ -543,20 +540,14 @@ int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer)
 
 static void save_ram(void)
 {
-    // TOOD
-    // if ((emu_savefiles_dir_option == 0) && (strcmp(emu_savefiles_path, "")))
-    //     core->SaveRam(emu_savefiles_path);
-    // else
-    //     core->SaveRam();
+    const char* dir = get_configurated_dir(config_emulator.savefiles_dir_option, config_emulator.savefiles_path.c_str());
+    core->SaveRam(dir);
 }
 
 static void load_ram(void)
 {
-    // TODO
-    // if ((emu_savefiles_dir_option == 0) && (strcmp(emu_savefiles_path, "")))
-    //     core->LoadRam(emu_savefiles_path);
-    // else
-    //     core->LoadRam();
+    const char* dir = get_configurated_dir(config_emulator.savefiles_dir_option, config_emulator.savefiles_path.c_str());
+    core->LoadRam(dir);
 }
 
 static void reset_buffers(void)
@@ -564,26 +555,8 @@ static void reset_buffers(void)
     for (int i = 0; i < (256 * 256 * 4); i++)
         emu_frame_buffer[i] = 0;
 
-    // emu_debug_background_buffer_width = 32;
-    // emu_debug_background_buffer_height = 32;
-
-    //  for (int i = 0; i < 1024 * 512 * 4; i++)
-    //     emu_frame_buffer[i] = 0;
-
-    // for (int i = 0; i < GLYNX_AUDIO_BUFFER_SIZE; i++)
-    //     audio_buffer[i] = 0;
-
-    // for (int i = 0; i < GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4; i++)
-    //     emu_debug_background_buffer[i] = 0;
-
-    // for (int i = 0; i < 64; i++)
-    // {
-    //     for (int j = 0; j < HUC6270_MAX_SPRITE_WIDTH * HUC6270_MAX_SPRITE_HEIGHT * 4; j++)
-    //         emu_debug_sprite_buffers[i][j] = 0;
-
-    //     emu_debug_sprite_widths[i] = 16;
-    //     emu_debug_sprite_heights[i] = 16;
-    // }
+    for (int i = 0; i < GLYNX_AUDIO_BUFFER_SIZE; i++)
+        audio_buffer[i] = 0;
 }
 
 static const char* get_configurated_dir(int location, const char* path)
@@ -607,26 +580,12 @@ static void init_debug(void)
         emu_debug_framebuffer[i] = new u8[256 * 256 * 4];
         memset(emu_debug_framebuffer[i], 0, 256 * 256 * 4);
     }
-    // emu_debug_background_buffer = new u8[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4];
-    // for (int i = 0; i < GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4; i++)
-    //     emu_debug_background_buffer[i] = 0;
-
-    // for (int i = 0; i < 64; i++)
-    // {
-    //     emu_debug_sprite_buffers[i] = new u8[HUC6270_MAX_SPRITE_WIDTH * HUC6270_MAX_SPRITE_HEIGHT * 4];
-    //     for (int j = 0; j < HUC6270_MAX_SPRITE_WIDTH * HUC6270_MAX_SPRITE_HEIGHT * 4; j++)
-    //         emu_debug_sprite_buffers[i][j] = 0;
-    // }
 }
 
 static void destroy_debug(void) 
 {
     for (int i = 0; i < 2; i++)
         SafeDeleteArray(emu_debug_framebuffer[i]);
-    // SafeDeleteArray(emu_debug_background_buffer);
-
-    // for (int i = 0; i < 64; i++)
-    //     SafeDeleteArray(emu_debug_sprite_buffers[i]);
 }
 
 static void update_debug(void)
@@ -689,7 +648,7 @@ void emu_start_vgm_recording(const char* file_path)
     }
 
     // Atari Lynx Mikey chip clock rate is 16 MHz
-    int clock_rate = 16000000;
+    const int clock_rate = 16000000;
 
     if (core->GetAudio()->StartVgmRecording(file_path, clock_rate))
     {

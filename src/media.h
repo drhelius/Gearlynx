@@ -106,6 +106,13 @@ public:
     u32 GetBank1Size();
     bool IsBank1RAM();
     EEPROM* GetEEPROMInstance();
+    u8* GetSaveMemoryPointer();
+    s32 GetSaveMemorySize();
+    bool IsSaveMemoryDirty();
+    u8* GetNVRAM();
+    bool IsNVRAMEnabled();
+    void SaveRam(std::ostream& file);
+    bool LoadRam(std::istream& file, s32 file_size);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -128,6 +135,7 @@ private:
     void DecryptMontgomery(u8* L, const u8* M, const u8* N, const u8* modulus, int length);
     int DecryptBlock(int accumulator, u8* result, const u8* encrypted, int length);
     int DecryptFrame(u8* result, const u8* encrypted, int length);
+    void ClearSaveMemoryDirty();
 
 private:
     u8* m_rom;

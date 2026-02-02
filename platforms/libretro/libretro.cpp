@@ -395,7 +395,7 @@ void *retro_get_memory_data(unsigned id)
     switch (id)
     {
         case RETRO_MEMORY_SAVE_RAM:
-            return NULL;
+            return core->GetMedia()->GetSaveMemoryPointer();
         case RETRO_MEMORY_SYSTEM_RAM:
             return core->GetMemory()->GetRAM();
     }
@@ -408,7 +408,7 @@ size_t retro_get_memory_size(unsigned id)
     switch (id)
     {
         case RETRO_MEMORY_SAVE_RAM:
-            return 0;
+            return core->GetMedia()->GetSaveMemorySize();
         case RETRO_MEMORY_SYSTEM_RAM:
             return 0x10000;
     }

@@ -1048,3 +1048,57 @@ int Media::DecryptEpyxLoader(u8* output, int max_size)
 
     return decrypted_size;
 }
+
+void Media::ClearSaveMemoryDirty()
+{
+    if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
+        m_eeprom_instance->ClearDirty();
+}
+
+u8* Media::GetNVRAM()
+{
+    return m_nvram;
+}
+
+bool Media::IsNVRAMEnabled()
+{
+    return m_nvram_enabled;
+}
+
+void Media::SaveRam(std::ostream& file)
+{
+    Debug("Saving RAM to stream");
+
+    s32 size = GetSaveMemorySize();
+    u8* data = GetSaveMemoryPointer();
+
+    if (size > 0 && data != NULL)
+    {
+        file.write(reinterpret_cast<const char*>(data), size);
+        ClearSaveMemoryDirty();
+    }
+}
+
+bool Media::LoadRam(std::istream& file, s32 file_size)
+{
+    Debug("Loading RAM from stream");
+
+    s32 size = GetSaveMemorySize();
+    u8* data = GetSaveMemoryPointer();
+
+    if (size <= 0 || data == NULL)
+    {
+        Log("No save memory available");
+        return false;
+    }
+
+    if (file_size != size)
+    {
+        Log("Invalid RAM size: %d (expected %d)", file_size, size);
+        return false;
+    }
+
+    file.read(reinterpret_cast<char*>(data), size);
+
+    return true;
+}

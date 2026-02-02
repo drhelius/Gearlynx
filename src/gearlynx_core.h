@@ -60,10 +60,10 @@ public:
     void KeyReleased(GLYNX_Keys key);
     void Pause(bool paused);
     bool IsPaused();
-    // void SaveRam();
-    // void SaveRam(const char* path, bool full_path = false);
-    // void LoadRam();
-    // void LoadRam(const char* path, bool full_path = false);
+    void SaveRam();
+    void SaveRam(const char* path, bool full_path = false);
+    void LoadRam();
+    void LoadRam(const char* path, bool full_path = false);
     bool SaveState(const char* path = NULL, int index = -1, bool screenshot = false);
     bool SaveState(u8* buffer, size_t& size, bool screenshot = false);
     bool LoadState(const char* path = NULL, int index = -1);

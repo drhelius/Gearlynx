@@ -408,4 +408,36 @@ INLINE EEPROM* Media::GetEEPROMInstance()
     return m_eeprom_instance;
 }
 
+INLINE u8* Media::GetSaveMemoryPointer()
+{
+    // EEPROM has priority over NVRAM
+    if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
+        return m_eeprom_instance->GetData();
+    else if (m_nvram_enabled)
+        return m_nvram;
+
+    return NULL;
+}
+
+INLINE s32 Media::GetSaveMemorySize()
+{
+    // EEPROM has priority over NVRAM
+    if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
+        return m_eeprom_instance->GetSize();
+    else if (m_nvram_enabled)
+        return NVRAM_SIZE;
+
+    return 0;
+}
+
+INLINE bool Media::IsSaveMemoryDirty()
+{
+    // EEPROM has priority over NVRAM
+    if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
+        return m_eeprom_instance->IsDirty();
+
+    // NVRAM is always considered dirty if enabled (no dirty tracking for NVRAM)
+    return m_nvram_enabled;
+}
+
 #endif /* MEDIA_INLINE_H */

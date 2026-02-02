@@ -32,6 +32,7 @@ EXTERN void gui_file_dialog_save_ram(void);
 EXTERN void gui_file_dialog_load_state(void);
 EXTERN void gui_file_dialog_save_state(void);
 EXTERN void gui_file_dialog_choose_savestate_path(void);
+EXTERN void gui_file_dialog_choose_savefile_path(void);
 EXTERN void gui_file_dialog_choose_screenshot_path(void);
 EXTERN void gui_file_dialog_load_bios(void);
 EXTERN void gui_file_dialog_load_symbols(void);

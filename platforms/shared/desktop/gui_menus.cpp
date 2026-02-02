@@ -41,6 +41,7 @@ static bool open_about = false;
 static bool save_screenshot = false;
 static bool save_vgm = false;
 static bool choose_savestates_path = false;
+static bool choose_savefiles_path = false;
 static bool choose_screenshots_path = false;
 static bool open_bios = false;
 static bool open_bios_warning = false;
@@ -75,6 +76,7 @@ void gui_main_menu(void)
     save_screenshot = false;
     save_vgm = false;
     choose_savestates_path = false;
+    choose_savefiles_path = false;
     choose_screenshots_path = false;
     open_bios = false;
     open_bios_warning = false;
@@ -166,12 +168,14 @@ static void menu_gearlynx(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Save RAM As...", NULL, false, false))
+        bool has_save_ram = !emu_is_empty() && (emu_get_core()->GetMedia()->GetSaveMemorySize() > 0);
+
+        if (ImGui::MenuItem("Save RAM As...", NULL, false, has_save_ram))
         {
             save_ram = true;
         }
 
-        if (ImGui::MenuItem("Load RAM From...", NULL, false, false))
+        if (ImGui::MenuItem("Load RAM From...", NULL, false, has_save_ram))
         {
             open_ram = true;
         }
@@ -339,14 +343,13 @@ static void menu_emulator(void)
 
             ImGui::EndMenu();
         }
-/*
 
-        if (ImGui::BeginMenu("Backup RAM Dir"))
+        if (ImGui::BeginMenu("Savefiles Dir"))
         {
             ImGui::PushItemWidth(220.0f);
-            ImGui::Combo("##backup_ram_option", &config_emulator.backup_ram_dir_option, "Default Location\0Same as ROM\0Custom Location\0\0");
+            ImGui::Combo("##savefiles_option", &config_emulator.savefiles_dir_option, "Default Location\0Same as ROM\0Custom Location\0\0");
 
-            switch ((Directory_Location)config_emulator.backup_ram_dir_option)
+            switch ((Directory_Location)config_emulator.savefiles_dir_option)
             {
                 case Directory_Location_Default:
                 {
@@ -363,13 +366,13 @@ static void menu_emulator(void)
                 {
                     if (ImGui::MenuItem("Choose..."))
                     {
-                        choose_backup_ram_path = true;
+                        choose_savefiles_path = true;
                     }
 
                     ImGui::PushItemWidth(450);
-                    if (ImGui::InputText("##backup_ram_path", gui_backup_ram_path, IM_ARRAYSIZE(gui_backup_ram_path), ImGuiInputTextFlags_AutoSelectAll))
+                    if (ImGui::InputText("##savefiles_path", gui_savefiles_path, IM_ARRAYSIZE(gui_savefiles_path), ImGuiInputTextFlags_AutoSelectAll))
                     {
-                        config_emulator.backup_ram_path.assign(gui_backup_ram_path);
+                        config_emulator.savefiles_path.assign(gui_savefiles_path);
                     }
                     ImGui::PopItemWidth();
                     break;
@@ -378,7 +381,7 @@ static void menu_emulator(void)
 
             ImGui::EndMenu();
         }
-*/
+
         if (ImGui::BeginMenu("Screenshots Dir"))
         {
             ImGui::PushItemWidth(220.0f);
@@ -948,6 +951,8 @@ static void file_dialogs(void)
         gui_file_dialog_save_vgm();
     if (choose_savestates_path)
         gui_file_dialog_choose_savestate_path();
+    if (choose_savefiles_path)
+        gui_file_dialog_choose_savefile_path();
     if (choose_screenshots_path)
         gui_file_dialog_choose_screenshot_path();
     if (open_bios)
