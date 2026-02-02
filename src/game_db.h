@@ -27,6 +27,7 @@
 #define GLYNX_DB_FLAG_ROTATE_RIGHT  0x02
 #define GLYNX_DB_FLAG_AUDIN         0x04
 #define GLYNX_DB_FLAG_EEPROM_93C46  0x08
+#define GLYNX_DB_FLAG_NVRAM_8KB     0x10
 
 #define GLYNX_DB_SIZE_C64K          0x100
 #define GLYNX_DB_SIZE_C128K         0x200
@@ -79,9 +80,9 @@ const GLYNX_Game_DB_Entry k_game_database[] =
     { 0x33BB74C7, "Dracula the Undead (USA, Europe)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },
     { 0xBD97116B, "Electrocop (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
     { 0xF83397F9, "European Soccer Challenge (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
-    { 0x6BCEAA9C, "Eye of the Beholder (USA) (Proto)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
-    { 0xAE8C70F0, "Eye of the Beholder (USA) (Proto)", GLYNX_CONSOLE_AUTO, 524288, 0, 0, 0 },
-    { 0xF1B307CB, "Eye of the Beholder (USA)", GLYNX_CONSOLE_AUTO, 524288, 0, 0, 0 },
+    { 0x6BCEAA9C, "Eye of the Beholder (USA) (Proto)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, GLYNX_DB_FLAG_NVRAM_8KB },
+    { 0xAE8C70F0, "Eye of the Beholder (USA) (Proto)", GLYNX_CONSOLE_AUTO, 524288, 0, 0, GLYNX_DB_FLAG_NVRAM_8KB },
+    { 0xF1B307CB, "Eye of the Beholder (USA)", GLYNX_CONSOLE_AUTO, 524288, 0, 0, GLYNX_DB_FLAG_NVRAM_8KB },
     { 0x9034EE27, "Fat Bobby (USA, Europe)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },
     { 0x7E4B5945, "Fidelity Ultimate Chess Challenge, The (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
     { 0x494CC568, "Gates of Zendocon (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },

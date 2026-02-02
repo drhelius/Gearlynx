@@ -212,16 +212,6 @@ INLINE u32 Media::GetPageOffsetMask(int bank)
     return m_page_offset_mask[bank];
 }
 
-INLINE void Media::SetBank1WriteEnable(bool enable)
-{
-    m_bank1_write_enable = enable;
-}
-
-INLINE bool Media::IsBank1WriteEnabled()
-{
-    return m_bank1_write_enable;
-}
-
 INLINE void Media::ShiftRegisterStrobe(bool strobe)
 {
     if (strobe)
@@ -248,21 +238,29 @@ INLINE void Media::ShiftRegisterBit(bool bit)
     m_shift_register_bit = bit;
 }
 
-INLINE u8 Media::ReadBank0()
+INLINE void Media::AdvanceCounter()
 {
-    if(m_bank_data[0] == NULL || m_bank_size[0] == 0)
-        return 0xFF;
-
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
-    u8 data = m_bank_data[0][address & m_bank_mask[0]];
-
     if (!m_shift_register_strobe)
     {
         m_page_offset = (m_page_offset + 1) & 0x7FF;
         if (m_eeprom_instance->IsAvailable())
             m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
     }
+}
 
+INLINE u32 Media::GetBankAddress(int bank)
+{
+    u32 address = (m_address_shift << m_address_shift_bits[bank]) | (m_page_offset & m_page_offset_mask[bank]);
+    return address & m_bank_mask[bank];
+}
+
+INLINE u8 Media::ReadBank0()
+{
+    if(m_bank_data[0] == NULL || m_bank_size[0] == 0)
+        return 0xFF;
+
+    u8 data = m_bank_data[0][GetBankAddress(0)];
+    AdvanceCounter();
     return data;
 }
 
@@ -271,16 +269,8 @@ INLINE u8 Media::ReadBank1()
     if (m_bank_data[1] == NULL || m_bank_size[1] == 0)
         return 0xFF;
 
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    u8 data = m_bank_data[1][address & m_bank_mask[1]];
-
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
-
+    u8 data = m_bank_data[1][GetBankAddress(1)];
+    AdvanceCounter();
     return data;
 }
 
@@ -289,8 +279,7 @@ INLINE u8 Media::PeekBank0()
     if (m_bank_data[0] == NULL || m_bank_size[0] == 0)
         return 0xFF;
 
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
-    return m_bank_data[0][address & m_bank_mask[0]];
+    return m_bank_data[0][GetBankAddress(0)];
 }
 
 INLINE u8 Media::PeekBank1()
@@ -298,8 +287,7 @@ INLINE u8 Media::PeekBank1()
     if (m_bank_data[1] == NULL || m_bank_size[1] == 0)
         return 0xFF;
 
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    return m_bank_data[1][address & m_bank_mask[1]];
+    return m_bank_data[1][GetBankAddress(1)];
 }
 
 INLINE void Media::WriteBank0(u8 value)
@@ -307,45 +295,20 @@ INLINE void Media::WriteBank0(u8 value)
     UNUSED(value);
     // Bank0 is ROM, writes are ignored but counter still advances
     // This is used by games for EEPROM clocking
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
+    AdvanceCounter();
 }
 
 INLINE void Media::WriteBank1(u8 value)
 {
+    // If bank1 is not RAM (NVRAM), ignore writes but still advance the counter
     if (!m_bank1_is_ram || m_bank_data[1] == NULL || m_bank_size[1] == 0)
     {
-        Debug("WARNING: WriteBank1 called but bank1 is not RAM. Value: %02X", value);
+        AdvanceCounter();
         return;
     }
 
-    if (!m_bank1_write_enable)
-    {
-        Debug("WARNING: WriteBank1 called but bank1 write is disabled. Value: %02X", value);
-        if (!m_shift_register_strobe)
-        {
-            m_page_offset = (m_page_offset + 1) & 0x7FF;
-            if (m_eeprom_instance->IsAvailable())
-                m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-        }
-        return;
-    }
-
-    m_bank1_dirty = true;
-
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    m_bank_data[1][address & m_bank_mask[1]] = value;
-
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
+    m_bank_data[1][GetBankAddress(1)] = value;
+    AdvanceCounter();
 }
 
 INLINE u8 Media::ReadBank0A()
@@ -353,16 +316,8 @@ INLINE u8 Media::ReadBank0A()
     if (m_bank_data_a[0] == NULL || m_bank_size[0] == 0)
         return ReadBank0();
 
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
-    u8 data = m_bank_data_a[0][address & m_bank_mask[0]];
-
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
-
+    u8 data = m_bank_data_a[0][GetBankAddress(0)];
+    AdvanceCounter();
     return data;
 }
 
@@ -371,16 +326,8 @@ INLINE u8 Media::ReadBank1A()
     if (m_bank_data_a[1] == NULL || m_bank_size[1] == 0)
         return ReadBank1();
 
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    u8 data = m_bank_data_a[1][address & m_bank_mask[1]];
-
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
-
+    u8 data = m_bank_data_a[1][GetBankAddress(1)];
+    AdvanceCounter();
     return data;
 }
 
@@ -389,8 +336,7 @@ INLINE u8 Media::PeekBank0A()
     if (m_bank_data_a[0] == NULL || m_bank_size[0] == 0)
         return PeekBank0();
 
-    u32 address = (m_address_shift << m_address_shift_bits[0]) | (m_page_offset & m_page_offset_mask[0]);
-    return m_bank_data_a[0][address & m_bank_mask[0]];
+    return m_bank_data_a[0][GetBankAddress(0)];
 }
 
 INLINE u8 Media::PeekBank1A()
@@ -398,8 +344,7 @@ INLINE u8 Media::PeekBank1A()
     if (m_bank_data_a[1] == NULL || m_bank_size[1] == 0)
         return PeekBank1();
 
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    return m_bank_data_a[1][address & m_bank_mask[1]];
+    return m_bank_data_a[1][GetBankAddress(1)];
 }
 
 INLINE void Media::WriteBank0A(u8 value)
@@ -407,12 +352,7 @@ INLINE void Media::WriteBank0A(u8 value)
     UNUSED(value);
     // Bank0A is ROM, writes are ignored but counter still advances
     // This is used by games for EEPROM clocking
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
+    AdvanceCounter();
 }
 
 INLINE void Media::WriteBank1A(u8 value)
@@ -423,28 +363,15 @@ INLINE void Media::WriteBank1A(u8 value)
         return;
     }
 
-    if (!m_bank1_write_enable)
+    // If bank1 is not RAM (NVRAM), ignore writes but still advance the counter
+    if (!m_bank1_is_ram)
     {
-        if (!m_shift_register_strobe)
-        {
-            m_page_offset = (m_page_offset + 1) & 0x7FF;
-            if (m_eeprom_instance->IsAvailable())
-                m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-        }
+        AdvanceCounter();
         return;
     }
 
-    m_bank1_dirty = true;
-
-    u32 address = (m_address_shift << m_address_shift_bits[1]) | (m_page_offset & m_page_offset_mask[1]);
-    m_bank_data_a[1][address & m_bank_mask[1]] = value;
-
-    if (!m_shift_register_strobe)
-    {
-        m_page_offset = (m_page_offset + 1) & 0x7FF;
-        if (m_eeprom_instance->IsAvailable())
-            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
-    }
+    m_bank_data_a[1][GetBankAddress(1)] = value;
+    AdvanceCounter();
 }
 
 INLINE u8* Media::GetBankData(int bank)
@@ -474,16 +401,6 @@ INLINE u32 Media::GetBank1Size()
 INLINE bool Media::IsBank1RAM()
 {
     return m_bank1_is_ram;
-}
-
-INLINE bool Media::IsBank1Dirty()
-{
-    return m_bank1_dirty;
-}
-
-INLINE void Media::ClearBank1Dirty()
-{
-    m_bank1_dirty = false;
 }
 
 INLINE EEPROM* Media::GetEEPROMInstance()

@@ -25,7 +25,7 @@
 #define EPYX_HEADER_OLD 512
 #define EPYX_HEADER_NEW 410
 #define EPYX_DECRYPT_BLOCK_SIZE 51
-#define SHADOW_RAM_SIZE (256 * 256) // 64K
+#define NVRAM_SIZE (8 * 1024) // 8KB
 
 class StateSerializer;
 class EEPROM;
@@ -86,10 +86,10 @@ public:
     void WriteBank1(u8 value);
     void WriteBank0A(u8 value);
     void WriteBank1A(u8 value);
-    void SetBank1WriteEnable(bool enable);
-    bool IsBank1WriteEnabled();
     void ShiftRegisterStrobe(bool strobe);
     void ShiftRegisterBit(bool bit);
+    void AdvanceCounter();
+    u32 GetBankAddress(int bank);
     void SetAudinValue(bool value);
     bool GetAudinValue();
     u16 GetCounterValue();
@@ -105,8 +105,6 @@ public:
     u8* GetBank1Data();
     u32 GetBank1Size();
     bool IsBank1RAM();
-    bool IsBank1Dirty();
-    void ClearBank1Dirty();
     EEPROM* GetEEPROMInstance();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
@@ -156,9 +154,8 @@ private:
     bool m_shift_register_strobe;
     bool m_shift_register_bit;
     bool m_bank1_is_ram;
-    bool m_bank1_dirty;
-    bool m_bank1_write_enable;
-    u8* m_shadow_ram;
+    bool m_nvram_enabled;
+    u8* m_nvram;
     GLYNX_Rotation m_rotation;
     GLYNX_Rotation m_forced_rotation;
     GLYNX_Console_Type m_console_type;

@@ -1387,11 +1387,6 @@ json DebugAdapter::GetCartStatus()
         bank1["size_kb"] = media->GetBankSize(1) / 1024;
         bank1["type"] = media->IsBank1RAM() ? "RAM" : "ROM";
 
-        if (media->IsBank1RAM())
-        {
-            bank1["write_enabled"] = media->IsBank1WriteEnabled();
-        }
-
         ss << std::setw(2) << (int)media->PeekBank1();
         bank1["peek_value"] = ss.str();
         ss.str("");

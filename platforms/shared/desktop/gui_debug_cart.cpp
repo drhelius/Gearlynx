@@ -126,14 +126,9 @@ void gui_debug_window_cart(void)
     else
         ImGui::TextColored(gray, "N/A");
 
-    ImGui::TextColored(violet, "WRITE ENABLE  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "WRITABLE      "); ImGui::SameLine();
     if (ready && media->GetBankSize(1) > 0 && media->IsBank1RAM())
-    {
-        if (media->IsBank1WriteEnabled())
-            ImGui::TextColored(green, "YES");
-        else
-            ImGui::TextColored(red, "NO");
-    }
+        ImGui::TextColored(green, "YES");
     else
         ImGui::TextColored(gray, "N/A");
 

@@ -267,15 +267,9 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.IODIR = value;
 
             if (IS_SET_BIT(m_state.IODIR, 4))
-            {
-                m_media->SetBank1WriteEnable(IS_SET_BIT(m_state.IODAT, 4));
                 m_media->SetAudinValue(IS_SET_BIT(m_state.IODAT, 4));
-            }
             else
-            {
-                m_media->SetBank1WriteEnable(false);
                 m_media->SetAudinValue(false);
-            }
 
             if (m_media->GetEEPROMInstance()->IsAvailable())
                 m_media->GetEEPROMInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
@@ -287,10 +281,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.IODAT = value;
 
             if (IS_SET_BIT(m_state.IODIR, 4))
-            {
-                m_media->SetBank1WriteEnable(IS_SET_BIT(m_state.IODAT, 4));
                 m_media->SetAudinValue(IS_SET_BIT(m_state.IODAT, 4));
-            }
 
             if (m_media->GetEEPROMInstance()->IsAvailable())
                 m_media->GetEEPROMInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);

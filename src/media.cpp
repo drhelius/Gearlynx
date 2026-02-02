@@ -33,7 +33,7 @@ Media::Media()
     InitPointer(m_rom);
     InitPointer(m_bank_data[0]);
     InitPointer(m_bank_data[1]);
-    InitPointer(m_shadow_ram);
+    InitPointer(m_nvram);
     InitPointer(m_eeprom_instance);
     InitPointer(m_decrypt_buffer_a);
     InitPointer(m_decrypt_buffer_b);
@@ -49,7 +49,7 @@ Media::Media()
 Media::~Media()
 {
     SafeDeleteArray(m_rom);
-    SafeDeleteArray(m_shadow_ram);
+    SafeDeleteArray(m_nvram);
     SafeDelete(m_eeprom_instance);
     SafeDeleteArray(m_decrypt_buffer_a);
     SafeDeleteArray(m_decrypt_buffer_b);
@@ -60,8 +60,8 @@ Media::~Media()
 void Media::Init()
 {
     m_eeprom_instance = new EEPROM();
-    m_shadow_ram = new u8[SHADOW_RAM_SIZE];
-    memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
+    m_nvram = new u8[NVRAM_SIZE];
+    memset(m_nvram, 0, NVRAM_SIZE);
     m_decrypt_buffer_a = new u8[EPYX_DECRYPT_BLOCK_SIZE];
     m_decrypt_buffer_b = new u8[EPYX_DECRYPT_BLOCK_SIZE];
     m_decrypt_buffer_tmp = new u8[EPYX_DECRYPT_BLOCK_SIZE];
@@ -75,8 +75,7 @@ void Media::Reset()
     m_page_offset = 0;
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
-    m_bank1_write_enable = false;
-    memset(m_shadow_ram, 0, SHADOW_RAM_SIZE);
+    memset(m_nvram, 0, NVRAM_SIZE);
     m_eeprom_instance->Reset(m_eeprom);
 }
 
@@ -110,8 +109,7 @@ void Media::HardReset()
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
     m_bank1_is_ram = false;
-    m_bank1_dirty = false;
-    m_bank1_write_enable = false;
+    m_nvram_enabled = false;
     m_rotation = GLYNX_ROTATION_AUTO;
     m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = GLYNX_EEPROM_NONE;
@@ -419,6 +417,12 @@ void Media::GatherInfoFromDB()
                 m_eeprom = GLYNX_EEPROM_93C46;
             }
 
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_NVRAM_8KB)
+            {
+                Debug("Enabling 8KB NVRAM in bank1");
+                m_nvram_enabled = true;
+            }
+
             if (k_game_database[i].console_type != GLYNX_CONSOLE_AUTO)
             {
                 Debug("Forcing console type to database value: %s", k_game_database[i].console_type == GLYNX_CONSOLE_MODEL_I ? "Lynx I" : "Lynx II");
@@ -587,61 +591,86 @@ int Media::DetectEpyxHeaderless()
 
 void Media::SetupBanks()
 {
-    // Calculate page size and number of pages for each bank
-    for (int bank = 0; bank < 2; bank++)
+    // Setup Bank0 (always ROM)
+    u16 bank0_page_size = m_bank_page_size[0];
+
+    if (bank0_page_size == 0)
     {
-        u16 page_size = m_bank_page_size[bank];
-
-        if (bank == 1 && page_size == 0)
-        {
-            Debug("Using shadow RAM for bank1");
-
-            // Shadow RAM: 64K, page size 256
-            m_bank_data[1] = m_shadow_ram;
-            m_bank_size[1] = SHADOW_RAM_SIZE;
-            m_address_shift_bits[1] = 8;
-            m_page_offset_mask[1] = 0xFF;
-            m_bank_mask[1] = 0xFFFF;
-            m_bank1_is_ram = true;
-            continue;
-        }
-
-        if (page_size == 0)
-        {
-            Debug("Unknown page size for bank %d", bank);
-
-            InitPointer(m_bank_data[bank]);
-            m_bank_size[bank] = 0;
-            m_address_shift_bits[bank] = 0;
-            m_page_offset_mask[bank] = 0;
-            m_bank_mask[bank] = 0;
-            continue;
-        }
-
-        u32 total_size = page_size * 256;
-        m_bank_size[bank] = total_size;
-
-        Debug("Bank %d: Page size: %d, Total size: %d bytes", bank, page_size, total_size);
-
-        if (bank == 0)
-        {
-            m_bank_data[0] = m_rom;
-        }
-        else
-        {
-            m_bank_data[1] = (m_rom_size > m_bank_size[0]) ? (m_rom + m_bank_size[0]) : NULL;
-        }
+        Debug("Unknown page size for bank0");
+        InitPointer(m_bank_data[0]);
+        m_bank_size[0] = 0;
+        m_address_shift_bits[0] = 0;
+        m_page_offset_mask[0] = 0;
+        m_bank_mask[0] = 0;
+    }
+    else
+    {
+        u32 total_size = bank0_page_size * 256;
+        m_bank_size[0] = total_size;
+        m_bank_data[0] = m_rom;
 
         u32 shift = 0;
-        u32 ps = page_size;
+        u32 ps = bank0_page_size;
         while (ps >>= 1)
             shift++;
 
-        m_address_shift_bits[bank] = shift;
-        m_page_offset_mask[bank] = (1u << shift) - 1;
-        m_bank_mask[bank] = total_size - 1;
+        m_address_shift_bits[0] = shift;
+        m_page_offset_mask[0] = (1u << shift) - 1;
+        m_bank_mask[0] = total_size - 1;
 
-        Debug("Bank %d: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X", bank, m_address_shift_bits[bank], m_page_offset_mask[bank], m_bank_mask[bank]);
+        Debug("Bank0: Page size: %d, Total size: %d bytes", bank0_page_size, total_size);
+        Debug("Bank0: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
+              m_address_shift_bits[0], m_page_offset_mask[0], m_bank_mask[0]);
+    }
+
+    // Setup Bank1
+    u16 bank1_page_size = m_bank_page_size[1];
+
+    if (bank1_page_size > 0)
+    {
+        // Bank1 contains ROM data
+        u32 total_size = bank1_page_size * 256;
+        m_bank_size[1] = total_size;
+        m_bank_data[1] = (m_rom_size > m_bank_size[0]) ? (m_rom + m_bank_size[0]) : NULL;
+
+        u32 shift = 0;
+        u32 ps = bank1_page_size;
+        while (ps >>= 1)
+            shift++;
+
+        m_address_shift_bits[1] = shift;
+        m_page_offset_mask[1] = (1u << shift) - 1;
+        m_bank_mask[1] = total_size - 1;
+
+        Debug("Bank1: Page size: %d, Total size: %d bytes", bank1_page_size, total_size);
+        Debug("Bank1: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
+              m_address_shift_bits[1], m_page_offset_mask[1], m_bank_mask[1]);
+    }
+    else if (m_nvram_enabled)
+    {
+        // Bank1 is 8KB NVRAM (EOTB uses 32-byte blocks)
+        Debug("Using 8KB NVRAM for bank1");
+
+        m_bank_data[1] = m_nvram;
+        m_bank_size[1] = NVRAM_SIZE;
+        m_address_shift_bits[1] = 5;
+        m_page_offset_mask[1] = 0x1F;
+        m_bank_mask[1] = NVRAM_SIZE - 1;
+        m_bank1_is_ram = true;
+
+        Debug("Bank1 NVRAM: Size: %d bytes, Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
+              m_bank_size[1], m_address_shift_bits[1], m_page_offset_mask[1], m_bank_mask[1]);
+    }
+    else
+    {
+        // Bank1 is not available (reads return 0xFF, writes are ignored)
+        Debug("Bank1 not available (no ROM data, no NVRAM)");
+
+        InitPointer(m_bank_data[1]);
+        m_bank_size[1] = 0;
+        m_address_shift_bits[1] = 0;
+        m_page_offset_mask[1] = 0;
+        m_bank_mask[1] = 0;
     }
 
     // For AUDIN carts, setup alternative banks (Bank0A, Bank1A)
@@ -649,7 +678,7 @@ void Media::SetupBanks()
     {
         // Calculate ROM offset for Bank0A
         // Use m_bank_page_size[1] to get actual ROM Bank1 size
-        // When Bank1 is shadow RAM (page_size == 0), there is no Bank1 data in ROM
+        // When Bank1 has no ROM (page_size == 0), there is no Bank1 data in ROM
         u32 bank1_rom_size = m_bank_page_size[1] * 256;
         u32 offset = m_bank_size[0] + bank1_rom_size;
 
@@ -825,11 +854,9 @@ void Media::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_page_offset);
     G_SERIALIZE(s, m_shift_register_strobe);
     G_SERIALIZE(s, m_shift_register_bit);
-    G_SERIALIZE(s, m_bank1_dirty);
-    G_SERIALIZE(s, m_bank1_write_enable);
     G_SERIALIZE(s, m_audin_value);
 
-    if (m_bank1_is_ram && m_bank1_dirty && m_bank_data[1] != NULL && m_bank_size[1] > 0)
+    if (m_bank1_is_ram && m_bank_data[1] != NULL && m_bank_size[1] > 0)
     {
         G_SERIALIZE_ARRAY(s, m_bank_data[1], m_bank_size[1]);
     }
