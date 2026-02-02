@@ -464,6 +464,7 @@ static void main_window(void)
 
     gui_main_window_width = w_corrected * scale_multiplier;
     gui_main_window_height = h_corrected * scale_multiplier;
+    gui_scale_multiplier = scale_multiplier;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);

@@ -31,6 +31,7 @@
 #include "emu.h"
 #include "config.h"
 #include "gearlynx.h"
+#include "gui.h"
 
 #define RENDERER_IMPORT
 #include "renderer.h"
@@ -473,7 +474,7 @@ static void update_emu_texture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     bool scanlines_filter = (config_video.scale >= 2) || (config_video.ratio != 0) ||
-        ((config_video.scale == 1) && (config_video.scale_manual >= 3) && (config_video.scale_manual & 1));
+        ((config_video.scale <= 1) && (gui_scale_multiplier >= 3) && (gui_scale_multiplier & 1));
 
     if ((config_video.scanlines_type > 0) && scanlines_filter)
     {
