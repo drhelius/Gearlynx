@@ -56,6 +56,7 @@
     <ClInclude Include="..\shared\desktop\application.h" />
     <ClInclude Include="..\shared\desktop\backers.h" />
     <ClInclude Include="..\shared\desktop\config.h" />
+    <ClInclude Include="..\shared\desktop\console_utils.h" />
     <ClInclude Include="..\shared\desktop\emu.h" />
     <ClInclude Include="..\shared\desktop\gui.h" />
     <ClInclude Include="..\shared\desktop\gui_actions.h" />
