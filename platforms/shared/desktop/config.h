@@ -73,9 +73,9 @@ struct config_Video
     bool bilinear = false;
     bool sync = true;
     bool ghosting = true;
-    float ghosting_intensity = 0.95f;
+    float ghosting_intensity = 0.90f;
     int ghosting_history = 6;
-    float ghosting_response = 0.65f;
+    float ghosting_response = 0.90f;
     int scanlines_type = 2;
     float scanlines_intensity = 0.65f;
     float background_color[3] = {0.1f, 0.1f, 0.1f};

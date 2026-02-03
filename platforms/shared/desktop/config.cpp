@@ -216,9 +216,9 @@ void config_read(void)
     config_video.bilinear = read_bool("Video", "Bilinear", false);
     config_video.sync = read_bool("Video", "Sync", true);
     config_video.ghosting = read_bool("Video", "Ghosting", true);
-    config_video.ghosting_intensity = read_float("Video", "GhostingIntensity", 0.95f);
+    config_video.ghosting_intensity = read_float("Video", "GhostingIntensity", 0.90f);
     config_video.ghosting_history = read_int("Video", "GhostingHistory", 6);
-    config_video.ghosting_response = read_float("Video", "GhostingResponse", 0.65f);
+    config_video.ghosting_response = read_float("Video", "GhostingResponse", 0.90f);
     config_video.scanlines_type = read_int("Video", "ScanlinesType", 2);
     config_video.scanlines_intensity = read_float("Video", "ScanlinesPower", 0.65f);
     config_video.background_color[0] = read_float("Video", "BackgroundColorR", 0.1f);
