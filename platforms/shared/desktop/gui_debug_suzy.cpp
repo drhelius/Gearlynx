@@ -31,6 +31,28 @@
 #include "renderer.h"
 #include "utils.h"
 
+// Convert collision palette to ImGui format
+static ImVec4 collision_palette_imgui[16];
+static bool collision_palette_initialized = false;
+
+static void init_collision_palette()
+{
+    if (collision_palette_initialized)
+        return;
+
+    for (int i = 0; i < 16; i++)
+    {
+        u32 color = emu_collision_palette[i];
+        float r = ((color >> 0) & 0xFF) / 255.0f;
+        float g = ((color >> 8) & 0xFF) / 255.0f;
+        float b = ((color >> 16) & 0xFF) / 255.0f;
+        float a = ((color >> 24) & 0xFF) / 255.0f;
+        collision_palette_imgui[i] = ImVec4(r, g, b, a);
+    }
+
+    collision_palette_initialized = true;
+}
+
 static void SuzyWriteCallback8(u16 address, u8 value, void* user_data)
 {
     Suzy* suzy = (Suzy*)user_data;
@@ -154,23 +176,9 @@ void gui_debug_window_frame_buffers(void)
     ImGui::SetNextWindowSize(ImVec2(498, 426), ImGuiCond_FirstUseEver);
     ImGui::Begin("Framebuffers", &config_debug.show_frame_buffers);
 
-    ImGui::PushFont(gui_default_font);
-
     GearlynxCore* core = emu_get_core();
     Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
     Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
-
-    ImGui::TextColored(orange, "VIDBAS    "); ImGui::SameLine();
-    ImGui::Text("$%04X ", suzy_state->VIDBAS.value); ImGui::SameLine(0, 0);
-    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(suzy_state->VIDBAS.high), BYTE_TO_BINARY(suzy_state->VIDBAS.low));
-
-    ImGui::TextColored(orange, "DISPADR   "); ImGui::SameLine();
-    ImGui::Text("$%04X ", mikey_state->DISPADR.value); ImGui::SameLine(0, 0);
-    ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->DISPADR.high), BYTE_TO_BINARY(mikey_state->DISPADR.low));
-
-    ImGui::NewLine();
-
-    ImGui::PopFont();
 
     const float scale = 3.0f;
 
@@ -178,14 +186,97 @@ void gui_debug_window_frame_buffers(void)
     {
         if (ImGui::BeginTabItem("Suzy VIDBAS", NULL, ImGuiTabItemFlags_None))
         {
+            ImGui::PushFont(gui_default_font);
+
+            ImGui::TextColored(orange, "VIDBAS  "); ImGui::SameLine();
+            ImGui::Text("$%04X ", suzy_state->VIDBAS.value); ImGui::SameLine(0, 0);
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(suzy_state->VIDBAS.high), BYTE_TO_BINARY(suzy_state->VIDBAS.low));
+
+            ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
+
             ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[0], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            ImGui::PopFont();
 
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Mikey DISPADR", NULL, ImGuiTabItemFlags_None))
         {
+            ImGui::PushFont(gui_default_font);
+
+            ImGui::TextColored(orange, "DISPADR "); ImGui::SameLine();
+            ImGui::Text("$%04X ", mikey_state->DISPADR.value); ImGui::SameLine(0, 0);
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->DISPADR.high), BYTE_TO_BINARY(mikey_state->DISPADR.low));
+
+            ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
+
             ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[1], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            ImGui::PopFont();
+
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Suzy COLLBAS", NULL, ImGuiTabItemFlags_None))
+        {
+            ImGui::PushFont(gui_default_font);
+
+            ImGui::TextColored(orange, "COLLBAS "); ImGui::SameLine();
+            ImGui::Text("$%04X ", suzy_state->COLLBAS.value); ImGui::SameLine(0, 0);
+            ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(suzy_state->COLLBAS.high), BYTE_TO_BINARY(suzy_state->COLLBAS.low));
+
+            init_collision_palette();
+
+            const char* hex_labels[16] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"};
+            const float button_size = ImGui::GetFrameHeight() * 0.9f;
+
+            for (int i = 0; i < 16; i++)
+            {
+                if (i > 0) ImGui::SameLine(0, 2.0f);
+                ImVec2 pos = ImGui::GetCursorScreenPos();
+                ImGui::ColorButton(hex_labels[i], collision_palette_imgui[i], ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(button_size, button_size));
+
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                ImVec2 text_size = ImGui::CalcTextSize(hex_labels[i]);
+                ImVec2 text_pos = ImVec2(pos.x + (button_size - text_size.x) * 0.5f, pos.y + (button_size - text_size.y) * 0.5f);
+
+                draw_list->AddText(ImVec2(text_pos.x + 1, text_pos.y + 1), IM_COL32(0, 0, 0, 200), hex_labels[i]);
+                draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), hex_labels[i]);
+            }
+
+            ImGui::Dummy(ImVec2(0, 0));
+
+            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[2], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            ImGui::PopFont();
+
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Custom", NULL, ImGuiTabItemFlags_None))
+        {
+            ImGui::PushFont(gui_default_font);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextColored(orange, "ADDRESS: ");
+            ImGui::SameLine();
+
+            u16 step = 1;
+            u16 step_fast = 16;
+            ImVec2 character_size = ImGui::CalcTextSize("X");
+            ImGui::PushItemWidth((6.0f * character_size.x) + (2 * ImGui::GetFrameHeight()));
+            ImGui::InputScalar("##custom_address", ImGuiDataType_U16, &config_debug.frame_buffer_custom_address, &step, &step_fast, "%04X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+            ImGui::PopItemWidth();
+
+            ImGui::SameLine();
+            ImGui::TextColored(gray, "($0000-$FFFF)");
+
+            ImGui::NewLine();
+
+            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[3], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            ImGui::PopFont();
 
             ImGui::EndTabItem();
         }

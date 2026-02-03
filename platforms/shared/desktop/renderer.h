@@ -36,7 +36,7 @@
 #define MAX_FRAME_HISTORY 8
 
 EXTERN uint32_t renderer_emu_texture;
-EXTERN uint32_t renderer_emu_debug_framebuffer[2];
+EXTERN uint32_t renderer_emu_debug_framebuffer[4];
 EXTERN uint32_t renderer_emu_debug_huc6270_sprites[64];
 EXTERN uint32_t renderer_emu_savestates;
 EXTERN const char* renderer_opengl_version;

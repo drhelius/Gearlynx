@@ -172,6 +172,7 @@ struct config_Debug
     bool show_suzy_regs = false;
     bool show_suzy_math_regs = false;
     bool show_frame_buffers = false;
+    int frame_buffer_custom_address = 0x0000;
     bool show_lcd = false;
     bool show_uart = false;
     bool show_eeprom = false;

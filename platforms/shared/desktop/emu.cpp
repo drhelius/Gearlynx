@@ -48,6 +48,23 @@ static void update_debug_sprites(void);
 
 bool emu_init(void)
 {
+    emu_collision_palette[0]  = 0xFF000000; // 0: Black
+    emu_collision_palette[1]  = 0xFF800000; // 1: Blue
+    emu_collision_palette[2]  = 0xFF008000; // 2: Green
+    emu_collision_palette[3]  = 0xFF808000; // 3: Cyan
+    emu_collision_palette[4]  = 0xFF000080; // 4: Red
+    emu_collision_palette[5]  = 0xFF800080; // 5: Magenta
+    emu_collision_palette[6]  = 0xFF0055AA; // 6: Brown
+    emu_collision_palette[7]  = 0xFFAAAAAA; // 7: Light Gray
+    emu_collision_palette[8]  = 0xFF555555; // 8: Dark Gray
+    emu_collision_palette[9]  = 0xFFFF5555; // 9: Light Blue
+    emu_collision_palette[10] = 0xFF55FF55; // 10: Light Green
+    emu_collision_palette[11] = 0xFFFFFF55; // 11: Light Cyan
+    emu_collision_palette[12] = 0xFF5555FF; // 12: Light Red
+    emu_collision_palette[13] = 0xFFFF55FF; // 13: Light Magenta
+    emu_collision_palette[14] = 0xFF55FFFF; // 14: Yellow
+    emu_collision_palette[15] = 0xFFFFFFFF; // 15: White
+
     emu_frame_buffer = new u8[256 * 256 * 4];
     audio_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
 
@@ -575,7 +592,7 @@ static const char* get_configurated_dir(int location, const char* path)
 
 static void init_debug(void)
 {
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 4; i++)
     {
         emu_debug_framebuffer[i] = new u8[256 * 256 * 4];
         memset(emu_debug_framebuffer[i], 0, 256 * 256 * 4);
@@ -584,7 +601,7 @@ static void init_debug(void)
 
 static void destroy_debug(void) 
 {
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 4; i++)
         SafeDeleteArray(emu_debug_framebuffer[i]);
 }
 
@@ -598,6 +615,8 @@ static void update_debug_framebuffers(void)
 {
     u16 vidbas = core->GetSuzy()->GetState()->VIDBAS.value;
     u16 dispadr = core->GetMikey()->GetState()->DISPADR.value;
+    u16 collbas = core->GetSuzy()->GetState()->COLLBAS.value;
+    u16 custom_addr = (u16)config_debug.frame_buffer_custom_address;
     u8* ram = core->GetMemory()->GetRAM();
     u32* palette = core->GetMikey()->GetLcdScreen()->GetRGBA8888Palette();
     if (!palette)
@@ -607,28 +626,41 @@ static void update_debug_framebuffers(void)
 
     u32* frame_buffer_vidbas = (u32*)emu_debug_framebuffer[0];
     u32* frame_buffer_dispadr = (u32*)emu_debug_framebuffer[1];
+    u32* frame_buffer_collbas = (u32*)emu_debug_framebuffer[2];
+    u32* frame_buffer_custom = (u32*)emu_debug_framebuffer[3];
 
     for (int i = 0; i < count; i++)
     {
         u16 src_vidbas = (u16)(vidbas + (i >> 1));
         u16 src_dispadr = (u16)(dispadr + (i >> 1));
+        u16 src_collbas = (u16)(collbas + (i >> 1));
+        u16 src_custom = (u16)(custom_addr + (i >> 1));
 
         int color_idx_vidbas = i & 1 ? (ram[src_vidbas] & 0x0F) : (ram[src_vidbas] >> 4);
         int color_idx_dispadr = i & 1 ? (ram[src_dispadr] & 0x0F) : (ram[src_dispadr] >> 4);
+        int color_idx_collbas = i & 1 ? (ram[src_collbas] & 0x0F) : (ram[src_collbas] >> 4);
+        int color_idx_custom = i & 1 ? (ram[src_custom] & 0x0F) : (ram[src_custom] >> 4);
 
         u16 green_vidbas = core->GetMikey()->GetState()->colors[color_idx_vidbas].green;
         u16 bluered_vidbas = core->GetMikey()->GetState()->colors[color_idx_vidbas].bluered;
         u16 green_dispadr = core->GetMikey()->GetState()->colors[color_idx_dispadr].green;
         u16 bluered_dispadr = core->GetMikey()->GetState()->colors[color_idx_dispadr].bluered;
+        u16 green_custom = core->GetMikey()->GetState()->colors[color_idx_custom].green;
+        u16 bluered_custom = core->GetMikey()->GetState()->colors[color_idx_custom].bluered;
 
         u16 palette_idx_vidbas = ((green_vidbas & 0x0F) << 8 | (bluered_vidbas & 0xFF)) & 0x0FFF;
         u16 palette_idx_dispadr = ((green_dispadr & 0x0F) << 8 | (bluered_dispadr & 0xFF)) & 0x0FFF;
+        u16 palette_idx_custom = ((green_custom & 0x0F) << 8 | (bluered_custom & 0xFF)) & 0x0FFF;
 
         u32 final_color_vidbas = palette[palette_idx_vidbas];
         u32 final_color_dispadr = palette[palette_idx_dispadr];
+        u32 final_color_collbas = emu_collision_palette[color_idx_collbas];
+        u32 final_color_custom = palette[palette_idx_custom];
 
         frame_buffer_vidbas[i] = final_color_vidbas;
         frame_buffer_dispadr[i] = final_color_dispadr;
+        frame_buffer_collbas[i] = final_color_collbas;
+        frame_buffer_custom[i] = final_color_custom;
     }
 }
 
