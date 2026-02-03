@@ -104,6 +104,9 @@ void config_init(void)
     config_hotkeys[config_HotkeyIndex_SelectSlot4] = make_hotkey(SDL_SCANCODE_4, KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_SelectSlot5] = make_hotkey(SDL_SCANCODE_5, KMOD_CTRL);
 
+    for (int i = 0; i < 4; i++)
+        config_audio.volume[i] = 1.0f;
+
     config_ini_file = new mINI::INIFile(config_emu_file_path);
 }
 
