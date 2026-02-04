@@ -88,3 +88,20 @@ extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter)
         [win toggleFullScreen:nil];
     }
 }
+
+// Workaround for macOS Tahoe bug: AutoFill helper processes are not terminated on app exit
+extern "C" void macos_kill_autofill_helpers(const char* app_name)
+{
+    @autoreleasepool {
+        NSString* searchString = [[NSString stringWithFormat:@"autofill (%s)", app_name] lowercaseString];
+
+        for (NSRunningApplication *app in [[NSWorkspace sharedWorkspace] runningApplications]) {
+            if ([app.bundleIdentifier isEqualToString:@"com.apple.SafariPlatformSupport.Helper"]) {
+                NSString* localizedNameLower = [[app localizedName] lowercaseString];
+                if ([localizedNameLower containsString:searchString]) {
+                    [app forceTerminate];
+                }
+            }
+        }
+    }
+}
