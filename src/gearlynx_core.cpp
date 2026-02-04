@@ -792,5 +792,8 @@ void GearlynxCore::PrepareForHomebrew()
     m_mikey->Write(MIKEY_DISPCTL, 0x09);
     m_mikey->Write(MIKEY_PBKUP, 0x29);
 
+    for (int address = 0xFDA0; address < 0xFDC0; address++)
+        m_mikey->Write(address, 0x00);
+
     m_memory->Write(0xFFF9, 0x0C);
 }
