@@ -1167,20 +1167,20 @@ json DebugAdapter::GetSuzyRegisters(u16 address)
     AddRegister16(registers, ss, "PROCADR", SUZY_PROCADRL, suzy_state->PROCADR.value, address);
 
     // Math registers ($FC52-$FC57, $FC60-$FC63, $FC6C-$FC6F)
-    AddRegister(registers, ss, "MATHD", SUZY_MATHD, suzy_state->MATHD, address);
-    AddRegister(registers, ss, "MATHC", SUZY_MATHC, suzy_state->MATHC, address);
-    AddRegister(registers, ss, "MATHB", SUZY_MATHB, suzy_state->MATHB, address);
-    AddRegister(registers, ss, "MATHA", SUZY_MATHA, suzy_state->MATHA, address);
-    AddRegister(registers, ss, "MATHP", SUZY_MATHP, suzy_state->MATHP, address);
-    AddRegister(registers, ss, "MATHN", SUZY_MATHN, suzy_state->MATHN, address);
-    AddRegister(registers, ss, "MATHH", SUZY_MATHH, suzy_state->MATHH, address);
-    AddRegister(registers, ss, "MATHG", SUZY_MATHG, suzy_state->MATHG, address);
-    AddRegister(registers, ss, "MATHF", SUZY_MATHF, suzy_state->MATHF, address);
-    AddRegister(registers, ss, "MATHE", SUZY_MATHE, suzy_state->MATHE, address);
-    AddRegister(registers, ss, "MATHM", SUZY_MATHM, suzy_state->MATHM, address);
-    AddRegister(registers, ss, "MATHL", SUZY_MATHL, suzy_state->MATHL, address);
-    AddRegister(registers, ss, "MATHK", SUZY_MATHK, suzy_state->MATHK, address);
-    AddRegister(registers, ss, "MATHJ", SUZY_MATHJ, suzy_state->MATHJ, address);
+    AddRegister(registers, ss, "MATHD", SUZY_MATHD, suzy->Read<true>(SUZY_MATHD), address);
+    AddRegister(registers, ss, "MATHC", SUZY_MATHC, suzy->Read<true>(SUZY_MATHC), address);
+    AddRegister(registers, ss, "MATHB", SUZY_MATHB, suzy->Read<true>(SUZY_MATHB), address);
+    AddRegister(registers, ss, "MATHA", SUZY_MATHA, suzy->Read<true>(SUZY_MATHA), address);
+    AddRegister(registers, ss, "MATHP", SUZY_MATHP, suzy->Read<true>(SUZY_MATHP), address);
+    AddRegister(registers, ss, "MATHN", SUZY_MATHN, suzy->Read<true>(SUZY_MATHN), address);
+    AddRegister(registers, ss, "MATHH", SUZY_MATHH, suzy->Read<true>(SUZY_MATHH), address);
+    AddRegister(registers, ss, "MATHG", SUZY_MATHG, suzy->Read<true>(SUZY_MATHG), address);
+    AddRegister(registers, ss, "MATHF", SUZY_MATHF, suzy->Read<true>(SUZY_MATHF), address);
+    AddRegister(registers, ss, "MATHE", SUZY_MATHE, suzy->Read<true>(SUZY_MATHE), address);
+    AddRegister(registers, ss, "MATHM", SUZY_MATHM, suzy->Read<true>(SUZY_MATHM), address);
+    AddRegister(registers, ss, "MATHL", SUZY_MATHL, suzy->Read<true>(SUZY_MATHL), address);
+    AddRegister(registers, ss, "MATHK", SUZY_MATHK, suzy->Read<true>(SUZY_MATHK), address);
+    AddRegister(registers, ss, "MATHJ", SUZY_MATHJ, suzy->Read<true>(SUZY_MATHJ), address);
 
     // Sprite control registers ($FC80-$FC83)
     AddRegister(registers, ss, "SPRCTL0", SUZY_SPRCTL0, suzy_state->SPRCTL0, address);
@@ -1200,10 +1200,8 @@ json DebugAdapter::GetSuzyRegisters(u16 address)
     // Input registers ($FCB0-$FCB3)
     AddRegister(registers, ss, "JOYSTICK", SUZY_JOYSTICK, joystick, address);
     AddRegister(registers, ss, "SWITCHES", SUZY_SWITCHES, switches, address);
-    // RCART0/RCART1 are not readable without side effects (bank switching)
-    // and RCART1 (ReadBank1) is not yet implemented
-    AddRegister(registers, ss, "RCART0", SUZY_RCART0, 0x00, address);
-    AddRegister(registers, ss, "RCART1", SUZY_RCART1, 0x00, address);
+    AddRegister(registers, ss, "RCART0", SUZY_RCART0, suzy->Read<true>(SUZY_RCART0), address);
+    AddRegister(registers, ss, "RCART1", SUZY_RCART1, suzy->Read<true>(SUZY_RCART1), address);
 
     // Misc registers ($FCC0-$FCC4)
     AddRegister(registers, ss, "LEDS", SUZY_LEDS, suzy->Read<true>(SUZY_LEDS), address);

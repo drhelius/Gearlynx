@@ -40,7 +40,21 @@ INLINE u8 Suzy::Read(u16 address)
         m_bus->InjectCycles(k_bus_cycles_suzy_read);
     }
 
-    switch(address)
+    u16 effective_addr = address;
+
+    // Mirror math registers (FC40-FC6F) to sprite registers (FC00-FC2F)
+    if (address >= 0xFC40 && address <= 0xFC6F)
+    {
+        effective_addr = address - 0x40;
+    }
+
+    // Open bus for unused ranges
+    else if ((address >= 0xFC30 && address <= 0xFC3F) || (address >= 0xFC70 && address <= 0xFC7F))
+    {
+        return 0xFF;
+    }
+
+    switch(effective_addr)
     {
     case SUZY_TMPADRL:     // 0xFC00
         return m_state.TMPADR.low;
@@ -138,34 +152,6 @@ INLINE u8 Suzy::Read(u16 address)
         return m_state.PROCADR.low;
     case SUZY_PROCADRH:    // 0xFC2F
         return m_state.PROCADR.high;
-    case SUZY_MATHD:       // 0xFC52
-        return m_state.MATHD;
-    case SUZY_MATHC:       // 0xFC53
-        return m_state.MATHC;
-    case SUZY_MATHB:       // 0xFC54
-        return m_state.MATHB;
-    case SUZY_MATHA:       // 0xFC55
-        return m_state.MATHA;
-    case SUZY_MATHP:       // 0xFC56
-        return m_state.MATHP;
-    case SUZY_MATHN:       // 0xFC57
-        return m_state.MATHN;
-    case SUZY_MATHH:       // 0xFC60
-        return m_state.MATHH;
-    case SUZY_MATHG:       // 0xFC61
-        return m_state.MATHG;
-    case SUZY_MATHF:       // 0xFC62
-        return m_state.MATHF;
-    case SUZY_MATHE:       // 0xFC63
-        return m_state.MATHE;
-    case SUZY_MATHM:       // 0xFC6C
-        return m_state.MATHM;
-    case SUZY_MATHL:       // 0xFC6D
-        return m_state.MATHL;
-    case SUZY_MATHK:       // 0xFC6E
-        return m_state.MATHK;
-    case SUZY_MATHJ:       // 0xFC6F
-        return m_state.MATHJ;
     case SUZY_SPRCTL0:     // 0xFC80
         DebugSuzy("Reading write-only SPRCTL0: %02X", m_state.SPRCTL0);
         return 0xFF;
@@ -266,6 +252,91 @@ INLINE void Suzy::Write(u16 address, u8 value)
     if (!debug)
     {
         m_bus->InjectCycles(k_bus_cycles_suzy_write);
+    }
+
+    if ((address >= 0xFC30 && address <= 0xFC3F) || (address >= 0xFC70 && address <= 0xFC7F))
+    {
+        return;
+    }
+
+    // Math registers (FC40-FC6F)
+    if (address >= 0xFC40 && address <= 0xFC6F)
+    {
+        switch(address)
+        {
+        case SUZY_MATHD:       // 0xFC52
+            REG_MATHD = value;
+            value = 0;
+            FALLTHROUGH;
+        case SUZY_MATHC:       // 0xFC53
+            REG_MATHC = value;
+            if (m_state.sprsys_sign)
+            {
+                u16 cd = m_state.SPRDLINE.value;
+                m_state.math_sign_C = MathIsNegative(cd);
+                if (m_state.math_sign_C && cd != 0)
+                    cd = (u16)(-((s16)cd));
+                m_state.SPRDLINE.value = cd;
+            }
+            return;
+        case SUZY_MATHB:       // 0xFC54
+            REG_MATHB = value;
+            REG_MATHA = 0;
+            return;
+        case SUZY_MATHA:       // 0xFC55
+            REG_MATHA = value;
+            if (m_state.sprsys_sign)
+            {
+                u16 ab = m_state.HPOSSTRT.value;
+                m_state.math_sign_A = MathIsNegative(ab);
+                if (m_state.math_sign_A && ab != 0)
+                    ab = (u16)(-((s16)ab));
+                m_state.HPOSSTRT.value = ab;
+            }
+            MathRunMultiply();
+            return;
+        case SUZY_MATHP:       // 0xFC56
+            REG_MATHP = value;
+            REG_MATHN = 0;
+            return;
+        case SUZY_MATHN:       // 0xFC57
+            REG_MATHN = value;
+            return;
+        case SUZY_MATHH:       // 0xFC60
+            REG_MATHH = value;
+            REG_MATHG = 0;
+            return;
+        case SUZY_MATHG:       // 0xFC61
+            REG_MATHG = value;
+            return;
+        case SUZY_MATHF:       // 0xFC62
+            REG_MATHF = value;
+            REG_MATHE = 0;
+            return;
+        case SUZY_MATHE:       // 0xFC63
+            REG_MATHE = value;
+            MathRunDivide();
+            return;
+        case SUZY_MATHM:       // 0xFC6C
+            REG_MATHM = value;
+            REG_MATHL = 0;
+            m_state.sprsys_mathbit = false;
+            return;
+        case SUZY_MATHL:       // 0xFC6D
+            REG_MATHL = value;
+            return;
+        case SUZY_MATHK:       // 0xFC6E
+            REG_MATHK = value;
+            REG_MATHJ = 0;
+            return;
+        case SUZY_MATHJ:       // 0xFC6F
+            REG_MATHJ = value;
+            return;
+        default:
+            // Other addresses that aren't math registers
+            address -= 0x40;
+            break;
+        }
     }
 
     switch(address)
@@ -425,76 +496,6 @@ INLINE void Suzy::Write(u16 address, u8 value)
         break;
     case SUZY_PROCADRH:    // 0xFC2F
         m_state.PROCADR.high = value;
-        break;
-    case SUZY_MATHD:       // 0xFC52
-        m_state.MATHD = value;
-        value = 0;
-        FALLTHROUGH;
-    case SUZY_MATHC:       // 0xFC53
-        m_state.MATHC = value;
-        if (m_state.sprsys_sign)
-        {
-            u16 cd = (u16(m_state.MATHC) << 8) | m_state.MATHD;
-            m_state.math_sign_C = MathIsNegative(cd);
-            if (m_state.math_sign_C && cd != 0)
-                cd = (u16)(-((s16)cd));
-            m_state.MATHC = (cd >> 8) & 0xFF;
-            m_state.MATHD = cd & 0xFF;
-        }
-        break;
-    case SUZY_MATHB:       // 0xFC54
-        m_state.MATHB = value;
-        m_state.MATHA = 0;
-        break;
-    case SUZY_MATHA:       // 0xFC55
-        m_state.MATHA = value;
-        if (m_state.sprsys_sign)
-        {
-            u16 ab = (u16(m_state.MATHA) << 8) | m_state.MATHB;
-            m_state.math_sign_A = MathIsNegative(ab);
-            if (m_state.math_sign_A && ab != 0)
-                ab = (u16)(-((s16)ab));
-            m_state.MATHA = (ab >> 8) & 0xFF;
-            m_state.MATHB = ab & 0xFF;
-        }
-        MathRunMultiply();
-        break;
-    case SUZY_MATHP:       // 0xFC56
-        m_state.MATHP = value;
-        m_state.MATHN = 0;
-        break;
-    case SUZY_MATHN:       // 0xFC57
-        m_state.MATHN = value;
-        break;
-    case SUZY_MATHH:       // 0xFC60
-        m_state.MATHH = value;
-        m_state.MATHG = 0;
-        break;
-    case SUZY_MATHG:       // 0xFC61
-        m_state.MATHG = value;
-        break;
-    case SUZY_MATHF:       // 0xFC62
-        m_state.MATHF = value;
-        m_state.MATHE = 0;
-        break;
-    case SUZY_MATHE:       // 0xFC63
-        m_state.MATHE = value;
-        MathRunDivide();
-        break;
-    case SUZY_MATHM:       // 0xFC6C
-        m_state.MATHM = value;
-        m_state.MATHL = 0;
-        m_state.sprsys_mathbit = false;
-        break;
-    case SUZY_MATHL:       // 0xFC6D
-        m_state.MATHL = value;
-        break;
-    case SUZY_MATHK:       // 0xFC6E
-        m_state.MATHK = value;
-        m_state.MATHJ = 0;
-        break;
-    case SUZY_MATHJ:       // 0xFC6F
-        m_state.MATHJ = value;
         break;
     case SUZY_SPRCTL0:     // 0xFC80
         DebugSuzy("Setting SPRCTL0 to %02X (was %02X)", value, m_state.SPRCTL0);

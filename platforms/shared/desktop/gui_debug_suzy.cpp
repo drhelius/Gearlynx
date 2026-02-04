@@ -146,22 +146,36 @@ void gui_debug_window_suzy_math_regs(void)
 
     GearlynxCore* core = emu_get_core();
     Suzy* suzy = core->GetSuzy();
-    Suzy::Suzy_State* suzy_state = suzy->GetState();
 
-    EditableRegister8("MATHD", "FC52", SUZY_MATHD, suzy_state->MATHD, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHC", "FC53", SUZY_MATHC, suzy_state->MATHC, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHB", "FC54", SUZY_MATHB, suzy_state->MATHB, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHA", "FC55", SUZY_MATHA, suzy_state->MATHA, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHP", "FC56", SUZY_MATHP, suzy_state->MATHP, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHN", "FC57", SUZY_MATHN, suzy_state->MATHN, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHH", "FC60", SUZY_MATHH, suzy_state->MATHH, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHG", "FC61", SUZY_MATHG, suzy_state->MATHG, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHF", "FC62", SUZY_MATHF, suzy_state->MATHF, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHE", "FC63", SUZY_MATHE, suzy_state->MATHE, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHM", "FC6C", SUZY_MATHM, suzy_state->MATHM, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHL", "FC6D", SUZY_MATHL, suzy_state->MATHL, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHK", "FC6E", SUZY_MATHK, suzy_state->MATHK, SuzyWriteCallback8, suzy);
-    EditableRegister8("MATHJ", "FC6F", SUZY_MATHJ, suzy_state->MATHJ, SuzyWriteCallback8, suzy);
+    u8 mathd = suzy->Read<true>(SUZY_MATHD);
+    u8 mathc = suzy->Read<true>(SUZY_MATHC);
+    u8 mathb = suzy->Read<true>(SUZY_MATHB);
+    u8 matha = suzy->Read<true>(SUZY_MATHA);
+    u8 mathp = suzy->Read<true>(SUZY_MATHP);
+    u8 mathn = suzy->Read<true>(SUZY_MATHN);
+    u8 mathh = suzy->Read<true>(SUZY_MATHH);
+    u8 mathg = suzy->Read<true>(SUZY_MATHG);
+    u8 mathf = suzy->Read<true>(SUZY_MATHF);
+    u8 mathe = suzy->Read<true>(SUZY_MATHE);
+    u8 mathm = suzy->Read<true>(SUZY_MATHM);
+    u8 mathl = suzy->Read<true>(SUZY_MATHL);
+    u8 mathk = suzy->Read<true>(SUZY_MATHK);
+    u8 mathj = suzy->Read<true>(SUZY_MATHJ);
+
+    EditableRegister8("MATHD", "FC52", SUZY_MATHD, mathd, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHC", "FC53", SUZY_MATHC, mathc, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHB", "FC54", SUZY_MATHB, mathb, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHA", "FC55", SUZY_MATHA, matha, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHP", "FC56", SUZY_MATHP, mathp, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHN", "FC57", SUZY_MATHN, mathn, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHH", "FC60", SUZY_MATHH, mathh, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHG", "FC61", SUZY_MATHG, mathg, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHF", "FC62", SUZY_MATHF, mathf, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHE", "FC63", SUZY_MATHE, mathe, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHM", "FC6C", SUZY_MATHM, mathm, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHL", "FC6D", SUZY_MATHL, mathl, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHK", "FC6E", SUZY_MATHK, mathk, SuzyWriteCallback8, suzy);
+    EditableRegister8("MATHJ", "FC6F", SUZY_MATHJ, mathj, SuzyWriteCallback8, suzy);
 
     ImGui::PopFont();
 

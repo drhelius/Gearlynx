@@ -61,7 +61,6 @@ public:
         u16_union VSIZOFF;
         u16_union SCBADR;
         u16_union PROCADR;
-        u8 MATHD, MATHC, MATHB, MATHA, MATHP, MATHN, MATHH, MATHG, MATHF, MATHE, MATHM, MATHL, MATHK, MATHJ;
         u8 SPRCTL0, SPRCTL1, SPRCOLL, SPRINIT, SUZYBUSEN, SPRGO;
         bool sprsys_sign;
         bool sprsys_accumulate;
@@ -85,6 +84,23 @@ public:
         u8 fred;
         bool everon;
     };
+
+    // Math register macros - these are physically the same as sprite registers
+    // due to hardware design (only 48 physical registers exist)
+    #define REG_MATHD m_state.SPRDLINE.low      // FC52 = FC12
+    #define REG_MATHC m_state.SPRDLINE.high     // FC53 = FC13
+    #define REG_MATHB m_state.HPOSSTRT.low      // FC54 = FC14
+    #define REG_MATHA m_state.HPOSSTRT.high     // FC55 = FC15
+    #define REG_MATHP m_state.VPOSSTRT.low      // FC56 = FC16
+    #define REG_MATHN m_state.VPOSSTRT.high     // FC57 = FC17
+    #define REG_MATHH m_state.SPRDOFF.low       // FC60 = FC20
+    #define REG_MATHG m_state.SPRDOFF.high      // FC61 = FC21
+    #define REG_MATHF m_state.SPRVPOS.low       // FC62 = FC22
+    #define REG_MATHE m_state.SPRVPOS.high      // FC63 = FC23
+    #define REG_MATHM m_state.SCBADR.low        // FC6C = FC2C
+    #define REG_MATHL m_state.SCBADR.high       // FC6D = FC2D
+    #define REG_MATHK m_state.PROCADR.low       // FC6E = FC2E
+    #define REG_MATHJ m_state.PROCADR.high      // FC6F = FC2F
 
 public:
     Suzy(Media* media, M6502* m6502, Input* input, Bus* bus);
