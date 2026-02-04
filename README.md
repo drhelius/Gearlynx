@@ -45,7 +45,11 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
       <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.1.1/Gearlynx-1.1.1-mcpb-windows-arm64.mcpb">Gearlynx-1.1.1-mcpb-windows-arm64.mcpb</a></td>
     </tr>
     <tr>
-      <td rowspan="4"><strong>macOS</strong></td>
+      <td rowspan="5"><strong>macOS</strong></td>
+      <td>Homebrew</td>
+      <td><code>brew install --cask drhelius/geardome/gearlynx</code></td>
+    </tr>
+    <tr>
       <td>Desktop Apple Silicon</td>
       <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.1.1/Gearlynx-1.1.1-desktop-macos-arm64.zip">Gearlynx-1.1.1-desktop-macos-arm64.zip</a></td>
     </tr>
