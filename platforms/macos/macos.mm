@@ -93,12 +93,12 @@ extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter)
 extern "C" void macos_kill_autofill_helpers(const char* app_name)
 {
     @autoreleasepool {
-        NSString* searchString = [[NSString stringWithFormat:@"autofill (%s)", app_name] lowercaseString];
+        NSString* appNameLower = [[NSString stringWithUTF8String:app_name] lowercaseString];
 
         for (NSRunningApplication *app in [[NSWorkspace sharedWorkspace] runningApplications]) {
             if ([app.bundleIdentifier isEqualToString:@"com.apple.SafariPlatformSupport.Helper"]) {
                 NSString* localizedNameLower = [[app localizedName] lowercaseString];
-                if ([localizedNameLower containsString:searchString]) {
+                if ([localizedNameLower hasPrefix:@"autofill"] && [localizedNameLower containsString:appNameLower]) {
                     [app forceTerminate];
                 }
             }
