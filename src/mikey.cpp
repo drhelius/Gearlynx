@@ -145,7 +145,7 @@ void Mikey::ResetUART()
 void Mikey::ResetPalette()
 {
     for (int address = 0xFDA0; address < 0xFDC0; address++)
-        WriteColor(address, 0xFF);
+        WriteColor(address, 0x00);
 }
 
 void Mikey::HorizontalBlank()
