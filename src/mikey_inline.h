@@ -112,10 +112,11 @@ INLINE u8 Mikey::Read(u16 address)
                 ret |= IS_SET_BIT(m_state.IODAT, 1) ? 0x02 : 0x00;
             // else input reads low
 
-            // Bit 2: No expansion (input high when ComLynx cable present)
+            // Bit 2: No expansion (input high when ComLynx cable not present)
             if (IS_SET_BIT(m_state.IODIR, 2))
                 ret |= IS_SET_BIT(m_state.IODAT, 2) ? 0x04 : 0x00;
-            // else input reads low (no cable)
+            else
+                ret |= 0x04;  // Input defaults to high (no cable present)
 
             // Bit 3: Rest signal (output with REST signal gating)
             if (IS_SET_BIT(m_state.IODIR, 3))
