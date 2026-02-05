@@ -492,6 +492,16 @@ INLINE void M6502::DisassembleNextOPCode()
         return;
     }
 
+    InvalidateOverlappingRecords(address, opcode_size);
+
+    PopulateDisassemblerRecord(record, opcode, address);
+#endif
+}
+
+INLINE void M6502::InvalidateOverlappingRecords(u16 address, u8 opcode_size)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+
     for (int back = 1; back < 3; ++back)
     {
         int prev_start = (int)address - back;
@@ -499,22 +509,35 @@ INLINE void M6502::DisassembleNextOPCode()
             continue;
 
         GLYNX_Disassembler_Record* prev = m_memory->GetDisassemblerRecord(prev_start);
-
-        if (!IsValidPointer(prev))
-            continue;
-        if (prev->size == 0)
+        if (!IsValidPointer(prev) || prev->size == 0)
             continue;
 
         int distance = address - prev_start;
-        if (prev->size <= distance)
-            continue;
-
-        prev->size = 0;
-        prev->name[0] = 0;
-        prev->bytes[0] = 0;
+        if (prev->size > distance)
+        {
+            prev->size = 0;
+            prev->name[0] = 0;
+            prev->bytes[0] = 0;
+        }
     }
 
-    PopulateDisassemblerRecord(record, opcode, address);
+    if (opcode_size > 1)
+    {
+        for (int fwd = 1; fwd < opcode_size; ++fwd)
+        {
+            u16 fwd_addr = address + fwd;
+            GLYNX_Disassembler_Record* fwd_record = m_memory->GetDisassemblerRecord(fwd_addr);
+            if (!IsValidPointer(fwd_record) || fwd_record->size == 0)
+                continue;
+
+            fwd_record->size = 0;
+            fwd_record->name[0] = 0;
+            fwd_record->bytes[0] = 0;
+        }
+    }
+#else
+    UNUSED(address);
+    UNUSED(opcode_size);
 #endif
 }
 
@@ -541,13 +564,19 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         m_s.debug_next_irq = 0;
     }
 
+    int pos = 0;
     for (int i = 0; i < opcode_size; i++)
     {
-        char value[4];
-        snprintf(value, 4, "%02X", record->opcodes[i]);
-        strncat(record->bytes, value, 9);
-        strncat(record->bytes, " ", 9);
+        static const char hex_chars[] = "0123456789ABCDEF";
+        u8 byte = record->opcodes[i];
+        record->bytes[pos++] = hex_chars[byte >> 4];
+        record->bytes[pos++] = hex_chars[byte & 0x0F];
+        record->bytes[pos++] = ' ';
     }
+    record->bytes[pos] = 0;
+
+    u8 op1 = record->opcodes[1];
+    u8 op2 = record->opcodes[2];
 
     switch (k_m6502_opcode_names[opcode].type)
     {
@@ -558,48 +587,45 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         }
         case GLYNX_OPCode_Type_1b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, op1);
             break;
         }
         case GLYNX_OPCode_Type_1b_1b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1), m_memory->Read<true>(address + 2));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, op1, op2);
             break;
         }
         case GLYNX_OPCode_Type_1b_2b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1), m_memory->Read<true>(address + 2) | (m_memory->Read<true>(address + 3) << 8));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, op1, op2 | (m_memory->Read<true>(address + 3) << 8));
             break;
         }
         case GLYNX_OPCode_Type_2b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1) | (m_memory->Read<true>(address + 2) << 8));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, op1 | (op2 << 8));
             break;
         }
         case GLYNX_OPCode_Type_2b_2b_2b:
         {
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, m_memory->Read<true>(address + 1) | (m_memory->Read<true>(address + 2) << 8), m_memory->Read<true>(address + 3) | (m_memory->Read<true>(address + 4) << 8), m_memory->Read<true>(address + 5) | (m_memory->Read<true>(address + 6) << 8));
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, op1 | (op2 << 8), m_memory->Read<true>(address + 3) | (m_memory->Read<true>(address + 4) << 8), m_memory->Read<true>(address + 5) | (m_memory->Read<true>(address + 6) << 8));
             break;
         }
         case GLYNX_OPCode_Type_1b_Relative:
         {
-            s8 rel = m_memory->Read<true>(address + 1);
+            s8 rel = (s8)op1;
             u16 jump_address = address + 2 + rel;
             record->jump = true;
             record->jump_address = jump_address;
-            //record->jump_bank = m_memory->GetBank(jump_address);
             snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, jump_address, rel);
             break;
         }
         case GLYNX_OPCode_Type_1b_1b_Relative:
         {
-            u8 zero_page = m_memory->Read<true>(address + 1);
-            s8 rel = m_memory->Read<true>(address + 2);
+            s8 rel = (s8)op2;
             u16 jump_address = address + 3 + rel;
             record->jump = true;
             record->jump_address = jump_address;
-            //record->jump_bank = m_memory->GetBank(jump_address);
-            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, zero_page, jump_address, rel);
+            snprintf(record->name, 64, k_m6502_opcode_names[opcode].name, op1, jump_address, rel);
             break;
         }
         default:
@@ -611,7 +637,7 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
     // JMP $nn, JSR $nn
     if (opcode == 0x4C || opcode == 0x20)
     {
-        u16 jump_address = Address16(m_memory->Read<true>(address + 2), m_memory->Read<true>(address + 1));
+        u16 jump_address = Address16(record->opcodes[2], record->opcodes[1]);
         record->jump = true;
         record->jump_address = jump_address;
     }
@@ -676,24 +702,7 @@ inline void M6502::DisassembleAhead(u16 start_address, int count, int depth)
 
         if (changed || record->size == 0)
         {
-            for (int back = 1; back < 3; ++back)
-            {
-                int prev_start = (int)address - back;
-                if (prev_start < 0)
-                    continue;
-
-                GLYNX_Disassembler_Record* prev = m_memory->GetDisassemblerRecord(prev_start);
-                if (!IsValidPointer(prev) || prev->size == 0)
-                    continue;
-
-                int distance = address - prev_start;
-                if (prev->size > distance)
-                {
-                    prev->size = 0;
-                    prev->name[0] = 0;
-                    prev->bytes[0] = 0;
-                }
-            }
+            InvalidateOverlappingRecords(address, opcode_size);
 
             int saved_irq = m_s.debug_next_irq;
             m_s.debug_next_irq = 0;

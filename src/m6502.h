@@ -187,6 +187,7 @@ private:
     u16 AbsoluteIndexedIndirectAddressing();
 
     void PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record, u8 opcode, u16 address);
+    void InvalidateOverlappingRecords(u16 address, u8 opcode_size);
 
     void Serialize(StateSerializer& s);
 
