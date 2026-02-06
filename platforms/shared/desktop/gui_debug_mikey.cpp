@@ -220,7 +220,7 @@ void gui_debug_window_mikey_colors(void)
             {
                 ImGui::TableNextColumn();
 
-                int idx = (line * 2) + c;
+                int idx = line + (c * 8);
                 u16 addr = idx + base;
 
                 ImGui::AlignTextToFramePadding();
