@@ -83,6 +83,8 @@ void gui_debug_windows(void)
             gui_debug_window_disassembler();
         if (config_debug.show_call_stack)
             gui_debug_window_call_stack();
+        if (config_debug.show_symbols)
+            gui_debug_window_symbols();
         if (config_debug.show_psg)
             gui_debug_window_psg();
         if (config_debug.show_trace_logger)

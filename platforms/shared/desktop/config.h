@@ -163,6 +163,7 @@ struct config_Debug
     bool show_disassembler = true;
     bool show_processor = true;
     bool show_call_stack = false;
+    bool show_symbols = false;
     bool show_memory = false;
     bool show_psg = false;
     bool show_trace_logger = false;

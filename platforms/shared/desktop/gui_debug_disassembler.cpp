@@ -1329,6 +1329,10 @@ static void disassembler_menu(void)
 
     if (ImGui::BeginMenu("Symbols"))
     {
+        ImGui::MenuItem("Symbols Window", NULL, &config_debug.show_symbols);
+
+        ImGui::Separator();
+
         ImGui::MenuItem("Automatic Symbols", NULL, &config_debug.dis_show_auto_symbols);
         ImGui::MenuItem("Replace Address With Symbol", NULL, &config_debug.dis_replace_symbols);
         ImGui::MenuItem("Replace Address With Label", NULL, &config_debug.dis_replace_labels);
@@ -1569,6 +1573,84 @@ void gui_debug_window_call_stack(void)
         ImGui::TextColored(gray, "-----");
         ImGui::TableNextColumn();
         ImGui::TextColored(gray, "-----");
+
+        ImGui::PopFont();
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
+void gui_debug_window_symbols(void)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::SetNextWindowPos(ImVec2(340, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(330, 300), ImGuiCond_FirstUseEver);
+
+    ImGui::Begin("Symbols", &config_debug.show_symbols);
+
+    static bool show_auto_symbols = false;
+    ImGui::Checkbox("Show Automatic Symbols", &show_auto_symbols);
+
+    ImGui::Separator();
+
+    ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable;
+
+    if (ImGui::BeginTable("symbols_table", 3, flags))
+    {
+        ImGui::TableSetupScrollFreeze(0, 1);
+        ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 68.0f);
+        ImGui::TableSetupColumn("Symbol", ImGuiTableColumnFlags_WidthStretch, 2.0f);
+        ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+        ImGui::TableHeadersRow();
+
+        ImGui::PushFont(gui_default_font);
+
+        for (int i = 0; i < 0x10000; i++)
+        {
+            DebugSymbol* symbol = fixed_symbols[i];
+
+            if (IsValidPointer(symbol))
+            {
+                ImGui::TableNextRow();
+
+                ImGui::TableNextColumn();
+                ImGui::TextColored(cyan, "$%04X", symbol->address);
+
+                ImGui::TableNextColumn();
+                ImGui::TextColored(green, "%s", symbol->text);
+
+                ImGui::TableNextColumn();
+                ImGui::TextColored(orange, "Manual");
+            }
+        }
+
+        if (show_auto_symbols)
+        {
+            for (int i = 0; i < 0x10000; i++)
+            {
+                if (IsValidPointer(fixed_symbols[i]))
+                    continue;
+
+                DebugSymbol* symbol = dynamic_symbols[i];
+
+                if (IsValidPointer(symbol))
+                {
+                    ImGui::TableNextRow();
+
+                    ImGui::TableNextColumn();
+                    ImGui::TextColored(cyan, "$%04X", symbol->address);
+
+                    ImGui::TableNextColumn();
+                    ImGui::TextColored(yellow, "%s", symbol->text);
+
+                    ImGui::TableNextColumn();
+                    ImGui::TextColored(brown, "Auto");
+                }
+            }
+        }
 
         ImGui::PopFont();
 
