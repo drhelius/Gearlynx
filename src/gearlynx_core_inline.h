@@ -64,6 +64,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         {
             debug_enable = true;
             m_m6502->EnableBreakpoints(debug->stop_on_breakpoint, debug->stop_on_irq);
+            m_m6502->SetSkipIRQOnStep(debug->skip_interrupts_on_step);
         }
 
         bool stop = false;

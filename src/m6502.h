@@ -101,6 +101,7 @@ public:
     void DisassembleAhead(u16 start_address, int count, int depth);
     void SetResetValue(int value);
     void EnableBreakpoints(bool enable, u8 irqs);
+    void SetSkipIRQOnStep(bool skip);
     bool BreakpointHit();
     bool RunToBreakpointHit();
     void ResetBreakpoints();
@@ -134,6 +135,7 @@ private:
     std::vector<GLYNX_Breakpoint> m_breakpoints;
     GLYNX_Breakpoint m_run_to_breakpoint;
     bool m_run_to_breakpoint_requested;
+    bool m_skip_irq_on_step;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_disassembler_call_stack_size;
     int m_reset_value;

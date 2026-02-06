@@ -45,7 +45,7 @@ INLINE u32 M6502::RunInstruction()
         {
             m_s.halted = false;
             CheckIRQs();
-            if(m_s.irq_pending)
+            if(m_s.irq_pending && !m_skip_irq_on_step)
                 HandleIRQ();
         }
         else
@@ -58,7 +58,7 @@ INLINE u32 M6502::RunInstruction()
         CheckIRQs();
         (this->*m_opcodes[opcode])();
 
-        if(m_s.irq_pending && !m_s.onebyte_un_nop)
+        if(m_s.irq_pending && !m_s.onebyte_un_nop && !m_skip_irq_on_step)
             HandleIRQ();
 
         DisassembleNextOPCode();
@@ -123,6 +123,11 @@ INLINE void M6502::InjectCycles(unsigned int cycles)
 INLINE void M6502::SetPageModeEnabled(bool enabled)
 {
     m_page_mode_tick_discount = enabled ? 1 : 0;
+}
+
+INLINE void M6502::SetSkipIRQOnStep(bool skip)
+{
+    m_skip_irq_on_step = skip;
 }
 
 INLINE u8 M6502::FetchOpcode8()

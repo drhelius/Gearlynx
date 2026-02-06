@@ -51,6 +51,7 @@ M6502::M6502(Bus* bus)
     m_memory_breakpoint_hit = false;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
+    m_skip_irq_on_step = false;
     m_disassembler_call_stack_size = 0;
     m_reset_value = -1;
     m_prev_opcode_address = 0xFFFF;

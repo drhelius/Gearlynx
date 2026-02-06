@@ -147,6 +147,8 @@ void emu_update(void)
         debug_run.stop_on_breakpoint = !emu_debug_disable_breakpoints;
         debug_run.stop_on_run_to_breakpoint = true;
 
+        debug_run.skip_interrupts_on_step = config_debug.step_skip_interrupts && (emu_debug_command == Debug_Command_Step);
+
         debug_run.stop_on_irq = 0;
         for (int i = 0; i < 8; i++)
         {

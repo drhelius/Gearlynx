@@ -1233,6 +1233,10 @@ static void disassembler_menu(void)
 
         ImGui::Separator();
 
+        ImGui::MenuItem("Skip IRQs on Step Into", NULL, &config_debug.step_skip_interrupts);
+
+        ImGui::Separator();
+
         if (ImGui::BeginMenu("Run To Address..."))
         {
             bool go = false;
