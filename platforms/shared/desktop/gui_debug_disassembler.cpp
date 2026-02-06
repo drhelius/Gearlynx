@@ -1611,6 +1611,14 @@ void gui_debug_window_symbols(void)
         for (int i = 0; i < 0x10000; i++)
         {
             DebugSymbol* symbol = fixed_symbols[i];
+            bool is_fixed = IsValidPointer(symbol);
+
+            if (!is_fixed)
+            {
+                if (!show_auto_symbols)
+                    continue;
+                symbol = dynamic_symbols[i];
+            }
 
             if (IsValidPointer(symbol))
             {
@@ -1620,35 +1628,10 @@ void gui_debug_window_symbols(void)
                 ImGui::TextColored(cyan, "$%04X", symbol->address);
 
                 ImGui::TableNextColumn();
-                ImGui::TextColored(green, "%s", symbol->text);
+                ImGui::TextColored(is_fixed ? green : yellow, "%s", symbol->text);
 
                 ImGui::TableNextColumn();
-                ImGui::TextColored(orange, "Manual");
-            }
-        }
-
-        if (show_auto_symbols)
-        {
-            for (int i = 0; i < 0x10000; i++)
-            {
-                if (IsValidPointer(fixed_symbols[i]))
-                    continue;
-
-                DebugSymbol* symbol = dynamic_symbols[i];
-
-                if (IsValidPointer(symbol))
-                {
-                    ImGui::TableNextRow();
-
-                    ImGui::TableNextColumn();
-                    ImGui::TextColored(cyan, "$%04X", symbol->address);
-
-                    ImGui::TableNextColumn();
-                    ImGui::TextColored(yellow, "%s", symbol->text);
-
-                    ImGui::TableNextColumn();
-                    ImGui::TextColored(brown, "Auto");
-                }
+                ImGui::TextColored(is_fixed ? orange : brown, is_fixed ? "Manual" : "Auto");
             }
         }
 
