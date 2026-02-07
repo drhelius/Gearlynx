@@ -161,6 +161,7 @@ void gui_debug_window_m6502(void)
                 ImGui::TextColored(cyan, "Hex: $%02X", cpu->A.GetValue());
                 ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->A.GetValue(), (s8)cpu->A.GetValue());
                 ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
+                ImGui::TextColored(cyan, "Ascii: %c", (cpu->A.GetValue() >= 32 && cpu->A.GetValue() < 127) ? cpu->A.GetValue() : '.');
                 ImGui::EndTooltip();
             }
 
@@ -177,6 +178,7 @@ void gui_debug_window_m6502(void)
                 ImGui::TextColored(cyan, "Hex: $%02X", cpu->S.GetValue());
                 ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->S.GetValue(), (s8)cpu->S.GetValue());
                 ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
+                ImGui::TextColored(cyan, "Ascii: %c", (cpu->S.GetValue() >= 32 && cpu->S.GetValue() < 127) ? cpu->S.GetValue() : '.');
                 ImGui::EndTooltip();
             }
 
@@ -193,6 +195,7 @@ void gui_debug_window_m6502(void)
                 ImGui::TextColored(cyan, "Hex: $%02X", cpu->X.GetValue());
                 ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->X.GetValue(), (s8)cpu->X.GetValue());
                 ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
+                ImGui::TextColored(cyan, "Ascii: %c", (cpu->X.GetValue() >= 32 && cpu->X.GetValue() < 127) ? cpu->X.GetValue() : '.');
                 ImGui::EndTooltip();
             }
 
@@ -209,6 +212,7 @@ void gui_debug_window_m6502(void)
                 ImGui::TextColored(cyan, "Hex: $%02X", cpu->Y.GetValue());
                 ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->Y.GetValue(), (s8)cpu->Y.GetValue());
                 ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
+                ImGui::TextColored(cyan, "Ascii: %c", (cpu->Y.GetValue() >= 32 && cpu->Y.GetValue() < 127) ? cpu->Y.GetValue() : '.');
                 ImGui::EndTooltip();
             }
 
