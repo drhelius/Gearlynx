@@ -53,8 +53,12 @@ struct SymbolEntry
     bool is_fixed;
 };
 
+static bool symbols_dirty = true;
+static bool show_auto_symbols = false;
 static DebugSymbol** fixed_symbols = NULL;
 static DebugSymbol** dynamic_symbols = NULL;
+static std::vector<SymbolEntry> fixed_symbol_list;
+static std::vector<SymbolEntry> dynamic_symbol_list;
 static std::vector<DisassemblerLine> disassembler_lines(0x10000);
 static std::vector<DisassemblerBookmark> bookmarks;
 static int selected_address = -1;
@@ -132,6 +136,10 @@ void gui_debug_reset_symbols(void)
         SafeDelete(fixed_symbols[i]);
         SafeDelete(dynamic_symbols[i]);
     }
+
+    fixed_symbol_list.clear();
+    dynamic_symbol_list.clear();
+    symbols_dirty = true;
 }
 
 void gui_debug_reset_breakpoints(void)
@@ -920,6 +928,12 @@ static void add_symbol(const char* line)
             snprintf(new_symbol->text, 64, "%s", s.text);
 
             fixed_symbols[s.address] = new_symbol;
+
+            SymbolEntry entry;
+            entry.symbol = new_symbol;
+            entry.is_fixed = true;
+            fixed_symbol_list.push_back(entry);
+            symbols_dirty = true;
         }
     }
 }
@@ -960,6 +974,8 @@ static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
         {
            if (record->subroutine)
                snprintf(dynamic_symbols[s.address]->text, 64, "SUB_%04X", record->jump_address);
+           if (show_auto_symbols)
+               symbols_dirty = true;
         }
         else
         {
@@ -968,6 +984,14 @@ static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
             snprintf(new_symbol->text, 64, "%s", s.text);
 
             dynamic_symbols[s.address] = new_symbol;
+
+            SymbolEntry entry;
+            entry.symbol = new_symbol;
+            entry.is_fixed = false;
+            dynamic_symbol_list.push_back(entry);
+
+            if (show_auto_symbols)
+                symbols_dirty = true;
         }
     }
 }
@@ -1601,12 +1625,19 @@ void gui_debug_window_symbols(void)
 
     ImGui::Begin("Symbols", &config_debug.show_symbols);
 
-    static bool show_auto_symbols = false;
     static char symbol_filter[64] = "";
+    static std::vector<SymbolEntry> sorted_symbols;
+    static int last_sort_column = -1;
+    static int last_sort_direction = -1;
+
+    bool prev_auto = show_auto_symbols;
     ImGui::Checkbox("Automatic Symbols", &show_auto_symbols);
+    if (show_auto_symbols != prev_auto)
+        symbols_dirty = true;
     ImGui::SameLine();
     ImGui::PushItemWidth(-1);
-    ImGui::InputTextWithHint("##symbol_filter", "Filter...", symbol_filter, IM_ARRAYSIZE(symbol_filter));
+    if (ImGui::InputTextWithHint("##symbol_filter", "Filter...", symbol_filter, IM_ARRAYSIZE(symbol_filter)))
+        symbols_dirty = true;
     ImGui::PopItemWidth();
 
     ImGui::Separator();
@@ -1621,55 +1652,83 @@ void gui_debug_window_symbols(void)
         ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort, 48.0f);
         ImGui::TableHeadersRow();
 
-        std::vector<SymbolEntry> sorted_symbols;
-
-        for (int i = 0; i < 0x10000; i++)
+        if (ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs())
         {
-            DebugSymbol* symbol = fixed_symbols[i];
-            bool is_fixed = IsValidPointer(symbol);
-
-            if (!is_fixed)
+            if (sort_specs->SpecsDirty || symbols_dirty)
             {
-                if (!show_auto_symbols)
-                    continue;
-                symbol = dynamic_symbols[i];
+                sort_specs->SpecsDirty = false;
+                symbols_dirty = true;
             }
 
-            if (IsValidPointer(symbol))
+            if (sort_specs->SpecsCount > 0)
             {
+                last_sort_column = sort_specs->Specs[0].ColumnIndex;
+                last_sort_direction = sort_specs->Specs[0].SortDirection;
+            }
+        }
+
+        if (symbols_dirty)
+        {
+            symbols_dirty = false;
+            sorted_symbols.clear();
+
+            for (size_t i = 0; i < fixed_symbol_list.size(); i++)
+            {
+                SymbolEntry& e = fixed_symbol_list[i];
+
                 if (symbol_filter[0] != 0)
                 {
                     char addr_str[8];
-                    snprintf(addr_str, sizeof(addr_str), "%04X", symbol->address);
+                    snprintf(addr_str, sizeof(addr_str), "%04X", e.symbol->address);
 
                     char filter_upper[64];
                     char text_upper[64];
                     for (int j = 0; j < 63 && symbol_filter[j]; j++) { filter_upper[j] = toupper(symbol_filter[j]); filter_upper[j + 1] = 0; }
-                    for (int j = 0; j < 63 && symbol->text[j]; j++) { text_upper[j] = toupper(symbol->text[j]); text_upper[j + 1] = 0; }
+                    for (int j = 0; j < 63 && e.symbol->text[j]; j++) { text_upper[j] = toupper(e.symbol->text[j]); text_upper[j + 1] = 0; }
 
                     if (strstr(text_upper, filter_upper) == NULL && strstr(addr_str, filter_upper) == NULL)
                         continue;
                 }
 
-                SymbolEntry entry;
-                entry.symbol = symbol;
-                entry.is_fixed = is_fixed;
-                sorted_symbols.push_back(entry);
+                sorted_symbols.push_back(e);
             }
-        }
 
-        if (ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs())
-        {
-            if (sort_specs->SpecsCount > 0)
+            if (show_auto_symbols)
             {
-                const ImGuiTableColumnSortSpecs& spec = sort_specs->Specs[0];
-                bool ascending = (spec.SortDirection == ImGuiSortDirection_Ascending);
+                for (size_t i = 0; i < dynamic_symbol_list.size(); i++)
+                {
+                    SymbolEntry& e = dynamic_symbol_list[i];
 
-                if (spec.ColumnIndex == 0)
+                    if (IsValidPointer(fixed_symbols[e.symbol->address]))
+                        continue;
+
+                    if (symbol_filter[0] != 0)
+                    {
+                        char addr_str[8];
+                        snprintf(addr_str, sizeof(addr_str), "%04X", e.symbol->address);
+
+                        char filter_upper[64];
+                        char text_upper[64];
+                        for (int j = 0; j < 63 && symbol_filter[j]; j++) { filter_upper[j] = toupper(symbol_filter[j]); filter_upper[j + 1] = 0; }
+                        for (int j = 0; j < 63 && e.symbol->text[j]; j++) { text_upper[j] = toupper(e.symbol->text[j]); text_upper[j + 1] = 0; }
+
+                        if (strstr(text_upper, filter_upper) == NULL && strstr(addr_str, filter_upper) == NULL)
+                            continue;
+                    }
+
+                    sorted_symbols.push_back(e);
+                }
+            }
+
+            if (last_sort_column >= 0)
+            {
+                bool ascending = (last_sort_direction == ImGuiSortDirection_Ascending);
+
+                if (last_sort_column == 0)
                 {
                     std::sort(sorted_symbols.begin(), sorted_symbols.end(), ascending ? symbol_sort_address_asc : symbol_sort_address_desc);
                 }
-                else if (spec.ColumnIndex == 1)
+                else if (last_sort_column == 1)
                 {
                     std::sort(sorted_symbols.begin(), sorted_symbols.end(), ascending ? symbol_sort_name_asc : symbol_sort_name_desc);
                 }
@@ -1678,21 +1737,36 @@ void gui_debug_window_symbols(void)
 
         ImGui::PushFont(gui_default_font);
 
-        for (size_t idx = 0; idx < sorted_symbols.size(); idx++)
+        ImGuiListClipper clipper;
+        clipper.Begin((int)sorted_symbols.size());
+        while (clipper.Step())
         {
-            DebugSymbol* symbol = sorted_symbols[idx].symbol;
-            bool is_fixed = sorted_symbols[idx].is_fixed;
+            for (int idx = clipper.DisplayStart; idx < clipper.DisplayEnd; idx++)
+            {
+                DebugSymbol* symbol = sorted_symbols[idx].symbol;
+                bool is_fixed = sorted_symbols[idx].is_fixed;
 
-            ImGui::TableNextRow();
+                ImGui::TableNextRow();
 
-            ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, "$%04X", symbol->address);
+                ImGui::TableNextColumn();
+                char selectable_id[16];
+                snprintf(selectable_id, sizeof(selectable_id), "##sym%d", (int)idx);
+                if (ImGui::Selectable(selectable_id, false, ImGuiSelectableFlags_SpanAllColumns))
+                {
+                    request_goto_address(symbol->address);
+                }
+                ImGui::SameLine();
+                ImGui::TextColored(cyan, "$%04X", symbol->address);
 
-            ImGui::TableNextColumn();
-            ImGui::TextColored(is_fixed ? green : yellow, "%s", symbol->text);
+                ImGui::TableNextColumn();
+                ImGui::TextColored(is_fixed ? green : yellow, "%s", symbol->text);
 
-            ImGui::TableNextColumn();
-            ImGui::TextColored(is_fixed ? orange : brown, is_fixed ? "Manual" : "Auto");
+                ImGui::TableNextColumn();
+                if (is_fixed)
+                    ImGui::TextColored(orange, "Manual");
+                else
+                    ImGui::TextColored(brown, "Auto");
+            }
         }
 
         ImGui::PopFont();
@@ -1714,8 +1788,17 @@ void gui_debug_remove_symbol(u16 address)
     DebugSymbol* symbol = fixed_symbols[address];
     if (IsValidPointer(symbol))
     {
+        for (size_t i = 0; i < fixed_symbol_list.size(); i++)
+        {
+            if (fixed_symbol_list[i].symbol == symbol)
+            {
+                fixed_symbol_list.erase(fixed_symbol_list.begin() + i);
+                break;
+            }
+        }
         delete symbol;
         fixed_symbols[address] = NULL;
+        symbols_dirty = true;
     }
 }
 
