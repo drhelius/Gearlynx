@@ -47,6 +47,12 @@ struct DisassemblerBookmark
     char name[32];
 };
 
+struct SymbolEntry
+{
+    DebugSymbol* symbol;
+    bool is_fixed;
+};
+
 static DebugSymbol** fixed_symbols = NULL;
 static DebugSymbol** dynamic_symbols = NULL;
 static std::vector<DisassemblerLine> disassembler_lines(0x10000);
@@ -85,6 +91,10 @@ static void add_bookmark_popup(void);
 static void add_symbol_popup(void);
 static void save_full_disassembler(FILE* file);
 static void save_current_disassembler(FILE* file);
+static bool symbol_sort_address_asc(const SymbolEntry& a, const SymbolEntry& b);
+static bool symbol_sort_address_desc(const SymbolEntry& a, const SymbolEntry& b);
+static bool symbol_sort_name_asc(const SymbolEntry& a, const SymbolEntry& b);
+static bool symbol_sort_name_desc(const SymbolEntry& a, const SymbolEntry& b);
 
 void gui_debug_disassembler_init(void)
 {
@@ -1587,26 +1597,31 @@ void gui_debug_window_symbols(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(340, 400), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(330, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(330, 370), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Symbols", &config_debug.show_symbols);
 
     static bool show_auto_symbols = false;
-    ImGui::Checkbox("Show Automatic Symbols", &show_auto_symbols);
+    static char symbol_filter[64] = "";
+    ImGui::Checkbox("Automatic Symbols", &show_auto_symbols);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-1);
+    ImGui::InputTextWithHint("##symbol_filter", "Filter...", symbol_filter, IM_ARRAYSIZE(symbol_filter));
+    ImGui::PopItemWidth();
 
     ImGui::Separator();
 
-    ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable;
+    ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable;
 
     if (ImGui::BeginTable("symbols_table", 3, flags))
     {
         ImGui::TableSetupScrollFreeze(0, 1);
-        ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 68.0f);
+        ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort, 68.0f);
         ImGui::TableSetupColumn("Symbol", ImGuiTableColumnFlags_WidthStretch, 2.0f);
-        ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+        ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort, 48.0f);
         ImGui::TableHeadersRow();
 
-        ImGui::PushFont(gui_default_font);
+        std::vector<SymbolEntry> sorted_symbols;
 
         for (int i = 0; i < 0x10000; i++)
         {
@@ -1622,17 +1637,62 @@ void gui_debug_window_symbols(void)
 
             if (IsValidPointer(symbol))
             {
-                ImGui::TableNextRow();
+                if (symbol_filter[0] != 0)
+                {
+                    char addr_str[8];
+                    snprintf(addr_str, sizeof(addr_str), "%04X", symbol->address);
 
-                ImGui::TableNextColumn();
-                ImGui::TextColored(cyan, "$%04X", symbol->address);
+                    char filter_upper[64];
+                    char text_upper[64];
+                    for (int j = 0; j < 63 && symbol_filter[j]; j++) { filter_upper[j] = toupper(symbol_filter[j]); filter_upper[j + 1] = 0; }
+                    for (int j = 0; j < 63 && symbol->text[j]; j++) { text_upper[j] = toupper(symbol->text[j]); text_upper[j + 1] = 0; }
 
-                ImGui::TableNextColumn();
-                ImGui::TextColored(is_fixed ? green : yellow, "%s", symbol->text);
+                    if (strstr(text_upper, filter_upper) == NULL && strstr(addr_str, filter_upper) == NULL)
+                        continue;
+                }
 
-                ImGui::TableNextColumn();
-                ImGui::TextColored(is_fixed ? orange : brown, is_fixed ? "Manual" : "Auto");
+                SymbolEntry entry;
+                entry.symbol = symbol;
+                entry.is_fixed = is_fixed;
+                sorted_symbols.push_back(entry);
             }
+        }
+
+        if (ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs())
+        {
+            if (sort_specs->SpecsCount > 0)
+            {
+                const ImGuiTableColumnSortSpecs& spec = sort_specs->Specs[0];
+                bool ascending = (spec.SortDirection == ImGuiSortDirection_Ascending);
+
+                if (spec.ColumnIndex == 0)
+                {
+                    std::sort(sorted_symbols.begin(), sorted_symbols.end(), ascending ? symbol_sort_address_asc : symbol_sort_address_desc);
+                }
+                else if (spec.ColumnIndex == 1)
+                {
+                    std::sort(sorted_symbols.begin(), sorted_symbols.end(), ascending ? symbol_sort_name_asc : symbol_sort_name_desc);
+                }
+            }
+        }
+
+        ImGui::PushFont(gui_default_font);
+
+        for (size_t idx = 0; idx < sorted_symbols.size(); idx++)
+        {
+            DebugSymbol* symbol = sorted_symbols[idx].symbol;
+            bool is_fixed = sorted_symbols[idx].is_fixed;
+
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(cyan, "$%04X", symbol->address);
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(is_fixed ? green : yellow, "%s", symbol->text);
+
+            ImGui::TableNextColumn();
+            ImGui::TextColored(is_fixed ? orange : brown, is_fixed ? "Manual" : "Auto");
         }
 
         ImGui::PopFont();
@@ -1808,4 +1868,24 @@ static void save_current_disassembler(FILE* file)
             fprintf(file, "\n\n");
         }
     }
+}
+
+static bool symbol_sort_address_asc(const SymbolEntry& a, const SymbolEntry& b)
+{
+    return a.symbol->address < b.symbol->address;
+}
+
+static bool symbol_sort_address_desc(const SymbolEntry& a, const SymbolEntry& b)
+{
+    return a.symbol->address > b.symbol->address;
+}
+
+static bool symbol_sort_name_asc(const SymbolEntry& a, const SymbolEntry& b)
+{
+    return strcmp(a.symbol->text, b.symbol->text) < 0;
+}
+
+static bool symbol_sort_name_desc(const SymbolEntry& a, const SymbolEntry& b)
+{
+    return strcmp(a.symbol->text, b.symbol->text) > 0;
 }
