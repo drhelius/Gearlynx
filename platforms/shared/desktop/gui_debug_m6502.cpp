@@ -149,28 +149,68 @@ void gui_debug_window_m6502(void)
         if (ImGui::BeginTable("regs", 2, ImGuiTableFlags_BordersInnerH |ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))
         {
             ImGui::TableNextColumn();
+            ImGui::BeginGroup();
             ImGui::TextColored(cyan, "  A"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_A, cpu->A.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
+            ImGui::EndGroup();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextColored(cyan, "Hex: $%02X", cpu->A.GetValue());
+                ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->A.GetValue(), (s8)cpu->A.GetValue());
+                ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->A.GetValue()));
+                ImGui::EndTooltip();
+            }
 
             ImGui::TableNextColumn();
+            ImGui::BeginGroup();
             ImGui::TextColored(cyan, "  S"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_S, cpu->S.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
+            ImGui::EndGroup();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextColored(cyan, "Hex: $%02X", cpu->S.GetValue());
+                ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->S.GetValue(), (s8)cpu->S.GetValue());
+                ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->S.GetValue()));
+                ImGui::EndTooltip();
+            }
 
             ImGui::TableNextColumn();
+            ImGui::BeginGroup();
             ImGui::TextColored(cyan, "  X"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_X, cpu->X.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
+            ImGui::EndGroup();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextColored(cyan, "Hex: $%02X", cpu->X.GetValue());
+                ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->X.GetValue(), (s8)cpu->X.GetValue());
+                ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->X.GetValue()));
+                ImGui::EndTooltip();
+            }
 
             ImGui::TableNextColumn();
+            ImGui::BeginGroup();
             ImGui::TextColored(cyan, "  Y"); ImGui::SameLine();
             ImGui::Text("  "); ImGui::SameLine(0, 0);
             EditableRegister8(NULL, NULL, M6502RegId_Y, cpu->Y.GetValue(), M6502WriteCallback8, cpu, EditableRegisterFlags_None);
             ImGui::TextColored(gray, " " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
+            ImGui::EndGroup();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextColored(cyan, "Hex: $%02X", cpu->Y.GetValue());
+                ImGui::TextColored(cyan, "Dec: %u (%d)", cpu->Y.GetValue(), (s8)cpu->Y.GetValue());
+                ImGui::TextColored(cyan, "Bin: " BYTE_TO_BINARY_PATTERN_SPACED, BYTE_TO_BINARY(cpu->Y.GetValue()));
+                ImGui::EndTooltip();
+            }
 
             ImGui::TableNextColumn();
             ImGui::TextColored(violet, "MAPCTL"); ImGui::SameLine();
