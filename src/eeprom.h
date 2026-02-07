@@ -40,6 +40,7 @@ public:
     u8* GetData();
     bool IsDirty();
     void ClearDirty();
+    void Erase();
     void SetData(u8* data, s32 size);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
@@ -76,5 +77,7 @@ private:
     u8 m_iodir;
     u8 m_iodat;
 };
+
+#include "eeprom_inline.h"
 
 #endif /* EEPROM_H */

@@ -17,7 +17,7 @@
  *
  */
 
-#include <cstring>
+#include <string.h>
 #include <fstream>
 #include "eeprom.h"
 #include "bit_ops.h"
@@ -49,53 +49,8 @@ void EEPROM::Reset(GLYNX_EEPROM type)
     m_done_mask = 0;
     m_iodir = 0;
     m_iodat = 0;
-    std::memset(m_rom_data, 0xFF, sizeof(m_rom_data));
+    memset(m_rom_data, 0xFF, sizeof(m_rom_data));
     SetType(type);
-}
-
-void EEPROM::SetType(GLYNX_EEPROM type)
-{
-    m_type = type;
-
-    s32 base_type = m_type & 0x0F;
-
-    switch (base_type)
-    {
-        case GLYNX_EEPROM_93C46:
-            m_addr_bits = 6;
-            break;
-        case GLYNX_EEPROM_93C56:
-        case GLYNX_EEPROM_93C66:
-            m_addr_bits = 8;
-            break;
-        case GLYNX_EEPROM_93C76:
-        case GLYNX_EEPROM_93C86:
-            m_addr_bits = 10;
-            break;
-        default:
-            m_addr_bits = 6;
-            break;
-    }
-
-    // 8-bit mode has one extra address bit
-    if (m_type & GLYNX_EEPROM_8BIT)
-        m_addr_bits++;
-
-    // done_mask: after receiving (1 start + 2 opcode + addr_bits) bits,
-    // the MSB is at position (addr_bits + 2)
-    m_done_mask = 1 << (m_addr_bits + 2);
-
-    Debug("EEPROM type set: %d, addr_bits: %d, done_mask: 0x%04X", m_type, m_addr_bits, m_done_mask);
-}
-
-GLYNX_EEPROM EEPROM::GetType()
-{
-    return m_type;
-}
-
-bool EEPROM::IsAvailable()
-{
-    return (m_type != GLYNX_EEPROM_NONE);
 }
 
 s32 EEPROM::GetSize()
@@ -129,13 +84,6 @@ s32 EEPROM::GetSize()
         size *= 2;
 
     return size;
-}
-
-void EEPROM::ProcessIO(u8 iodir, u8 iodat)
-{
-    // Store IODIR/IODAT for use in ProcessEepromCounter
-    m_iodir = iodir;
-    m_iodat = iodat;
 }
 
 void EEPROM::ProcessEepromCounter(u16 counter)
@@ -340,24 +288,48 @@ void EEPROM::ProcessBusy()
     }
 }
 
-bool EEPROM::OutputBit()
+void EEPROM::SetType(GLYNX_EEPROM type)
 {
-    return m_audin_output;
+    m_type = type;
+
+    s32 base_type = m_type & 0x0F;
+
+    switch (base_type)
+    {
+        case GLYNX_EEPROM_93C46:
+            m_addr_bits = 6;
+            break;
+        case GLYNX_EEPROM_93C56:
+        case GLYNX_EEPROM_93C66:
+            m_addr_bits = 8;
+            break;
+        case GLYNX_EEPROM_93C76:
+        case GLYNX_EEPROM_93C86:
+            m_addr_bits = 10;
+            break;
+        default:
+            m_addr_bits = 6;
+            break;
+    }
+
+    // 8-bit mode has one extra address bit
+    if (m_type & GLYNX_EEPROM_8BIT)
+        m_addr_bits++;
+
+    // done_mask: after receiving (1 start + 2 opcode + addr_bits) bits,
+    // the MSB is at position (addr_bits + 2)
+    m_done_mask = 1 << (m_addr_bits + 2);
+
+    Debug("EEPROM type set: %d, addr_bits: %d, done_mask: 0x%04X", m_type, m_addr_bits, m_done_mask);
 }
 
-u8* EEPROM::GetData()
+void EEPROM::Erase()
 {
-    return (u8*)m_rom_data;
-}
-
-bool EEPROM::IsDirty()
-{
-    return m_dirty;
-}
-
-void EEPROM::ClearDirty()
-{
-    m_dirty = false;
+    if (!IsAvailable())
+        return;
+    memset(m_rom_data, 0xFF, GetSize());
+    m_dirty = true;
+    Debug("EEPROM erased");
 }
 
 void EEPROM::SetData(u8* data, s32 size)
@@ -365,7 +337,7 @@ void EEPROM::SetData(u8* data, s32 size)
     if (data != NULL && size > 0)
     {
         s32 copy_size = (size < (s32)sizeof(m_rom_data)) ? size : (s32)sizeof(m_rom_data);
-        std::memcpy(m_rom_data, data, copy_size);
+        memcpy(m_rom_data, data, copy_size);
     }
 }
 

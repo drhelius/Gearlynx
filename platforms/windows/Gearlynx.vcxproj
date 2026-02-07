@@ -26,6 +26,7 @@
     <ClInclude Include="..\..\src\media.h" />
     <ClInclude Include="..\..\src\media_inline.h" />
     <ClInclude Include="..\..\src\eeprom.h" />
+    <ClInclude Include="..\..\src\eeprom_inline.h" />
     <ClInclude Include="..\..\src\common.h" />
     <ClInclude Include="..\..\src\crc.h" />
     <ClInclude Include="..\..\src\defines.h" />

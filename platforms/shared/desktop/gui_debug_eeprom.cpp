@@ -41,10 +41,8 @@ void gui_debug_window_eeprom(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 140), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(260, 280), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(216, 378), ImGuiCond_FirstUseEver);
     ImGui::Begin("EEPROM", &config_debug.show_eeprom);
-
-    ImGui::PushFont(gui_default_font);
 
     GearlynxCore* core = emu_get_core();
     Media* media = core->GetMedia();
@@ -65,6 +63,8 @@ void gui_debug_window_eeprom(void)
     bool cs = IS_SET_BIT(iodat, 2) && IS_SET_BIT(iodir, 2);
     bool clk = IS_SET_BIT(iodat, 1);
     bool di = IS_SET_BIT(iodat, 0);
+
+    ImGui::PushFont(gui_default_font);
 
     // EEPROM Type Info
     ImGui::TextColored(magenta, "INFO");
@@ -149,7 +149,39 @@ void gui_debug_window_eeprom(void)
     else
         ImGui::TextColored(red, "LOW  (0)");
 
+    ImGui::NewLine();
+    ImGui::Separator();
+    ImGui::NewLine();
     ImGui::PopFont();
+
+    if (!available)
+        ImGui::BeginDisabled();
+
+    if (ImGui::Button("Erase EEPROM", ImVec2(-1, 0)))
+    {
+        ImGui::OpenPopup("Erase EEPROM?");
+    }
+
+    if (ImGui::BeginPopupModal("Erase EEPROM?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("This will erase all EEPROM contents.\nThis operation cannot be undone.\n\n");
+        ImGui::Separator();
+
+        if (ImGui::Button("Erase", ImVec2(80, 0)))
+        {
+            eeprom->Erase();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(80, 0)))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (!available)
+        ImGui::EndDisabled();
 
     ImGui::End();
     ImGui::PopStyleVar();

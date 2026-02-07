@@ -198,6 +198,9 @@
     <ClInclude Include="..\..\src\eeprom.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\eeprom_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\common.h">
       <Filter>core</Filter>
     </ClInclude>
