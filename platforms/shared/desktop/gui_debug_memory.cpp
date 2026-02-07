@@ -136,6 +136,7 @@ void gui_debug_memory_watches_window(void)
 {
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
+        mem_edit[i].SetGuiFont(gui_roboto_font);
         ImGui::PushFont(gui_default_font);
         mem_edit[i].DrawWatchWindow();
         ImGui::PopFont();
@@ -434,6 +435,7 @@ void gui_debug_memory_add_watch(int editor, int address, const char* notes)
     }
 
     watches->push_back(watch);
+    mem_edit[editor].OpenWatchWindow();
 }
 
 void gui_debug_memory_remove_watch(int editor, int address)
