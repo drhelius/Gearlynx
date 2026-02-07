@@ -1562,6 +1562,7 @@ void gui_debug_window_call_stack(void)
 
         ImGui::PushFont(gui_default_font);
 
+        int row_index = 0;
         while (!temp_stack.empty())
         {
             ImGui::TableNextRow();
@@ -1589,6 +1590,13 @@ void gui_debug_window_call_stack(void)
             }
 
             ImGui::TableNextColumn();
+            char selectable_id[16];
+            snprintf(selectable_id, sizeof(selectable_id), "##cs%d", row_index);
+            if (ImGui::Selectable(selectable_id, false, ImGuiSelectableFlags_SpanAllColumns))
+            {
+                request_goto_address(entry.dest);
+            }
+            ImGui::SameLine();
             ImGui::TextColored(cyan, "$%04X", entry.dest);
             ImGui::SameLine();
             ImGui::TextColored(green, "%s", symbol_text);
@@ -1598,6 +1606,8 @@ void gui_debug_window_call_stack(void)
 
             ImGui::TableNextColumn();
             ImGui::TextColored(cyan, "$%04X", entry.back);
+
+            row_index++;
         }
 
         ImGui::TableNextRow();
