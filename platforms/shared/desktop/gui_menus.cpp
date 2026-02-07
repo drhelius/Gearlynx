@@ -856,6 +856,7 @@ static void menu_debug(void)
         {
             ImGui::MenuItem("Show 65C02", "", &config_debug.show_processor);
             ImGui::MenuItem("Show 65C02 Call Stack", "", &config_debug.show_call_stack);
+            ImGui::MenuItem("Show 65C02 Breakpoints", "", &config_debug.show_breakpoints);
             ImGui::MenuItem("Show 65C02 Symbols", "", &config_debug.show_symbols);
             ImGui::MenuItem("Show Registers", "", &config_debug.show_mikey_regs);
             ImGui::MenuItem("Show Timers", "", &config_debug.show_mikey_timers);

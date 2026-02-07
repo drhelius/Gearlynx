@@ -136,6 +136,7 @@ void config_read(void)
     config_debug.show_memory = read_bool("Debug", "Memory", false);
     config_debug.show_processor = read_bool("Debug", "Processor", true);
     config_debug.show_call_stack = read_bool("Debug", "CallStack", false);
+    config_debug.show_breakpoints = read_bool("Debug", "Breakpoints", false);
     config_debug.show_symbols = read_bool("Debug", "Symbols", false);
     config_debug.show_psg = read_bool("Debug", "PSG", false);
     config_debug.show_trace_logger = read_bool("Debug", "TraceLogger", false);
@@ -308,6 +309,7 @@ void config_write(void)
     write_bool("Debug", "Memory", config_debug.show_memory);
     write_bool("Debug", "Processor", config_debug.show_processor);
     write_bool("Debug", "CallStack", config_debug.show_call_stack);
+    write_bool("Debug", "Breakpoints", config_debug.show_breakpoints);
     write_bool("Debug", "Symbols", config_debug.show_symbols);
     write_bool("Debug", "PSG", config_debug.show_psg);
     write_bool("Debug", "MikeyRegs", config_debug.show_mikey_regs);
