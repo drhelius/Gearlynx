@@ -29,6 +29,13 @@ Audio::Audio(Mikey* mikey)
     m_mute = false;
     m_vgm_recording_enabled = false;
     m_is_lynx2 = true;
+
+    for (int i = 0; i < 4; i++)
+    {
+        m_channel[i].mute = false;
+        m_channel[i].volume = 1.0f;
+    }
+
     Reset(true);
 }
 
