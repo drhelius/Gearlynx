@@ -39,6 +39,7 @@ struct DisassemblerLine
     char name_enhanced[64];
     int name_real_length;
     DebugSymbol* symbol;
+    bool is_auto_symbol;
 };
 
 struct DisassemblerBookmark
@@ -88,7 +89,7 @@ static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address);
 static void add_breakpoint();
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
-static void replace_symbols(DisassemblerLine* line, const char* color);
+static void replace_symbols(DisassemblerLine* line, const char* color, const char* auto_color);
 static void replace_labels(DisassemblerLine* line, const char* color, const char* original_color);
 static void draw_instruction_name(DisassemblerLine* line, bool is_pc);
 static void disassembler_menu(void);
@@ -584,6 +585,7 @@ static void prepare_drawable_lines(void)
                     DisassemblerLine line;
                     line.address = (u16)i;
                     line.symbol = symbol;
+                    line.is_auto_symbol = false;
                     disassembler_lines.push_back(line);
                     fixed_symbol_found = true;
                 }
@@ -598,6 +600,7 @@ static void prepare_drawable_lines(void)
                     DisassemblerLine line;
                     line.address = (u16)i;
                     line.symbol = symbol;
+                    line.is_auto_symbol = true;
                     disassembler_lines.push_back(line);
                 }
             }
@@ -684,7 +687,8 @@ static void draw_disassembly(void)
 
                 if (line.symbol)
                 {
-                    ImGui::TextColored(green, "%s:", line.symbol->text);
+                    bool dim = line.is_auto_symbol && config_debug.dis_dim_auto_symbols;
+                    ImGui::TextColored(dim ? dim_green : green, "%s:", line.symbol->text);
                     continue;
                 }
 
@@ -1044,7 +1048,7 @@ static bool is_return_instruction(u8 opcode)
     }
 }
 
-static void replace_symbols(DisassemblerLine* line, const char* color)
+static void replace_symbols(DisassemblerLine* line, const char* color, const char* auto_color)
 {
     bool symbol_found = false;
 
@@ -1068,6 +1072,9 @@ static void replace_symbols(DisassemblerLine* line, const char* color)
     if (symbol_found)
         return;
 
+    if (!config_debug.dis_show_auto_symbols)
+        return;
+
     DebugSymbol* dynamic_symbol = dynamic_symbols[line->record->jump_address];
 
     if (IsValidPointer(dynamic_symbol))
@@ -1079,7 +1086,7 @@ static void replace_symbols(DisassemblerLine* line, const char* color)
         size_t pos = instr.find(jump_address);
         if (pos != std::string::npos)
         {
-            instr.replace(pos, 5, color + symbol);
+            instr.replace(pos, 5, auto_color + symbol);
             snprintf(line->name_enhanced, 64, "%s", instr.c_str());
         }
 
@@ -1138,7 +1145,8 @@ static void draw_instruction_name(DisassemblerLine* line, bool is_pc)
 
     if (config_debug.dis_replace_symbols && line->record->jump)
     {
-        replace_symbols(line, symbol_color);
+        const char* auto_symbol_color = config_debug.dis_dim_auto_symbols ? c_dim_green : symbol_color;
+        replace_symbols(line, symbol_color, auto_symbol_color);
     }
 
     if (config_debug.dis_replace_labels)
@@ -1392,6 +1400,9 @@ static void disassembler_menu(void)
         ImGui::Separator();
 
         ImGui::MenuItem("Automatic Symbols", NULL, &config_debug.dis_show_auto_symbols);
+        if (!config_debug.dis_show_auto_symbols) ImGui::BeginDisabled();
+        ImGui::MenuItem("Dim Automatic Symbols", NULL, &config_debug.dis_dim_auto_symbols);
+        if (!config_debug.dis_show_auto_symbols) ImGui::EndDisabled();
         ImGui::MenuItem("Replace Address With Symbol", NULL, &config_debug.dis_replace_symbols);
         ImGui::MenuItem("Replace Address With Label", NULL, &config_debug.dis_replace_labels);
 
@@ -1988,7 +1999,7 @@ static void save_current_disassembler(FILE* file)
 
         if (config_debug.dis_replace_symbols && line.record->jump)
         {
-            replace_symbols(&line, "");
+            replace_symbols(&line, "", "");
         }
 
         if (config_debug.dis_replace_labels)

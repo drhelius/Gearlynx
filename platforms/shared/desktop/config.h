@@ -187,6 +187,7 @@ struct config_Debug
     bool dis_show_symbols = true;
     bool dis_show_segment = true;
     bool dis_show_auto_symbols = true;
+    bool dis_dim_auto_symbols = false;
     bool dis_replace_symbols = true;
     bool dis_replace_labels = true;
     int dis_look_ahead_count = 20;
