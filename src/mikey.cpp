@@ -167,7 +167,7 @@ void Mikey::HorizontalBlank()
         // Clear lines that won't be rendered when backup < 104
         if (backup < 104)
         {
-            int visible_lines = backup - 2;
+            int visible_lines = MAX(0, (int)backup - 2);
             for (int line = visible_lines; line < 102; line++)
             {
                 m_lcd_screen->ClearLine(line);
