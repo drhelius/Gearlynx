@@ -251,24 +251,35 @@ void gui_debug_window_m6502(void)
             ImGui::TextColored(vectors_visible ? green : gray, vectors_visible ? "ON" : "OFF");
             ImGui::TextColored(brown, " FFFA-FFFF");
 
-            for (int i = 0; i < 8; i++)
-            {
-                GLYNX_Mikey_Timer* timer = &mikey->timers[i];
-                bool enabled = IS_SET_BIT(timer->control_a, 7);
-                if (i == 4)
-                    enabled = (mikey->uart.tx_int_en || mikey->uart.rx_int_en);
-
-                bool asserted = mikey->irq_pending & (1 << i);
-                ImGui::TableNextColumn();
-                ImGui::TextColored(blue, "IRQ %d ", i); ImGui::SameLine();
-                ImGui::TextColored(enabled ? green : gray, enabled ? "ON" : "OFF");
-                ImGui::TextColored(asserted ? green : gray, " ASSERTED");
-            }
-
             ImGui::EndTable();
         }
 
         ImGui::PopStyleVar();
+
+        ImGui::TableNextColumn();
+
+        ImGui::TextColored(blue, " INTERRUPT ENABLE:");
+        ImGui::Text("  "); ImGui::SameLine(0, 0);
+
+        for (int i = 0; i < 8; i++)
+        {
+            GLYNX_Mikey_Timer* timer = &mikey->timers[i];
+            bool enabled = IS_SET_BIT(timer->control_a, 7);
+            if (i == 4)
+                enabled = (mikey->uart.tx_int_en || mikey->uart.rx_int_en);
+            ImGui::TextColored(enabled ? green : gray, "%d", i); ImGui::SameLine();
+        }
+
+        ImGui::TableNextColumn();
+
+        ImGui::TextColored(blue, " INTERRUPT PENDING:");
+        ImGui::Text("  "); ImGui::SameLine(0, 0);
+
+        for (int i = 0; i < 8; i++)
+        {
+            bool asserted = mikey->irq_pending & (1 << i);
+            ImGui::TextColored(asserted ? yellow : gray, "%d", i); ImGui::SameLine();
+        }
 
         ImGui::TableNextColumn();
 
