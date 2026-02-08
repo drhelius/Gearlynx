@@ -606,7 +606,7 @@ void Media::SetupBanks()
     else
     {
         u32 total_size = bank0_page_size * 256;
-        m_bank_size[0] = total_size;
+        m_bank_size[0] = MIN(total_size, m_rom_size);
         m_bank_data[0] = m_rom;
 
         u32 shift = 0;
@@ -616,9 +616,9 @@ void Media::SetupBanks()
 
         m_address_shift_bits[0] = shift;
         m_page_offset_mask[0] = (1u << shift) - 1;
-        m_bank_mask[0] = total_size - 1;
+        m_bank_mask[0] = m_bank_size[0] - 1;
 
-        Debug("Bank0: Page size: %d, Total size: %d bytes", bank0_page_size, total_size);
+        Debug("Bank0: Page size: %d, Total size: %d bytes, Clamped size: %d bytes", bank0_page_size, total_size, m_bank_size[0]);
         Debug("Bank0: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
               m_address_shift_bits[0], m_page_offset_mask[0], m_bank_mask[0]);
     }
@@ -630,8 +630,9 @@ void Media::SetupBanks()
     {
         // Bank1 contains ROM data
         u32 total_size = bank1_page_size * 256;
-        m_bank_size[1] = total_size;
-        m_bank_data[1] = (m_rom_size > m_bank_size[0]) ? (m_rom + m_bank_size[0]) : NULL;
+        u32 bank1_rom_available = (m_rom_size > m_bank_size[0]) ? (m_rom_size - m_bank_size[0]) : 0;
+        m_bank_size[1] = MIN(total_size, bank1_rom_available);
+        m_bank_data[1] = (bank1_rom_available > 0) ? (m_rom + m_bank_size[0]) : NULL;
 
         u32 shift = 0;
         u32 ps = bank1_page_size;
@@ -640,9 +641,9 @@ void Media::SetupBanks()
 
         m_address_shift_bits[1] = shift;
         m_page_offset_mask[1] = (1u << shift) - 1;
-        m_bank_mask[1] = total_size - 1;
+        m_bank_mask[1] = (m_bank_size[1] > 0) ? (m_bank_size[1] - 1) : 0;
 
-        Debug("Bank1: Page size: %d, Total size: %d bytes", bank1_page_size, total_size);
+        Debug("Bank1: Page size: %d, Total size: %d bytes, Clamped size: %d bytes", bank1_page_size, total_size, m_bank_size[1]);
         Debug("Bank1: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
               m_address_shift_bits[1], m_page_offset_mask[1], m_bank_mask[1]);
     }
