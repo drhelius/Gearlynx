@@ -276,11 +276,13 @@ void gui_debug_window_frame_buffers(void)
             ImGui::TextColored(orange, "ADDRESS: ");
             ImGui::SameLine();
 
+            u16 custom_addr = (u16)config_debug.frame_buffer_custom_address;
             u16 step = 1;
             u16 step_fast = 16;
             ImVec2 character_size = ImGui::CalcTextSize("X");
             ImGui::PushItemWidth((6.0f * character_size.x) + (2 * ImGui::GetFrameHeight()));
-            ImGui::InputScalar("##custom_address", ImGuiDataType_U16, &config_debug.frame_buffer_custom_address, &step, &step_fast, "%04X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+            if (ImGui::InputScalar("##custom_address", ImGuiDataType_U16, &custom_addr, &step, &step_fast, "%04X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
+                config_debug.frame_buffer_custom_address = custom_addr;
             ImGui::PopItemWidth();
 
             ImGui::SameLine();
