@@ -609,8 +609,10 @@ static void destroy_debug(void)
 
 static void update_debug(void)
 {
-    update_debug_framebuffers();
-    update_debug_sprites();
+    if (config_debug.show_frame_buffers)
+        update_debug_framebuffers();
+    if (config_debug.show_frame_buffers)
+        update_debug_sprites();
 }
 
 static void update_debug_framebuffers(void)
