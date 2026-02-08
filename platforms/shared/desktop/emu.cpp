@@ -114,6 +114,7 @@ bool emu_load_rom(const char* file_path)
 {
     emu_debug_command = Debug_Command_None;
     reset_buffers();
+    emu_audio_reset();
 
     save_ram();
 
@@ -242,6 +243,7 @@ void emu_reset(void)
 {
     emu_debug_command = Debug_Command_None;
     reset_buffers();
+    emu_audio_reset();
 
     save_ram();
     core->ResetROM(false);
