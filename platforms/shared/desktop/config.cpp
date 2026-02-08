@@ -168,6 +168,7 @@ void config_read(void)
     config_debug.scale = read_int("Debug", "Scale", 2);
     config_debug.multi_viewport = read_bool("Debug", "MultiViewport", false);
     config_debug.single_instance = read_bool("Debug", "SingleInstance", false);
+    config_debug.auto_debug_settings = read_bool("Debug", "AutoDebugSettings", false);
 
     config_emulator.maximized = read_bool("Emulator", "Maximized", false);
     config_emulator.fullscreen = read_bool("Emulator", "FullScreen", false);
@@ -342,6 +343,7 @@ void config_write(void)
     write_int("Debug", "Scale", config_debug.scale);
     write_bool("Debug", "MultiViewport", config_debug.multi_viewport);
     write_bool("Debug", "SingleInstance", config_debug.single_instance);
+    write_bool("Debug", "AutoDebugSettings", config_debug.auto_debug_settings);
 
     write_bool("Emulator", "Maximized", config_emulator.maximized);
     write_bool("Emulator", "FullScreen", config_emulator.fullscreen);

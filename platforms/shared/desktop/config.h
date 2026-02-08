@@ -196,6 +196,7 @@ struct config_Debug
     int scale = 2;
     bool multi_viewport = false;
     bool single_instance = false;
+    bool auto_debug_settings = false;
 };
 
 EXTERN mINI::INIFile* config_ini_file;
