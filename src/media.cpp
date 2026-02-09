@@ -474,7 +474,7 @@ bool Media::GatherLynxHeader(const u8* buffer)
 
     if (p[0] != 'L' || p[1] != 'Y' || p[2] != 'N' || p[3] != 'X')
     {
-        Error("Invalid LYNX header magic: %c%c%c%c", p[0], p[1], p[2], p[3]);
+        Log("Invalid LYNX header magic: %c%c%c%c", p[0], p[1], p[2], p[3]);
         return false;
     }
 
@@ -493,7 +493,7 @@ bool Media::GatherLynxHeader(const u8* buffer)
 
     if (header.version != 1)
     {
-        Error("Invalid LYNX header version: %d", header.version);
+        Log("Invalid LYNX header version: %d", header.version);
         return false;
     }
 
@@ -538,7 +538,7 @@ bool Media::GatherBS93Header(const u8* buffer)
 
     if (header.magic[0] != 0x80 || header.magic[1] != 0x08)
     {
-        Log("WARNING: Invalid BS93 header magic: %c%c", p[0], p[1]);
+        Debug("WARNING: Invalid BS93 header magic: %c%c", p[0], p[1]);
     }
 
     header.boot_address = read_u16_be(p);
@@ -553,7 +553,7 @@ bool Media::GatherBS93Header(const u8* buffer)
     if (header.bs93[0] != 'B' || header.bs93[1] != 'S' 
         || header.bs93[2] != '9' || header.bs93[3] != '3')
     {
-        Error("Invalid BS93 header string: %c%c%c%c", p[0], p[1], p[2], p[3]);
+        Log("Invalid BS93 header string: %c%c%c%c", p[0], p[1], p[2], p[3]);
         return false;
     }
 
@@ -567,7 +567,7 @@ bool Media::GatherBS93Header(const u8* buffer)
 
 void Media::DefaultLynxHeader()
 {
-    Debug("Using default header values");
+    Log("Using default header values");
 
     m_bank_page_size[0] = (m_rom_size + 255) >> 8;
     m_bank_page_size[1] = 0;
