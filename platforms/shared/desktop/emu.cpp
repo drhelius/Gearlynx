@@ -31,7 +31,6 @@
 #include "stb_image_write.h"
 
 static GearlynxCore* core;
-static SoundQueue* sound_queue;
 static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
@@ -74,9 +73,7 @@ bool emu_init(void)
     core = new GearlynxCore();
     core->Init();
 
-    sound_queue = new SoundQueue();
-    if (!sound_queue->Start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_BUFFER_SIZE, GLYNX_AUDIO_BUFFER_COUNT))
-        return false;
+    sound_queue_init();
 
     for (int i = 0; i < 5; i++)
         InitPointer(emu_savestates_screenshots[i].data);
@@ -101,7 +98,7 @@ void emu_destroy(void)
     save_ram();
     SafeDelete(mcp_manager);
     SafeDeleteArray(audio_buffer);
-    SafeDelete(sound_queue);
+    sound_queue_destroy();
     SafeDelete(core);
     SafeDeleteArray(emu_frame_buffer);
     destroy_debug();
@@ -190,7 +187,7 @@ void emu_update(void)
 
     if ((sampleCount > 0) && !core->IsPaused())
     {
-        sound_queue->Write(audio_buffer, sampleCount, emu_audio_sync);
+        sound_queue_write(audio_buffer, sampleCount, emu_audio_sync);
     }
 }
 
@@ -278,8 +275,8 @@ void emu_audio_set_lowpass_cutoff(float fc)
 
 void emu_audio_reset(void)
 {
-    sound_queue->Stop();
-    sound_queue->Start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_BUFFER_SIZE, GLYNX_AUDIO_BUFFER_COUNT);
+    sound_queue_stop();
+    sound_queue_start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_BUFFER_SIZE, GLYNX_AUDIO_BUFFER_COUNT);
 }
 
 bool emu_is_audio_enabled(void)
@@ -289,7 +286,7 @@ bool emu_is_audio_enabled(void)
 
 bool emu_is_audio_open(void)
 {
-    return sound_queue->IsOpen();
+    return sound_queue_is_open();
 }
 
 void emu_save_ram(const char* file_path)
