@@ -27,6 +27,7 @@
 #include "gui_debug_widgets.h"
 #include "config.h"
 #include "application.h"
+#include "gamepad.h"
 #include "emu.h"
 #include "ogl_renderer.h"
 #include "utils.h"
@@ -1110,8 +1111,8 @@ static void gamepad_device_selector(void)
     int num = SDL_NumJoysticks();
 
     SDL_JoystickID current_id = -1;
-    if (IsValidPointer(application_gamepad))
-        current_id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(application_gamepad));
+    if (IsValidPointer(gamepad_controller))
+        current_id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad_controller));
 
     int selected = 0;
 
@@ -1150,7 +1151,7 @@ static void gamepad_device_selector(void)
     if (ImGui::Combo("##device_player", &selected, items.c_str()))
     {
         int device_index = index_map[selected];
-        application_assign_gamepad(device_index);
+        gamepad_assign(device_index);
     }
 }
 

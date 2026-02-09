@@ -60,6 +60,7 @@
     <ClInclude Include="..\shared\dependencies\miniz\miniz.h" />
     <ClInclude Include="..\..\src\types.h" />
     <ClInclude Include="..\shared\desktop\application.h" />
+    <ClInclude Include="..\shared\desktop\events.h" />
     <ClInclude Include="..\shared\desktop\backers.h" />
     <ClInclude Include="..\shared\desktop\config.h" />
     <ClInclude Include="..\shared\desktop\console_utils.h" />
@@ -105,6 +106,8 @@
     <ClInclude Include="..\shared\dependencies\nfd\nfd.h" />
     <ClInclude Include="..\shared\dependencies\nfd\nfd_sdl2.h" />
     <ClInclude Include="..\shared\desktop\ogl_renderer.h" />
+    <ClInclude Include="..\shared\desktop\display.h" />
+    <ClInclude Include="..\shared\desktop\gamepad.h" />
     <ClInclude Include="..\shared\desktop\sound_queue.h" />
     <ClInclude Include="..\shared\dependencies\stb\stb_image_write.h" />
     <ClInclude Include="..\shared\desktop\utils.h" />
@@ -133,6 +136,7 @@
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\application.cpp" />
+    <ClCompile Include="..\shared\desktop\events.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />
     <ClCompile Include="..\shared\desktop\emu.cpp" />
     <ClCompile Include="..\shared\desktop\gui.cpp" />
@@ -189,6 +193,8 @@
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\ogl_renderer.cpp" />
+    <ClCompile Include="..\shared\desktop\display.cpp" />
+    <ClCompile Include="..\shared\desktop\gamepad.cpp" />
     <ClCompile Include="..\shared\desktop\sound_queue.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_debug_adapter.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp" />
