@@ -28,7 +28,7 @@
 #include "gui.h"
 #include "config.h"
 #include "emu.h"
-#include "renderer.h"
+#include "ogl_renderer.h"
 #include "utils.h"
 
 // Convert collision palette to ImGui format
@@ -208,7 +208,7 @@ void gui_debug_window_frame_buffers(void)
 
             ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
 
-            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[0], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+            ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[0], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
 
             ImGui::PopFont();
 
@@ -225,7 +225,7 @@ void gui_debug_window_frame_buffers(void)
 
             ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
 
-            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[1], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+            ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[1], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
 
             ImGui::PopFont();
 
@@ -261,7 +261,7 @@ void gui_debug_window_frame_buffers(void)
 
             ImGui::Dummy(ImVec2(0, 0));
 
-            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[2], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+            ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[2], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
 
             ImGui::PopFont();
 
@@ -290,7 +290,7 @@ void gui_debug_window_frame_buffers(void)
 
             ImGui::NewLine();
 
-            ImGui::Image((ImTextureID)(intptr_t)renderer_emu_debug_framebuffer[3], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+            ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[3], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
 
             ImGui::PopFont();
 

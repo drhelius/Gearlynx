@@ -40,7 +40,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/gui_debug_cart.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_debug_adapter.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_server.cpp \
-    $(DESKTOP_SRC_DIR)/renderer.cpp \
+    $(DESKTOP_SRC_DIR)/ogl_renderer.cpp \
     $(DESKTOP_SRC_DIR)/emu.cpp \
     $(DESKTOP_SRC_DIR)/sound_queue.cpp \
     $(DESKTOP_SRC_DIR)/single_instance.cpp \

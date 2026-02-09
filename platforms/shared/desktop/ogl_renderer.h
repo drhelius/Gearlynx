@@ -17,12 +17,12 @@
  *
  */
 
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef OGL_RENDERER_H
+#define OGL_RENDERER_H
 
 #include <stdint.h>
 
-#ifdef RENDERER_IMPORT
+#ifdef OGL_RENDERER_IMPORT
     #define EXTERN
 #else
     #define EXTERN extern
@@ -35,18 +35,18 @@
 #define FRAME_BUFFER_HEIGHT 1024
 #define MAX_FRAME_HISTORY 8
 
-EXTERN uint32_t renderer_emu_texture;
-EXTERN uint32_t renderer_emu_debug_framebuffer[4];
-EXTERN uint32_t renderer_emu_debug_huc6270_sprites[64];
-EXTERN uint32_t renderer_emu_savestates;
-EXTERN const char* renderer_opengl_version;
+EXTERN uint32_t ogl_renderer_emu_texture;
+EXTERN uint32_t ogl_renderer_emu_debug_framebuffer[4];
+EXTERN uint32_t ogl_renderer_emu_debug_huc6270_sprites[64];
+EXTERN uint32_t ogl_renderer_emu_savestates;
+EXTERN const char* ogl_renderer_opengl_version;
 
-EXTERN bool renderer_init(void);
-EXTERN void renderer_destroy(void);
-EXTERN void renderer_begin_render(void);
-EXTERN void renderer_render(void);
-EXTERN void renderer_end_render(void);
+EXTERN bool ogl_renderer_init(void);
+EXTERN void ogl_renderer_destroy(void);
+EXTERN void ogl_renderer_begin_render(void);
+EXTERN void ogl_renderer_render(void);
+EXTERN void ogl_renderer_end_render(void);
 
-#undef RENDERER_IMPORT
+#undef OGL_RENDERER_IMPORT
 #undef EXTERN
-#endif /* RENDERER_H */
+#endif /* OGL_RENDERER_H */
