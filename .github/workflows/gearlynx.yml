@@ -41,7 +41,11 @@ jobs:
     - name: Update OS
       run: sudo apt-get update -qq
     - name: Install dependencies
-      run: sudo apt-get install -y build-essential cmake libgtk-3-dev
+      run: |
+        sudo apt-get install -y build-essential cmake libgtk-3-dev \
+        libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
+        libxi-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+        libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev
     - name: Build and install SDL3
       run: |
         SDL3_TAG=$(curl -s https://api.github.com/repos/libsdl-org/SDL/releases/latest | jq -r '.tag_name')
@@ -81,7 +85,11 @@ jobs:
     - name: Update OS
       run: sudo apt-get update -qq
     - name: Install dependencies
-      run: sudo apt-get install -y build-essential cmake libgtk-3-dev
+      run: |
+        sudo apt-get install -y build-essential cmake libgtk-3-dev \
+        libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
+        libxi-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+        libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev
     - name: Build and install SDL3
       run: |
         SDL3_TAG=$(curl -s https://api.github.com/repos/libsdl-org/SDL/releases/latest | jq -r '.tag_name')

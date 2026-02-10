@@ -194,7 +194,10 @@ make
 For older Ubuntu versions (22.04, 24.04), you need to build SDL3 from source first. Use the following commands to build both SDL3 and Gearlynx:
 
 ``` shell
-sudo apt install build-essential cmake libgtk-3-dev
+sudo apt install build-essential cmake libgtk-3-dev \
+  libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
+  libxi-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+  libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev
 git clone --depth 1 --branch release-3.4.x https://github.com/libsdl-org/SDL.git /tmp/SDL3
 cmake -S /tmp/SDL3 -B /tmp/SDL3/build -DCMAKE_INSTALL_PREFIX=/usr -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
 cmake --build /tmp/SDL3/build -j$(nproc)
