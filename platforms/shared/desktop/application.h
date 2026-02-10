@@ -44,10 +44,6 @@ EXTERN void application_set_vsync(bool enabled);
 EXTERN void application_update_title_with_rom(const char* rom);
 EXTERN bool application_check_single_instance(const char* rom_file, const char* symbol_file);
 
-#if defined(__APPLE__)
-EXTERN void application_macos_terminate(void);
-#endif
-
 #undef APPLICATION_IMPORT
 #undef EXTERN
 #endif /* APPLICATION_H */

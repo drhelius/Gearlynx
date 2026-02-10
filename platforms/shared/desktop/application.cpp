@@ -65,9 +65,7 @@ static void save_window_size(void);
 static void* macos_fullscreen_observer = NULL;
 static void* macos_nswindow = NULL;
 extern "C" void* macos_install_fullscreen_observer(void* nswindow, void(*enter_cb)(), void(*exit_cb)());
-extern "C" void macos_remove_fullscreen_observer(void* observer);
 extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter);
-extern "C" void macos_app_terminate(void);
 #endif
 
 int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed, int mcp_mode, int mcp_tcp_port)
@@ -160,13 +158,6 @@ void application_destroy(void)
     sdl_destroy();
     single_instance_destroy();
 }
-
-#if defined(__APPLE__)
-void application_macos_terminate(void)
-{
-    macos_app_terminate();
-}
-#endif
 
 void application_mainloop(void)
 {
@@ -365,10 +356,6 @@ static bool sdl_init(void)
 
 static void sdl_destroy(void)
 {
-#if defined(__APPLE__)
-    macos_remove_fullscreen_observer(macos_fullscreen_observer);
-    macos_fullscreen_observer = NULL;
-#endif
     SDL_GL_DestroyContext(display_gl_context);
     SDL_DestroyWindow(application_sdl_window);
     SDL_Quit();
