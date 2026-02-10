@@ -20,7 +20,7 @@
 #ifndef CONFIG_H
 #define	CONFIG_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "gearlynx.h"
 #define MINI_CASE_SENSITIVE
 #include "ini.h"
@@ -32,13 +32,14 @@
     #define EXTERN extern
 #endif
 
+static const int config_version = 2;
 static const int config_max_recent_roms = 10;
 
 struct config_Emulator
 {
     bool maximized = false;
     bool fullscreen = false;
-    int fullscreen_mode = 1;
+    int fullscreen_mode = 0;
     bool always_show_menu = false;
     bool paused = false;
     int save_slot = 0;
@@ -73,9 +74,8 @@ struct config_Video
     bool bilinear = false;
     bool sync = true;
     bool ghosting = true;
-    float ghosting_intensity = 0.90f;
-    int ghosting_history = 6;
-    float ghosting_response = 0.90f;
+    float ghosting_intensity = 0.70f;
+    int ghosting_history = 3;
     int scanlines_type = 2;
     float scanlines_intensity = 0.65f;
     float background_color[3] = {0.1f, 0.1f, 0.1f};
@@ -201,7 +201,7 @@ struct config_Debug
 
 EXTERN mINI::INIFile* config_ini_file;
 EXTERN mINI::INIStructure config_ini_data;
-EXTERN char* config_root_path;
+EXTERN const char* config_root_path;
 EXTERN char config_emu_file_path[260];
 EXTERN char config_imgui_file_path[260];
 EXTERN config_Emulator config_emulator;

@@ -17,7 +17,7 @@
  *
  */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "gearlynx.h"
 #include "config.h"
 #include "gui.h"
@@ -32,10 +32,9 @@ static bool events_check_hotkey(const SDL_Event* event, const config_Hotkey& hot
 
 void events_shortcuts(const SDL_Event* event)
 {
-    if (event->type != SDL_KEYDOWN)
+    if (event->type != SDL_EVENT_KEY_DOWN)
         return;
 
-    // Check special case hotkeys first
     if (events_check_hotkey(event, config_hotkeys[config_HotkeyIndex_Quit], false))
     {
         application_trigger_quit();
@@ -49,7 +48,6 @@ void events_shortcuts(const SDL_Event* event)
         return;
     }
 
-    // Check slot selection hotkeys
     for (int i = 0; i < 5; i++)
     {
         if (events_check_hotkey(event, config_hotkeys[config_HotkeyIndex_SelectSlot1 + i], false))
@@ -59,7 +57,6 @@ void events_shortcuts(const SDL_Event* event)
         }
     }
 
-    // Check all hotkeys mapped to gui shortcuts
     for (int i = 0; i < GUI_HOTKEY_MAP_COUNT; i++)
     {
         if (gui_hotkey_map[i].shortcut >= 0 && events_check_hotkey(event, config_hotkeys[gui_hotkey_map[i].config_index], gui_hotkey_map[i].allow_repeat))
@@ -69,29 +66,27 @@ void events_shortcuts(const SDL_Event* event)
         }
     }
 
-    // Fixed hotkeys for debug copy/paste/select operations
-    int key = event->key.keysym.scancode;
-    SDL_Keymod mods = (SDL_Keymod)event->key.keysym.mod;
+    int key = event->key.scancode;
+    SDL_Keymod mods = event->key.mod;
 
-    if (event->key.repeat == 0 && key == SDL_SCANCODE_A && (mods & KMOD_CTRL))
+    if (event->key.repeat == 0 && key == SDL_SCANCODE_A && (mods & SDL_KMOD_CTRL))
     {
         gui_shortcut(gui_ShortcutDebugSelectAll);
         return;
     }
 
-    if (event->key.repeat == 0 && key == SDL_SCANCODE_C && (mods & KMOD_CTRL))
+    if (event->key.repeat == 0 && key == SDL_SCANCODE_C && (mods & SDL_KMOD_CTRL))
     {
         gui_shortcut(gui_ShortcutDebugCopy);
         return;
     }
 
-    if (event->key.repeat == 0 && key == SDL_SCANCODE_V && (mods & KMOD_CTRL))
+    if (event->key.repeat == 0 && key == SDL_SCANCODE_V && (mods & SDL_KMOD_CTRL))
     {
         gui_shortcut(gui_ShortcutDebugPaste);
         return;
     }
 
-    // ESC to exit fullscreen
     if (event->key.repeat == 0 && key == SDL_SCANCODE_ESCAPE)
     {
         if (config_emulator.fullscreen && !config_emulator.always_show_menu)
@@ -106,102 +101,102 @@ void events_emu(const SDL_Event* event)
 {
     switch(event->type)
     {
-        case SDL_CONTROLLERBUTTONDOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         {
             if (!IsValidPointer(gamepad_controller))
                 break;
 
-            SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad_controller));
+            SDL_JoystickID id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
 
             if (!config_input.gamepad)
                 break;
 
-            if (event->cbutton.which != id)
+            if (event->gbutton.which != id)
                 break;
 
-            if (event->cbutton.button == config_input.gamepad_A)
+            if (event->gbutton.button == config_input.gamepad_A)
                 emu_key_pressed(GLYNX_KEY_A);
-            else if (event->cbutton.button == config_input.gamepad_B)
+            else if (event->gbutton.button == config_input.gamepad_B)
                 emu_key_pressed(GLYNX_KEY_B);
-            else if (event->cbutton.button == config_input.gamepad_pause)
+            else if (event->gbutton.button == config_input.gamepad_pause)
                 emu_key_pressed(GLYNX_KEY_PAUSE);
-            else if (event->cbutton.button == config_input.gamepad_option1)
+            else if (event->gbutton.button == config_input.gamepad_option1)
                 emu_key_pressed(GLYNX_KEY_OPTION1);
-            else if (event->cbutton.button == config_input.gamepad_option2)
+            else if (event->gbutton.button == config_input.gamepad_option2)
                 emu_key_pressed(GLYNX_KEY_OPTION2);
 
             if (config_input.gamepad_directional == 1)
                 break;
 
-            if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
+            if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP)
                 emu_key_pressed(GLYNX_KEY_UP);
-            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN)
                 emu_key_pressed(GLYNX_KEY_DOWN);
-            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT)
                 emu_key_pressed(GLYNX_KEY_LEFT);
-            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
+            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT)
                 emu_key_pressed(GLYNX_KEY_RIGHT);
         }
         break;
 
-        case SDL_CONTROLLERBUTTONUP:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
         {
             if (!IsValidPointer(gamepad_controller))
                 break;
 
-            SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad_controller));
+            SDL_JoystickID id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
 
             if (!config_input.gamepad)
                 break;
 
-            if (event->cbutton.which != id)
+            if (event->gbutton.which != id)
                 break;
 
-            if (event->cbutton.button == config_input.gamepad_A)
+            if (event->gbutton.button == config_input.gamepad_A)
                 emu_key_released(GLYNX_KEY_A);
-            else if (event->cbutton.button == config_input.gamepad_B)
+            else if (event->gbutton.button == config_input.gamepad_B)
                 emu_key_released(GLYNX_KEY_B);
-            else if (event->cbutton.button == config_input.gamepad_pause)
+            else if (event->gbutton.button == config_input.gamepad_pause)
                 emu_key_released(GLYNX_KEY_PAUSE);
-            else if (event->cbutton.button == config_input.gamepad_option1)
+            else if (event->gbutton.button == config_input.gamepad_option1)
                 emu_key_released(GLYNX_KEY_OPTION1);
-            else if (event->cbutton.button == config_input.gamepad_option2)
+            else if (event->gbutton.button == config_input.gamepad_option2)
                 emu_key_released(GLYNX_KEY_OPTION2);
 
             if (config_input.gamepad_directional == 1)
                 break;
 
-            if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
+            if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP)
                 emu_key_released(GLYNX_KEY_UP);
-            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN)
                 emu_key_released(GLYNX_KEY_DOWN);
-            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT)
                 emu_key_released(GLYNX_KEY_LEFT);
-            else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
+            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT)
                 emu_key_released(GLYNX_KEY_RIGHT);
         }
         break;
 
-        case SDL_CONTROLLERAXISMOTION:
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION:
         {
             if (!IsValidPointer(gamepad_controller))
                 break;
 
-            SDL_JoystickID id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad_controller));
+            SDL_JoystickID id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
 
             if (!config_input.gamepad)
                 break;
 
-            if (event->caxis.which != id)
+            if (event->gaxis.which != id)
                 break;
 
             if (config_input.gamepad_directional == 1)
             {
                 const int STICK_DEAD_ZONE = 8000;
 
-                if(event->caxis.axis == config_input.gamepad_x_axis)
+                if(event->gaxis.axis == config_input.gamepad_x_axis)
                 {
-                    int x_motion = event->caxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
+                    int x_motion = event->gaxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
 
                     if (x_motion < -STICK_DEAD_ZONE)
                         emu_key_pressed(GLYNX_KEY_LEFT);
@@ -213,9 +208,9 @@ void events_emu(const SDL_Event* event)
                         emu_key_released(GLYNX_KEY_RIGHT);
                     }
                 }
-                else if(event->caxis.axis == config_input.gamepad_y_axis)
+                else if(event->gaxis.axis == config_input.gamepad_y_axis)
                 {
-                    int y_motion = event->caxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
+                    int y_motion = event->gaxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
 
                     if (y_motion < -STICK_DEAD_ZONE)
                         emu_key_pressed(GLYNX_KEY_UP);
@@ -229,10 +224,10 @@ void events_emu(const SDL_Event* event)
                 }
             }
 
-            if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT || event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+            if (event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || event->gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
             {
-                int vbtn = GAMEPAD_VBTN_AXIS_BASE + event->caxis.axis;
-                bool pressed = event->caxis.value > GAMEPAD_VBTN_AXIS_THRESHOLD;
+                int vbtn = GAMEPAD_VBTN_AXIS_BASE + event->gaxis.axis;
+                bool pressed = event->gaxis.value > GAMEPAD_VBTN_AXIS_THRESHOLD;
 
                 if (config_input.gamepad_A == vbtn)
                 {
@@ -273,17 +268,17 @@ void events_emu(const SDL_Event* event)
         }
         break;
 
-        case SDL_KEYDOWN:
+        case SDL_EVENT_KEY_DOWN:
         {
             if (event->key.repeat != 0)
                 break;
 
-            if (event->key.keysym.mod & KMOD_CTRL)
+            if (event->key.mod & SDL_KMOD_CTRL)
                 break;
-            if (event->key.keysym.mod & KMOD_SHIFT)
+            if (event->key.mod & SDL_KMOD_SHIFT)
                 break;
 
-            int key = event->key.keysym.scancode;
+            int key = event->key.scancode;
 
             if (key == config_input.key_left)
                 emu_key_pressed(GLYNX_KEY_LEFT);
@@ -306,9 +301,9 @@ void events_emu(const SDL_Event* event)
         }
         break;
 
-        case SDL_KEYUP:
+        case SDL_EVENT_KEY_UP:
         {
-            int key = event->key.keysym.scancode;
+            int key = event->key.scancode;
 
             if (key == config_input.key_left)
                 emu_key_released(GLYNX_KEY_LEFT);
@@ -335,29 +330,29 @@ void events_emu(const SDL_Event* event)
 
 static bool events_check_hotkey(const SDL_Event* event, const config_Hotkey& hotkey, bool allow_repeat)
 {
-    if (event->type != SDL_KEYDOWN)
+    if (event->type != SDL_EVENT_KEY_DOWN)
         return false;
 
     if (!allow_repeat && event->key.repeat != 0)
         return false;
 
-    if (event->key.keysym.scancode != hotkey.key)
+    if (event->key.scancode != hotkey.key)
         return false;
 
-    SDL_Keymod mods = (SDL_Keymod)event->key.keysym.mod;
+    SDL_Keymod mods = event->key.mod;
     SDL_Keymod expected = hotkey.mod;
 
     SDL_Keymod mods_normalized = (SDL_Keymod)0;
-    if (mods & (KMOD_LCTRL | KMOD_RCTRL)) mods_normalized = (SDL_Keymod)(mods_normalized | KMOD_CTRL);
-    if (mods & (KMOD_LSHIFT | KMOD_RSHIFT)) mods_normalized = (SDL_Keymod)(mods_normalized | KMOD_SHIFT);
-    if (mods & (KMOD_LALT | KMOD_RALT)) mods_normalized = (SDL_Keymod)(mods_normalized | KMOD_ALT);
-    if (mods & (KMOD_LGUI | KMOD_RGUI)) mods_normalized = (SDL_Keymod)(mods_normalized | KMOD_GUI);
+    if (mods & (SDL_KMOD_LCTRL | SDL_KMOD_RCTRL)) mods_normalized = (SDL_Keymod)(mods_normalized | SDL_KMOD_CTRL);
+    if (mods & (SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT)) mods_normalized = (SDL_Keymod)(mods_normalized | SDL_KMOD_SHIFT);
+    if (mods & (SDL_KMOD_LALT | SDL_KMOD_RALT)) mods_normalized = (SDL_Keymod)(mods_normalized | SDL_KMOD_ALT);
+    if (mods & (SDL_KMOD_LGUI | SDL_KMOD_RGUI)) mods_normalized = (SDL_Keymod)(mods_normalized | SDL_KMOD_GUI);
 
     SDL_Keymod expected_normalized = (SDL_Keymod)0;
-    if (expected & (KMOD_LCTRL | KMOD_RCTRL | KMOD_CTRL)) expected_normalized = (SDL_Keymod)(expected_normalized | KMOD_CTRL);
-    if (expected & (KMOD_LSHIFT | KMOD_RSHIFT | KMOD_SHIFT)) expected_normalized = (SDL_Keymod)(expected_normalized | KMOD_SHIFT);
-    if (expected & (KMOD_LALT | KMOD_RALT | KMOD_ALT)) expected_normalized = (SDL_Keymod)(expected_normalized | KMOD_ALT);
-    if (expected & (KMOD_LGUI | KMOD_RGUI | KMOD_GUI)) expected_normalized = (SDL_Keymod)(expected_normalized | KMOD_GUI);
+    if (expected & (SDL_KMOD_LCTRL | SDL_KMOD_RCTRL | SDL_KMOD_CTRL)) expected_normalized = (SDL_Keymod)(expected_normalized | SDL_KMOD_CTRL);
+    if (expected & (SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT | SDL_KMOD_SHIFT)) expected_normalized = (SDL_Keymod)(expected_normalized | SDL_KMOD_SHIFT);
+    if (expected & (SDL_KMOD_LALT | SDL_KMOD_RALT | SDL_KMOD_ALT)) expected_normalized = (SDL_Keymod)(expected_normalized | SDL_KMOD_ALT);
+    if (expected & (SDL_KMOD_LGUI | SDL_KMOD_RGUI | SDL_KMOD_GUI)) expected_normalized = (SDL_Keymod)(expected_normalized | SDL_KMOD_GUI);
 
     return mods_normalized == expected_normalized;
 }

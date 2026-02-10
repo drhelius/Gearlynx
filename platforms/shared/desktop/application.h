@@ -20,7 +20,7 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #ifdef APPLICATION_IMPORT
     #define EXTERN
@@ -30,8 +30,9 @@
 
 EXTERN SDL_Window* application_sdl_window;
 EXTERN float application_display_scale;
-EXTERN SDL_version application_sdl_build_version;
-EXTERN SDL_version application_sdl_link_version;
+EXTERN int application_sdl_version_major;
+EXTERN int application_sdl_version_minor;
+EXTERN int application_sdl_version_patch;
 EXTERN bool application_show_menu;
 
 EXTERN int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed, int mcp_mode, int mcp_tcp_port);

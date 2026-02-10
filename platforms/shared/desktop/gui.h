@@ -20,7 +20,7 @@
 #ifndef GUI_H
 #define GUI_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "gearlynx.h"
 #include "imgui.h"
 #include "config.h"

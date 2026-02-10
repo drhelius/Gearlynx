@@ -17,7 +17,7 @@
  *
  */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "gearlynx.h"
 #include "config.h"
 #include "gui.h"
@@ -28,7 +28,7 @@
 
 static bool gamepad_shortcut_prev[config_HotkeyIndex_COUNT] = { };
 
-static bool gamepad_get_button(SDL_GameController* controller, int mapping);
+static bool gamepad_get_button(SDL_Gamepad* controller, int mapping);
 
 bool gamepad_init(void)
 {
@@ -38,7 +38,7 @@ bool gamepad_init(void)
 
 void gamepad_destroy(void)
 {
-    SDL_GameControllerClose(gamepad_controller);
+    SDL_CloseGamepad(gamepad_controller);
 }
 
 void gamepad_load_mappings(void)
@@ -85,7 +85,7 @@ void gamepad_load_mappings(void)
                 continue;
             if ((line.find("platform:") != std::string::npos) && (line.find(platform_field) == std::string::npos))
                 continue;
-            int result = SDL_GameControllerAddMapping(line.c_str());
+            int result = SDL_AddGamepadMapping(line.c_str());
             if (result == 1)
                 added_mappings++;
             else if (result == 0)
@@ -93,8 +93,7 @@ void gamepad_load_mappings(void)
             else if (result == -1)
             {
                 Error("Unable to load game controller mapping in line %d from gamecontrollerdb.txt", line_number);
-                Log("SDL Error: SDL_GameControllerAddMapping (%s:%d) - %s", __FILE__, __LINE__, SDL_GetError());
-                SDL_ClearError();
+                SDL_ERROR("SDL_AddGamepadMapping");
             }
             line_number++;
         }
@@ -115,49 +114,38 @@ void gamepad_add(void)
 {
     if (IsValidPointer(gamepad_controller))
     {
-        SDL_Joystick* js = SDL_GameControllerGetJoystick(gamepad_controller);
+        SDL_Joystick* js = SDL_GetGamepadJoystick(gamepad_controller);
 
-        if (!IsValidPointer(js) || SDL_JoystickGetAttached(js) == SDL_FALSE)
+        if (!IsValidPointer(js) || !SDL_JoystickConnected(js))
         {
-            SDL_GameControllerClose(gamepad_controller);
+            SDL_CloseGamepad(gamepad_controller);
             gamepad_controller = NULL;
             Debug("Game controller closed when adding a new gamepad");
         }
     }
 
-    bool connected = IsValidPointer(gamepad_controller);
-
-    if (connected)
+    if (IsValidPointer(gamepad_controller))
         return;
 
-    for (int i = 0; i < SDL_NumJoysticks(); i++)
+    int count = 0;
+    SDL_JoystickID* gamepads = SDL_GetGamepads(&count);
+    if (gamepads)
     {
-        if (!SDL_IsGameController(i))
-            continue;
-
-        SDL_GameController* controller = SDL_GameControllerOpen(i);
-        if (!IsValidPointer(controller))
+        for (int i = 0; i < count; i++)
         {
-            Log("Warning: Unable to open game controller %d!\n", i);
-            Log("SDL Error: SDL_GameControllerOpen (%s:%d) - %s", __FILE__, __LINE__, SDL_GetError());
-            SDL_ClearError();
-            continue;
-        }
+            SDL_Gamepad* controller = SDL_OpenGamepad(gamepads[i]);
+            if (!IsValidPointer(controller))
+            {
+                Log("Warning: Unable to open game controller %d!", gamepads[i]);
+                SDL_ERROR("SDL_OpenGamepad");
+                continue;
+            }
 
-        if (!connected)
-        {
             gamepad_controller = controller;
-            connected = true;
-            Debug("Game controller %d assigned to Player 1", i);
-        }
-        else
-        {
-            SDL_GameControllerClose(controller);
-            Debug("Game controller %d detected but all player slots are full", i);
-        }
-
-        if (connected)
+            Debug("Game controller %d assigned to Player 1", gamepads[i]);
             break;
+        }
+        SDL_free(gamepads);
     }
 }
 
@@ -165,79 +153,64 @@ void gamepad_remove(SDL_JoystickID instance_id)
 {
     if (gamepad_controller != NULL)
     {
-        SDL_JoystickID current_id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad_controller));
+        SDL_JoystickID current_id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
         if (current_id == instance_id)
         {
-            SDL_GameControllerClose(gamepad_controller);
+            SDL_CloseGamepad(gamepad_controller);
             gamepad_controller = NULL;
             Debug("Game controller %d disconnected", instance_id);
         }
     }
 }
 
-void gamepad_assign(int device_index)
+void gamepad_assign(SDL_JoystickID instance_id)
 {
-    if (device_index < 0)
+    if (instance_id == 0)
     {
         if (IsValidPointer(gamepad_controller))
         {
-            SDL_GameControllerClose(gamepad_controller);
+            SDL_CloseGamepad(gamepad_controller);
             gamepad_controller = NULL;
-            Debug("Player %d controller set to None");
+            Debug("Player controller set to None");
         }
         return;
     }
 
-    if (device_index >= SDL_NumJoysticks())
-    {
-        Log("Warning: device_index %d out of range", device_index);
-        return;
-    }
-
-    if (!SDL_IsGameController(device_index))
-    {
-        Log("Warning: device_index %d is not a game controller", device_index);
-        return;
-    }
-
-    SDL_JoystickID wanted_id = SDL_JoystickGetDeviceInstanceID(device_index);
-
     if (IsValidPointer(gamepad_controller))
     {
-        SDL_JoystickID current_id = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad_controller));
-        if (current_id == wanted_id)
+        SDL_JoystickID current_id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
+        if (current_id == instance_id)
             return;
     }
 
     if (IsValidPointer(gamepad_controller))
     {
-        SDL_GameControllerClose(gamepad_controller);
+        SDL_CloseGamepad(gamepad_controller);
         gamepad_controller = NULL;
     }
 
-    SDL_GameController* controller = SDL_GameControllerOpen(device_index);
+    SDL_Gamepad* controller = SDL_OpenGamepad(instance_id);
     if (!IsValidPointer(controller))
     {
-        Log("SDL_GameControllerOpen failed for device_index %d", device_index);
-        Log("SDL Error: SDL_GameControllerOpen (%s:%d) - %s", __FILE__, __LINE__, SDL_GetError());
-        SDL_ClearError();
+        Log("SDL_OpenGamepad failed for instance %d", instance_id);
+        SDL_ERROR("SDL_OpenGamepad");
         return;
     }
 
     gamepad_controller = controller;
-    Debug("Game controller %d assigned", device_index);
+    Debug("Game controller %d assigned", instance_id);
 }
 
 void gamepad_check_shortcuts(void)
 {
-    SDL_GameController* sdl_controller = gamepad_controller;
+    SDL_Gamepad* sdl_controller = gamepad_controller;
     if (!IsValidPointer(sdl_controller))
         return;
 
     for (int i = 0; i < config_HotkeyIndex_COUNT; i++)
     {
         int button_mapping = config_input_gamepad_shortcuts.gamepad_shortcuts[i];
-        if (button_mapping == SDL_CONTROLLER_BUTTON_INVALID)
+        if (button_mapping == SDL_GAMEPAD_BUTTON_INVALID)
             continue;
 
         bool button_pressed = gamepad_get_button(sdl_controller, button_mapping);
@@ -265,19 +238,59 @@ void gamepad_check_shortcuts(void)
     }
 }
 
-static bool gamepad_get_button(SDL_GameController* controller, int mapping)
+void gamepad_get_detected(Gamepad_Detected_Info* info)
+{
+    info->count = 0;
+    info->current_index = -1;
+
+    int num_gamepads = 0;
+    SDL_JoystickID* gamepads = SDL_GetGamepads(&num_gamepads);
+
+    SDL_JoystickID current_id = 0;
+    if (IsValidPointer(gamepad_controller))
+        current_id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
+
+    if (gamepads)
+    {
+        for (int i = 0; i < num_gamepads && info->count < GAMEPAD_MAX_DETECTED; i++)
+        {
+            SDL_JoystickID id = gamepads[i];
+
+            const char* name = SDL_GetGamepadNameForID(id);
+            if (!IsValidPointer(name))
+                name = "Unknown Gamepad";
+
+            info->ids[info->count] = id;
+
+            if (current_id == id)
+                info->current_index = info->count;
+
+            char id_str[64];
+            SDL_GUID guid = SDL_GetJoystickGUIDForID(id);
+            SDL_GUIDToString(guid, id_str, sizeof(id_str));
+            size_t len = strlen(id_str);
+            const char* id_8 = id_str + (len > 8 ? len - 8 : 0);
+
+            snprintf(info->labels[info->count], sizeof(info->labels[0]), "%s (ID: %s)", name, id_8);
+            info->count++;
+        }
+        SDL_free(gamepads);
+    }
+}
+
+static bool gamepad_get_button(SDL_Gamepad* controller, int mapping)
 {
     if (!IsValidPointer(controller))
         return false;
 
-    if (mapping >= 0 && mapping < SDL_CONTROLLER_BUTTON_MAX)
+    if (mapping >= 0 && mapping < SDL_GAMEPAD_BUTTON_COUNT)
     {
-        return SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)mapping) != 0;
+        return SDL_GetGamepadButton(controller, (SDL_GamepadButton)mapping) != 0;
     }
     else if (mapping >= GAMEPAD_VBTN_AXIS_BASE)
     {
         int axis = mapping - GAMEPAD_VBTN_AXIS_BASE;
-        Sint16 value = SDL_GameControllerGetAxis(controller, (SDL_GameControllerAxis)axis);
+        Sint16 value = SDL_GetGamepadAxis(controller, (SDL_GamepadAxis)axis);
         return value > GAMEPAD_VBTN_AXIS_THRESHOLD;
     }
 

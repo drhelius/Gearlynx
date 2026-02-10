@@ -20,7 +20,7 @@
 #ifndef GAMEPAD_H
 #define GAMEPAD_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #ifdef GAMEPAD_IMPORT
     #define EXTERN
@@ -30,10 +30,20 @@
 
 #define GAMEPAD_VBTN_AXIS_BASE 1000
 #define GAMEPAD_VBTN_AXIS_THRESHOLD 3000
-#define GAMEPAD_VBTN_L2 (GAMEPAD_VBTN_AXIS_BASE + SDL_CONTROLLER_AXIS_TRIGGERLEFT)
-#define GAMEPAD_VBTN_R2 (GAMEPAD_VBTN_AXIS_BASE + SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+#define GAMEPAD_VBTN_L2 (GAMEPAD_VBTN_AXIS_BASE + SDL_GAMEPAD_AXIS_LEFT_TRIGGER)
+#define GAMEPAD_VBTN_R2 (GAMEPAD_VBTN_AXIS_BASE + SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
 
-EXTERN SDL_GameController* gamepad_controller;
+#define GAMEPAD_MAX_DETECTED 32
+
+struct Gamepad_Detected_Info
+{
+    SDL_JoystickID ids[GAMEPAD_MAX_DETECTED];
+    char labels[GAMEPAD_MAX_DETECTED][192];
+    int count;
+    int current_index;
+};
+
+EXTERN SDL_Gamepad* gamepad_controller;
 EXTERN int gamepad_added_mappings;
 EXTERN int gamepad_updated_mappings;
 
@@ -42,8 +52,9 @@ EXTERN void gamepad_destroy(void);
 EXTERN void gamepad_load_mappings(void);
 EXTERN void gamepad_add(void);
 EXTERN void gamepad_remove(SDL_JoystickID instance_id);
-EXTERN void gamepad_assign(int device_index);
+EXTERN void gamepad_assign(SDL_JoystickID instance_id);
 EXTERN void gamepad_check_shortcuts(void);
+EXTERN void gamepad_get_detected(Gamepad_Detected_Info* info);
 
 #undef GAMEPAD_IMPORT
 #undef EXTERN

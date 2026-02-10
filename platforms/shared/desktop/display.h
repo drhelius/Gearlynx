@@ -20,7 +20,7 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #ifdef DISPLAY_IMPORT
     #define EXTERN

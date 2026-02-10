@@ -30,7 +30,8 @@
 #include "config.h"
 #include "emu.h"
 #include "nfd.h"
-#include "nfd_sdl2.h"
+#include "nfd_sdl3.h"
+#include "utils.h"
 
 static void file_dialog_set_native_window(SDL_Window* window, nfdwindowhandle_t* native_window);
 
@@ -441,6 +442,6 @@ static void file_dialog_set_native_window(SDL_Window* window, nfdwindowhandle_t*
 {
     if (!NFD_GetNativeWindowFromSDLWindow(window, native_window))
     {
-        Log("NFD_GetNativeWindowFromSDLWindow failed: %s\n", SDL_GetError());
+        SDL_ERROR("NFD_GetNativeWindowFromSDLWindow");
     }
 }

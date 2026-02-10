@@ -20,7 +20,7 @@
 #include <string>
 #include <stdexcept>
 #include <algorithm>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "gui_debug_memeditor.h"
 #include "gui_debug_constants.h"
