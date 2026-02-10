@@ -92,8 +92,9 @@
     <ClInclude Include="..\shared\dependencies\imgui\fonts\RobotoMedium.h" />
     <ClInclude Include="..\shared\dependencies\imgui\imconfig.h" />
     <ClInclude Include="..\shared\dependencies\imgui\imgui.h" />
-    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_opengl2.h" />
-    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_sdl2.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_sdl3.h" />
     <ClInclude Include="..\shared\dependencies\imgui\imgui_internal.h" />
     <ClInclude Include="..\shared\dependencies\imgui\implot.h" />
     <ClInclude Include="..\shared\dependencies\imgui\implot_internal.h" />
@@ -104,7 +105,7 @@
     <ClInclude Include="..\shared\desktop\license.h" />
     <ClInclude Include="..\shared\dependencies\mINI\ini.h" />
     <ClInclude Include="..\shared\dependencies\nfd\nfd.h" />
-    <ClInclude Include="..\shared\dependencies\nfd\nfd_sdl2.h" />
+    <ClInclude Include="..\shared\dependencies\nfd\nfd_sdl3.h" />
     <ClInclude Include="..\shared\desktop\ogl_renderer.h" />
     <ClInclude Include="..\shared\desktop\display.h" />
     <ClInclude Include="..\shared\desktop\gamepad.h" />
@@ -167,10 +168,10 @@
     <ClCompile Include="..\shared\dependencies\imgui\imgui_draw.cpp">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_opengl2.cpp">
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_opengl3.cpp">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
-    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_sdl2.cpp">
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_sdl3.cpp">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\shared\dependencies\imgui\imgui_tables.cpp">
@@ -281,7 +282,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL2-2.30.6/include;dependencies/SDL2-2.30.6/include/sdl2;release;.;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL3/include;release;.;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:strictStrings -Zc:throwingNew -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>release\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -300,8 +301,8 @@
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;opengl32.lib;glu32.lib;Shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>dependencies\SDL2-2.30.6\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3-static.lib;opengl32.lib;glu32.lib;Shell32.lib;winmm.lib;imm32.lib;version.lib;setupapi.lib;cfgmgr32.lib;user32.lib;gdi32.lib;ole32.lib;oleaut32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>dependencies\SDL3\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreImportLibrary>true</IgnoreImportLibrary>
@@ -322,7 +323,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL2-2.30.6/include;dependencies/SDL2-2.30.6/include/sdl2;release;.;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL3/include;release;.;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:strictStrings -Zc:throwingNew -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>release\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -341,8 +342,8 @@
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;opengl32.lib;glu32.lib;Shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>dependencies\SDL2-2.30.6\lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3-static.lib;opengl32.lib;glu32.lib;Shell32.lib;winmm.lib;imm32.lib;version.lib;setupapi.lib;cfgmgr32.lib;user32.lib;gdi32.lib;ole32.lib;oleaut32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>dependencies\SDL3\lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreImportLibrary>true</IgnoreImportLibrary>
@@ -363,7 +364,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL2-2.30.6/include;dependencies/SDL2-2.30.6/include/sdl2;debug;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL3/include;debug;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:strictStrings -Zc:throwingNew -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>debug\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -382,8 +383,8 @@
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>SDL2main.lib;SDL2.lib;opengl32.lib;glu32.lib;Shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>dependencies\SDL2-2.30.6\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3-static.lib;opengl32.lib;glu32.lib;Shell32.lib;winmm.lib;imm32.lib;version.lib;setupapi.lib;cfgmgr32.lib;user32.lib;gdi32.lib;ole32.lib;oleaut32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>dependencies\SDL3\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreImportLibrary>true</IgnoreImportLibrary>
@@ -403,7 +404,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL2-2.30.6/include;dependencies/SDL2-2.30.6/include/sdl2;debug;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../../src;../shared/dependencies/imgui;../shared/dependencies/mINI;../shared/dependencies/nfd;../shared/dependencies/stb;../shared/dependencies/miniz;../shared/dependencies/glad;../shared/dependencies/json;dependencies/SDL3/include;debug;.\GeneratedFiles;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:strictStrings -Zc:throwingNew -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>debug\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -422,8 +423,8 @@
       <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>SDL2main.lib;SDL2.lib;opengl32.lib;glu32.lib;Shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>dependencies\SDL2-2.30.6\lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL3-static.lib;opengl32.lib;glu32.lib;Shell32.lib;winmm.lib;imm32.lib;version.lib;setupapi.lib;cfgmgr32.lib;user32.lib;gdi32.lib;ole32.lib;oleaut32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>dependencies\SDL3\lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreImportLibrary>true</IgnoreImportLibrary>

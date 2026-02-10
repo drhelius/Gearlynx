@@ -45,10 +45,13 @@
     <ClInclude Include="..\shared\desktop\imgui\imgui.h">
       <Filter>desktop\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_opengl2.h">
+    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_opengl3.h">
       <Filter>desktop\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_sdl2.h">
+    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_opengl3_loader.h">
+      <Filter>desktop\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_sdl3.h">
       <Filter>desktop\imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\desktop\imgui\imgui_internal.h">
@@ -78,7 +81,7 @@
     <ClInclude Include="..\shared\desktop\nfd\nfd.h">
       <Filter>desktop\nfd</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\nfd\nfd_sdl2.h">
+    <ClInclude Include="..\shared\desktop\nfd\nfd_sdl3.h">
       <Filter>desktop\nfd</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\desktop\application.h">
@@ -329,10 +332,10 @@
     <ClCompile Include="..\shared\desktop\imgui\imgui_draw.cpp">
       <Filter>desktop\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_impl_opengl2.cpp">
+    <ClCompile Include="..\shared\desktop\imgui\imgui_impl_opengl3.cpp">
       <Filter>desktop\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_impl_sdl2.cpp">
+    <ClCompile Include="..\shared\desktop\imgui\imgui_impl_sdl3.cpp">
       <Filter>desktop\imgui</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\imgui\imgui_tables.cpp">
