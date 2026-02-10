@@ -238,6 +238,7 @@ jobs:
         mkdir -p artifact/mcp
         cp platforms/shared/README.txt artifact
         cp platforms/shared/gamecontrollerdb.txt artifact
+        cp platforms/windows/dependencies/SDL3/lib/${{ matrix.architecture }}/SDL3.dll artifact
         cp platforms/windows/release/${{ env.NAME_UPPER }}.exe artifact
         cp -r platforms/shared/desktop/mcp/resources artifact/mcp/
     - name: Archive binary
@@ -325,6 +326,7 @@ jobs:
           cp -r platforms/shared/desktop/mcp/resources/* mcpb/mcp/resources/
         elif [ "${{ matrix.variant.platform }}" = "win32" ]; then
           cp download/${{ env.NAME_UPPER }}.exe mcpb/server/
+          cp download/SDL3.dll mcpb/server/
           cp download/gamecontrollerdb.txt mcpb/
           cp -r download/mcp/resources/* mcpb/mcp/resources/
         else
