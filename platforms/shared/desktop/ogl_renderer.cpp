@@ -191,7 +191,11 @@ void ogl_renderer_render(void)
 
     ImVec4 clear_color = ImVec4(config_video.background_color[0], config_video.background_color[1], config_video.background_color[2], 1.00f);
 
-    glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+    ImGuiIO& io = ImGui::GetIO();
+    int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
+    int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+
+    glViewport(0, 0, fb_width, fb_height);
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
 
