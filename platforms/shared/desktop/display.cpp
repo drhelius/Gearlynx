@@ -127,6 +127,14 @@ bool display_should_use_vsync(void)
     return (emu_fps >= 58 && emu_fps <= 62);
 }
 
+void display_set_vsync(bool enabled)
+{
+    SDL_GL_SetSwapInterval(0);
+    if (enabled)
+        SDL_GL_SetSwapInterval(1);
+    display_update_frame_pacing();
+}
+
 void display_update_vsync_state(void)
 {
     if (config_video.sync && !emu_is_empty())
@@ -135,7 +143,9 @@ void display_update_vsync_state(void)
 
         if (current_state != last_vsync_state)
         {
-            SDL_GL_SetSwapInterval(current_state);
+            SDL_GL_SetSwapInterval(0);
+            if (current_state)
+                SDL_GL_SetSwapInterval(1);
             last_vsync_state = current_state;
             Debug("Game FPS changed, vsync %s", current_state ? "enabled" : "disabled");
         }
@@ -165,6 +175,7 @@ void display_update_frame_pacing(void)
     vsync_frames_per_emu_frame = CLAMP(vsync_frames_per_emu_frame, 1, 8);
 
     vsync_frame_counter = 0;
+    last_vsync_state = -1;
 
     Debug("Monitor refresh rate: %d Hz, vsync frames per emu frame: %d", monitor_refresh_rate, vsync_frames_per_emu_frame);
 }
@@ -183,7 +194,10 @@ void display_recreate_gl_context(void)
         SDL_GL_DestroyContext(old_context);
 
         bool enable_vsync = config_video.sync && display_should_use_vsync();
-        SDL_GL_SetSwapInterval(enable_vsync ? 1 : 0);
+        SDL_GL_SetSwapInterval(0);
+        if (enable_vsync)
+            SDL_GL_SetSwapInterval(1);
+        last_vsync_state = enable_vsync ? 1 : 0;
 
         ImGui_ImplSDL3_InitForOpenGL(application_sdl_window, display_gl_context);
         ogl_renderer_init();

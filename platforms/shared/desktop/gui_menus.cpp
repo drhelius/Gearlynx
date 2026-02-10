@@ -27,6 +27,7 @@
 #include "gui_debug_widgets.h"
 #include "config.h"
 #include "application.h"
+#include "display.h"
 #include "gamepad.h"
 #include "emu.h"
 #include "ogl_renderer.h"
@@ -572,7 +573,7 @@ static void menu_video(void)
 
         if (ImGui::MenuItem("Vertical Sync", "", &config_video.sync))
         {
-            application_set_vsync(config_video.sync);
+            display_set_vsync(config_video.sync);
 
             if (config_video.sync)
             {

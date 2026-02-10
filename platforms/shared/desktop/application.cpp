@@ -241,11 +241,7 @@ void application_trigger_fit_to_content(int width, int height)
     SDL_ERROR("SDL_SetWindowSize");
 }
 
-void application_set_vsync(bool enabled)
-{
-    SDL_GL_SetSwapInterval(enabled ? 1 : 0);
-    display_update_frame_pacing();
-}
+
 
 void application_update_title_with_rom(const char* rom)
 {
@@ -341,7 +337,7 @@ static bool sdl_init(void)
     }
 #endif
 
-    application_set_vsync(config_video.sync);
+    display_set_vsync(config_video.sync);
 
     SDL_SetWindowMinimumSize(application_sdl_window, (int)(500 * content_scale), (int)(300 * content_scale));
 
@@ -467,14 +463,14 @@ static void sdl_events_app(const SDL_Event* event)
         }
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
         {
-            application_set_vsync(config_video.sync);
+            display_set_vsync(config_video.sync);
             if (config_emulator.pause_when_inactive && !paused_when_focus_lost)
                 emu_resume();
             break;
         }
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         {
-            application_set_vsync(false);
+            display_set_vsync(false);
             if (config_emulator.pause_when_inactive)
             {
                 paused_when_focus_lost = emu_is_paused();

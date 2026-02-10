@@ -36,6 +36,7 @@ EXTERN void display_frame_throttle(void);
 EXTERN bool display_should_run_emu_frame(void);
 EXTERN bool display_should_use_vsync(void);
 EXTERN void display_update_vsync_state(void);
+EXTERN void display_set_vsync(bool enabled);
 EXTERN void display_update_frame_pacing(void);
 EXTERN void display_recreate_gl_context(void);
 
