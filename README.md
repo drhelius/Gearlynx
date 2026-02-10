@@ -183,8 +183,22 @@ make dist
 
 - Ubuntu / Debian / Raspberry Pi (Raspbian):
 
+If you are using Ubuntu 25.04 or later, you can install SDL3 directly. Use the following commands to build:
+
 ``` shell
 sudo apt install build-essential libsdl3-dev libgtk-3-dev
+cd platforms/linux
+make
+```
+
+For older Ubuntu versions (22.04, 24.04), you need to build SDL3 from source first. Use the following commands to build both SDL3 and Gearlynx:
+
+``` shell
+sudo apt install build-essential cmake libgtk-3-dev
+git clone --depth 1 --branch release-3.4.x https://github.com/libsdl-org/SDL.git /tmp/SDL3
+cmake -S /tmp/SDL3 -B /tmp/SDL3/build -DCMAKE_INSTALL_PREFIX=/usr -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+cmake --build /tmp/SDL3/build -j$(nproc)
+sudo cmake --install /tmp/SDL3/build
 cd platforms/linux
 make
 ```
