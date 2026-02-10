@@ -160,6 +160,8 @@ static void ImGui_ImplSDL3_UpdateIme();
 static void ImGui_ImplSDL3_UpdateMonitors();
 static void ImGui_ImplSDL3_InitMultiViewportSupport(SDL_Window* window, void* sdl_gl_context);
 static void ImGui_ImplSDL3_ShutdownMultiViewportSupport();
+static float ImGui_ImplSDL3_GetContentScale(SDL_Window* window);
+static float ImGui_ImplSDL3_GetCoordScale(SDL_Window* window);
 
 // Functions
 static const char* ImGui_ImplSDL3_GetClipboardText(ImGuiContext*)
@@ -402,13 +404,14 @@ bool ImGui_ImplSDL3_ProcessEvent(const SDL_Event* event)
         {
             if (ImGui_ImplSDL3_GetViewportForWindowID(event->motion.windowID) == nullptr)
                 return false;
-            ImVec2 mouse_pos((float)event->motion.x, (float)event->motion.y);
+            float coord_scale = ImGui_ImplSDL3_GetCoordScale(bd->Window);
+            ImVec2 mouse_pos((float)event->motion.x * coord_scale, (float)event->motion.y * coord_scale);
             if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
                 int window_x, window_y;
                 SDL_GetWindowPosition(SDL_GetWindowFromID(event->motion.windowID), &window_x, &window_y);
-                mouse_pos.x += window_x;
-                mouse_pos.y += window_y;
+                mouse_pos.x += (float)window_x * coord_scale;
+                mouse_pos.y += (float)window_y * coord_scale;
             }
             io.AddMouseSourceEvent(event->motion.which == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
             io.AddMousePosEvent(mouse_pos.x, mouse_pos.y);
@@ -738,12 +741,13 @@ static void ImGui_ImplSDL3_UpdateMouseData()
         // (Optional) Set OS mouse position from Dear ImGui if requested (rarely used, only when io.ConfigNavMoveSetMousePos is enabled by user)
         if (io.WantSetMousePos)
         {
+            float coord_scale = ImGui_ImplSDL3_GetCoordScale(bd->Window);
 #if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE
             if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-                SDL_WarpMouseGlobal(io.MousePos.x, io.MousePos.y);
+                SDL_WarpMouseGlobal(io.MousePos.x / coord_scale, io.MousePos.y / coord_scale);
             else
 #endif
-                SDL_WarpMouseInWindow(bd->Window, io.MousePos.x, io.MousePos.y);
+                SDL_WarpMouseInWindow(bd->Window, io.MousePos.x / coord_scale, io.MousePos.y / coord_scale);
         }
 
         // (Optional) Fallback to provide unclamped mouse position when focused but not hovered (SDL_EVENT_MOUSE_MOTION already provides this when hovered or captured)
@@ -756,6 +760,7 @@ static void ImGui_ImplSDL3_UpdateMouseData()
             // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
             float mouse_x, mouse_y;
             int window_x, window_y;
+            float coord_scale = ImGui_ImplSDL3_GetCoordScale(bd->Window);
             SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
             if (!(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
             {
@@ -763,7 +768,7 @@ static void ImGui_ImplSDL3_UpdateMouseData()
                 mouse_x -= window_x;
                 mouse_y -= window_y;
             }
-            io.AddMousePosEvent(mouse_x, mouse_y);
+            io.AddMousePosEvent(mouse_x * coord_scale, mouse_y * coord_scale);
         }
     }
 
@@ -944,27 +949,43 @@ static void ImGui_ImplSDL3_UpdateMonitors()
     SDL_free(displays);
 }
 
+// Helper to get the display scale factor for a window.
+// This is used to normalize pixel coordinates to logical space on all platforms.
+static float ImGui_ImplSDL3_GetContentScale(SDL_Window* window)
+{
+    float display_scale = SDL_GetWindowDisplayScale(window);
+    return (display_scale > 0.0f) ? display_scale : 1.0f;
+}
+
+// Helper to convert SDL window/screen coordinates to ImGui logical coordinates.
+// SDL coordinates match SDL_GetWindowSize() space which varies by platform:
+//   macOS/Wayland: logical coords (pixel_density > 1), so scale = 1.0
+//   Windows/X11:   physical coords (pixel_density = 1), so scale = 1/display_scale
+// Usage: imgui_coord = sdl_coord * GetCoordScale(), sdl_coord = imgui_coord / GetCoordScale()
+static float ImGui_ImplSDL3_GetCoordScale(SDL_Window* window)
+{
+    float display_scale = SDL_GetWindowDisplayScale(window);
+    if (display_scale <= 0.0f)
+        display_scale = 1.0f;
+    float pixel_density = SDL_GetWindowPixelDensity(window);
+    if (pixel_density <= 0.0f)
+        pixel_density = 1.0f;
+    return pixel_density / display_scale;
+}
+
 static void ImGui_ImplSDL3_GetWindowSizeAndFramebufferScale(SDL_Window* window, ImVec2* out_size, ImVec2* out_framebuffer_scale)
 {
-    int w, h;
-    SDL_GetWindowSize(window, &w, &h);
+    int pixel_w, pixel_h;
+    SDL_GetWindowSizeInPixels(window, &pixel_w, &pixel_h);
     if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)
-        w = h = 0;
+        pixel_w = pixel_h = 0;
 
-#if defined(__APPLE__)
-    float fb_scale_x = SDL_GetWindowDisplayScale(window); // Seems more reliable during resolution change (#8703)
-    float fb_scale_y = fb_scale_x;
-#else
-    int display_w, display_h;
-    SDL_GetWindowSizeInPixels(window, &display_w, &display_h);
-    float fb_scale_x = (w > 0) ? (float)display_w / (float)w : 1.0f;
-    float fb_scale_y = (h > 0) ? (float)display_h / (float)h : 1.0f;
-#endif
+    float display_scale = ImGui_ImplSDL3_GetContentScale(window);
 
     if (out_size != nullptr)
-        *out_size = ImVec2((float)w, (float)h);
+        *out_size = ImVec2((float)pixel_w / display_scale, (float)pixel_h / display_scale);
     if (out_framebuffer_scale != nullptr)
-        *out_framebuffer_scale = ImVec2(fb_scale_x, fb_scale_y);
+        *out_framebuffer_scale = ImVec2(display_scale, display_scale);
 }
 
 void ImGui_ImplSDL3_NewFrame()
@@ -1150,29 +1171,33 @@ static void ImGui_ImplSDL3_UpdateWindow(ImGuiViewport* viewport)
 static ImVec2 ImGui_ImplSDL3_GetWindowPos(ImGuiViewport* viewport)
 {
     ImGui_ImplSDL3_ViewportData* vd = (ImGui_ImplSDL3_ViewportData*)viewport->PlatformUserData;
+    float coord_scale = ImGui_ImplSDL3_GetCoordScale(vd->Window);
     int x = 0, y = 0;
     SDL_GetWindowPosition(vd->Window, &x, &y);
-    return ImVec2((float)x, (float)y);
+    return ImVec2((float)x * coord_scale, (float)y * coord_scale);
 }
 
 static void ImGui_ImplSDL3_SetWindowPos(ImGuiViewport* viewport, ImVec2 pos)
 {
     ImGui_ImplSDL3_ViewportData* vd = (ImGui_ImplSDL3_ViewportData*)viewport->PlatformUserData;
-    SDL_SetWindowPosition(vd->Window, (int)pos.x, (int)pos.y);
+    float coord_scale = ImGui_ImplSDL3_GetCoordScale(vd->Window);
+    SDL_SetWindowPosition(vd->Window, (int)(pos.x / coord_scale), (int)(pos.y / coord_scale));
 }
 
 static ImVec2 ImGui_ImplSDL3_GetWindowSize(ImGuiViewport* viewport)
 {
     ImGui_ImplSDL3_ViewportData* vd = (ImGui_ImplSDL3_ViewportData*)viewport->PlatformUserData;
+    float coord_scale = ImGui_ImplSDL3_GetCoordScale(vd->Window);
     int w = 0, h = 0;
     SDL_GetWindowSize(vd->Window, &w, &h);
-    return ImVec2((float)w, (float)h);
+    return ImVec2((float)w * coord_scale, (float)h * coord_scale);
 }
 
 static void ImGui_ImplSDL3_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
 {
     ImGui_ImplSDL3_ViewportData* vd = (ImGui_ImplSDL3_ViewportData*)viewport->PlatformUserData;
-    SDL_SetWindowSize(vd->Window, (int)size.x, (int)size.y);
+    float coord_scale = ImGui_ImplSDL3_GetCoordScale(vd->Window);
+    SDL_SetWindowSize(vd->Window, (int)(size.x / coord_scale), (int)(size.y / coord_scale));
 }
 
 static ImVec2 ImGui_ImplSDL3_GetWindowFramebufferScale(ImGuiViewport* viewport)

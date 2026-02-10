@@ -234,7 +234,10 @@ void application_trigger_fullscreen(bool fullscreen)
 
 void application_trigger_fit_to_content(int width, int height)
 {
-    SDL_SetWindowSize(application_sdl_window, width, height);
+    float content_scale = SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(application_sdl_window));
+    if (content_scale <= 0.0f)
+        content_scale = 1.0f;
+    SDL_SetWindowSize(application_sdl_window, (int)(width * content_scale), (int)(height * content_scale));
     SDL_ERROR("SDL_SetWindowSize");
 }
 
@@ -304,7 +307,11 @@ static bool sdl_init(void)
     if (config_emulator.maximized)
         window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_MAXIMIZED);
 
-    application_sdl_window = SDL_CreateWindow(WINDOW_TITLE, config_emulator.window_width, config_emulator.window_height, window_flags);
+    float content_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    if (content_scale <= 0.0f)
+        content_scale = 1.0f;
+
+    application_sdl_window = SDL_CreateWindow(WINDOW_TITLE, (int)(config_emulator.window_width * content_scale), (int)(config_emulator.window_height * content_scale), window_flags);
 
     if (!application_sdl_window)
     {
@@ -336,7 +343,7 @@ static bool sdl_init(void)
 
     application_set_vsync(config_video.sync);
 
-    SDL_SetWindowMinimumSize(application_sdl_window, 500, 300);
+    SDL_SetWindowMinimumSize(application_sdl_window, (int)(500 * content_scale), (int)(300 * content_scale));
 
     float display_scale = SDL_GetWindowDisplayScale(application_sdl_window);
     Log("Display scale: %.2f", display_scale);
@@ -522,8 +529,11 @@ static void save_window_size(void)
     {
         int width, height;
         SDL_GetWindowSize(application_sdl_window, &width, &height);
-        config_emulator.window_width = width;
-        config_emulator.window_height = height;
+        float content_scale = SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(application_sdl_window));
+        if (content_scale <= 0.0f)
+            content_scale = 1.0f;
+        config_emulator.window_width = (int)(width / content_scale);
+        config_emulator.window_height = (int)(height / content_scale);
         config_emulator.maximized = (SDL_GetWindowFlags(application_sdl_window) & SDL_WINDOW_MAXIMIZED) != 0;
     }
 }

@@ -688,15 +688,6 @@ static void set_style(void)
     style.Colors[ImGuiCol_TabDimmed] = lerp(style.Colors[ImGuiCol_Tab], style.Colors[ImGuiCol_TitleBg], 0.80f);
     style.Colors[ImGuiCol_TabDimmedSelected] = lerp(style.Colors[ImGuiCol_TabSelected], style.Colors[ImGuiCol_TitleBg], 0.40f);
     style.Colors[ImGuiCol_TabDimmedSelectedOverline] = lerp(style.Colors[ImGuiCol_TabSelected], style.Colors[ImGuiCol_TitleBg], 0.20f);
-
-#if defined(_WIN32)
-    float display_scale = SDL_GetWindowDisplayScale(application_sdl_window);
-    if (display_scale > 0.0f && display_scale != 1.0f)
-    {
-        style.ScaleAllSizes(display_scale);
-        style.FontScaleDpi = display_scale;
-    }
-#endif
 }
 
 static ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t)
