@@ -132,12 +132,13 @@ void display_set_vsync(bool enabled)
     SDL_GL_SetSwapInterval(0);
     if (enabled)
         SDL_GL_SetSwapInterval(1);
+    last_vsync_state = enabled ? 1 : 0;
     display_update_frame_pacing();
 }
 
 void display_update_vsync_state(void)
 {
-    if (config_video.sync && !emu_is_empty())
+    if (config_video.sync && !config_emulator.ffwd && !emu_is_empty())
     {
         int current_state = display_should_use_vsync() ? 1 : 0;
 
@@ -175,7 +176,6 @@ void display_update_frame_pacing(void)
     vsync_frames_per_emu_frame = CLAMP(vsync_frames_per_emu_frame, 1, 8);
 
     vsync_frame_counter = 0;
-    last_vsync_state = -1;
 
     Debug("Monitor refresh rate: %d Hz, vsync frames per emu frame: %d", monitor_refresh_rate, vsync_frames_per_emu_frame);
 }

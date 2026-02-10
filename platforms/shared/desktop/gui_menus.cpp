@@ -578,6 +578,7 @@ static void menu_video(void)
             if (config_video.sync)
             {
                 config_audio.sync = true;
+                config_emulator.ffwd = false;
             }
         }
 
