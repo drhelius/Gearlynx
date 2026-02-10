@@ -338,11 +338,8 @@ static bool sdl_init(void)
 
     SDL_SetWindowMinimumSize(application_sdl_window, 500, 300);
 
-    application_display_scale = SDL_GetWindowDisplayScale(application_sdl_window);
-    if (application_display_scale <= 0.0f)
-        application_display_scale = 1.0f;
-
-    Log("Display scale: %.2f", application_display_scale);
+    float display_scale = SDL_GetWindowDisplayScale(application_sdl_window);
+    Log("Display scale: %.2f", display_scale);
 
     gamepad_load_mappings();
     gamepad_add();

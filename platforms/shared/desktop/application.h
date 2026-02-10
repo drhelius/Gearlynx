@@ -29,7 +29,6 @@
 #endif
 
 EXTERN SDL_Window* application_sdl_window;
-EXTERN float application_display_scale;
 EXTERN int application_sdl_version_major;
 EXTERN int application_sdl_version_minor;
 EXTERN int application_sdl_version_patch;
