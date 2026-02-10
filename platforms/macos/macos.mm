@@ -75,6 +75,16 @@ extern "C" void* macos_install_fullscreen_observer(void* nswindow,
     return (void*)obs;
 }
 
+extern "C" void macos_remove_fullscreen_observer(void* observer)
+{
+    if (observer)
+    {
+        FullscreenObserver* obs = (FullscreenObserver*)observer;
+        [[NSNotificationCenter defaultCenter] removeObserver:obs];
+        [obs release];
+    }
+}
+
 extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter)
 {
     NSWindow* win = (__bridge NSWindow*)nswindow;
@@ -86,5 +96,22 @@ extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter)
     else if (!enter && isFullScreen)
     {
         [win toggleFullScreen:nil];
+    }
+}
+
+extern "C" void macos_app_terminate(void)
+{
+    @autoreleasepool
+    {
+        // After SDL_Quit releases file dialog panel objects,
+        // drain the run loop to process pending XPC disconnection
+        // so the AutoFill ViewService can terminate
+        for (int i = 0; i < 50; i++)
+        {
+            @autoreleasepool
+            {
+                CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, true);
+            }
+        }
     }
 }

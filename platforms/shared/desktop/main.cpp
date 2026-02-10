@@ -161,5 +161,9 @@ int main(int argc, char* argv[])
     config_write();
     config_destroy();
 
+#if defined(__APPLE__)
+    application_macos_terminate();
+#endif
+
     return ret;
 }
