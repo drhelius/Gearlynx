@@ -116,7 +116,7 @@ extern "C" {
   #define GLAD_GNUC_EXTENSION
 #endif
 
-#define GLAD_UNUSED(x) (void)(x)
+#define GLAD_UNUSED(x) (void)sizeof(x)
 
 #ifndef GLAD_API_CALL
   #if defined(GLAD_API_CALL_EXPORT)

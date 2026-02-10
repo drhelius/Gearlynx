@@ -44,8 +44,8 @@
 
 static bool status_message_active = false;
 static char status_message[4096] = "";
-static u32 status_message_start_time = 0;
-static u32 status_message_duration = 0;
+static Uint64 status_message_start_time = 0;
+static Uint64 status_message_duration = 0;
 static bool error_window_active = false;
 static char error_message[4096] = "";
 static void main_window(void);
@@ -365,7 +365,7 @@ void gui_load_bios(const char* path)
     gui_action_reset();
 }
 
-void gui_set_status_message(const char* message, u32 milliseconds)
+void gui_set_status_message(const char* message, Uint64 milliseconds)
 {
     if (config_emulator.status_messages)
     {
@@ -540,7 +540,7 @@ static void show_status_message(void)
 {
     if (status_message_active)
     {
-        u32 current_time = SDL_GetTicks();
+        Uint64 current_time = SDL_GetTicks();
         if ((current_time - status_message_start_time) > status_message_duration)
             status_message_active = false;
         else

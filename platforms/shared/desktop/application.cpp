@@ -274,10 +274,6 @@ static bool sdl_init(void)
 {
     Debug("Initializing SDL...");
 
-#if defined(_WIN32)
-    SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
-#endif
-
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
     {
         SDL_ERROR("SDL_Init");
@@ -374,7 +370,7 @@ static void handle_mouse_cursor(void)
         ImGui::SetMouseCursor(ImGuiMouseCursor_None);
     else if (!config_debug.debug && config_emulator.fullscreen && !config_emulator.always_show_menu)
     {
-        Uint32 now = SDL_GetTicks();
+        Uint64 now = SDL_GetTicks();
 
         if ((now - mouse_last_motion_time) < mouse_hide_timeout_ms)
             ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
