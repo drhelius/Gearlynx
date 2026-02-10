@@ -26,7 +26,6 @@ INCLUDES += -I$(DEPS_DIR)/glad
 INCLUDES += -I$(DEPS_DIR)/imgui
 INCLUDES += -I$(DEPS_DIR)/mINI
 INCLUDES += -I$(DEPS_DIR)/miniz
-INCLUDES += -I$(DEPS_DIR)/nfd
 INCLUDES += -I$(DEPS_DIR)/stb
 INCLUDES += -I$(DEPS_DIR)/json
 

@@ -1,9 +1,8 @@
 include ../shared/makefiles/Makefile.sources
 
-SOURCES_MM += $(DEPS_DIR)/nfd/nfd_cocoa.mm
 SOURCES_MM += macos.mm
 OBJECTS += $(SOURCES_MM:.mm=.o)
-LDFLAGS += -framework AppKit -framework UniformTypeIdentifiers
+LDFLAGS += -framework AppKit
 
 include ../shared/makefiles/Makefile.common
 

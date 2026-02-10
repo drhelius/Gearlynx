@@ -16,9 +16,6 @@
     <Filter Include="desktop\mini">
       <UniqueIdentifier>{69db12c2-86c4-44d0-bd5d-f7edb5acd897}</UniqueIdentifier>
     </Filter>
-    <Filter Include="desktop\nfd">
-      <UniqueIdentifier>{16577b5e-ed6e-4dea-8811-151fe14f97c5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="desktop\stb">
       <UniqueIdentifier>{7a4208bd-f38a-463e-aba5-d23f60b7333d}</UniqueIdentifier>
     </Filter>
@@ -78,12 +75,7 @@
     <ClInclude Include="..\shared\desktop\stb\stb_image_write.h">
       <Filter>desktop\stb</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\nfd\nfd.h">
-      <Filter>desktop\nfd</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\nfd\nfd_sdl3.h">
-      <Filter>desktop\nfd</Filter>
-    </ClInclude>
+
     <ClInclude Include="..\shared\desktop\application.h">
       <Filter>desktop</Filter>
     </ClInclude>
@@ -352,9 +344,6 @@
     </ClCompile>
     <ClCompile Include="..\shared\desktop\imgui\implot_items.cpp">
       <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\nfd\nfd_win.cpp">
-      <Filter>desktop\nfd</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\application.cpp">
       <Filter>desktop</Filter>

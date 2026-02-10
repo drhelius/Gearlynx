@@ -952,6 +952,8 @@ static void menu_about(void)
 
 static void file_dialogs(void)
 {
+    gui_file_dialog_process_results();
+
     if (open_rom || gui_shortcut_open_rom)
     {
         gui_shortcut_open_rom = false;

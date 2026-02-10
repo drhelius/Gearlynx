@@ -23,7 +23,6 @@
 #include "fonts/RobotoMedium.h"
 #include "fonts/MaterialIcons.h"
 #include "fonts/IconsMaterialDesign.h"
-#include "nfd.h"
 #include "config.h"
 #include "application.h"
 #include "emu.h"
@@ -59,12 +58,6 @@ bool gui_init(void)
 {
     gui_main_window_width = 0;
     gui_main_window_height = 0;
-
-    if (NFD_Init() != NFD_OKAY)
-    {
-        Error("NFD Error: %s", NFD_GetError());
-        return false;
-    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -132,7 +125,6 @@ void gui_destroy(void)
     gui_debug_destroy();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
-    NFD_Quit();
 }
 
 void gui_render(void)
