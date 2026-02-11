@@ -47,8 +47,10 @@ jobs:
         libxi-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
         libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev
     - name: Build and install SDL3
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        SDL3_TAG=$(curl -s https://api.github.com/repos/libsdl-org/SDL/releases/latest | jq -r '.tag_name')
+        SDL3_TAG=$(gh release view --repo libsdl-org/SDL --json tagName -q '.tagName')
         echo "Building SDL3 $SDL3_TAG"
         git clone --depth 1 --branch "$SDL3_TAG" https://github.com/libsdl-org/SDL.git /tmp/SDL3
         cmake -S /tmp/SDL3 -B /tmp/SDL3/build -DCMAKE_INSTALL_PREFIX=/usr -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
@@ -91,8 +93,10 @@ jobs:
         libxi-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
         libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev
     - name: Build and install SDL3
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        SDL3_TAG=$(curl -s https://api.github.com/repos/libsdl-org/SDL/releases/latest | jq -r '.tag_name')
+        SDL3_TAG=$(gh release view --repo libsdl-org/SDL --json tagName -q '.tagName')
         echo "Building SDL3 $SDL3_TAG"
         git clone --depth 1 --branch "$SDL3_TAG" https://github.com/libsdl-org/SDL.git /tmp/SDL3
         cmake -S /tmp/SDL3 -B /tmp/SDL3/build -DCMAKE_INSTALL_PREFIX=/usr -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
@@ -219,8 +223,10 @@ jobs:
       uses: microsoft/setup-msbuild@v2
     - name: Download SDL3 development libraries
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        SDL3_TAG=$(curl -s https://api.github.com/repos/libsdl-org/SDL/releases/latest | jq -r '.tag_name')
+        SDL3_TAG=$(gh release view --repo libsdl-org/SDL --json tagName -q '.tagName')
         SDL3_VERSION=${SDL3_TAG#release-}
         echo "Downloading SDL3 $SDL3_VERSION"
         curl -sL "https://github.com/libsdl-org/SDL/releases/download/${SDL3_TAG}/SDL3-devel-${SDL3_VERSION}-VC.zip" -o SDL3-devel.zip
