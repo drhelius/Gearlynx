@@ -70,6 +70,7 @@ void gamepad_load_mappings(void)
     int line_number = 0;
     char platform_field[64] = { };
     snprintf(platform_field, 64, "platform:%s", SDL_GetPlatform());
+
     if (file.is_open())
     {
         Debug("Loading gamecontrollerdb.txt file");
@@ -79,10 +80,13 @@ void gamepad_load_mappings(void)
             size_t comment = line.find_first_of('#');
             if (comment != std::string::npos)
                 line = line.substr(0, comment);
+
             line = line.erase(0, line.find_first_not_of(" \t\r\n"));
             line = line.erase(line.find_last_not_of(" \t\r\n") + 1);
+
             while (line[0] == ' ')
                 line = line.substr(1);
+
             if (line.empty())
                 continue;
 
@@ -92,7 +96,9 @@ void gamepad_load_mappings(void)
 
             if ((line.find("platform:") != std::string::npos) && (line.find(platform_field) == std::string::npos))
                 continue;
+
             int result = SDL_AddGamepadMapping(line.c_str());
+
             if (result == 1)
                 added_mappings++;
             else if (result == 0)
@@ -102,6 +108,7 @@ void gamepad_load_mappings(void)
                 Error("Unable to load game controller mapping in line %d from gamecontrollerdb.txt", line_number);
                 SDL_ERROR("SDL_AddGamepadMapping");
             }
+
             line_number++;
         }
         file.close();
@@ -111,8 +118,10 @@ void gamepad_load_mappings(void)
         Error("Game controller database not found (gamecontrollerdb.txt)!!");
         return;
     }
+
     Log("Added %d new game controller mappings from gamecontrollerdb.txt", added_mappings);
     Log("Updated %d game controller mappings from gamecontrollerdb.txt", updated_mappings);
+
     gamepad_added_mappings = added_mappings;
     gamepad_updated_mappings = updated_mappings;
 }
