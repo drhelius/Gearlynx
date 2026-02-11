@@ -85,6 +85,11 @@ void gamepad_load_mappings(void)
                 line = line.substr(1);
             if (line.empty())
                 continue;
+
+            size_t platform_pos = line.find("platform:Mac OS X");
+            if (platform_pos != std::string::npos)
+                line.replace(platform_pos, 17, "platform:macOS");
+
             if ((line.find("platform:") != std::string::npos) && (line.find(platform_field) == std::string::npos))
                 continue;
             int result = SDL_AddGamepadMapping(line.c_str());
