@@ -39,19 +39,15 @@ static void write_string(const char* group, const char* key, std::string value);
 static config_Hotkey read_hotkey(const char* group, const char* key, config_Hotkey default_value);
 static void write_hotkey(const char* group, const char* key, config_Hotkey hotkey);
 static config_Hotkey make_hotkey(SDL_Scancode key, SDL_Keymod mod);
+static void set_defaults(void);
 
-void config_init(void)
+static void set_defaults(void)
 {
-    if (check_portable())
-        config_root_path = SDL_GetBasePath();
-    else
-        config_root_path = SDL_GetPrefPath("Geardome", GLYNX_TITLE);
-
-    strncpy_fit(config_emu_file_path, config_root_path, sizeof(config_emu_file_path));
-    strncat_fit(config_emu_file_path, "config.ini", sizeof(config_emu_file_path));
-
-    strncpy_fit(config_imgui_file_path, config_root_path, sizeof(config_imgui_file_path));
-    strncat_fit(config_imgui_file_path, "imgui.ini", sizeof(config_imgui_file_path));
+    config_emulator = config_Emulator();
+    config_video = config_Video();
+    config_audio = config_Audio();
+    config_input = config_Input();
+    config_debug = config_Debug();
 
     config_input.key_left = SDL_SCANCODE_LEFT;
     config_input.key_right = SDL_SCANCODE_RIGHT;
@@ -106,6 +102,22 @@ void config_init(void)
 
     for (int i = 0; i < 4; i++)
         config_audio.volume[i] = 1.0f;
+}
+
+void config_init(void)
+{
+    if (check_portable())
+        config_root_path = SDL_GetBasePath();
+    else
+        config_root_path = SDL_GetPrefPath("Geardome", GLYNX_TITLE);
+
+    strncpy_fit(config_emu_file_path, config_root_path, sizeof(config_emu_file_path));
+    strncat_fit(config_emu_file_path, "config.ini", sizeof(config_emu_file_path));
+
+    strncpy_fit(config_imgui_file_path, config_root_path, sizeof(config_imgui_file_path));
+    strncat_fit(config_imgui_file_path, "imgui.ini", sizeof(config_imgui_file_path));
+
+    set_defaults();
 
     config_ini_file = new mINI::INIFile(config_emu_file_path);
 }
@@ -113,6 +125,14 @@ void config_init(void)
 void config_destroy(void)
 {
     SafeDelete(config_ini_file)
+}
+
+void config_load_defaults(void)
+{
+    Log("Loading default settings");
+
+    set_defaults();
+    config_write();
 }
 
 void config_read(void)

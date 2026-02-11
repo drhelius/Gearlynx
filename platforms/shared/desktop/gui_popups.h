@@ -30,6 +30,7 @@ EXTERN void gui_popup_modal_keyboard(void);
 EXTERN void gui_popup_modal_gamepad(void);
 EXTERN void gui_popup_modal_hotkey(void);
 EXTERN void gui_popup_modal_about(void);
+EXTERN void gui_popup_modal_load_defaults(void);
 EXTERN void gui_popup_modal_bios(void);
 EXTERN void gui_show_info(void);
 EXTERN void gui_show_fps(void);
