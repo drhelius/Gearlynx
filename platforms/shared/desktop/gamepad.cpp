@@ -33,6 +33,8 @@ static bool gamepad_get_button(SDL_Gamepad* controller, int mapping);
 bool gamepad_init(void)
 {
     InitPointer(gamepad_controller);
+    gamepad_load_mappings();
+    gamepad_add();
     return true;
 }
 

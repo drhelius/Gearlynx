@@ -344,9 +344,6 @@ static bool sdl_init(void)
     float display_scale = SDL_GetWindowDisplayScale(application_sdl_window);
     Log("Display scale: %.2f", display_scale);
 
-    gamepad_load_mappings();
-    gamepad_add();
-
     return true;
 }
 
