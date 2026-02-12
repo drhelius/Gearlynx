@@ -37,6 +37,7 @@ struct DisassemblerLine
     bool is_breakpoint;
     GLYNX_Disassembler_Record* record;
     char name_enhanced[64];
+    char tooltip[128];
     int name_real_length;
     DebugSymbol* symbol;
     bool is_auto_symbol;
@@ -89,7 +90,7 @@ static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address);
 static void add_breakpoint();
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
-static void replace_symbols(DisassemblerLine* line, const char* color, const char* auto_color);
+static void replace_symbols(DisassemblerLine* line, const char* jump_color, const char* operand_color, const char* auto_color, const char* original_color);
 static void replace_labels(DisassemblerLine* line, const char* color, const char* original_color);
 static void draw_instruction_name(DisassemblerLine* line, bool is_pc);
 static void disassembler_menu(void);
@@ -611,6 +612,7 @@ static void prepare_drawable_lines(void)
             line.is_breakpoint = false;
             line.record = record;
             snprintf(line.name_enhanced, 64, "%s", line.record->name);
+            line.tooltip[0] = 0;
 
             std::vector<M6502::GLYNX_Breakpoint>* breakpoints = emu_get_core()->GetM6502()->GetBreakpoints();
 
@@ -768,6 +770,13 @@ static void draw_disassembly(void)
 
                 ImGui::SameLine();
                 draw_instruction_name(&line, line.address == pc);
+
+                if (line.tooltip[0] != 0 && ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    TextColoredEx("%s", line.tooltip);
+                    ImGui::EndTooltip();
+                }
 
                 if (config_debug.dis_show_mem)
                 {
@@ -947,6 +956,20 @@ static void add_symbol(const char* line)
             snprintf(s.text, 64, "%s", symbol.c_str());
 
             // Store the symbol
+            DebugSymbol* existing = fixed_symbols[s.address];
+            if (IsValidPointer(existing))
+            {
+                for (size_t i = 0; i < fixed_symbol_list.size(); i++)
+                {
+                    if (fixed_symbol_list[i].symbol == existing)
+                    {
+                        fixed_symbol_list.erase(fixed_symbol_list.begin() + i);
+                        break;
+                    }
+                }
+                SafeDelete(fixed_symbols[s.address]);
+            }
+
             DebugSymbol* new_symbol = new DebugSymbol;
             new_symbol->address = s.address;
             snprintf(new_symbol->text, 64, "%s", s.text);
@@ -1048,65 +1071,151 @@ static bool is_return_instruction(u8 opcode)
     }
 }
 
-static void replace_symbols(DisassemblerLine* line, const char* color, const char* auto_color)
+static bool replace_address_in_string(std::string& instr, u16 address, bool is_zp, const char* replacement_text)
 {
-    bool symbol_found = false;
+    const char* format = is_zp ? "$%02X" : "$%04X";
+    const char* indirect_format = is_zp ? "$(%02X" : "$(%04X";
+    int replace_len = is_zp ? 3 : 5;
+    int indirect_replace_len = is_zp ? 4 : 6;
 
-    DebugSymbol* fixed_symbol = fixed_symbols[line->record->jump_address];
-
-    if (IsValidPointer(fixed_symbol))
+    char address_str[8];
+    snprintf(address_str, 8, format, address);
+    size_t pos = instr.find(address_str);
+    if (pos != std::string::npos)
     {
-        std::string instr = line->record->name;
-        std::string symbol = fixed_symbol->text;
-        char jump_address[6];
-        snprintf(jump_address, 6, "$%04X", line->record->jump_address);
-        size_t pos = instr.find(jump_address);
-        if (pos != std::string::npos)
+        instr.replace(pos, replace_len, replacement_text);
+        return true;
+    }
+
+    snprintf(address_str, 8, indirect_format, address);
+    pos = instr.find(address_str);
+    if (pos != std::string::npos)
+    {
+        std::string indirect_replacement = std::string("(") + replacement_text;
+        instr.replace(pos, indirect_replace_len, indirect_replacement);
+        return true;
+    }
+
+    return false;
+}
+
+static bool get_record_operand(GLYNX_Disassembler_Record* record, u16* out_address, bool* out_is_zp)
+{
+    if (record->jump)
+    {
+        *out_address = record->jump_address;
+        *out_is_zp = false;
+        return true;
+    }
+    else if (record->has_operand_address)
+    {
+        *out_address = record->operand_address;
+        *out_is_zp = record->operand_is_zp;
+        return true;
+    }
+    return false;
+}
+
+bool gui_debug_resolve_symbol(GLYNX_Disassembler_Record* record, std::string& instr, const char* color, const char* original_color, const char** out_name, u16* out_address)
+{
+    u16 lookup_address = 0;
+    bool is_zp = false;
+
+    if (!get_record_operand(record, &lookup_address, &is_zp))
+        return false;
+
+    DebugSymbol* symbol = fixed_symbols[lookup_address];
+    if (IsValidPointer(symbol))
+    {
+        std::string replacement = std::string(color) + symbol->text + original_color;
+        if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
         {
-            instr.replace(pos, 5, color + symbol);
-            snprintf(line->name_enhanced, 64, "%s", instr.c_str());
-            symbol_found = true;
+            if (out_name) *out_name = symbol->text;
+            if (out_address) *out_address = lookup_address;
+            return true;
         }
     }
 
-    if (symbol_found)
+    return false;
+}
+
+bool gui_debug_resolve_label(GLYNX_Disassembler_Record* record, std::string& instr, const char* color, const char* original_color, const char** out_name, u16* out_address)
+{
+    u16 lookup_address = 0;
+    bool is_zp = false;
+
+    if (get_record_operand(record, &lookup_address, &is_zp))
+    {
+        for (int i = 0; i < k_debug_label_count; i++)
+        {
+            if (k_debug_labels[i].address == lookup_address)
+            {
+                char label_address[6];
+                snprintf(label_address, 6, "$%04X", lookup_address);
+                std::string replacement = std::string(color) + k_debug_labels[i].label + "_" + label_address + original_color;
+                if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
+                {
+                    if (out_name) *out_name = k_debug_labels[i].label;
+                    if (out_address) *out_address = lookup_address;
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+static void replace_symbols(DisassemblerLine* line, const char* jump_color, const char* operand_color, const char* auto_color, const char* original_color)
+{
+    std::string instr = line->record->name;
+    const char* color = line->record->jump ? jump_color : operand_color;
+    const char* resolved_name = NULL;
+    u16 resolved_address = 0;
+
+    if (gui_debug_resolve_symbol(line->record, instr, color, original_color, &resolved_name, &resolved_address))
+    {
+        snprintf(line->name_enhanced, 64, "%s", instr.c_str());
+        snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white, c_cyan, resolved_address);
         return;
+    }
 
     if (!config_debug.dis_show_auto_symbols)
         return;
 
-    DebugSymbol* dynamic_symbol = dynamic_symbols[line->record->jump_address];
+    if (!line->record->jump)
+        return;
+
+    u16 lookup_address = 0;
+    bool is_zp = false;
+
+    if (!get_record_operand(line->record, &lookup_address, &is_zp))
+        return;
+
+    DebugSymbol* dynamic_symbol = dynamic_symbols[lookup_address];
 
     if (IsValidPointer(dynamic_symbol))
     {
-        std::string instr = line->record->name;
-        std::string symbol = dynamic_symbol->text;
-        char jump_address[6];
-        snprintf(jump_address, 6, "$%04X", line->record->jump_address);
-        size_t pos = instr.find(jump_address);
-        if (pos != std::string::npos)
+        std::string replacement = std::string(auto_color) + dynamic_symbol->text + original_color;
+        if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
         {
-            instr.replace(pos, 5, auto_color + symbol);
             snprintf(line->name_enhanced, 64, "%s", instr.c_str());
+            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", auto_color, dynamic_symbol->text, c_white, c_cyan, lookup_address);
         }
-
     }
 }
 
 static void replace_labels(DisassemblerLine* line, const char* color, const char* original_color)
 {
-    for (int i = 0; i < k_debug_label_count; i++)
+    std::string instr = line->record->name;
+    const char* resolved_name = NULL;
+    u16 resolved_address = 0;
+
+    if (gui_debug_resolve_label(line->record, instr, color, original_color, &resolved_name, &resolved_address))
     {
-        std::string instr = line->record->name;
-        std::string label = k_debug_labels[i].label;
-        char label_address[6];
-        snprintf(label_address, 6, "$%04X", k_debug_labels[i].address);
-        size_t pos = instr.find(label_address);
-        if (pos != std::string::npos)
-        {
-            instr.replace(pos, 5, color + label + "_" + label_address + original_color);
-            snprintf(line->name_enhanced, 64, "%s", instr.c_str());
-        }
+        snprintf(line->name_enhanced, 64, "%s", instr.c_str());
+        if (line->tooltip[0] == 0)
+            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white, c_cyan, resolved_address);
     }
 }
 
@@ -1143,10 +1252,10 @@ static void draw_instruction_name(DisassemblerLine* line, bool is_pc)
         extra_color = c_blue;
     }
 
-    if (config_debug.dis_replace_symbols && line->record->jump)
+    if (config_debug.dis_replace_symbols)
     {
         const char* auto_symbol_color = config_debug.dis_dim_auto_symbols ? c_dim_green : symbol_color;
-        replace_symbols(line, symbol_color, auto_symbol_color);
+        replace_symbols(line, symbol_color, label_color, auto_symbol_color, operands_color);
     }
 
     if (config_debug.dis_replace_labels)
@@ -1165,7 +1274,9 @@ static void draw_instruction_name(DisassemblerLine* line, bool is_pc)
     if (pos != std::string::npos)
         instr.replace(pos, 3, operands_color);
 
+    ImGui::BeginGroup();
     line->name_real_length = TextColoredEx("%s%s", name_color, instr.c_str());
+    ImGui::EndGroup();
 }
 
 static void disassembler_menu(void)
@@ -1398,13 +1509,13 @@ static void disassembler_menu(void)
         ImGui::MenuItem("Symbols Window", NULL, &config_debug.show_symbols);
 
         ImGui::Separator();
+        ImGui::MenuItem("Hardware Labels", NULL, &config_debug.dis_replace_labels);
 
         ImGui::MenuItem("Automatic Symbols", NULL, &config_debug.dis_show_auto_symbols);
         if (!config_debug.dis_show_auto_symbols) ImGui::BeginDisabled();
         ImGui::MenuItem("Dim Automatic Symbols", NULL, &config_debug.dis_dim_auto_symbols);
         if (!config_debug.dis_show_auto_symbols) ImGui::EndDisabled();
         ImGui::MenuItem("Replace Address With Symbol", NULL, &config_debug.dis_replace_symbols);
-        ImGui::MenuItem("Replace Address With Label", NULL, &config_debug.dis_replace_labels);
 
         ImGui::Separator();
 
@@ -1834,6 +1945,14 @@ void gui_debug_window_symbols(void)
                         gui_debug_memory_open_watch_popup(0, symbol->address, symbol->text);
                     }
 
+                    if (is_fixed)
+                    {
+                        if (ImGui::Selectable("Remove Symbol"))
+                        {
+                            gui_debug_remove_symbol(symbol->address);
+                        }
+                    }
+
                     ImGui::EndPopup();
                 }
                 ImGui::PushFont(gui_default_font);
@@ -1997,9 +2116,9 @@ static void save_current_disassembler(FILE* file)
 
         fprintf(file, " %04X ", line.address);
 
-        if (config_debug.dis_replace_symbols && line.record->jump)
+        if (config_debug.dis_replace_symbols)
         {
-            replace_symbols(&line, "", "");
+            replace_symbols(&line, "", "", "", "");
         }
 
         if (config_debug.dis_replace_labels)

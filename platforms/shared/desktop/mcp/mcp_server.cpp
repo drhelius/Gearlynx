@@ -525,6 +525,10 @@ void McpServer::HandleToolsList(const json& request)
                 {"end_address", {
                     {"type", "string"},
                     {"description", "End address in hex (required). Must be >= start_address. Accepts formats: 'E177', '0xE177', '$E177'"}
+                }},
+                {"resolve_symbols", {
+                    {"type", "boolean"},
+                    {"description", "When true, replace addresses in instruction mnemonics with user-defined symbol names and hardware register labels (e.g. 'LDA MY_VAR,X' instead of 'LDA $2C00,X'). Default: false"}
                 }}
             }},
             {"required", json::array({"start_address", "end_address"})}
@@ -1518,7 +1522,11 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         if (start_address > end_address)
             return {{"error", "start_address must be <= end_address"}};
 
-        std::vector<DisasmLine> lines = m_debugAdapter.GetDisassembly(start_address, end_address);
+        bool resolve_symbols = false;
+        if (arguments.contains("resolve_symbols") && arguments["resolve_symbols"].is_boolean())
+            resolve_symbols = arguments["resolve_symbols"].get<bool>();
+
+        std::vector<DisasmLine> lines = m_debugAdapter.GetDisassembly(start_address, end_address, resolve_symbols);
 
         json result;
         json instructions = json::array();
