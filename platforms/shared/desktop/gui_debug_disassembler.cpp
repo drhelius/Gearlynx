@@ -1761,16 +1761,16 @@ void gui_debug_window_call_stack(void)
             }
             ImGui::PushFont(gui_default_font);
 
+            ImGui::SameLine(0, 0);
+            ImGui::TextColored(cyan, "%04X", entry.dest);
             ImGui::SameLine();
-            ImGui::TextColored(cyan, "$%04X", entry.dest);
-            ImGui::SameLine();
-            ImGui::TextColored(green, "%s", symbol_text);
+            ImGui::TextColored(green, " %s", symbol_text);
 
             ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, "$%04X", entry.src);
+            ImGui::TextColored(cyan, "%04X", entry.src);
 
             ImGui::TableNextColumn();
-            ImGui::TextColored(cyan, "$%04X", entry.back);
+            ImGui::TextColored(cyan, "%04X", entry.back);
 
             row_index++;
         }
@@ -1957,8 +1957,8 @@ void gui_debug_window_symbols(void)
                 }
                 ImGui::PushFont(gui_default_font);
 
-                ImGui::SameLine();
-                ImGui::TextColored(cyan, "$%04X", symbol->address);
+                ImGui::SameLine(0, 0);
+                ImGui::TextColored(cyan, " %04X", symbol->address);
 
                 ImGui::TableNextColumn();
                 ImGui::TextColored(is_fixed ? green : yellow, "%s", symbol->text);
