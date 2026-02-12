@@ -36,6 +36,9 @@ static int monitor_refresh_rate = 60;
 static int vsync_frames_per_emu_frame = 1;
 static int vsync_frame_counter = 0;
 static int last_vsync_state = -1;
+static bool multi_monitor_mixed_refresh = false;
+static bool last_vsync_forced_off = false;
+static bool pending_gl_context_recreate = false;
 
 void display_begin_frame(void)
 {
@@ -118,6 +121,9 @@ bool display_should_run_emu_frame(void)
 
 bool display_should_use_vsync(void)
 {
+    if (display_is_vsync_forced_off())
+        return false;
+
     if (emu_is_empty())
         return false;
 
@@ -129,15 +135,46 @@ bool display_should_use_vsync(void)
 
 void display_set_vsync(bool enabled)
 {
+    bool effective = enabled && !display_is_vsync_forced_off();
     SDL_GL_SetSwapInterval(0);
-    if (enabled)
+    if (effective)
         SDL_GL_SetSwapInterval(1);
-    last_vsync_state = enabled ? 1 : 0;
+    last_vsync_state = effective ? 1 : 0;
     display_update_frame_pacing();
 }
 
 void display_update_vsync_state(void)
 {
+    bool forced_off = display_is_vsync_forced_off();
+
+    if (forced_off)
+    {
+        if (!last_vsync_forced_off || last_vsync_state != 0)
+        {
+            SDL_GL_SetSwapInterval(0);
+            last_vsync_state = 0;
+            last_vsync_forced_off = true;
+            Debug("Vsync forced off: multi-viewport with mixed refresh rate monitors");
+        }
+        return;
+    }
+
+    if (last_vsync_forced_off)
+    {
+        last_vsync_forced_off = false;
+
+        if (pending_gl_context_recreate && config_video.sync)
+        {
+            pending_gl_context_recreate = false;
+            display_recreate_gl_context();
+        }
+        else
+        {
+            display_set_vsync(config_video.sync);
+        }
+        return;
+    }
+
     if (config_video.sync && !config_emulator.ffwd && !emu_is_empty())
     {
         int current_state = display_should_use_vsync() ? 1 : 0;
@@ -180,6 +217,69 @@ void display_update_frame_pacing(void)
     Debug("Monitor refresh rate: %d Hz, vsync frames per emu frame: %d", monitor_refresh_rate, vsync_frames_per_emu_frame);
 }
 
+void display_check_mixed_refresh_rates(void)
+{
+    int count = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&count);
+
+    if (!displays || count <= 1)
+    {
+        if (displays)
+            SDL_free(displays);
+        multi_monitor_mixed_refresh = false;
+        return;
+    }
+
+    int first_rate = 0;
+    bool mixed = false;
+
+    for (int i = 0; i < count; i++)
+    {
+        const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(displays[i]);
+        if (mode && mode->refresh_rate > 0)
+        {
+            int rate = (int)mode->refresh_rate;
+            if (first_rate == 0)
+                first_rate = rate;
+            else if (rate != first_rate)
+            {
+                mixed = true;
+                break;
+            }
+        }
+    }
+
+    SDL_free(displays);
+
+    if (mixed != multi_monitor_mixed_refresh)
+    {
+        multi_monitor_mixed_refresh = mixed;
+        if (mixed)
+            Log("Multiple monitors with different refresh rates detected");
+
+        if (display_is_vsync_forced_off())
+        {
+            SDL_GL_SetSwapInterval(0);
+            last_vsync_state = 0;
+            Debug("Vsync forced off: multi-viewport with mixed refresh rate monitors");
+        }
+        else if (config_video.sync)
+        {
+            display_set_vsync(true);
+        }
+    }
+}
+
+bool display_is_vsync_forced_off(void)
+{
+    return config_debug.debug && config_debug.multi_viewport && multi_monitor_mixed_refresh;
+}
+
+void display_request_gl_context_recreate(void)
+{
+    pending_gl_context_recreate = true;
+}
+
 void display_recreate_gl_context(void)
 {
     ogl_renderer_destroy();
@@ -193,7 +293,7 @@ void display_recreate_gl_context(void)
         SDL_GL_MakeCurrent(application_sdl_window, display_gl_context);
         SDL_GL_DestroyContext(old_context);
 
-        bool enable_vsync = config_video.sync && display_should_use_vsync();
+        bool enable_vsync = config_video.sync && display_should_use_vsync() && !display_is_vsync_forced_off();
         SDL_GL_SetSwapInterval(0);
         if (enable_vsync)
             SDL_GL_SetSwapInterval(1);

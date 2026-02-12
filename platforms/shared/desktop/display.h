@@ -39,6 +39,9 @@ EXTERN void display_update_vsync_state(void);
 EXTERN void display_set_vsync(bool enabled);
 EXTERN void display_update_frame_pacing(void);
 EXTERN void display_recreate_gl_context(void);
+EXTERN void display_request_gl_context_recreate(void);
+EXTERN void display_check_mixed_refresh_rates(void);
+EXTERN bool display_is_vsync_forced_off(void);
 
 #undef DISPLAY_IMPORT
 #undef EXTERN
