@@ -34,6 +34,8 @@
 // Convert collision palette to ImGui format
 static ImVec4 collision_palette_imgui[16];
 static bool collision_palette_initialized = false;
+static bool collision_overlay_enabled = false;
+static float collision_overlay_alpha = 0.75f;
 
 static void init_collision_palette()
 {
@@ -206,9 +208,24 @@ void gui_debug_window_frame_buffers(void)
             ImGui::Text("$%04X ", suzy_state->VIDBAS.value); ImGui::SameLine(0, 0);
             ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(suzy_state->VIDBAS.high), BYTE_TO_BINARY(suzy_state->VIDBAS.low));
 
-            ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
+            ImGui::Checkbox("Collision Overlay", &collision_overlay_enabled);
+            if (collision_overlay_enabled)
+            {
+                ImGui::SameLine();
+                ImGui::PushItemWidth(100.0f);
+                ImGui::SliderFloat("##coll_alpha_vidbas", &collision_overlay_alpha, 0.0f, 1.0f, "Alpha %.2f");
+                ImGui::PopItemWidth();
+            }
 
+            ImVec2 img_pos = ImGui::GetCursorScreenPos();
             ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[0], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            if (collision_overlay_enabled)
+            {
+                ImVec2 img_max = ImVec2(img_pos.x + GLYNX_SCREEN_WIDTH * scale, img_pos.y + GLYNX_SCREEN_HEIGHT * scale);
+                ImU32 overlay_col = IM_COL32(255, 255, 255, (int)(collision_overlay_alpha * 255));
+                ImGui::GetWindowDrawList()->AddImage((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[4], img_pos, img_max, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f), overlay_col);
+            }
 
             ImGui::PopFont();
 
@@ -223,9 +240,24 @@ void gui_debug_window_frame_buffers(void)
             ImGui::Text("$%04X ", mikey_state->DISPADR.value); ImGui::SameLine(0, 0);
             ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED " " BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->DISPADR.high), BYTE_TO_BINARY(mikey_state->DISPADR.low));
 
-            ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
+            ImGui::Checkbox("Collision Overlay", &collision_overlay_enabled);
+            if (collision_overlay_enabled)
+            {
+                ImGui::SameLine();
+                ImGui::PushItemWidth(100.0f);
+                ImGui::SliderFloat("##coll_alpha_dispadr", &collision_overlay_alpha, 0.0f, 1.0f, "Alpha %.2f");
+                ImGui::PopItemWidth();
+            }
 
+            ImVec2 img_pos = ImGui::GetCursorScreenPos();
             ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[1], ImVec2(GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT) * scale, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f));
+
+            if (collision_overlay_enabled)
+            {
+                ImVec2 img_max = ImVec2(img_pos.x + GLYNX_SCREEN_WIDTH * scale, img_pos.y + GLYNX_SCREEN_HEIGHT * scale);
+                ImU32 overlay_col = IM_COL32(255, 255, 255, (int)(collision_overlay_alpha * 255));
+                ImGui::GetWindowDrawList()->AddImage((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[4], img_pos, img_max, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f), overlay_col);
+            }
 
             ImGui::PopFont();
 

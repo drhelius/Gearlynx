@@ -141,7 +141,7 @@ void ogl_renderer_destroy(void)
     for (int s = 0; s < 64; s++)
         glDeleteTextures(1, &ogl_renderer_emu_debug_huc6270_sprites[s]);
 
-    for (int s = 0; s < 4; s++)
+    for (int s = 0; s < 5; s++)
         glDeleteTextures(1, &ogl_renderer_emu_debug_framebuffer[s]);
 
     glDeleteTextures(1, &ogl_renderer_emu_savestates);
@@ -261,7 +261,7 @@ static void init_ogl_debug(void)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     }
 
-    for (int s = 0; s < 4; s++)
+    for (int s = 0; s < 5; s++)
     {
         glGenTextures(1, &ogl_renderer_emu_debug_framebuffer[s]);
         glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_framebuffer[s]);
@@ -663,7 +663,7 @@ static void update_system_texture(void)
 
 static void update_debug_textures(void)
 {
-    for (int s = 0; s < 4; s++)
+    for (int s = 0; s < 5; s++)
     {
         glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_framebuffer[s]);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT,

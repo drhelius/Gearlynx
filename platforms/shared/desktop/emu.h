@@ -47,7 +47,7 @@ EXTERN u8* emu_frame_buffer;
 EXTERN GLYNX_SaveState_Header emu_savestates[5];
 EXTERN GLYNX_SaveState_Screenshot emu_savestates_screenshots[5];
 EXTERN u8* emu_debug_sprite_buffers[64];
-EXTERN u8* emu_debug_framebuffer[4];
+EXTERN u8* emu_debug_framebuffer[5];
 EXTERN u32 emu_collision_palette[16];
 EXTERN int emu_debug_sprite_widths[64];
 EXTERN int emu_debug_sprite_heights[64];

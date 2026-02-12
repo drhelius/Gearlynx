@@ -593,7 +593,7 @@ static const char* get_configurated_dir(int location, const char* path)
 
 static void init_debug(void)
 {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
         emu_debug_framebuffer[i] = new u8[256 * 256 * 4];
         memset(emu_debug_framebuffer[i], 0, 256 * 256 * 4);
@@ -602,7 +602,7 @@ static void init_debug(void)
 
 static void destroy_debug(void) 
 {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
         SafeDeleteArray(emu_debug_framebuffer[i]);
 }
 
@@ -631,6 +631,7 @@ static void update_debug_framebuffers(void)
     u32* frame_buffer_dispadr = (u32*)emu_debug_framebuffer[1];
     u32* frame_buffer_collbas = (u32*)emu_debug_framebuffer[2];
     u32* frame_buffer_custom = (u32*)emu_debug_framebuffer[3];
+    u32* frame_buffer_coll_overlay = (u32*)emu_debug_framebuffer[4];
 
     for (int i = 0; i < count; i++)
     {
@@ -660,9 +661,12 @@ static void update_debug_framebuffers(void)
         u32 final_color_collbas = emu_collision_palette[color_idx_collbas];
         u32 final_color_custom = palette[palette_idx_custom];
 
+        u32 final_color_coll_overlay = (color_idx_collbas == 0) ? 0x00000000 : emu_collision_palette[color_idx_collbas];
+
         frame_buffer_vidbas[i] = final_color_vidbas;
         frame_buffer_dispadr[i] = final_color_dispadr;
         frame_buffer_collbas[i] = final_color_collbas;
+        frame_buffer_coll_overlay[i] = final_color_coll_overlay;
         frame_buffer_custom[i] = final_color_custom;
     }
 }
