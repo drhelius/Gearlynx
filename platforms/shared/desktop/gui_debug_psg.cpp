@@ -58,7 +58,7 @@ void gui_debug_window_psg(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(180, 45), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(250, 470), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(250, 486), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey Audio", &config_debug.show_psg);
 
     GearlynxCore* core = emu_get_core();
@@ -252,6 +252,18 @@ void gui_debug_window_psg(void)
 
                 ImGui::TextColored(violet, "FREQUENCY  "); ImGui::SameLine();
                 ImGui::TextColored(period != 7 ? white : gray, "%s", k_period_strs[period]);
+
+                ImGui::TextColored(violet, "OUTPUT HZ  "); ImGui::SameLine();
+                if (!is_linked)
+                {
+                    float freq_hz = 16000000.0f / (k_mikey_timer_period_cycles[period] * (channel->backup + 1));
+                    if (freq_hz >= 1000.0f)
+                        ImGui::TextColored(cyan, "%.2f KHz", freq_hz / 1000.0f);
+                    else
+                        ImGui::TextColored(cyan, "%.2f Hz", freq_hz);
+                }
+                else
+                    ImGui::TextColored(gray, "N/A");
 
                 ImGui::TextColored(violet, "LINKED TO  "); ImGui::SameLine();
                 if (is_linked)
