@@ -490,16 +490,31 @@ static void draw_breakpoints_content(void)
         else
             ImGui::TextColored(brk->enabled ? cyan : gray, "%04X", brk->address1);
 
-        ImGui::SameLine(); ImGui::TextColored(brk->enabled && brk->read ? orange : gray, " R");
+        ImGui::SameLine(0, 0); ImGui::TextColored(brk->enabled && brk->read ? orange : gray, " R");
         ImGui::SameLine(0, 2); ImGui::TextColored(brk->enabled && brk->write ? orange : gray, "W");
 
         ImGui::SameLine(0, 2); ImGui::TextColored(brk->enabled && brk->execute ? orange : gray, "X");
 
         GLYNX_Disassembler_Record* record = emu_get_core()->GetMemory()->GetDisassemblerRecord(brk->address1);
 
-        if (brk->execute && IsValidPointer(record))
+        bool symbol_shown = false;
+
+        if (!brk->range && IsValidPointer(record))
         {
-            ImGui::SameLine();
+            DebugSymbol* symbol = fixed_symbols[brk->address1];
+            if (!IsValidPointer(symbol))
+                symbol = dynamic_symbols[brk->address1];
+            if (IsValidPointer(symbol))
+            {
+                ImGui::SameLine(0, 0);
+                ImGui::TextColored(brk->enabled ? green : gray, " %s", symbol->text);
+                symbol_shown = true;
+            }
+        }
+
+        if (!symbol_shown && brk->execute && IsValidPointer(record))
+        {
+            ImGui::SameLine(0, 0);
             ImGui::PushStyleColor(ImGuiCol_Text, brk->enabled ? white : gray);
             TextColoredEx(" %s", record->name);
             ImGui::PopStyleColor();
