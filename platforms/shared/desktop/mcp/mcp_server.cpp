@@ -317,10 +317,17 @@ void McpServer::HandleToolsList(const json& request)
                     {"type", "string"},
                     {"description", "Address in hex (e.g., '8000', '0x8000', '$8000')"}
                 }},
-                {"type", {
-                    {"type", "string"},
-                    {"description", "Breakpoint type: exec (default), read, write. IMPORTANT: Read/write breakpoints stop with PC at the instruction after the memory access."},
-                    {"enum", json::array({"exec", "read", "write"})}
+                {"read", {
+                    {"type", "boolean"},
+                    {"description", "Break on memory read (default: false). IMPORTANT: Read breakpoints stop with PC at the instruction after the memory access."}
+                }},
+                {"write", {
+                    {"type", "boolean"},
+                    {"description", "Break on memory write (default: false). IMPORTANT: Write breakpoints stop with PC at the instruction after the memory access."}
+                }},
+                {"execute", {
+                    {"type", "boolean"},
+                    {"description", "Break on execution (default: true)."}
                 }}
             }},
             {"required", json::array({"address"})}
@@ -342,10 +349,17 @@ void McpServer::HandleToolsList(const json& request)
                     {"type", "string"},
                     {"description", "End address in hex (e.g., '8FFF')"}
                 }},
-                {"type", {
-                    {"type", "string"},
-                    {"description", "Breakpoint type: exec (default), read, write. IMPORTANT: Read/write breakpoints stop with PC at the instruction after the memory access."},
-                    {"enum", json::array({"exec", "read", "write"})}
+                {"read", {
+                    {"type", "boolean"},
+                    {"description", "Break on memory read (default: false). IMPORTANT: Read breakpoints stop with PC at the instruction after the memory access."}
+                }},
+                {"write", {
+                    {"type", "boolean"},
+                    {"description", "Break on memory write (default: false). IMPORTANT: Write breakpoints stop with PC at the instruction after the memory access."}
+                }},
+                {"execute", {
+                    {"type", "boolean"},
+                    {"description", "Break on execution (default: true)."}
                 }}
             }},
             {"required", json::array({"start_address", "end_address"})}
@@ -1317,13 +1331,15 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         if (!parse_hex_with_prefix(addrStr, &address))
             return {{"error", "Invalid address format"}};
 
-        std::string type = arguments.value("type", "exec");
-        bool read = (type == "read");
-        bool write = (type == "write");
-        bool execute = (type == "exec");
+        bool read = arguments.value("read", false);
+        bool write = arguments.value("write", false);
+        bool execute = arguments.value("execute", true);
+
+        if (!read && !write && !execute)
+            return {{"error", "At least one of read, write, or execute must be true"}};
 
         m_debugAdapter.SetBreakpoint(address, read, write, execute);
-        return {{"success", true}, {"address", addrStr}, {"type", type}};
+        return {{"success", true}, {"address", addrStr}};
     }
     else if (normalizedTool == "set_breakpoint_range")
     {
@@ -1338,13 +1354,15 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         if (start_address > end_address)
             return {{"error", "start_address must be <= end_address"}};
 
-        std::string type = arguments.value("type", "exec");
-        bool read = (type == "read");
-        bool write = (type == "write");
-        bool execute = (type == "exec");
+        bool read = arguments.value("read", false);
+        bool write = arguments.value("write", false);
+        bool execute = arguments.value("execute", true);
+
+        if (!read && !write && !execute)
+            return {{"error", "At least one of read, write, or execute must be true"}};
 
         m_debugAdapter.SetBreakpointRange(start_address, end_address, read, write, execute);
-        return {{"success", true}, {"start_address", startAddrStr}, {"end_address", endAddrStr}, {"type", type}};
+        return {{"success", true}, {"start_address", startAddrStr}, {"end_address", endAddrStr}};
     }
     else if (normalizedTool == "remove_breakpoint")
     {
