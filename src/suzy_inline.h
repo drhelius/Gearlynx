@@ -836,6 +836,7 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
     ShiftRegisterReset(data_begin);
 
     u32 h_accum = haccum_init;
+    bool render = ((u32)y < (u32)GLYNX_SCREEN_HEIGHT);
 
     while (m_state.shift_register_address < data_end)
     {
@@ -846,12 +847,26 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
         u8 pen = m_state.pen_map[pi & 0x0F];
 
         h_accum += (u32)hsiz;
+        s32 pixel_count = (s32)(h_accum >> 8);
+        h_accum &= 0xFF;
 
-        while (h_accum >= 0x100)
+        if (pixel_count > 0)
         {
-            DrawPixel(x, y, pen, type, collide, collision_id);
-            x += dx;
-            h_accum -= 0x100;
+            if (render)
+            {
+                for (s32 p = 0; p < pixel_count; ++p)
+                {
+                    DrawPixel(x, y, pen, type, collide, collision_id);
+                    x += dx;
+                }
+
+                if ((dx > 0 && x >= GLYNX_SCREEN_WIDTH) || (dx < 0 && x < 0))
+                    render = false;
+            }
+            else
+            {
+                x += dx * pixel_count;
+            }
         }
     }
 }
@@ -863,6 +878,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
     ShiftRegisterReset(data_begin);
 
     u32 h_accum = haccum_init;
+    bool render = ((u32)y < (u32)GLYNX_SCREEN_HEIGHT);
 
     while (m_state.shift_register_address < data_end)
     {
@@ -884,11 +900,26 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                 u8 pen = m_state.pen_map[pi & 0x0F];
 
                 h_accum += (u32)hsiz;
-                while (h_accum >= 0x100)
+                s32 pixel_count = (s32)(h_accum >> 8);
+                h_accum &= 0xFF;
+
+                if (pixel_count > 0)
                 {
-                    DrawPixel(x, y, pen, type, collide, collision_id);
-                    x += dx;
-                    h_accum -= 0x100;
+                    if (render)
+                    {
+                        for (s32 p = 0; p < pixel_count; ++p)
+                        {
+                            DrawPixel(x, y, pen, type, collide, collision_id);
+                            x += dx;
+                        }
+
+                        if ((dx > 0 && x >= GLYNX_SCREEN_WIDTH) || (dx < 0 && x < 0))
+                            render = false;
+                    }
+                    else
+                    {
+                        x += dx * pixel_count;
+                    }
                 }
             }
         }
@@ -903,11 +934,26 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
             while (count--)
             {
                 h_accum += (u32)hsiz;
-                while (h_accum >= 0x100)
+                s32 pixel_count = (s32)(h_accum >> 8);
+                h_accum &= 0xFF;
+
+                if (pixel_count > 0)
                 {
-                    DrawPixel(x, y, pen, type, collide, collision_id);
-                    x += dx;
-                    h_accum -= 0x100;
+                    if (render)
+                    {
+                        for (s32 p = 0; p < pixel_count; ++p)
+                        {
+                            DrawPixel(x, y, pen, type, collide, collision_id);
+                            x += dx;
+                        }
+
+                        if ((dx > 0 && x >= GLYNX_SCREEN_WIDTH) || (dx < 0 && x < 0))
+                            render = false;
+                    }
+                    else
+                    {
+                        x += dx * pixel_count;
+                    }
                 }
             }
         }
