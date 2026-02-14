@@ -89,7 +89,12 @@
         "stack": "cpp",
         "variant": "cpp",
         "cassert": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "__assertion_handler": "cpp",
+        "__tree": "cpp",
+        "forward_list": "cpp",
+        "charconv": "cpp",
+        "lzmadec.h": "c"
     },
     "todo-tree.tree.showBadges": true,
     "todo-tree.tree.disableCompactFolders": false,
