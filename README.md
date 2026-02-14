@@ -106,9 +106,10 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 ## Features
 
 - Very accurate emulation supporting the entire commercial Atari Lynx catalog and most homebrew and demos.
+- User selectable Lynx I or Lynx II emulation. 
 - Compressed and hombrew rom support (lnx, lyx, o, and zip).
 - Save states with preview.
-- Configurable low-pass audio filter (mimics original Lynx audio hardware).
+- Very accurate audio emulation with configurable low-pass filter (mimics original Lynx audio hardware).
 - VGM recorder.
 - Internal database for automatic rom detection and hardware selection if `Auto` options are selected.
 - Bank switching (BANK1 + AUDIN) and EEPROM.
