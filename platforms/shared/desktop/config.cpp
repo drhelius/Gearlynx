@@ -266,6 +266,7 @@ void config_read(void)
     for (int i = 0; i < 4; i++)
         config_audio.volume[i] = read_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), 1.0f);
     config_audio.lowpass_cutoff = read_int("Audio", "LowpassCutoff", 3000);
+    config_audio.buffer_count = read_int("Audio", "BufferCount", 3);
 
     config_input.key_left = (SDL_Scancode)read_int("Input", "KeyLeft", SDL_SCANCODE_LEFT);
     config_input.key_right = (SDL_Scancode)read_int("Input", "KeyRight", SDL_SCANCODE_RIGHT);
@@ -427,6 +428,7 @@ void config_write(void)
     for (int i = 0; i < 4; i++)
         write_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), config_audio.volume[i]);
     write_int("Audio", "LowpassCutoff", config_audio.lowpass_cutoff);
+    write_int("Audio", "BufferCount", config_audio.buffer_count);
 
     write_int("Input", "KeyLeft", config_input.key_left);
     write_int("Input", "KeyRight", config_input.key_right);

@@ -276,7 +276,7 @@ void emu_audio_set_lowpass_cutoff(float fc)
 void emu_audio_reset(void)
 {
     sound_queue_stop();
-    sound_queue_start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_BUFFER_SIZE, GLYNX_AUDIO_BUFFER_COUNT);
+    sound_queue_start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_QUEUE_SIZE, config_audio.buffer_count);
 }
 
 bool emu_is_audio_enabled(void)

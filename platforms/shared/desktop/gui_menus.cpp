@@ -766,6 +766,28 @@ static void menu_audio(void)
             ImGui::EndMenu();
         }
 
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Buffer Size", config_audio.enable))
+        {
+            ImGui::PushItemWidth(150.0f);
+            if (ImGui::SliderInt("##buffer_count", &config_audio.buffer_count, 2, 5, "Buffers = %d"))
+            {
+                emu_audio_reset();
+            }
+            ImGui::PopItemWidth();
+            if (ImGui::IsItemHovered())
+            {
+                float latency_ms = (config_audio.buffer_count * GLYNX_AUDIO_QUEUE_SIZE) / (float)(GLYNX_AUDIO_SAMPLE_RATE * 2) * 1000.0f;
+                ImGui::BeginTooltip();
+                ImGui::Text("Lower values reduce audio latency.");
+                ImGui::Text("Higher values prevent audio underruns.");
+                ImGui::Text("Audio latency: %.0f ms", latency_ms);
+                ImGui::EndTooltip();
+            }
+            ImGui::EndMenu();
+        }
+
 #ifndef GLYNX_DISABLE_VGMRECORDER
         ImGui::Separator();
 

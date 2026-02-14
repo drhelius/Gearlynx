@@ -88,6 +88,7 @@ struct config_Audio
     bool sync = true;
     float volume[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int lowpass_cutoff = 3000;
+    int buffer_count = 3;
 };
 
 struct config_Input
