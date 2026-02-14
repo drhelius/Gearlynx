@@ -635,9 +635,9 @@ static void set_style(void)
     style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.6266094446182251f, 0.6266031861305237f, 0.6266063451766968f, 1.0f);
     style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.9999899864196777f, 0.9999899864196777f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.9999899864196777f, 0.9999899864196777f, 1.0f, 1.0f);
-    style.Colors[ImGuiCol_CheckMark] = ImVec4(0.8745098114013672f, 0.007843137718737125f, 0.3882353007793427f, 1.0f);
-    style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.8745098114013672f, 0.007843137718737125f, 0.3882353007793427f, 1.0f);
-    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.8745098114013672f, 0.007843137718737125f, 0.3882353007793427f, 1.0f);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_SliderGrab] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.0f, 0.75f, 0.4f, 1.0f);
     style.Colors[ImGuiCol_Button] = ImVec4(0.184547483921051f, 0.184547483921051f, 0.1845493316650391f, 1.0f);
     style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
@@ -655,9 +655,9 @@ static void set_style(void)
     style.Colors[ImGuiCol_TabActive] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.1450980454683304f, 0.1450980454683304f, 0.1490196138620377f, 1.0f);
     style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
-    style.Colors[ImGuiCol_PlotLines] = ImVec4(0.8745098114013672f, 0.007843137718737125f, 0.3882353007793427f, 1.0f);
+    style.Colors[ImGuiCol_PlotLines] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
-    style.Colors[ImGuiCol_PlotHistogram] = ImVec4(0.8745098114013672f, 0.007843137718737125f, 0.3882353007793427f, 1.0f);
+    style.Colors[ImGuiCol_PlotHistogram] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.0f, 0.5529411764705883f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.1882352977991104f, 0.1882352977991104f, 0.2000000029802322f, 1.0f);
     style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.3098039329051971f, 0.3098039329051971f, 0.3490196168422699f, 1.0f);
