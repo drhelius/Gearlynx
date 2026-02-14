@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM ubuntu:rolling
 
 ENV LANG="C.UTF-8"
 
@@ -16,7 +16,7 @@ RUN apt-get update \
         gdb \
         clang \
         lldb \
-        libsdl2-dev \
+        libsdl3-dev \
         libgtk-3-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get autoremove -y && apt-get clean -y
