@@ -502,7 +502,13 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         if (prescaler_changed || enable_count_rising)
         {
             if (enable_count_rising)
-                t->internal_cycles = (t->internal_period_cycles / 2) + 1;
+            {
+                if (i == 0 || i == 2)
+                    t->internal_cycles = (t->internal_period_cycles > 0) ? (rand() % t->internal_period_cycles) : 0;
+                else
+                    t->internal_cycles = (t->internal_period_cycles / 2) + 1;
+
+            }
             else
                 t->internal_cycles = 0;
 
