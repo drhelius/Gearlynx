@@ -507,7 +507,6 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
                     t->internal_cycles = (t->internal_period_cycles > 0) ? (rand() % t->internal_period_cycles) : 0;
                 else
                     t->internal_cycles = (t->internal_period_cycles / 2) + 1;
-
             }
             else
                 t->internal_cycles = 0;
