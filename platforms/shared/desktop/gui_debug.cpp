@@ -118,7 +118,7 @@ void gui_debug_windows(void)
     }
 }
 
-static const char* GLDEBUG_MAGIC = "GLDEBUG1";
+static const char* GLDEBUG_MAGIC = "GLDEBUG2";
 static const int GLDEBUG_MAGIC_LEN = 8;
 
 void gui_debug_save_settings(const char* file_path)
