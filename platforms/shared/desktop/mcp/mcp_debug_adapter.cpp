@@ -328,16 +328,16 @@ std::vector<DisasmLine> DebugAdapter::GetDisassembly(u16 start_address, u16 end_
         }
     }
 
-    u16 addr = scan_start;
+    u32 addr = scan_start;
 
-    while (addr <= end_address)
+    while (addr <= (u32)end_address)
     {
-        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(addr);
+        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord((u16)addr);
 
         if (IsValidPointer(record) && record->name[0] != 0)
         {
             DisasmLine line;
-            line.address = addr;
+            line.address = (u16)addr;
             line.rom = record->rom;
             line.name = record->name;
             line.bytes = record->bytes;
@@ -362,7 +362,7 @@ std::vector<DisasmLine> DebugAdapter::GetDisassembly(u16 start_address, u16 end_
             result.push_back(line);
 
             // Move to next instruction
-            addr = addr + (u16)record->size;
+            addr = addr + (u32)record->size;
 
             if (record->size == 0)
                 addr++;
@@ -372,10 +372,6 @@ std::vector<DisasmLine> DebugAdapter::GetDisassembly(u16 start_address, u16 end_
             // No record at this address, try next byte
             addr++;
         }
-
-        // Handle wrap-around
-        if (addr < scan_start)
-            break;
     }
 
     return result;

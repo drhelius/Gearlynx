@@ -528,7 +528,8 @@ void McpServer::HandleToolsList(const json& request)
         {"title", "Get Disassembly"},
         {"description", "Get disassembled 6502 assembly code for an address range in the Atari Lynx 64K address space. "
                         "Returns: address, segment, mnemonic, and raw bytes. "
-                        "NOTE: Disassembled records only exist for code that has been executed during emulation."},
+                        "NOTE: Disassembled records only exist for code that has been executed during emulation. "
+                        "Recommended max range is 0x2000. Use multiple calls for larger areas."},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1539,6 +1540,10 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
             return {{"error", "Invalid end_address format"}};
         if (start_address > end_address)
             return {{"error", "start_address must be <= end_address"}};
+
+        u32 range_size = (u32)end_address - (u32)start_address + 1;
+        if (range_size > 0x2000)
+            return {{"error", "Address range too large. Maximum range is 0x2000 (8KB). Use smaller ranges for disassembly."}};
 
         bool resolve_symbols = false;
         if (arguments.contains("resolve_symbols") && arguments["resolve_symbols"].is_boolean())
