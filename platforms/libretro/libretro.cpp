@@ -25,6 +25,7 @@
 #include <math.h>
 #include "libretro.h"
 #include "gearlynx.h"
+#include "libretro_core_options.h"
 
 #ifdef _WIN32
 static const char slash = '\\';
@@ -62,6 +63,7 @@ static float current_fps = 60.0f;
 
 static bool allow_up_down = false;
 static bool input_updated = false;
+static bool categories_supported = false;
 
 static bool libretro_supports_bitmasks;
 static int joypad_current[MAX_PADS][JOYPAD_BUTTONS];
@@ -85,7 +87,6 @@ static u8* frame_buffer;
 
 static void set_controller_info(void);
 static void update_input(void);
-static void set_variabless(void);
 static void check_variables(void);
 
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
@@ -174,7 +175,7 @@ void retro_set_environment(retro_environment_t cb)
 
     environ_cb(RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE, (void*)content_overrides);
     set_controller_info();
-    set_variabless();
+    libretro_set_core_options(environ_cb, &categories_supported);
 }
 
 void retro_init(void)
@@ -535,24 +536,6 @@ static void update_input(void)
             }
         }
     }
-}
-
-static void set_variabless(void)
-{
-    struct retro_variable vars[] = {
-        { "gearlynx_aspect_ratio", "Aspect Ratio; 1:1 PAR|4:3 DAR|16:9 DAR|16:10 DAR" },
-        { "gearlynx_rotation", "Screen Rotation; Auto|Left|Right|Disabled" },
-        { "gearlynx_console_type", "Console Type; Auto|Lynx I|Lynx II" },
-        { "gearlynx_lowpass_filter", "Audio Low-Pass Filter (Hz); 3000|500|1000|1500|2000|2500|3000|3500|4000|4500|5000" },
-        { "gearlynx_audio_ch0_volume", "Audio Channel 0 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
-        { "gearlynx_audio_ch1_volume", "Audio Channel 1 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
-        { "gearlynx_audio_ch2_volume", "Audio Channel 2 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
-        { "gearlynx_audio_ch3_volume", "Audio Channel 3 Volume; 100|0|10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200" },
-        { "gearlynx_up_down_allowed", "Allow Up+Down / Left+Right; Disabled|Enabled" },
-        { NULL }
-    };
-
-    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, (void *)vars);
 }
 
 static void check_variables(void)
