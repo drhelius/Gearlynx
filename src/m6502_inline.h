@@ -313,9 +313,9 @@ INLINE u16 M6502::ZeroPageIndirectAddressing()
 
 INLINE u16 M6502::ZeroPageIndexedIndirectAddressing()
 {
-    u16 address = (ZeroPageAddressing() + m_s.X.GetValue()) & 0x20FF;
+    u16 address = (ZeroPageAddressing() + m_s.X.GetValue()) & 0x00FF;
     u8 l = MemRead8(address);
-    u8 h = MemRead8((address + 1) & 0x20FF);
+    u8 h = MemRead8((address + 1) & 0x00FF);
     return Address16(h, l);
 }
 
@@ -323,7 +323,7 @@ INLINE u16 M6502::ZeroPageIndirectIndexedAddressing()
 {
     u16 address = ZeroPageAddressing();
     u8 l = MemRead8(address);
-    u8 h = MemRead8((address + 1) & 0x20FF);
+    u8 h = MemRead8((address + 1) & 0x00FF);
     return Address16(h, l) + m_s.Y.GetValue();
 }
 
