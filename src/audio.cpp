@@ -71,11 +71,10 @@ void Audio::Reset(bool is_lynx2)
 
 void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 {
-    *sample_count = 0;
+    m_frame_samples = m_buffer_pos;
 
     if (IsValidPointer(sample_buffer) && IsValidPointer(sample_count))
     {
-        m_frame_samples = m_buffer_pos;
         *sample_count = m_frame_samples;
 
         for (u32 i = 0; i + 1 < m_frame_samples; i += 2)
@@ -115,7 +114,7 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 
 #ifndef GLYNX_DISABLE_VGMRECORDER
     if (m_vgm_recording_enabled)
-        m_vgm_recorder.UpdateTiming(*sample_count / 2);
+        m_vgm_recorder.UpdateTiming(m_frame_samples / 2);
 #endif
 
     m_buffer_pos = 0;
