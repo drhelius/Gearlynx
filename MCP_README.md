@@ -271,7 +271,7 @@ The server exposes tools organized in the following categories:
 
 ### Media & State Management
 - `get_media_info` - Get loaded ROM info (file path, type, size, CRC, rotation, EEPROM, BIOS status)
-- `load_media` - Load ROM file (.lnx, .lyx, .o, .zip). Automatically loads .sym symbol file if present
+- `load_media` - Load ROM file (.lnx, .lyx, .o, .zip). Automatically loads symbol file if present (.sym, .lbl, .noi)
 - `list_save_state_slots` - List all 5 save state slots with information (rom name, timestamp, screenshot availability)
 - `select_save_state_slot` - Select active save state slot (1-5) for save/load operations
 - `save_state` - Save emulator state to currently selected slot

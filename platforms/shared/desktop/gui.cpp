@@ -290,8 +290,9 @@ void gui_load_rom(const char* path)
 
     std::string str(path);
     str = str.substr(0, str.find_last_of("."));
-    str += ".sym";
-    gui_debug_load_symbols_file(str.c_str());
+    if (!gui_debug_load_symbols_file((str + ".sym").c_str()))
+        if (!gui_debug_load_symbols_file((str + ".lbl").c_str()))
+            gui_debug_load_symbols_file((str + ".noi").c_str());
 
     gui_debug_auto_load_settings();
 

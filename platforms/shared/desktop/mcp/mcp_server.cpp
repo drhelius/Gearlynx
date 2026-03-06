@@ -751,7 +751,7 @@ void McpServer::HandleToolsList(const json& request)
     tools.push_back({
         {"name", "load_media"},
         {"title", "Load ROM"},
-        {"description", "Load a ROM file (.lnx, .lyx, .o, .zip). Automatically loads .sym symbol file if present. Resets emulator on successful load"},
+        {"description", "Load a ROM file (.lnx, .lyx, .o, .zip). Automatically loads symbol file if present (.sym, .lbl, .noi). Resets emulator on successful load"},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {

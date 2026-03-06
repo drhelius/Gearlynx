@@ -158,7 +158,7 @@ void gui_debug_reset_disassembler_bookmarks(void)
     bookmarks.clear();
 }
 
-void gui_debug_load_symbols_file(const char* file_path)
+bool gui_debug_load_symbols_file(const char* file_path)
 {
     std::ifstream file;
     open_ifstream_utf8(file, file_path, std::ios::in);
@@ -221,10 +221,12 @@ void gui_debug_load_symbols_file(const char* file_path)
         }
 
         file.close();
+        return true;
     }
     else
     {
         Debug("Symbol file %s not found", file_path);
+        return false;
     }
 }
 

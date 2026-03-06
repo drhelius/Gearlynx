@@ -99,9 +99,9 @@ Debugging Features:
   - Multi-viewport: In Windows or macOS, you can enable "multi-viewport" in the
     debug menu. You must restart the emulator for the change to take effect.
     Once enabled, you can drag debugger windows outside the main window
-  - Debug Symbols: The emulator automatically tries to load a symbol (.sym) file
-    when loading a ROM. It supports cc65 (VICE label file), lyxass (EQU) and
-    mads (lab and hea) file formats
+  - Debug Symbols: The emulator automatically tries to load a symbol file
+    (.sym, .lbl, .noi) when loading a ROM. It supports cc65 (VICE label file),
+    lyxass (EQU) and mads (lab and hea) file formats
 
 MCP Server:
   - Gearlynx includes a Model Context Protocol (MCP) server that enables
