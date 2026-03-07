@@ -2143,15 +2143,15 @@ static void save_current_disassembler(FILE* file)
             replace_labels(&line, "", "");
         }
 
-        char name[64];
-        strcpy(name, line.name_enhanced);
-        RemoveColorFromString(name);
+        char instr[64];
+        snprintf(instr, sizeof(instr), "%s", line.name_enhanced);
+        RemoveColorFromString(instr);
 
-        fprintf(file, "   %s ", name);
+        fprintf(file, "   %s ", instr);
 
         if (config_debug.dis_show_mem)
         {
-            int len = (int)strlen(name);
+            int len = (int)strlen(instr);
             char spaces[39];
             int offset = 38 - len;
             if (offset < 0)
