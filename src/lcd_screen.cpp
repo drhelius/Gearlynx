@@ -166,6 +166,15 @@ void LcdScreen::LoadState(std::istream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+
+    if (m_state.line_dst_offset >= GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT)
+        m_state.line_dst_offset = 0;
+    if (m_state.pixel_count > GLYNX_SCREEN_WIDTH)
+        m_state.pixel_count = GLYNX_SCREEN_WIDTH;
+    if (m_state.pixel_buffer_read_pos > 31)
+        m_state.pixel_buffer_read_pos = 0;
+    if (m_state.dma_buffer_half != 0 && m_state.dma_buffer_half != 16)
+        m_state.dma_buffer_half = 0;
 }
 
 void LcdScreen::Serialize(StateSerializer& s)
