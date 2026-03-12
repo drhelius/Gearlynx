@@ -132,7 +132,7 @@ void gui_debug_window_scb_viewer(void)
     ImGui::Columns(2, "scb", false);
     ImGui::SetColumnOffset(1, 200.0f);
 
-    ImGui::BeginChild("scb_list", ImVec2(0, 0.0f), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("scb_list", ImVec2(0, 0.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
     if (selected_sprite >= count || count == 0)
         selected_sprite = -1;
@@ -140,6 +140,9 @@ void gui_debug_window_scb_viewer(void)
         selected_sprite = -1;
 
     int hovered_sprite = -1;
+
+    float scroll_y = ImGui::GetScrollY();
+    float visible_y = ImGui::GetWindowHeight();
 
     for (int s = 0; s < count && s < DEBUG_MAX_SPRITES; s++)
     {
@@ -174,13 +177,22 @@ void gui_debug_window_scb_viewer(void)
             continue;
         }
 
-        float scrollbar_w = ImGui::GetStyle().ScrollbarSize;
-        float avail_w = MAX(ImGui::GetContentRegionAvail().x - scrollbar_w - 8.0f, 16.0f);
+        float avail_w = MAX(ImGui::GetContentRegionAvail().x - 4.0f, 16.0f);
 
         int int_scale = MAX((int)(avail_w / (float)w), 1);
 
-        float fw = (float)(w * int_scale);
-        float fh = (float)(h * int_scale);
+        float fw = MIN((float)(w * int_scale), avail_w);
+        float fh = fw * ((float)h / (float)w);
+
+        float item_y = ImGui::GetCursorPosY();
+        bool visible = (item_y + fh >= scroll_y) && (item_y <= scroll_y + visible_y);
+
+        if (!visible)
+        {
+            ImGui::Dummy(ImVec2(fw, fh));
+            continue;
+        }
+
         float tex_u = (float)w / 256.0f;
         float tex_v = (float)h / 256.0f;
 
@@ -217,27 +229,7 @@ void gui_debug_window_scb_viewer(void)
         int w = emu_debug_sprite_widths[display_sprite];
         int h = emu_debug_sprite_heights[display_sprite];
 
-        if (!entry.skipped && w > 0 && h > 0)
-        {
-            float preview_scale = 3.0f;
-            float max_side = (float)MAX(w, h);
-            if (max_side * preview_scale > 300.0f)
-                preview_scale = 300.0f / max_side;
-            preview_scale = MAX(preview_scale, 1.0f);
-
-            float fw = (float)w * preview_scale;
-            float fh = (float)h * preview_scale;
-            float tex_u = (float)w / 256.0f;
-            float tex_v = (float)h / 256.0f;
-
-            ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_sprites[display_sprite],
-                         ImVec2(fw, fh), ImVec2(0.0f, 0.0f), ImVec2(tex_u, tex_v));
-
-            ImGui::NewLine();
-        }
-
         ImGui::TextColored(cyan, "DETAILS:");
-        ImGui::Separator();
 
         if (entry.skipped)
         {
@@ -329,6 +321,26 @@ void gui_debug_window_scb_viewer(void)
 
                 ImGui::EndTable();
             }
+        }
+
+        if (!entry.skipped && w > 0 && h > 0)
+        {
+            ImGui::Separator();
+            ImGui::NewLine();
+
+            float preview_scale = 3.0f;
+            float max_side = (float)MAX(w, h);
+            if (max_side * preview_scale > 300.0f)
+                preview_scale = 300.0f / max_side;
+            preview_scale = MAX(preview_scale, 1.0f);
+
+            float fw = (float)w * preview_scale;
+            float fh = (float)h * preview_scale;
+            float tex_u = (float)w / 256.0f;
+            float tex_v = (float)h / 256.0f;
+
+            ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_sprites[display_sprite],
+                         ImVec2(fw, fh), ImVec2(0.0f, 0.0f), ImVec2(tex_u, tex_v));
         }
     }
     else

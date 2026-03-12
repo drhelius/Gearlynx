@@ -968,7 +968,7 @@ static const int k_sprite_buf_w = 256;
 static const int k_sprite_buf_h = 256;
 static const u32 k_sprite_sreg_eof = 0xFFFFFFFFu;
 static const u8 k_sprite_max_line_size = 200;
-static const int k_sprite_max_lines = 128;
+static const int k_sprite_max_lines = 512;
 static const s16 k_sprite_max_pos = 1024;
 
 static const int k_sprite_quad_seq[4][4] = {
