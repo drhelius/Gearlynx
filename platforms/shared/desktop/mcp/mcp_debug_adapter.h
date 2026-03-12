@@ -118,6 +118,7 @@ public:
     json GetEepromStatus();
     json GetScreenshot();
     json GetFrameBuffer(const std::string& buffer_type);
+    json GetSprite(int index);
 
     // Media and state management
     json GetMediaInfo();

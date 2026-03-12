@@ -85,6 +85,9 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             stop = m_mikey->Clock(lynx_cycles);
             m_audio->Clock(lynx_cycles);
 
+            if (stop)
+                m_suzy->SwapFrameSCBList();
+
             failsafe_cycle_count += lynx_cycles;
             if (failsafe_cycle_count > 450000)
             {

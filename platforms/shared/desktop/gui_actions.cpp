@@ -133,3 +133,42 @@ void gui_action_save_screenshot(const char* path)
     string message = "Screenshot saved to " + file_path;
     gui_set_status_message(message.c_str(), 3000);
 }
+
+void gui_action_save_sprite(const char* path, int index)
+{
+    using namespace std;
+
+    if (!emu_get_core()->GetMedia()->IsReady())
+        return;
+
+    string file_path = path;
+    if (file_path.find_last_of(".") == string::npos)
+        file_path += ".png";
+
+    emu_save_sprite(file_path.c_str(), index);
+
+    string message = "Sprite saved to " + file_path;
+    gui_set_status_message(message.c_str(), 3000);
+}
+
+void gui_action_save_all_sprites(const char* folder_path)
+{
+    using namespace std;
+
+    if (!emu_get_core()->GetMedia()->IsReady())
+        return;
+
+    int count = emu_debug_scb_count;
+    if (count > 64)
+        count = 64;
+
+    for (int i = 0; i < count; i++)
+    {
+        char file_path[512];
+        snprintf(file_path, sizeof(file_path), "%s/sprite_%02d.png", folder_path, i);
+        emu_save_sprite(file_path, i);
+    }
+
+    string message = "All sprites saved to " + string(folder_path);
+    gui_set_status_message(message.c_str(), 3000);
+}

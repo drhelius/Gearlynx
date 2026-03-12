@@ -587,6 +587,32 @@ INLINE bool Suzy::IsBlitterBusy()
     return m_state.sprsys_spritesbusy;
 };
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+INLINE std::vector<Suzy::GLYNX_SCB_Info>* Suzy::GetFrameSCBList()
+{
+    return &m_frame_scb_list_display;
+}
+
+INLINE void Suzy::SwapFrameSCBList()
+{
+    if (m_scb_accumulation_enabled)
+    {
+        m_frame_scb_list_display.swap(m_frame_scb_list);
+        m_frame_scb_list.clear();
+    }
+}
+
+INLINE void Suzy::SetSCBAccumulationEnabled(bool enabled)
+{
+    m_scb_accumulation_enabled = enabled;
+    if (!enabled)
+    {
+        m_frame_scb_list.clear();
+        m_frame_scb_list_display.clear();
+    }
+}
+#endif
+
 INLINE void Suzy::SpritesGo()
 {
     DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X",
@@ -626,6 +652,19 @@ INLINE void Suzy::DrawSprite()
     if (IS_SET_BIT(m_state.SPRCTL1, 2))
     {
         DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", m_state.SCBADR.value);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_scb_accumulation_enabled)
+        {
+            GLYNX_SCB_Info si = {};
+            si.scb_address = m_state.SCBADR.value;
+            si.scb_next = m_state.SCBNEXT.value;
+            si.sprctl0 = m_state.SPRCTL0;
+            si.sprctl1 = m_state.SPRCTL1;
+            si.sprcoll = m_state.SPRCOLL;
+            si.skipped = true;
+            m_frame_scb_list.push_back(si);
+        }
+#endif
         return;
     }
 
@@ -710,6 +749,28 @@ INLINE void Suzy::DrawSprite()
             m_state.pen_map[(i << 1) + 1] = (byte & 0x0F);
         }
     }
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_scb_accumulation_enabled)
+    {
+        GLYNX_SCB_Info si = {};
+        si.scb_address = m_state.SCBADR.value;
+        si.scb_next = m_state.SCBNEXT.value;
+        si.sprctl0 = m_state.SPRCTL0;
+        si.sprctl1 = m_state.SPRCTL1;
+        si.sprcoll = m_state.SPRCOLL;
+        si.hpos = (s16)m_state.HPOSSTRT.value;
+        si.vpos = (s16)m_state.VPOSSTRT.value;
+        si.sprdline = m_state.SPRDLINE.value;
+        si.sprhsiz = m_state.SPRHSIZ.value;
+        si.sprvsiz = m_state.SPRVSIZ.value;
+        si.stretch = m_state.STRETCH.value;
+        si.tilt = m_state.TILT.value;
+        si.skipped = false;
+        memcpy(si.pen_map, m_state.pen_map, 16);
+        m_frame_scb_list.push_back(si);
+    }
+#endif
 
     m_state.everon = false;
 

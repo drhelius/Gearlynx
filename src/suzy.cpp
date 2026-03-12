@@ -55,6 +55,12 @@ void Suzy::Reset()
 
     for (int i = 0; i < 16; ++i)
         m_state.pen_map[i] = i;
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_scb_accumulation_enabled = false;
+    m_frame_scb_list.clear();
+    m_frame_scb_list_display.clear();
+#endif
 }
 
 void Suzy::MathRunMultiply()

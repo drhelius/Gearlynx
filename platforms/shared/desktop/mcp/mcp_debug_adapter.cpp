@@ -199,7 +199,7 @@ u8 DebugAdapter::GetBreakpointIRQMask()
     for (int i = 0; i < 8; i++)
     {
         if (emu_debug_irq_breakpoints[i])
-            mask |= (1 << i);
+            mask = SET_BIT(mask, i);
     }
     return mask;
 }
@@ -230,7 +230,7 @@ std::vector<MemoryAreaInfo> DebugAdapter::ListMemoryAreas()
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
         MemoryAreaInfo info = GetMemoryAreaInfo(i);
-        if (info.data != NULL && info.size > 0)
+        if (IsValidPointer(info.data) && info.size > 0)
         {
             result.push_back(info);
         }
@@ -244,7 +244,7 @@ std::vector<u8> DebugAdapter::ReadMemoryArea(int area, u32 offset, size_t size)
     std::vector<u8> result;
     MemoryAreaInfo info = GetMemoryAreaInfo(area);
 
-    if (info.data == NULL)
+    if (!IsValidPointer(info.data))
         return result;
 
     // Adjust offset for areas with base addresses (matching GUI display)
@@ -277,7 +277,7 @@ void DebugAdapter::WriteMemoryArea(int area, u32 offset, const std::vector<u8>& 
 {
     MemoryAreaInfo info = GetMemoryAreaInfo(area);
 
-    if (info.data == NULL)
+    if (!IsValidPointer(info.data))
         return;
 
     // Adjust offset for areas with base addresses (matching GUI display)
@@ -418,7 +418,7 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
         case MEMORY_EDITOR_BANK0A:
             info.name = "BANK0A";
             info.data = media->GetBankDataA(0);
-            info.size = (media->GetBankDataA(0) != NULL) ? media->GetBankSize(0) : 0;
+            info.size = IsValidPointer(media->GetBankDataA(0)) ? media->GetBankSize(0) : 0;
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK1:
@@ -430,7 +430,7 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
         case MEMORY_EDITOR_BANK1A:
             info.name = "BANK1A";
             info.data = media->GetBankDataA(1);
-            info.size = (media->GetBankDataA(1) != NULL) ? media->GetBankSize(1) : 0;
+            info.size = IsValidPointer(media->GetBankDataA(1)) ? media->GetBankSize(1) : 0;
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BIOS:
@@ -642,13 +642,13 @@ json DebugAdapter::Get6502Status()
         irq_info["index"] = i;
 
         GLYNX_Mikey_Timer* timer = &mikey->timers[i];
-        bool enabled = (timer->control_a & 0x80) != 0;
+        bool enabled = IS_SET_BIT(timer->control_a, 7);
         if (i == 4)
             enabled = (mikey->uart.tx_int_en || mikey->uart.rx_int_en);
 
         irq_info["enabled"] = enabled;
-        irq_info["asserted"] = (mikey->irq_pending & (1 << i)) != 0;
-        irq_info["masked"] = (mikey->irq_mask & (1 << i)) != 0;
+        irq_info["asserted"] = IS_SET_BIT(mikey->irq_pending, i);
+        irq_info["masked"] = IS_SET_BIT(mikey->irq_mask, i);
 
         irqs.push_back(irq_info);
     }
@@ -1376,7 +1376,7 @@ json DebugAdapter::GetCartStatus()
         ss << std::setw(2) << (int)media->PeekBank0();
         bank0["peek_value"] = ss.str();
         ss.str("");
-        if (media->GetBankDataA(0) != NULL)
+        if (IsValidPointer(media->GetBankDataA(0)))
         {
             ss << std::setw(2) << (int)media->PeekBank0A();
             bank0["peek_value_a"] = ss.str();
@@ -1395,7 +1395,7 @@ json DebugAdapter::GetCartStatus()
         ss << std::setw(2) << (int)media->PeekBank1();
         bank1["peek_value"] = ss.str();
         ss.str("");
-        if (media->GetBankDataA(1) != NULL)
+        if (IsValidPointer(media->GetBankDataA(1)))
         {
             ss << std::setw(2) << (int)media->PeekBank1A();
             bank1["peek_value_a"] = ss.str();
@@ -1595,6 +1595,77 @@ json DebugAdapter::GetFrameBuffer(const std::string& buffer_type)
     result["width"] = GLYNX_SCREEN_WIDTH;
     result["height"] = GLYNX_SCREEN_HEIGHT;
     result["buffer"] = buffer_name;
+
+    return result;
+}
+
+json DebugAdapter::GetSprite(int index)
+{
+    json result;
+
+    if (!m_core || !m_core->GetMedia()->IsReady())
+    {
+        result["error"] = "No media loaded";
+        return result;
+    }
+
+    if (index < 0 || index >= DEBUG_MAX_SPRITES || index >= emu_debug_scb_count)
+    {
+        result["error"] = "Invalid sprite index";
+        return result;
+    }
+
+    int width = emu_debug_sprite_widths[index];
+    int height = emu_debug_sprite_heights[index];
+
+    if (width <= 0 || height <= 0)
+    {
+        result["error"] = "Sprite has no rendered data";
+        return result;
+    }
+
+    unsigned char* png_buffer = NULL;
+    int png_size = emu_get_sprite_png(index, &png_buffer);
+
+    if (png_size == 0 || !png_buffer)
+    {
+        result["error"] = "Failed to capture sprite";
+        return result;
+    }
+
+    std::string base64_png = base64_encode(png_buffer, png_size);
+    free(png_buffer);
+
+    GLYNX_Debug_SCB_Info& info = emu_debug_scb_info[index];
+
+    result["__mcp_image"] = true;
+    result["data"] = base64_png;
+    result["mimeType"] = "image/png";
+    result["width"] = width;
+    result["height"] = height;
+    result["scb_index"] = index;
+    result["scb_address"] = info.scb_address;
+    result["scb_next"] = info.scb_next;
+    result["sprctl0"] = info.sprctl0;
+    result["sprctl1"] = info.sprctl1;
+    result["sprcoll"] = info.sprcoll;
+    result["hpos"] = info.hpos;
+    result["vpos"] = info.vpos;
+    result["bpp"] = info.bpp;
+    result["type"] = info.type;
+    result["h_flip"] = info.h_flip;
+    result["v_flip"] = info.v_flip;
+    result["literal_only"] = info.literal_only;
+    result["reload_depth"] = info.reload_depth;
+    result["reload_palette"] = info.reload_palette;
+    result["sprdline"] = info.sprdline;
+    result["sprhsiz"] = info.sprhsiz;
+    result["sprvsiz"] = info.sprvsiz;
+    result["stretch"] = info.stretch;
+    result["tilt"] = info.tilt;
+    result["collision_id"] = info.sprcoll & 0x0F;
+    result["collision_disabled"] = IS_SET_BIT(info.sprcoll, 5);
+    result["skipped"] = info.skipped;
 
     return result;
 }
@@ -2446,11 +2517,11 @@ json DebugAdapter::MemorySearch(int area, const std::string& op, const std::stri
     result["count"] = count;
     result["results"] = json::array();
 
-    if (count > 0 && results_ptr != NULL)
+    if (count > 0 && IsValidPointer(results_ptr))
     {
         std::vector<MemEditor::Search>* results = (std::vector<MemEditor::Search>*)results_ptr;
 
-        int max_results = (count > 1000) ? 1000 : count;
+        int max_results = MIN(count, 1000);
 
         for (int i = 0; i < max_results; i++)
         {
@@ -2506,7 +2577,7 @@ json DebugAdapter::MemoryFindBytes(int area, const std::string& hex_bytes)
     result["count"] = count;
     result["results"] = json::array();
 
-    int max_results = (count > 100) ? 100 : count;
+    int max_results = MIN(count, 100);
 
     for (int i = 0; i < max_results; i++)
     {

@@ -921,6 +921,7 @@ static void menu_debug(void)
         {
             ImGui::MenuItem("Show Registers", "", &config_debug.show_suzy_regs);
             ImGui::MenuItem("Show Math Registers", "", &config_debug.show_suzy_math_regs);
+            ImGui::MenuItem("Show SCB Viewer", "", &config_debug.show_scb_viewer);
             ImGui::EndMenu();
         }
 

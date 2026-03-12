@@ -184,6 +184,10 @@ void config_read(void)
     config_debug.show_mikey_colors = read_bool("Debug", "MikeyColors", false);
     config_debug.show_suzy_regs = read_bool("Debug", "SuzyRegs", false);
     config_debug.show_suzy_math_regs = read_bool("Debug", "SuzyMathRegs", false);
+    config_debug.show_scb_viewer = read_bool("Debug", "SCBViewer", false);
+    config_debug.scb_viewer_address = read_int("Debug", "SCBViewerAddress", 0x0000);
+    config_debug.scb_viewer_auto = read_bool("Debug", "SCBViewerAuto", true);
+    config_debug.scb_viewer_mode = read_int("Debug", "SCBViewerMode", 1);
     config_debug.show_frame_buffers = read_bool("Debug", "FrameBuffers", false);
     config_debug.frame_buffer_custom_address = read_int("Debug", "FrameBufferCustomAddress", 0x0000);
     config_debug.show_lcd = read_bool("Debug", "LCD", false);
@@ -371,6 +375,10 @@ void config_write(void)
     write_bool("Debug", "MikeyColors", config_debug.show_mikey_colors);
     write_bool("Debug", "SuzyRegs", config_debug.show_suzy_regs);
     write_bool("Debug", "SuzyMathRegs", config_debug.show_suzy_math_regs);
+    write_bool("Debug", "SCBViewer", config_debug.show_scb_viewer);
+    write_int("Debug", "SCBViewerAddress", config_debug.scb_viewer_address);
+    write_bool("Debug", "SCBViewerAuto", config_debug.scb_viewer_auto);
+    write_int("Debug", "SCBViewerMode", config_debug.scb_viewer_mode);
     write_bool("Debug", "TraceLogger", config_debug.show_trace_logger);
     write_bool("Debug", "FrameBuffers", config_debug.show_frame_buffers);
     write_int("Debug", "FrameBufferCustomAddress", config_debug.frame_buffer_custom_address);

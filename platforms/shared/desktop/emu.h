@@ -28,6 +28,8 @@
     #define EXTERN extern
 #endif
 
+#define DEBUG_MAX_SPRITES 256
+
 enum Debug_Command
 {
     Debug_Command_Continue,
@@ -43,14 +45,41 @@ enum Directory_Location
     Directory_Location_Custom = 2
 };
 
+struct GLYNX_Debug_SCB_Info
+{
+    u16 scb_address;
+    u16 scb_next;
+    u8 sprctl0;
+    u8 sprctl1;
+    u8 sprcoll;
+    int bpp;
+    bool h_flip;
+    bool v_flip;
+    int type;
+    bool literal_only;
+    int reload_depth;
+    bool reload_palette;
+    s16 hpos;
+    s16 vpos;
+    u16 sprdline;
+    u16 sprhsiz;
+    u16 sprvsiz;
+    u16 stretch;
+    u16 tilt;
+    u8 pen_map[16];
+    bool skipped;
+};
+
 EXTERN u8* emu_frame_buffer;
 EXTERN GLYNX_SaveState_Header emu_savestates[5];
 EXTERN GLYNX_SaveState_Screenshot emu_savestates_screenshots[5];
-EXTERN u8* emu_debug_sprite_buffers[64];
+EXTERN u8* emu_debug_sprite_buffers[DEBUG_MAX_SPRITES];
 EXTERN u8* emu_debug_framebuffer[5];
 EXTERN u32 emu_collision_palette[16];
-EXTERN int emu_debug_sprite_widths[64];
-EXTERN int emu_debug_sprite_heights[64];
+EXTERN int emu_debug_sprite_widths[DEBUG_MAX_SPRITES];
+EXTERN int emu_debug_sprite_heights[DEBUG_MAX_SPRITES];
+EXTERN int emu_debug_scb_count;
+EXTERN GLYNX_Debug_SCB_Info emu_debug_scb_info[DEBUG_MAX_SPRITES];
 EXTERN Debug_Command emu_debug_command;
 EXTERN bool emu_debug_pc_changed;
 EXTERN int emu_debug_step_frames_pending;
@@ -99,6 +128,8 @@ EXTERN void emu_debug_break(void);
 EXTERN void emu_debug_continue(void);
 EXTERN void emu_debug_set_callback(GearlynxCore::GLYNX_Debug_Callback callback);
 EXTERN void emu_save_screenshot(const char* file_path);
+EXTERN void emu_save_sprite(const char* file_path, int index);
+EXTERN int emu_get_sprite_png(int index, unsigned char** out_buffer);
 EXTERN int emu_get_screenshot_png(unsigned char** out_buffer);
 EXTERN int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer);
 EXTERN void emu_start_vgm_recording(const char* file_path);

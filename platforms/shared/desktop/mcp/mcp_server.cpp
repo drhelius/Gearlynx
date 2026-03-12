@@ -747,6 +747,22 @@ void McpServer::HandleToolsList(const json& request)
         }}
     });
 
+    tools.push_back({
+        {"name", "get_sprite"},
+        {"title", "Get Sprite"},
+        {"description", "Capture a rendered SCB sprite as base64-encoded PNG image. The emulator must be paused with an active SCB chain. Returns sprite image along with SCB properties (address, position, BPP, type, flip flags)."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"index", {
+                    {"type", "integer"},
+                    {"description", "Sprite index in the current SCB chain (0-based)"}
+                }}
+            }},
+            {"required", json::array({"index"})}
+        }}
+    });
+
     // Media and state management tools
     tools.push_back({
         {"name", "load_media"},
@@ -1736,6 +1752,11 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     {
         std::string buffer = arguments["buffer"];
         return m_debugAdapter.GetFrameBuffer(buffer);
+    }
+    else if (normalizedTool == "get_sprite")
+    {
+        int index = arguments["index"];
+        return m_debugAdapter.GetSprite(index);
     }
     // Media and state management
     else if (normalizedTool == "load_media")

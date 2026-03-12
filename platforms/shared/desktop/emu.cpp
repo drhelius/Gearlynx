@@ -44,6 +44,8 @@ static void destroy_debug(void);
 static void update_debug(void);
 static void update_debug_framebuffers(void);
 static void update_debug_sprites(void);
+static void update_debug_sprites_accumulated(void);
+static void render_debug_sprites(int count);
 
 bool emu_init(void)
 {
@@ -154,7 +156,9 @@ void emu_update(void)
                 debug_run.stop_on_irq = SET_BIT(debug_run.stop_on_irq, i);
         }
 
-        if (emu_debug_command != Debug_Command_None)
+        bool executed = (emu_debug_command != Debug_Command_None);
+
+        if (executed)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
 
         if (breakpoint_hit || emu_debug_command == Debug_Command_StepFrame || emu_debug_command == Debug_Command_Step)
@@ -180,7 +184,8 @@ void emu_update(void)
         else if (emu_debug_command != Debug_Command_Continue)
             emu_debug_command = Debug_Command_None;
 
-        update_debug();
+        if (executed)
+            update_debug();
     }
     else
         core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
@@ -388,21 +393,39 @@ void emu_get_info(char* info, int buffer_size)
         const char* rotation_str = "None";
         switch (rotation)
         {
-            case GLYNX_ROTATION_LEFT: rotation_str = "Left"; break;
-            case GLYNX_ROTATION_RIGHT: rotation_str = "Right"; break;
-            default: rotation_str = "None"; break;
+            case GLYNX_ROTATION_LEFT:
+                rotation_str = "Left";
+                break;
+            case GLYNX_ROTATION_RIGHT:
+                rotation_str = "Right";
+                break;
+            default:
+                rotation_str = "None";
+                break;
         }
 
         const char* eeprom_str = "None";
         int eeprom_base = eeprom & 0x0F;
         switch (eeprom_base)
         {
-            case GLYNX_EEPROM_93C46: eeprom_str = "93C46"; break;
-            case GLYNX_EEPROM_93C56: eeprom_str = "93C56"; break;
-            case GLYNX_EEPROM_93C66: eeprom_str = "93C66"; break;
-            case GLYNX_EEPROM_93C76: eeprom_str = "93C76"; break;
-            case GLYNX_EEPROM_93C86: eeprom_str = "93C86"; break;
-            default: eeprom_str = "None"; break;
+            case GLYNX_EEPROM_93C46:
+                eeprom_str = "93C46";
+                break;
+            case GLYNX_EEPROM_93C56:
+                eeprom_str = "93C56";
+                break;
+            case GLYNX_EEPROM_93C66:
+                eeprom_str = "93C66";
+                break;
+            case GLYNX_EEPROM_93C76:
+                eeprom_str = "93C76";
+                break;
+            case GLYNX_EEPROM_93C86:
+                eeprom_str = "93C86";
+                break;
+            default:
+                eeprom_str = "None";
+                break;
         }
 
         snprintf(info, buffer_size,
@@ -520,6 +543,23 @@ void emu_save_screenshot(const char* file_path)
     Log("Screenshot saved to %s", file_path);
 }
 
+void emu_save_sprite(const char* file_path, int index)
+{
+    if (index < 0 || index >= DEBUG_MAX_SPRITES)
+        return;
+
+    int width = emu_debug_sprite_widths[index];
+    int height = emu_debug_sprite_heights[index];
+    u8* buffer = emu_debug_sprite_buffers[index];
+
+    if (!buffer || width <= 0 || height <= 0)
+        return;
+
+    stbi_write_png(file_path, width, height, 4, buffer, 256 * 4);
+
+    Log("Sprite saved to %s", file_path);
+}
+
 int emu_get_screenshot_png(unsigned char** out_buffer)
 {
     if (!core->GetMedia()->IsReady())
@@ -551,6 +591,28 @@ int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer)
 
     *out_buffer = stbi_write_png_to_mem(emu_debug_framebuffer[buffer_index], stride,
                                          GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT,
+                                         4, &len);
+
+    return len;
+}
+
+int emu_get_sprite_png(int index, unsigned char** out_buffer)
+{
+    if (index < 0 || index >= DEBUG_MAX_SPRITES)
+        return 0;
+
+    int width = emu_debug_sprite_widths[index];
+    int height = emu_debug_sprite_heights[index];
+    u8* buffer = emu_debug_sprite_buffers[index];
+
+    if (!buffer || width <= 0 || height <= 0)
+        return 0;
+
+    int stride = 256 * 4;
+    int len = 0;
+
+    *out_buffer = stbi_write_png_to_mem(buffer, stride,
+                                         width, height,
                                          4, &len);
 
     return len;
@@ -593,10 +655,20 @@ static const char* get_configurated_dir(int location, const char* path)
 
 static void init_debug(void)
 {
+    emu_debug_scb_count = 0;
+
     for (int i = 0; i < 5; i++)
     {
         emu_debug_framebuffer[i] = new u8[256 * 256 * 4];
         memset(emu_debug_framebuffer[i], 0, 256 * 256 * 4);
+    }
+
+    for (int i = 0; i < DEBUG_MAX_SPRITES; i++)
+    {
+        emu_debug_sprite_buffers[i] = new u8[256 * 256 * 4];
+        memset(emu_debug_sprite_buffers[i], 0, 256 * 256 * 4);
+        emu_debug_sprite_widths[i] = 0;
+        emu_debug_sprite_heights[i] = 0;
     }
 }
 
@@ -604,14 +676,27 @@ static void destroy_debug(void)
 {
     for (int i = 0; i < 5; i++)
         SafeDeleteArray(emu_debug_framebuffer[i]);
+
+    for (int i = 0; i < DEBUG_MAX_SPRITES; i++)
+        SafeDeleteArray(emu_debug_sprite_buffers[i]);
 }
 
 static void update_debug(void)
 {
     if (config_debug.show_frame_buffers)
         update_debug_framebuffers();
-    if (config_debug.show_frame_buffers)
-        update_debug_sprites();
+
+    bool accumulate = config_debug.show_scb_viewer && config_debug.scb_viewer_mode == 1;
+
+    core->GetSuzy()->SetSCBAccumulationEnabled(accumulate);
+
+    if (config_debug.show_scb_viewer)
+    {
+        if (config_debug.scb_viewer_mode == 1)
+            update_debug_sprites_accumulated();
+        else
+            update_debug_sprites();
+    }
 }
 
 static void update_debug_framebuffers(void)
@@ -673,7 +758,700 @@ static void update_debug_framebuffers(void)
 
 static void update_debug_sprites(void)
 {
-    
+    u8* ram = core->GetMemory()->GetRAM();
+    Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
+
+    u16 scb_addr;
+    if (config_debug.scb_viewer_auto)
+    {
+        if ((suzy_state->SCBNEXT.value & 0xFF00) != 0)
+            scb_addr = suzy_state->SCBNEXT.value;
+        else
+            scb_addr = suzy_state->SCBADR.value;
+    }
+    else
+    {
+        scb_addr = (u16)config_debug.scb_viewer_address;
+    }
+
+    u8 pen_map[16];
+    memcpy(pen_map, suzy_state->pen_map, 16);
+    u16 running_sprhsiz = suzy_state->SPRHSIZ.value;
+    u16 running_sprvsiz = suzy_state->SPRVSIZ.value;
+
+    int count = 0;
+
+    while ((scb_addr & 0xFF00) != 0 && count < DEBUG_MAX_SPRITES)
+    {
+        u16 tmpadr = scb_addr;
+
+        u8 sprctl0 = ram[tmpadr++];
+        u8 sprctl1 = ram[tmpadr++];
+        u8 sprcoll = ram[tmpadr++];
+        u16 scb_next = (u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+        tmpadr += 2;
+
+        GLYNX_Debug_SCB_Info& info = emu_debug_scb_info[count];
+        info.scb_address = scb_addr;
+        info.scb_next = scb_next;
+        info.sprctl0 = sprctl0;
+        info.sprctl1 = sprctl1;
+        info.sprcoll = sprcoll;
+
+        if (IS_SET_BIT(sprctl1, 2))
+        {
+            info.skipped = true;
+            info.bpp = 0;
+            info.h_flip = false;
+            info.v_flip = false;
+            info.type = 0;
+            info.literal_only = false;
+            info.reload_depth = 0;
+            info.reload_palette = false;
+            info.hpos = 0;
+            info.vpos = 0;
+            info.sprdline = 0;
+            info.sprhsiz = 0;
+            info.sprvsiz = 0;
+            info.stretch = 0;
+            info.tilt = 0;
+            memset(info.pen_map, 0, 16);
+
+            count++;
+            scb_addr = scb_next;
+            continue;
+        }
+
+        int bpp = ((sprctl0 >> 6) & 0x03) + 1;
+        int reload_depth = (sprctl1 >> 4) & 0x03;
+        bool reload_palette = IS_NOT_SET_BIT(sprctl1, 3);
+
+        u16 sprdline = (u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+        tmpadr += 2;
+        s16 hpos = (s16)(u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+        tmpadr += 2;
+        s16 vpos = (s16)(u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+        tmpadr += 2;
+
+        u16 stretch_val = 0;
+        u16 tilt_val = 0;
+
+        if (reload_depth >= 1)
+        {
+            running_sprhsiz = (u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+            tmpadr += 2;
+            running_sprvsiz = (u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+            tmpadr += 2;
+        }
+        if (reload_depth >= 2)
+        {
+            stretch_val = (u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+            tmpadr += 2;
+        }
+        if (reload_depth >= 3)
+        {
+            tilt_val = (u16)(ram[tmpadr] | (ram[(u16)(tmpadr + 1)] << 8));
+            tmpadr += 2;
+        }
+
+        if (reload_palette)
+        {
+            int colors = 1 << bpp;
+            int bytes_to_read = colors >> 1;
+            for (int i = 0; i < bytes_to_read; i++)
+            {
+                u8 byte = ram[tmpadr++];
+                pen_map[(i << 1) + 0] = (byte >> 4) & 0x0F;
+                pen_map[(i << 1) + 1] = (byte & 0x0F);
+            }
+        }
+
+        info.skipped = false;
+        info.bpp = bpp;
+        info.h_flip = IS_SET_BIT(sprctl0, 5);
+        info.v_flip = IS_SET_BIT(sprctl0, 4);
+        info.type = (sprctl0 & 0x07);
+        info.literal_only = IS_SET_BIT(sprctl1, 7);
+        info.reload_depth = reload_depth;
+        info.reload_palette = reload_palette;
+        info.hpos = hpos;
+        info.vpos = vpos;
+        info.sprdline = sprdline;
+        info.sprhsiz = running_sprhsiz;
+        info.sprvsiz = running_sprvsiz;
+        info.stretch = stretch_val;
+        info.tilt = tilt_val;
+        memcpy(info.pen_map, pen_map, 16);
+
+        count++;
+        scb_addr = scb_next;
+    }
+
+    render_debug_sprites(count);
+}
+
+static void update_debug_sprites_accumulated(void)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    std::vector<Suzy::GLYNX_SCB_Info>* frame_list = core->GetSuzy()->GetFrameSCBList();
+
+    int count = MIN((int)frame_list->size(), DEBUG_MAX_SPRITES);
+
+    for (int s = 0; s < count; s++)
+    {
+        Suzy::GLYNX_SCB_Info& src = (*frame_list)[s];
+        GLYNX_Debug_SCB_Info& info = emu_debug_scb_info[s];
+
+        info.scb_address = src.scb_address;
+        info.scb_next = src.scb_next;
+        info.sprctl0 = src.sprctl0;
+        info.sprctl1 = src.sprctl1;
+        info.sprcoll = src.sprcoll;
+        info.skipped = src.skipped;
+
+        if (src.skipped)
+        {
+            info.bpp = 0;
+            info.h_flip = false;
+            info.v_flip = false;
+            info.type = 0;
+            info.literal_only = false;
+            info.reload_depth = 0;
+            info.reload_palette = false;
+            info.hpos = 0;
+            info.vpos = 0;
+            info.sprdline = 0;
+            info.sprhsiz = 0;
+            info.sprvsiz = 0;
+            info.stretch = 0;
+            info.tilt = 0;
+            memset(info.pen_map, 0, 16);
+            continue;
+        }
+
+        info.bpp = ((src.sprctl0 >> 6) & 0x03) + 1;
+        info.h_flip = IS_SET_BIT(src.sprctl0, 5);
+        info.v_flip = IS_SET_BIT(src.sprctl0, 4);
+        info.type = (src.sprctl0 & 0x07);
+        info.literal_only = IS_SET_BIT(src.sprctl1, 7);
+        info.reload_depth = (src.sprctl1 >> 4) & 0x03;
+        info.reload_palette = IS_NOT_SET_BIT(src.sprctl1, 3);
+        info.hpos = src.hpos;
+        info.vpos = src.vpos;
+        info.sprdline = src.sprdline;
+        info.sprhsiz = src.sprhsiz;
+        info.sprvsiz = src.sprvsiz;
+        info.stretch = src.stretch;
+        info.tilt = src.tilt;
+        memcpy(info.pen_map, src.pen_map, 16);
+    }
+
+    render_debug_sprites(count);
+#endif
+}
+
+struct SpriteShiftReg
+{
+    u8* ram;
+    u16 address;
+    u8 current;
+    s32 bit;
+};
+
+struct SpriteQuadPos
+{
+    bool left;
+    bool up;
+};
+
+static const int k_sprite_buf_w = 256;
+static const int k_sprite_buf_h = 256;
+static const u32 k_sprite_sreg_eof = 0xFFFFFFFFu;
+static const u8 k_sprite_max_line_size = 200;
+static const int k_sprite_max_lines = 128;
+static const s16 k_sprite_max_pos = 1024;
+
+static const int k_sprite_quad_seq[4][4] = {
+    { 0, 2, 3, 1 },
+    { 1, 0, 2, 3 },
+    { 2, 3, 1, 0 },
+    { 3, 1, 0, 2 }
+};
+
+static void shift_reg_reset(SpriteShiftReg* sr, u16 addr)
+{
+    sr->address = addr;
+    sr->current = sr->ram[addr];
+    sr->bit = 7;
+}
+
+static u32 shift_reg_get_bits(SpriteShiftReg* sr, int n, u16 stop_addr)
+{
+    if (sr->address >= stop_addr)
+        return k_sprite_sreg_eof;
+
+    int bits_in_current = sr->bit + 1;
+    u16 bytes_remaining = (u16)((stop_addr - 1) - sr->address);
+    int remaining = bits_in_current + (int)bytes_remaining * 8;
+
+    if (n >= remaining)
+        return k_sprite_sreg_eof;
+
+    u32 value = 0;
+    int need = n;
+
+    while (need > 0)
+    {
+        if (sr->bit < 0)
+        {
+            sr->address++;
+            sr->current = sr->ram[sr->address];
+            sr->bit = 7;
+        }
+
+        value = (value << 1) | ((sr->current >> sr->bit) & 1);
+        sr->bit--;
+        need--;
+    }
+
+    return value;
+}
+
+static SpriteQuadPos get_sprite_quad_pos(int qi, int sq, int fl)
+{
+    int fq = k_sprite_quad_seq[sq][qi] ^ fl;
+    SpriteQuadPos result;
+    result.left = (fq & 1) != 0;
+    result.up = (fq & 2) != 0;
+    return result;
+}
+
+static void render_debug_sprites(int count)
+{
+    u8* ram = core->GetMemory()->GetRAM();
+    u32* palette = core->GetMikey()->GetLcdScreen()->GetRGBA8888Palette();
+    if (!palette)
+        return;
+
+    Suzy::Suzy_State* suzy_state = core->GetSuzy()->GetState();
+    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+
+    u16 hsizoff = suzy_state->HSIZOFF.value;
+    u16 vsizoff = suzy_state->VSIZOFF.value;
+    bool vertical_stretch = suzy_state->sprsys_vstrech;
+
+    for (int s = 0; s < count; s++)
+    {
+        GLYNX_Debug_SCB_Info& info = emu_debug_scb_info[s];
+        u32* buf = (u32*)emu_debug_sprite_buffers[s];
+        memset(buf, 0, k_sprite_buf_w * k_sprite_buf_h * 4);
+        emu_debug_sprite_widths[s] = 0;
+        emu_debug_sprite_heights[s] = 0;
+
+        if (info.skipped)
+            continue;
+
+        int bpp = info.bpp;
+        bool literal_only = info.literal_only;
+        u16 sprdline = info.sprdline;
+        u16 cur_sprhsiz = info.sprhsiz;
+        u16 cur_sprvsiz = info.sprvsiz;
+        u16 stretch_val = info.stretch;
+        u16 tilt_val = info.tilt;
+        int flip = (info.h_flip ? 1 : 0) | (info.v_flip ? 2 : 0);
+        bool start_up = IS_SET_BIT(info.sprctl1, 1);
+        bool start_left = IS_SET_BIT(info.sprctl1, 0);
+        int start_quad = (start_left ? 1 : 0) | (start_up ? 2 : 0);
+
+        if (ram[sprdline] > k_sprite_max_line_size)
+            continue;
+        if (info.hpos > k_sprite_max_pos || info.hpos < -k_sprite_max_pos ||
+            info.vpos > k_sprite_max_pos || info.vpos < -k_sprite_max_pos)
+            continue;
+
+        // First pass: compute bounding box
+        s32 min_x = 0x7FFF, max_x = -0x7FFF;
+        s32 min_y = 0x7FFF, max_y = -0x7FFF;
+        bool bbox_valid = false;
+        bool bbox_done = false;
+
+        SpriteShiftReg sr;
+        sr.ram = ram;
+        sr.address = 0;
+        sr.current = 0;
+        sr.bit = -1;
+        u16 cur_sprdline_bb = sprdline;
+        u16 cur_sprhsiz_bb = cur_sprhsiz;
+        u16 cur_sprvsiz_bb = cur_sprvsiz;
+
+        int quadrant = 0;
+        SpriteQuadPos pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+        SpriteQuadPos start_pos = pos;
+        s32 dx = pos.left ? -1 : +1;
+        s32 dy = pos.up ? -1 : +1;
+        s32 cur_y = 0;
+        u16 vsizacum = vsizoff;
+        u16 tiltacum = 0;
+        s32 base_hpos_bb = 0;
+        int safety = 0;
+
+        while (safety++ < k_sprite_max_lines && !bbox_done)
+        {
+            u8 sprdoff = ram[cur_sprdline_bb];
+            if (sprdoff > k_sprite_max_line_size)
+                break;
+
+            u16 next_ptr = (u16)(cur_sprdline_bb + (u16)sprdoff);
+            u16 data_begin = (u16)(cur_sprdline_bb + 1);
+            u16 data_end = next_ptr;
+
+            vsizacum = vsizacum + cur_sprvsiz_bb;
+            s16 pixel_height = MIN((s16)(vsizacum >> 8), (s16)k_sprite_buf_h);
+            vsizacum &= 0x00FF;
+
+            for (int row = 0; row < pixel_height && !bbox_done; row++)
+            {
+                s32 start_x = base_hpos_bb;
+                if (pos.left != start_pos.left)
+                    start_x += dx;
+
+                shift_reg_reset(&sr, data_begin);
+                u32 h_accum = hsizoff;
+                s32 x = start_x;
+
+                if (literal_only)
+                {
+                    while (sr.address < data_end)
+                    {
+                        u32 pi = shift_reg_get_bits(&sr, bpp, data_end);
+                        if (pi == k_sprite_sreg_eof)
+                            break;
+
+                        h_accum += (u32)cur_sprhsiz_bb;
+                        s32 pc = (s32)(h_accum >> 8);
+                        h_accum &= 0xFF;
+
+                        for (s32 p = 0; p < pc; p++)
+                        {
+                            min_x = MIN(x, min_x);
+                            max_x = MAX(x, max_x);
+                            x += dx;
+                        }
+                    }
+                }
+                else
+                {
+                    while (sr.address < data_end && !bbox_done)
+                    {
+                        u32 header = shift_reg_get_bits(&sr, 5, data_end);
+                        if (header == 0 || header == k_sprite_sreg_eof)
+                            break;
+
+                        u32 is_lit = header >> 4;
+                        u32 cnt = (header & 0x0F) + 1;
+
+                        if (is_lit)
+                        {
+                            while (cnt-- && !bbox_done)
+                            {
+                                u32 pi = shift_reg_get_bits(&sr, bpp, data_end);
+
+                                if (pi == k_sprite_sreg_eof)
+                                {
+                                    bbox_done = true;
+                                    break;
+                                }
+
+                                h_accum += (u32)cur_sprhsiz_bb;
+                                s32 pc = (s32)(h_accum >> 8);
+                                h_accum &= 0xFF;
+
+                                for (s32 p = 0; p < pc; p++)
+                                {
+                                    min_x = MIN(x, min_x);
+                                    max_x = MAX(x, max_x);
+                                    x += dx;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            u32 pi = shift_reg_get_bits(&sr, bpp, data_end);
+                            if (pi == k_sprite_sreg_eof)
+                            {
+                                bbox_done = true;
+                                break;
+                            }
+
+                            while (cnt--)
+                            {
+                                h_accum += (u32)cur_sprhsiz_bb;
+                                s32 pc = (s32)(h_accum >> 8);
+                                h_accum &= 0xFF;
+
+                                for (s32 p = 0; p < pc; p++)
+                                {
+                                    min_x = MIN(x, min_x);
+                                    max_x = MAX(x, max_x);
+                                    x += dx;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!bbox_done)
+                {
+                    min_y = MIN(cur_y, min_y);
+                    max_y = MAX(cur_y, max_y);
+                    bbox_valid = true;
+
+                    if ((max_x - min_x) >= k_sprite_buf_w && (max_y - min_y) >= k_sprite_buf_h)
+                    {
+                        bbox_done = true;
+                        break;
+                    }
+
+                    cur_y += dy;
+                    tiltacum = (u16)(tiltacum + tilt_val);
+                    base_hpos_bb += (s16)tiltacum >> 8;
+                    tiltacum &= 0x00FF;
+                    cur_sprhsiz_bb += stretch_val;
+                }
+            }
+
+            if (!bbox_done)
+            {
+                if (vertical_stretch)
+                    cur_sprvsiz_bb += (s16)stretch_val * (s16)pixel_height;
+
+                if (sprdoff == 0)
+                    break;
+                else if (sprdoff == 1)
+                {
+                    quadrant = (quadrant + 1) & 3;
+                    pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+                    dx = pos.left ? -1 : +1;
+                    dy = pos.up ? -1 : +1;
+                    cur_y = 0;
+                    vsizacum = vsizoff;
+                    if (pos.up != start_pos.up)
+                        cur_y += dy;
+                }
+                cur_sprdline_bb = next_ptr;
+            }
+        }
+
+        if (!bbox_valid || min_x > max_x || min_y > max_y)
+            continue;
+
+        int spr_w = MIN((int)(max_x - min_x + 1), k_sprite_buf_w);
+        int spr_h = MIN((int)(max_y - min_y + 1), k_sprite_buf_h);
+
+        if (spr_w <= 0 || spr_h <= 0)
+            continue;
+
+        emu_debug_sprite_widths[s] = spr_w;
+        emu_debug_sprite_heights[s] = spr_h;
+
+        s32 ox = -min_x;
+        s32 oy = -min_y;
+
+        // Second pass: render pixels
+        bool render_done = false;
+
+        sr.ram = ram;
+        sr.address = 0;
+        sr.current = 0;
+        sr.bit = -1;
+        u16 cur_sprdline_r = sprdline;
+        u16 cur_sprhsiz_r = cur_sprhsiz;
+        u16 cur_sprvsiz_r = cur_sprvsiz;
+
+        quadrant = 0;
+        pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+        start_pos = pos;
+        dx = pos.left ? -1 : +1;
+        dy = pos.up ? -1 : +1;
+        cur_y = 0;
+        vsizacum = vsizoff;
+        tiltacum = 0;
+        s32 base_hpos_r = 0;
+        safety = 0;
+
+        while (safety++ < k_sprite_max_lines && !render_done)
+        {
+            u8 sprdoff = ram[cur_sprdline_r];
+            if (sprdoff > k_sprite_max_line_size)
+                break;
+            u16 next_ptr = (u16)(cur_sprdline_r + (u16)sprdoff);
+            u16 data_begin = (u16)(cur_sprdline_r + 1);
+            u16 data_end = next_ptr;
+
+            vsizacum = vsizacum + cur_sprvsiz_r;
+            s16 pixel_height = MIN((s16)(vsizacum >> 8), (s16)k_sprite_buf_h);
+            vsizacum &= 0x00FF;
+
+            for (int row = 0; row < pixel_height && !render_done; row++)
+            {
+                s32 start_x = base_hpos_r;
+                if (pos.left != start_pos.left)
+                    start_x += dx;
+
+                shift_reg_reset(&sr, data_begin);
+                u32 h_accum = hsizoff;
+                s32 x = start_x;
+
+                if (literal_only)
+                {
+                    while (sr.address < data_end)
+                    {
+                        u32 pi = shift_reg_get_bits(&sr, bpp, data_end);
+                        if (pi == k_sprite_sreg_eof)
+                            break;
+
+                        u8 pen = info.pen_map[pi & 0x0F];
+                        h_accum += (u32)cur_sprhsiz_r;
+                        s32 pc = (s32)(h_accum >> 8);
+                        h_accum &= 0xFF;
+
+                        for (s32 p = 0; p < pc; p++)
+                        {
+                            s32 px = x + ox;
+                            s32 py = cur_y + oy;
+
+                            if ((u32)px < (u32)k_sprite_buf_w && (u32)py < (u32)k_sprite_buf_h)
+                            {
+                                u16 gr = mikey_state->colors[pen].green;
+                                u16 br = mikey_state->colors[pen].bluered;
+                                u16 pidx = ((gr & 0x0F) << 8 | (br & 0xFF)) & 0x0FFF;
+                                buf[py * k_sprite_buf_w + px] = palette[pidx] | 0xFF000000u;
+                            }
+                            x += dx;
+                        }
+                    }
+                }
+                else
+                {
+                    while (sr.address < data_end && !render_done)
+                    {
+                        u32 header = shift_reg_get_bits(&sr, 5, data_end);
+                        if (header == 0 || header == k_sprite_sreg_eof)
+                            break;
+
+                        u32 is_lit = header >> 4;
+                        u32 cnt = (header & 0x0F) + 1;
+
+                        if (is_lit)
+                        {
+                            while (cnt-- && !render_done)
+                            {
+                                u32 pi = shift_reg_get_bits(&sr, bpp, data_end);
+                                if (pi == k_sprite_sreg_eof)
+                                {
+                                    render_done = true;
+                                    break;
+                                }
+
+                                u8 pen = info.pen_map[pi & 0x0F];
+                                h_accum += (u32)cur_sprhsiz_r;
+                                s32 pc = (s32)(h_accum >> 8);
+                                h_accum &= 0xFF;
+
+                                for (s32 p = 0; p < pc; p++)
+                                {
+                                    s32 px = x + ox;
+                                    s32 py = cur_y + oy;
+
+                                    if ((u32)px < (u32)k_sprite_buf_w && (u32)py < (u32)k_sprite_buf_h)
+                                    {
+                                        u16 gr = mikey_state->colors[pen].green;
+                                        u16 br = mikey_state->colors[pen].bluered;
+                                        u16 pidx = ((gr & 0x0F) << 8 | (br & 0xFF)) & 0x0FFF;
+                                        buf[py * k_sprite_buf_w + px] = palette[pidx] | 0xFF000000u;
+                                    }
+                                    x += dx;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            u32 pi = shift_reg_get_bits(&sr, bpp, data_end);
+                            if (pi == k_sprite_sreg_eof)
+                            {
+                                render_done = true;
+                                break;
+                            }
+
+                            u8 pen = info.pen_map[pi & 0x0F];
+
+                            while (cnt--)
+                            {
+                                h_accum += (u32)cur_sprhsiz_r;
+                                s32 pc = (s32)(h_accum >> 8);
+                                h_accum &= 0xFF;
+
+                                for (s32 p = 0; p < pc; p++)
+                                {
+                                    s32 px = x + ox;
+                                    s32 py = cur_y + oy;
+
+                                    if ((u32)px < (u32)k_sprite_buf_w && (u32)py < (u32)k_sprite_buf_h)
+                                    {
+                                        u16 gr = mikey_state->colors[pen].green;
+                                        u16 br = mikey_state->colors[pen].bluered;
+                                        u16 pidx = ((gr & 0x0F) << 8 | (br & 0xFF)) & 0x0FFF;
+                                        buf[py * k_sprite_buf_w + px] = palette[pidx] | 0xFF000000u;
+                                    }
+                                    x += dx;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!render_done)
+                {
+                    cur_y += dy;
+                    tiltacum = (u16)(tiltacum + tilt_val);
+                    base_hpos_r += (s16)tiltacum >> 8;
+                    tiltacum &= 0x00FF;
+                    cur_sprhsiz_r += stretch_val;
+                }
+            }
+
+            if (!render_done)
+            {
+                if (vertical_stretch)
+                    cur_sprvsiz_r += (s16)stretch_val * (s16)pixel_height;
+
+                if (sprdoff == 0)
+                    break;
+                else if (sprdoff == 1)
+                {
+                    quadrant = (quadrant + 1) & 3;
+                    pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+                    dx = pos.left ? -1 : +1;
+                    dy = pos.up ? -1 : +1;
+                    cur_y = 0;
+                    vsizacum = vsizoff;
+                    if (pos.up != start_pos.up)
+                        cur_y += dy;
+                }
+                cur_sprdline_r = next_ptr;
+            }
+        }
+    }
+
+    emu_debug_scb_count = count;
+
+    // Clear remaining slots
+    for (int idx = count; idx < DEBUG_MAX_SPRITES; idx++)
+    {
+        memset(emu_debug_sprite_buffers[idx], 0, k_sprite_buf_w * k_sprite_buf_h * 4);
+        emu_debug_sprite_widths[idx] = 0;
+        emu_debug_sprite_heights[idx] = 0;
+    }
 }
 
 void emu_start_vgm_recording(const char* file_path)

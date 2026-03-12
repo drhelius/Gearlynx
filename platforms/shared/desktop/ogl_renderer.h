@@ -21,6 +21,7 @@
 #define OGL_RENDERER_H
 
 #include <stdint.h>
+#include "emu.h"
 
 #ifdef OGL_RENDERER_IMPORT
     #define EXTERN
@@ -37,7 +38,7 @@
 
 EXTERN uint32_t ogl_renderer_emu_texture;
 EXTERN uint32_t ogl_renderer_emu_debug_framebuffer[5];
-EXTERN uint32_t ogl_renderer_emu_debug_huc6270_sprites[64];
+EXTERN uint32_t ogl_renderer_emu_debug_sprites[DEBUG_MAX_SPRITES];
 EXTERN uint32_t ogl_renderer_emu_savestates;
 EXTERN const char* ogl_renderer_opengl_version;
 

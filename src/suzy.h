@@ -25,6 +25,10 @@
 #include "common.h"
 #include "suzy_defines.h"
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+#include <vector>
+#endif
+
 class Media;
 class Memory;
 class M6502;
@@ -112,6 +116,30 @@ public:
     template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
     bool IsBlitterBusy();
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    struct GLYNX_SCB_Info
+    {
+        u16 scb_address;
+        u16 scb_next;
+        u8 sprctl0;
+        u8 sprctl1;
+        u8 sprcoll;
+        s16 hpos;
+        s16 vpos;
+        u16 sprdline;
+        u16 sprhsiz;
+        u16 sprvsiz;
+        u16 stretch;
+        u16 tilt;
+        u8 pen_map[16];
+        bool skipped;
+    };
+    std::vector<GLYNX_SCB_Info>* GetFrameSCBList();
+    void SwapFrameSCBList();
+    void SetSCBAccumulationEnabled(bool enabled);
+#endif
+
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -150,6 +178,11 @@ private:
     Suzy_State m_state;
     u8* m_ram;
     QuadPos m_quad_lut[4][4][4] = {};
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    std::vector<GLYNX_SCB_Info> m_frame_scb_list;
+    std::vector<GLYNX_SCB_Info> m_frame_scb_list_display;
+    bool m_scb_accumulation_enabled;
+#endif
 };
 
 #include "suzy_inline.h"

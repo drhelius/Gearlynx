@@ -17,23 +17,18 @@
  *
  */
 
-#ifndef GUI_ACTIONS_H
-#define GUI_ACTIONS_H
 
-#ifdef GUI_ACTIONS_IMPORT
+#ifndef GUI_DEBUG_SCB_VIEWER_H
+#define	GUI_DEBUG_SCB_VIEWER_H
+
+#ifdef GUI_DEBUG_SCB_VIEWER_IMPORT
     #define EXTERN
 #else
     #define EXTERN extern
 #endif
 
-EXTERN void gui_action_reset(void);
-EXTERN void gui_action_reload_rom(void);
-EXTERN void gui_action_pause(void);
-EXTERN void gui_action_ffwd(void);
-EXTERN void gui_action_save_screenshot(const char* path);
-EXTERN void gui_action_save_sprite(const char* path, int index);
-EXTERN void gui_action_save_all_sprites(const char* folder_path);
+EXTERN void gui_debug_window_scb_viewer(void);
 
-#undef GUI_ACTIONS_IMPORT
+#undef GUI_DEBUG_SCB_VIEWER_IMPORT
 #undef EXTERN
-#endif /* GUI_ACTIONS_H */
+#endif /* GUI_DEBUG_SCB_VIEWER_H */

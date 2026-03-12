@@ -30,6 +30,7 @@
 #include "gui_debug_trace_logger.h"
 #include "gui_debug_mikey.h"
 #include "gui_debug_suzy.h"
+#include "gui_debug_scb_viewer.h"
 #include "gui_debug_timers.h"
 #include "gui_debug_uart.h"
 #include "gui_debug_lcd.h"
@@ -102,6 +103,8 @@ void gui_debug_windows(void)
             gui_debug_window_suzy_regs();
         if (config_debug.show_suzy_math_regs)
             gui_debug_window_suzy_math_regs();
+        if (config_debug.show_scb_viewer)
+            gui_debug_window_scb_viewer();
         if (config_debug.show_frame_buffers)
             gui_debug_window_frame_buffers();
         if (config_debug.show_lcd)

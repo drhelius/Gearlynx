@@ -175,6 +175,10 @@ struct config_Debug
     bool show_mikey_colors = false;
     bool show_suzy_regs = false;
     bool show_suzy_math_regs = false;
+    bool show_scb_viewer = false;
+    int scb_viewer_address = 0x0000;
+    bool scb_viewer_auto = true;
+    int scb_viewer_mode = 1;
     bool show_frame_buffers = false;
     int frame_buffer_custom_address = 0x0000;
     bool show_lcd = false;

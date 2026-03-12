@@ -141,7 +141,7 @@ void ogl_renderer_destroy(void)
     glDeleteFramebuffers(MAX_FRAME_HISTORY, history_fbo);
 
     for (int s = 0; s < 64; s++)
-        glDeleteTextures(1, &ogl_renderer_emu_debug_huc6270_sprites[s]);
+        glDeleteTextures(1, &ogl_renderer_emu_debug_sprites[s]);
 
     for (int s = 0; s < 5; s++)
         glDeleteTextures(1, &ogl_renderer_emu_debug_framebuffer[s]);
@@ -256,11 +256,11 @@ static void init_ogl_emu(void)
 
 static void init_ogl_debug(void)
 {
-    for (int s = 0; s < 64; s++)
+    for (int s = 0; s < DEBUG_MAX_SPRITES; s++)
     {
-        glGenTextures(1, &ogl_renderer_emu_debug_huc6270_sprites[s]);
-        glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_huc6270_sprites[s]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 32, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_sprite_buffers[s]);
+        glGenTextures(1, &ogl_renderer_emu_debug_sprites[s]);
+        glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_sprites[s]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_sprite_buffers[s]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     }
@@ -672,6 +672,18 @@ static void update_debug_textures(void)
         glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_framebuffer[s]);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLYNX_SCREEN_WIDTH, GLYNX_SCREEN_HEIGHT,
                 GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) emu_debug_framebuffer[s]);
+    }
+
+    for (int s = 0; s < DEBUG_MAX_SPRITES; s++)
+    {
+        int w = emu_debug_sprite_widths[s];
+        int h = emu_debug_sprite_heights[s];
+        if (w > 0 && h > 0)
+        {
+            glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_sprites[s]);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 256,
+                    GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) emu_debug_sprite_buffers[s]);
+        }
     }
 }
 
