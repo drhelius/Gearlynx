@@ -260,7 +260,7 @@ static void init_ogl_debug(void)
     {
         glGenTextures(1, &ogl_renderer_emu_debug_sprites[s]);
         glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_sprites[s]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_sprite_buffers[s]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_sprite_buffers[s]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     }
@@ -681,7 +681,7 @@ static void update_debug_textures(void)
         if (w > 0 && h > 0)
         {
             glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_sprites[s]);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 256,
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512,
                     GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) emu_debug_sprite_buffers[s]);
         }
     }

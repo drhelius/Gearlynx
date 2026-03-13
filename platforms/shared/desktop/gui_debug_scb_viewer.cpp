@@ -50,7 +50,7 @@ void gui_debug_window_scb_viewer(void)
     ImGui::SetNextWindowPos(ImVec2(78, 56), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(586, 506), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("SCB Viewer", &config_debug.show_scb_viewer);
+    ImGui::Begin("SCB Viewer", &config_debug.show_scb_viewer, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     ImGui::PushFont(gui_default_font);
 
@@ -120,7 +120,12 @@ void gui_debug_window_scb_viewer(void)
 
     if (count == 0)
     {
-        ImGui::TextColored(gray, "No SCB chain found at this address.");
+        if (!emu_is_paused() && !emu_is_debug_idle())
+            ImGui::TextColored(gray, "Pause the debugger to inspect sprites.");
+        else if (config_debug.scb_viewer_mode == 1)
+            ImGui::TextColored(gray, "No sprites accumulated. Run at least one frame first.");
+        else
+            ImGui::TextColored(gray, "No SCB chain found at this address.");
         ImGui::PopFont();
         ImGui::End();
         ImGui::PopStyleVar();
@@ -184,6 +189,12 @@ void gui_debug_window_scb_viewer(void)
         float fw = MIN((float)(w * int_scale), avail_w);
         float fh = fw * ((float)h / (float)w);
 
+        if (fh > avail_w)
+        {
+            fh = avail_w;
+            fw = fh * ((float)w / (float)h);
+        }
+
         float item_y = ImGui::GetCursorPosY();
         bool visible = (item_y + fh >= scroll_y) && (item_y <= scroll_y + visible_y);
 
@@ -193,8 +204,8 @@ void gui_debug_window_scb_viewer(void)
             continue;
         }
 
-        float tex_u = (float)w / 256.0f;
-        float tex_v = (float)h / 256.0f;
+        float tex_u = (float)w / 512.0f;
+        float tex_v = (float)h / 512.0f;
 
         ImVec2 p = ImGui::GetCursorScreenPos();
 
@@ -229,13 +240,13 @@ void gui_debug_window_scb_viewer(void)
         int w = emu_debug_sprite_widths[display_sprite];
         int h = emu_debug_sprite_heights[display_sprite];
 
-        ImGui::TextColored(cyan, "DETAILS:");
+        ImGui::TextColored(magenta, "DETAILS:");
 
         if (entry.skipped)
         {
-            ImGui::TextColored(violet, " SCB #:    "); ImGui::SameLine(); ImGui::Text("%d", display_sprite);
-            ImGui::TextColored(violet, " SCB ADDR: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_address);
-            ImGui::TextColored(violet, " SCB NEXT: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_next);
+            ImGui::TextColored(orange, " SCB #:    "); ImGui::SameLine(); ImGui::Text("%d", display_sprite);
+            ImGui::TextColored(orange, " SCB ADDR: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_address);
+            ImGui::TextColored(orange, " SCB NEXT: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_next);
             ImGui::TextColored(red, " SKIPPED");
         }
         else
@@ -249,75 +260,75 @@ void gui_debug_window_scb_viewer(void)
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SCB #:   "); ImGui::SameLine(); ImGui::Text("%d", display_sprite);
+                ImGui::TextColored(orange, " SCB #:   "); ImGui::SameLine(); ImGui::Text("%d", display_sprite);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SPRDLINE:"); ImGui::SameLine(); ImGui::Text("$%04X", entry.sprdline);
+                ImGui::TextColored(orange, " SPRDLINE:"); ImGui::SameLine(); ImGui::Text("$%04X", entry.sprdline);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SCB ADDR:"); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_address);
+                ImGui::TextColored(orange, " SCB ADDR:"); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_address);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SPRHSIZ: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.sprhsiz);
+                ImGui::TextColored(orange, " SPRHSIZ: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.sprhsiz);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SCB NEXT:"); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_next);
+                ImGui::TextColored(orange, " SCB NEXT:"); ImGui::SameLine(); ImGui::Text("$%04X", entry.scb_next);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SPRVSIZ: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.sprvsiz);
+                ImGui::TextColored(orange, " SPRVSIZ: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.sprvsiz);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SPRCTL0: "); ImGui::SameLine(); ImGui::Text("$%02X", entry.sprctl0);
+                ImGui::TextColored(orange, " SPRCTL0: "); ImGui::SameLine(); ImGui::Text("$%02X", entry.sprctl0);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " STRETCH: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.stretch);
+                ImGui::TextColored(orange, " STRETCH: "); ImGui::SameLine(); ImGui::Text("$%04X", entry.stretch);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SPRCTL1: "); ImGui::SameLine(); ImGui::Text("$%02X", entry.sprctl1);
+                ImGui::TextColored(orange, " SPRCTL1: "); ImGui::SameLine(); ImGui::Text("$%02X", entry.sprctl1);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " TILT:    "); ImGui::SameLine(); ImGui::Text("$%04X", entry.tilt);
+                ImGui::TextColored(orange, " TILT:    "); ImGui::SameLine(); ImGui::Text("$%04X", entry.tilt);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SPRCOLL: "); ImGui::SameLine(); ImGui::Text("$%02X", entry.sprcoll);
+                ImGui::TextColored(orange, " SPRCOLL: "); ImGui::SameLine(); ImGui::Text("$%02X", entry.sprcoll);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " H FLIP:  "); ImGui::SameLine(); ImGui::TextColored(entry.h_flip ? green : gray, "%s", entry.h_flip ? "YES" : "NO");
+                ImGui::TextColored(orange, " H FLIP:  "); ImGui::SameLine(); ImGui::TextColored(entry.h_flip ? green : gray, "%s", entry.h_flip ? "YES" : "NO");
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " POS X:   "); ImGui::SameLine(); ImGui::Text("%d", entry.hpos);
+                ImGui::TextColored(orange, " POS X:   "); ImGui::SameLine(); ImGui::Text("%d", entry.hpos);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " V FLIP:  "); ImGui::SameLine(); ImGui::TextColored(entry.v_flip ? green : gray, "%s", entry.v_flip ? "YES" : "NO");
+                ImGui::TextColored(orange, " V FLIP:  "); ImGui::SameLine(); ImGui::TextColored(entry.v_flip ? green : gray, "%s", entry.v_flip ? "YES" : "NO");
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " POS Y:   "); ImGui::SameLine(); ImGui::Text("%d", entry.vpos);
+                ImGui::TextColored(orange, " POS Y:   "); ImGui::SameLine(); ImGui::Text("%d", entry.vpos);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " LITERAL: "); ImGui::SameLine(); ImGui::TextColored(entry.literal_only ? green : gray, "%s", entry.literal_only ? "YES" : "NO");
+                ImGui::TextColored(orange, " LITERAL: "); ImGui::SameLine(); ImGui::TextColored(entry.literal_only ? green : gray, "%s", entry.literal_only ? "YES" : "NO");
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " SIZE:    "); ImGui::SameLine(); ImGui::Text("%dx%d", w_s, h_s);
+                ImGui::TextColored(orange, " SIZE:    "); ImGui::SameLine(); ImGui::Text("%dx%d", w_s, h_s);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " RDEPTH:  "); ImGui::SameLine(); ImGui::Text("%d", entry.reload_depth);
+                ImGui::TextColored(orange, " RDEPTH:  "); ImGui::SameLine(); ImGui::Text("%d", entry.reload_depth);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " BPP:     "); ImGui::SameLine(); ImGui::Text("%d", entry.bpp);
+                ImGui::TextColored(orange, " BPP:     "); ImGui::SameLine(); ImGui::Text("%d", entry.bpp);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " RPALETTE:"); ImGui::SameLine(); ImGui::TextColored(entry.reload_palette ? green : gray, "%s", entry.reload_palette ? "YES" : "NO");
+                ImGui::TextColored(orange, " RPALETTE:"); ImGui::SameLine(); ImGui::TextColored(entry.reload_palette ? green : gray, "%s", entry.reload_palette ? "YES" : "NO");
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " TYPE:    "); ImGui::SameLine(); ImGui::Text("%d", entry.type);
+                ImGui::TextColored(orange, " TYPE:    "); ImGui::SameLine(); ImGui::Text("%d", entry.type);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " COLL ID: "); ImGui::SameLine(); ImGui::Text("%d", coll_id);
+                ImGui::TextColored(orange, " COLL ID: "); ImGui::SameLine(); ImGui::Text("%d", coll_id);
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " TYPE:    "); ImGui::SameLine(); ImGui::TextColored(yellow, "%s", k_sprite_type_names[entry.type & 0x07]);
+                ImGui::TextColored(orange, " TYPE:    "); ImGui::SameLine(); ImGui::TextColored(yellow, "%s", k_sprite_type_names[entry.type & 0x07]);
                 ImGui::TableNextColumn();
-                ImGui::TextColored(violet, " COLL DIS:"); ImGui::SameLine(); ImGui::TextColored(coll_dis ? red : gray, "%s", coll_dis ? "YES" : "NO");
+                ImGui::TextColored(orange, " COLL DIS:"); ImGui::SameLine(); ImGui::TextColored(coll_dis ? red : gray, "%s", coll_dis ? "YES" : "NO");
 
                 ImGui::EndTable();
             }
@@ -336,8 +347,8 @@ void gui_debug_window_scb_viewer(void)
 
             float fw = (float)w * preview_scale;
             float fh = (float)h * preview_scale;
-            float tex_u = (float)w / 256.0f;
-            float tex_v = (float)h / 256.0f;
+            float tex_u = (float)w / 512.0f;
+            float tex_v = (float)h / 512.0f;
 
             ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_emu_debug_sprites[display_sprite],
                          ImVec2(fw, fh), ImVec2(0.0f, 0.0f), ImVec2(tex_u, tex_v));

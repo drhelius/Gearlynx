@@ -41,6 +41,7 @@ static void reset_buffers(void);
 static const char* get_configurated_dir(int option, const char* path);
 static void init_debug(void);
 static void destroy_debug(void);
+static void reset_debug(void);
 static void update_debug(void);
 static void update_debug_framebuffers(void);
 static void update_debug_sprites(void);
@@ -113,6 +114,7 @@ bool emu_load_rom(const char* file_path)
 {
     emu_debug_command = Debug_Command_None;
     reset_buffers();
+    reset_debug();
     emu_audio_reset();
 
     save_ram();
@@ -245,6 +247,7 @@ void emu_reset(void)
 {
     emu_debug_command = Debug_Command_None;
     reset_buffers();
+    reset_debug();
     emu_audio_reset();
 
     save_ram();
@@ -555,7 +558,7 @@ void emu_save_sprite(const char* file_path, int index)
     if (!buffer || width <= 0 || height <= 0)
         return;
 
-    stbi_write_png(file_path, width, height, 4, buffer, 256 * 4);
+    stbi_write_png(file_path, width, height, 4, buffer, 512 * 4);
 
     Log("Sprite saved to %s", file_path);
 }
@@ -608,7 +611,7 @@ int emu_get_sprite_png(int index, unsigned char** out_buffer)
     if (!buffer || width <= 0 || height <= 0)
         return 0;
 
-    int stride = 256 * 4;
+    int stride = 512 * 4;
     int len = 0;
 
     *out_buffer = stbi_write_png_to_mem(buffer, stride,
@@ -665,8 +668,8 @@ static void init_debug(void)
 
     for (int i = 0; i < DEBUG_MAX_SPRITES; i++)
     {
-        emu_debug_sprite_buffers[i] = new u8[256 * 256 * 4];
-        memset(emu_debug_sprite_buffers[i], 0, 256 * 256 * 4);
+        emu_debug_sprite_buffers[i] = new u8[512 * 512 * 4];
+        memset(emu_debug_sprite_buffers[i], 0, 512 * 512 * 4);
         emu_debug_sprite_widths[i] = 0;
         emu_debug_sprite_heights[i] = 0;
     }
@@ -681,6 +684,21 @@ static void destroy_debug(void)
         SafeDeleteArray(emu_debug_sprite_buffers[i]);
 }
 
+static void reset_debug(void)
+{
+    emu_debug_scb_count = 0;
+
+    for (int i = 0; i < 5; i++)
+        memset(emu_debug_framebuffer[i], 0, 256 * 256 * 4);
+
+    for (int i = 0; i < DEBUG_MAX_SPRITES; i++)
+    {
+        memset(emu_debug_sprite_buffers[i], 0, 512 * 512 * 4);
+        emu_debug_sprite_widths[i] = 0;
+        emu_debug_sprite_heights[i] = 0;
+    }
+}
+
 static void update_debug(void)
 {
     if (config_debug.show_frame_buffers)
@@ -692,10 +710,15 @@ static void update_debug(void)
 
     if (config_debug.show_scb_viewer)
     {
-        if (config_debug.scb_viewer_mode == 1)
-            update_debug_sprites_accumulated();
-        else
-            update_debug_sprites();
+        if (emu_is_paused() || emu_is_debug_idle())
+        {
+            if (config_debug.scb_viewer_mode == 1)
+                update_debug_sprites_accumulated();
+            else
+                update_debug_sprites();
+
+            render_debug_sprites(emu_debug_scb_count);
+        }
     }
 }
 
@@ -887,7 +910,7 @@ static void update_debug_sprites(void)
         scb_addr = scb_next;
     }
 
-    render_debug_sprites(count);
+    emu_debug_scb_count = count;
 }
 
 static void update_debug_sprites_accumulated(void)
@@ -946,7 +969,7 @@ static void update_debug_sprites_accumulated(void)
         memcpy(info.pen_map, src.pen_map, 16);
     }
 
-    render_debug_sprites(count);
+    emu_debug_scb_count = count;
 #endif
 }
 
@@ -964,8 +987,8 @@ struct SpriteQuadPos
     bool up;
 };
 
-static const int k_sprite_buf_w = 256;
-static const int k_sprite_buf_h = 256;
+static const int k_sprite_buf_w = 512;
+static const int k_sprite_buf_h = 512;
 static const u32 k_sprite_sreg_eof = 0xFFFFFFFFu;
 static const u8 k_sprite_max_line_size = 200;
 static const int k_sprite_max_lines = 512;
@@ -1200,7 +1223,7 @@ static void render_debug_sprites(int count)
                     }
                 }
 
-                if (!bbox_done)
+                if (!bbox_done && x != start_x)
                 {
                     min_y = MIN(cur_y, min_y);
                     max_y = MAX(cur_y, max_y);
@@ -1256,6 +1279,16 @@ static void render_debug_sprites(int count)
 
         s32 ox = -min_x;
         s32 oy = -min_y;
+
+        // Clamp offsets so pixels land within the buffer
+        if (ox + max_x >= k_sprite_buf_w)
+            ox = k_sprite_buf_w - 1 - max_x;
+        if (oy + max_y >= k_sprite_buf_h)
+            oy = k_sprite_buf_h - 1 - max_y;
+        if (ox < -min_x)
+            ox = MAX(ox, 0);
+        if (oy < -min_y)
+            oy = MAX(oy, 0);
 
         // Second pass: render pixels
         bool render_done = false;
@@ -1442,8 +1475,6 @@ static void render_debug_sprites(int count)
             }
         }
     }
-
-    emu_debug_scb_count = count;
 
     // Clear remaining slots
     for (int idx = count; idx < DEBUG_MAX_SPRITES; idx++)

@@ -1599,7 +1599,7 @@ json DebugAdapter::GetFrameBuffer(const std::string& buffer_type)
     return result;
 }
 
-json DebugAdapter::GetSprite(int index)
+json DebugAdapter::GetSprite(int index, const std::string& format)
 {
     json result;
 
@@ -1615,9 +1615,61 @@ json DebugAdapter::GetSprite(int index)
         return result;
     }
 
+    GLYNX_Debug_SCB_Info& info = emu_debug_scb_info[index];
     int width = emu_debug_sprite_widths[index];
     int height = emu_debug_sprite_heights[index];
 
+    if (format == "info")
+    {
+        std::ostringstream ss;
+        ss << std::hex << std::uppercase << std::setfill('0');
+
+        result["scb_index"] = index;
+        ss << std::setw(4) << info.scb_address;
+        result["scb_address"] = ss.str(); ss.str("");
+        ss << std::setw(4) << info.scb_next;
+        result["scb_next"] = ss.str(); ss.str("");
+        ss << std::setw(2) << (int)info.sprctl0;
+        result["sprctl0"] = ss.str(); ss.str("");
+        ss << std::setw(2) << (int)info.sprctl1;
+        result["sprctl1"] = ss.str(); ss.str("");
+        ss << std::setw(2) << (int)info.sprcoll;
+        result["sprcoll"] = ss.str(); ss.str("");
+        result["hpos"] = info.hpos;
+        result["vpos"] = info.vpos;
+        result["width"] = width;
+        result["height"] = height;
+        result["bpp"] = info.bpp;
+        result["type"] = info.type;
+        result["h_flip"] = info.h_flip;
+        result["v_flip"] = info.v_flip;
+        result["literal_only"] = info.literal_only;
+        result["reload_depth"] = info.reload_depth;
+        result["reload_palette"] = info.reload_palette;
+        ss << std::setw(4) << info.sprdline;
+        result["sprdline"] = ss.str(); ss.str("");
+        ss << std::setw(4) << info.sprhsiz;
+        result["sprhsiz"] = ss.str(); ss.str("");
+        ss << std::setw(4) << info.sprvsiz;
+        result["sprvsiz"] = ss.str(); ss.str("");
+        ss << std::setw(4) << info.stretch;
+        result["stretch"] = ss.str(); ss.str("");
+        ss << std::setw(4) << info.tilt;
+        result["tilt"] = ss.str(); ss.str("");
+        result["collision_id"] = info.sprcoll & 0x0F;
+        result["collision_disabled"] = IS_SET_BIT(info.sprcoll, 5);
+        result["skipped"] = info.skipped;
+
+        // Include pen_map
+        json pen = json::array();
+        for (int i = 0; i < 16; i++)
+            pen.push_back(info.pen_map[i]);
+        result["pen_map"] = pen;
+
+        return result;
+    }
+
+    // format == "image"
     if (width <= 0 || height <= 0)
     {
         result["error"] = "Sprite has no rendered data";
@@ -1636,36 +1688,11 @@ json DebugAdapter::GetSprite(int index)
     std::string base64_png = base64_encode(png_buffer, png_size);
     free(png_buffer);
 
-    GLYNX_Debug_SCB_Info& info = emu_debug_scb_info[index];
-
     result["__mcp_image"] = true;
     result["data"] = base64_png;
     result["mimeType"] = "image/png";
     result["width"] = width;
     result["height"] = height;
-    result["scb_index"] = index;
-    result["scb_address"] = info.scb_address;
-    result["scb_next"] = info.scb_next;
-    result["sprctl0"] = info.sprctl0;
-    result["sprctl1"] = info.sprctl1;
-    result["sprcoll"] = info.sprcoll;
-    result["hpos"] = info.hpos;
-    result["vpos"] = info.vpos;
-    result["bpp"] = info.bpp;
-    result["type"] = info.type;
-    result["h_flip"] = info.h_flip;
-    result["v_flip"] = info.v_flip;
-    result["literal_only"] = info.literal_only;
-    result["reload_depth"] = info.reload_depth;
-    result["reload_palette"] = info.reload_palette;
-    result["sprdline"] = info.sprdline;
-    result["sprhsiz"] = info.sprhsiz;
-    result["sprvsiz"] = info.sprvsiz;
-    result["stretch"] = info.stretch;
-    result["tilt"] = info.tilt;
-    result["collision_id"] = info.sprcoll & 0x0F;
-    result["collision_disabled"] = IS_SET_BIT(info.sprcoll, 5);
-    result["skipped"] = info.skipped;
 
     return result;
 }

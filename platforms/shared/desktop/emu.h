@@ -28,7 +28,7 @@
     #define EXTERN extern
 #endif
 
-#define DEBUG_MAX_SPRITES 256
+#define DEBUG_MAX_SPRITES 200
 
 enum Debug_Command
 {
