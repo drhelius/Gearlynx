@@ -29,6 +29,7 @@
 #include "config.h"
 #include "emu.h"
 #include "ogl_renderer.h"
+#include <cmath>
 
 static void draw_context_menu_sprite(int index);
 
