@@ -68,6 +68,10 @@ struct GLYNX_Debug_SCB_Info
     u16 tilt;
     u8 pen_map[16];
     bool skipped;
+    s32 bbox_x;
+    s32 bbox_y;
+    s16 hoff;
+    s16 voff;
 };
 
 EXTERN u8* emu_frame_buffer;

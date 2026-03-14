@@ -134,6 +134,8 @@ public:
         u16 tilt;
         u8 pen_map[16];
         bool skipped;
+        s16 hoff;
+        s16 voff;
     };
     std::vector<GLYNX_SCB_Info>* GetFrameSCBList();
     void SwapFrameSCBList();

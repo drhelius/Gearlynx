@@ -662,6 +662,8 @@ INLINE void Suzy::DrawSprite()
             si.sprctl1 = m_state.SPRCTL1;
             si.sprcoll = m_state.SPRCOLL;
             si.skipped = true;
+            si.hoff = (s16)m_state.HOFF.value;
+            si.voff = (s16)m_state.VOFF.value;
             m_frame_scb_list.push_back(si);
         }
 #endif
@@ -767,6 +769,8 @@ INLINE void Suzy::DrawSprite()
         si.stretch = m_state.STRETCH.value;
         si.tilt = m_state.TILT.value;
         si.skipped = false;
+        si.hoff = (s16)m_state.HOFF.value;
+        si.voff = (s16)m_state.VOFF.value;
         memcpy(si.pen_map, m_state.pen_map, 16);
         m_frame_scb_list.push_back(si);
     }

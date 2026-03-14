@@ -701,7 +701,7 @@ static void reset_debug(void)
 
 static void update_debug(void)
 {
-    if (config_debug.show_frame_buffers)
+    if (config_debug.show_frame_buffers || config_debug.show_scb_viewer)
         update_debug_framebuffers();
 
     bool accumulate = config_debug.show_scb_viewer && config_debug.scb_viewer_mode == 1;
@@ -839,6 +839,8 @@ static void update_debug_sprites(void)
             info.stretch = 0;
             info.tilt = 0;
             memset(info.pen_map, 0, 16);
+            info.hoff = (s16)suzy_state->HOFF.value;
+            info.voff = (s16)suzy_state->VOFF.value;
 
             count++;
             scb_addr = scb_next;
@@ -905,6 +907,8 @@ static void update_debug_sprites(void)
         info.stretch = stretch_val;
         info.tilt = tilt_val;
         memcpy(info.pen_map, pen_map, 16);
+        info.hoff = (s16)suzy_state->HOFF.value;
+        info.voff = (s16)suzy_state->VOFF.value;
 
         count++;
         scb_addr = scb_next;
@@ -967,6 +971,8 @@ static void update_debug_sprites_accumulated(void)
         info.stretch = src.stretch;
         info.tilt = src.tilt;
         memcpy(info.pen_map, src.pen_map, 16);
+        info.hoff = src.hoff;
+        info.voff = src.voff;
     }
 
     emu_debug_scb_count = count;
@@ -1276,6 +1282,8 @@ static void render_debug_sprites(int count)
 
         emu_debug_sprite_widths[s] = spr_w;
         emu_debug_sprite_heights[s] = spr_h;
+        info.bbox_x = min_x;
+        info.bbox_y = min_y;
 
         s32 ox = -min_x;
         s32 oy = -min_y;
