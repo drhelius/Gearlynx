@@ -631,7 +631,7 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
         if (prescaler_changed || enable_count_rising)
         {
             if (enable_count_rising)
-                c->internal_cycles = (c->internal_period_cycles / 2);
+                c->internal_cycles = (c->internal_period_cycles / 2) + 1;
             else
                 c->internal_cycles = 0;
             c->internal_pending_ticks = 0;
@@ -649,7 +649,7 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
     }
     case 6:
         c->counter = value;
-        c->internal_cycles = (c->internal_period_cycles / 2);
+        c->internal_cycles = (c->internal_period_cycles / 2) + 1;
         break;
     case 7:
         if (IS_NOT_SET_BIT(c->other, 1) && IS_SET_BIT(value, 1))
