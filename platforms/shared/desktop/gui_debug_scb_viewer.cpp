@@ -385,8 +385,8 @@ void gui_debug_window_scb_viewer(void)
                 {
                     float rel_x = (float)((s16)entry.hpos - hoff + entry.bbox_x) * scale;
                     float rel_y = (float)((s16)entry.vpos - voff + entry.bbox_y) * scale;
-                    float spr_w = (float)w * scale;
-                    float spr_h = (float)h * scale;
+                    float spr_w = (float)entry.bbox_w * scale;
+                    float spr_h = (float)entry.bbox_h * scale;
 
                     float x0 = MAX(rel_x, 0.0f);
                     float y0 = MAX(rel_y, 0.0f);

@@ -70,6 +70,8 @@ struct GLYNX_Debug_SCB_Info
     bool skipped;
     s32 bbox_x;
     s32 bbox_y;
+    int bbox_w;
+    int bbox_h;
     s16 hoff;
     s16 voff;
 };

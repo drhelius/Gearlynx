@@ -1284,6 +1284,8 @@ static void render_debug_sprites(int count)
         emu_debug_sprite_heights[s] = spr_h;
         info.bbox_x = min_x;
         info.bbox_y = min_y;
+        info.bbox_w = (int)(max_x - min_x + 1);
+        info.bbox_h = (int)(max_y - min_y + 1);
 
         s32 ox = -min_x;
         s32 oy = -min_y;

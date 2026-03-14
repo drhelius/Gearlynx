@@ -1659,6 +1659,10 @@ json DebugAdapter::GetSprite(int index, const std::string& format)
         result["collision_id"] = info.sprcoll & 0x0F;
         result["collision_disabled"] = IS_SET_BIT(info.sprcoll, 5);
         result["skipped"] = info.skipped;
+        result["bbox_x"] = info.bbox_x;
+        result["bbox_y"] = info.bbox_y;
+        result["hoff"] = info.hoff;
+        result["voff"] = info.voff;
 
         // Include pen_map
         json pen = json::array();
