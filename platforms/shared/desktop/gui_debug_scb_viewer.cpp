@@ -48,7 +48,7 @@ void gui_debug_window_scb_viewer(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(78, 56), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(586, 506), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(494, 464), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("SCB Viewer", &config_debug.show_scb_viewer, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
