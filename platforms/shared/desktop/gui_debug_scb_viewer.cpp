@@ -414,8 +414,10 @@ void gui_debug_window_scb_viewer(void)
                 ImGui::TextColored(orange, " VOFF:"); ImGui::SameLine(); ImGui::Text("%d", voff);
                 if (!entry.skipped)
                 {
-                    ImGui::TextColored(cyan, "Sprite:"); ImGui::SameLine();
-                    ImGui::Text("(%d, %d) %dx%d", entry.hpos, entry.vpos, w, h);
+                    ImGui::TextColored(violet, "POS:"); ImGui::SameLine();
+                    ImGui::Text("(%d, %d)", entry.hpos, entry.vpos); ImGui::SameLine();
+                    ImGui::TextColored(violet, " SIZE:"); ImGui::SameLine();
+                    ImGui::Text("%dx%d", w, h);
                 }
 
                 ImGui::PopFont();
