@@ -196,6 +196,12 @@ void emu_update(void)
     {
         sound_queue_write(audio_buffer, sampleCount, emu_audio_sync);
     }
+    else if (core->IsPaused())
+    {
+        int silence_count = GLYNX_AUDIO_QUEUE_SIZE;
+        memset(audio_buffer, 0, silence_count * sizeof(s16));
+        sound_queue_write(audio_buffer, silence_count, false);
+    }
 }
 
 void emu_key_pressed(GLYNX_Keys key)
