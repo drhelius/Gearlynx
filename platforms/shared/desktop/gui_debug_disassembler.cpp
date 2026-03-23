@@ -1707,13 +1707,14 @@ void gui_debug_window_call_stack(void)
 
             symbol_text[0] = 0;
 
-            symbol_text[0] = 0;
-
             GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(entry.dest);
 
             if (IsValidPointer(record) && (record->name[0] != 0))
             {
                 DebugSymbol* symbol = fixed_symbols[entry.dest];
+
+                if (!IsValidPointer(symbol))
+                    symbol = dynamic_symbols[entry.dest];
 
                 if (IsValidPointer(symbol))
                     snprintf(symbol_text, sizeof(symbol_text), "%s", symbol->text);
