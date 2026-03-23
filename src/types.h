@@ -181,6 +181,7 @@ struct GLYNX_Disassembler_Record
     bool has_operand_address;
     u16 operand_address;
     bool operand_is_zp;
+    char auto_symbol[64];
 };
 
 struct GLYNX_Mikey_Timer

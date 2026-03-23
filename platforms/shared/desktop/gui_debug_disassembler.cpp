@@ -86,7 +86,6 @@ static void prepare_drawable_lines(void);
 static void draw_disassembly(void);
 static void draw_context_menu(DisassemblerLine* line);
 static void add_symbol(const char* line);
-static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address);
 static void add_breakpoint();
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
@@ -512,6 +511,12 @@ static void draw_breakpoints_content(void)
                 ImGui::TextColored(brk->enabled ? green : gray, " %s", symbol->text);
                 symbol_shown = true;
             }
+            else if (record->auto_symbol[0] != 0)
+            {
+                ImGui::SameLine(0, 0);
+                ImGui::TextColored(brk->enabled ? green : gray, " %s", record->auto_symbol);
+                symbol_shown = true;
+            }
         }
 
         if (!symbol_shown && brk->execute && IsValidPointer(record))
@@ -580,18 +585,31 @@ static void prepare_drawable_lines(void)
             if ((i >= 0xFE00) && (rom_enabled != record->rom))
                 continue;
 
-            add_auto_symbol(record, i);
-        }
-    }
+            if (record->auto_symbol[0] != 0)
+            {
+                DebugSymbol* existing = dynamic_symbols[i];
+                if (!IsValidPointer(existing))
+                {
+                    existing = new DebugSymbol;
+                    existing->address = (u16)i;
+                    snprintf(existing->text, 64, "%s", record->auto_symbol);
+                    dynamic_symbols[i] = existing;
 
-    for (int i = 0; i < 0x10000; i++)
-    {
-        GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(i);
+                    SymbolEntry entry;
+                    entry.symbol = existing;
+                    entry.is_fixed = false;
+                    dynamic_symbol_list.push_back(entry);
 
-        if (IsValidPointer(record) && (record->name[0] != 0))
-        {
-            if ((i >= 0xFE00) && (rom_enabled != record->rom))
-                continue;
+                    if (show_auto_symbols)
+                        symbols_dirty = true;
+                }
+                else if (strcmp(existing->text, record->auto_symbol) != 0)
+                {
+                    snprintf(existing->text, 64, "%s", record->auto_symbol);
+                    if (show_auto_symbols)
+                        symbols_dirty = true;
+                }
+            }
 
             bool fixed_symbol_found = false;
             if (config_debug.dis_show_symbols)
@@ -1002,64 +1020,6 @@ static void add_symbol(const char* line)
     }
 }
 
-static const char* k_irq_symbol_format[4] = {
-    "????_%04X",
-    "RESET_%04X",
-    "NMI_%04X",
-    "IRQ_%04X"
-};
-
-static void add_auto_symbol(GLYNX_Disassembler_Record* record, u16 address)
-{
-    DebugSymbol s;
-    bool insert = false;
-
-    if (record->irq > 0 && record->irq < 4)
-    {
-        s.address = address;
-        insert = true;
-        snprintf(s.text, 64, k_irq_symbol_format[record->irq], address);
-    }
-    else if (record->jump)
-    {
-        s.address = record->jump_address;
-        insert = true;
-        if (record->subroutine)
-            snprintf(s.text, 64, "SUB_%04X", record->jump_address);
-        else
-            snprintf(s.text, 64, "TAG_%04X", record->jump_address);
-    }
-
-    if (insert)
-    {
-        DebugSymbol* new_symbol = dynamic_symbols[s.address];
-
-        if (IsValidPointer(new_symbol))
-        {
-           if (record->subroutine)
-               snprintf(dynamic_symbols[s.address]->text, 64, "SUB_%04X", record->jump_address);
-           if (show_auto_symbols)
-               symbols_dirty = true;
-        }
-        else
-        {
-            new_symbol = new DebugSymbol;
-            new_symbol->address = s.address;
-            snprintf(new_symbol->text, 64, "%s", s.text);
-
-            dynamic_symbols[s.address] = new_symbol;
-
-            SymbolEntry entry;
-            entry.symbol = new_symbol;
-            entry.is_fixed = false;
-            dynamic_symbol_list.push_back(entry);
-
-            if (show_auto_symbols)
-                symbols_dirty = true;
-        }
-    }
-}
-
 static void add_breakpoint()
 {
     bool read = new_breakpoint_read;
@@ -1211,13 +1171,25 @@ static void replace_symbols(DisassemblerLine* line, const char* jump_color, cons
 
     DebugSymbol* dynamic_symbol = dynamic_symbols[lookup_address];
 
+    const char* auto_symbol_text = NULL;
     if (IsValidPointer(dynamic_symbol))
     {
-        std::string replacement = std::string(auto_color) + dynamic_symbol->text + original_color;
+        auto_symbol_text = dynamic_symbol->text;
+    }
+    else
+    {
+        GLYNX_Disassembler_Record* target = emu_get_core()->GetMemory()->GetDisassemblerRecord(lookup_address);
+        if (IsValidPointer(target) && target->auto_symbol[0] != 0)
+            auto_symbol_text = target->auto_symbol;
+    }
+
+    if (auto_symbol_text != NULL)
+    {
+        std::string replacement = std::string(auto_color) + auto_symbol_text + original_color;
         if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
         {
             snprintf(line->name_enhanced, 64, "%s", instr.c_str());
-            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", auto_color, dynamic_symbol->text, c_white, c_cyan, lookup_address);
+            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", auto_color, auto_symbol_text, c_white, c_cyan, lookup_address);
         }
     }
 }
@@ -1733,6 +1705,10 @@ void gui_debug_window_call_stack(void)
             M6502::GLYNX_CallStackEntry entry = temp_stack.top();
             temp_stack.pop();
 
+            symbol_text[0] = 0;
+
+            symbol_text[0] = 0;
+
             GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(entry.dest);
 
             if (IsValidPointer(record) && (record->name[0] != 0))
@@ -1741,15 +1717,8 @@ void gui_debug_window_call_stack(void)
 
                 if (IsValidPointer(symbol))
                     snprintf(symbol_text, sizeof(symbol_text), "%s", symbol->text);
-                else 
-                {
-                    DebugSymbol* symbol = dynamic_symbols[entry.dest];
-
-                    if (IsValidPointer(symbol))
-                        snprintf(symbol_text, sizeof(symbol_text), "%s", symbol->text);
-                    else
-                        symbol_text[0] = 0;
-                }
+                else if (record->auto_symbol[0] != 0)
+                    snprintf(symbol_text, sizeof(symbol_text), "%s", record->auto_symbol);
             }
 
             ImGui::TableNextColumn();

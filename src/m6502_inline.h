@@ -665,6 +665,30 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         record->subroutine = true;
     }
 
+    if (record->irq > 0 && record->irq < 4)
+    {
+        static const char* k_irq_auto_symbol_format[4] = {
+            "????_%04X", "RESET_%04X", "NMI_%04X", "IRQ_%04X"
+        };
+        snprintf(record->auto_symbol, 64, k_irq_auto_symbol_format[record->irq], address);
+    }
+
+    if (record->jump && record->jump_address != 0)
+    {
+        GLYNX_Disassembler_Record* target = m_memory->GetOrCreateDisassemblerRecord(record->jump_address);
+        if (IsValidPointer(target))
+        {
+            if (record->subroutine)
+            {
+                snprintf(target->auto_symbol, 64, "SUB_%04X", record->jump_address);
+            }
+            else if (strncmp(target->auto_symbol, "SUB_", 4) != 0)
+            {
+                snprintf(target->auto_symbol, 64, "TAG_%04X", record->jump_address);
+            }
+        }
+    }
+
     if (record->rom)
         strncpy(record->segment, "BIOS", 5);
     else
