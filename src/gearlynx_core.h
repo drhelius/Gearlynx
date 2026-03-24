@@ -32,6 +32,7 @@ class Media;
 class M6502;
 class Suzy;
 class Mikey;
+class TraceLogger;
 
 class GearlynxCore
 {
@@ -45,8 +46,6 @@ public:
         u8 stop_on_irq;
         bool skip_interrupts_on_step;
     };
-
-    typedef void (*GLYNX_Debug_Callback)();
 
 public:
     GearlynxCore();
@@ -81,8 +80,8 @@ public:
     Suzy* GetSuzy();
     Mikey* GetMikey();
     Bus* GetBus();
-    void SetDebugCallback(GLYNX_Debug_Callback callback);
     u64 GetTotalCycles();
+    TraceLogger* GetTraceLogger();
 
 private:
     void Reset();
@@ -103,8 +102,8 @@ private:
     M6502* m_m6502;
     Suzy* m_suzy;
     Mikey* m_mikey;
+    TraceLogger* m_trace_logger;
     bool m_paused;
-    GLYNX_Debug_Callback m_debug_callback;
     u64 m_total_cycles;
 };
 

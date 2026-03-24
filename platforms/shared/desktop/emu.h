@@ -132,7 +132,6 @@ EXTERN void emu_debug_step_out(void);
 EXTERN void emu_debug_step_frame(void);
 EXTERN void emu_debug_break(void);
 EXTERN void emu_debug_continue(void);
-EXTERN void emu_debug_set_callback(GearlynxCore::GLYNX_Debug_Callback callback);
 EXTERN void emu_save_screenshot(const char* file_path);
 EXTERN void emu_save_sprite(const char* file_path, int index);
 EXTERN int emu_get_sprite_png(int index, unsigned char** out_buffer);

@@ -33,6 +33,7 @@ class Audio;
 class Bus;
 class LcdScreen;
 class StateSerializer;
+class TraceLogger;
 
 class Mikey
 {
@@ -79,6 +80,7 @@ public:
     Mikey_State* GetState();
     LcdScreen* GetLcdScreen();
     bool SwitchAudInValue();
+    void SetTraceLogger(TraceLogger* trace_logger);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -122,6 +124,7 @@ private:
     LcdScreen* m_lcd_screen;
     Mikey_State m_state;
     bool m_is_lynx2;
+    TraceLogger* m_trace_logger;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

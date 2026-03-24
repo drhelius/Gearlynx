@@ -33,6 +33,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
     m_bus = bus;
     InitPointer(m_audio);
     InitPointer(m_lcd_screen);
+    InitPointer(m_trace_logger);
 }
 
 Mikey::~Mikey()
@@ -50,6 +51,11 @@ void Mikey::Init(Memory* memory, GLYNX_Pixel_Format pixel_format)
 void Mikey::SetAudio(Audio* audio)
 {
     m_audio = audio;
+}
+
+void Mikey::SetTraceLogger(TraceLogger* trace_logger)
+{
+    m_trace_logger = trace_logger;
 }
 
 void Mikey::Reset(bool is_lynx2)

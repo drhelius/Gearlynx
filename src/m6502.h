@@ -42,6 +42,7 @@
 class Memory;
 class StateSerializer;
 class Bus;
+class TraceLogger;
 
 class M6502
 {
@@ -115,6 +116,7 @@ public:
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
     void CheckMemoryBreakpoints(u16 address, bool read);
     void SetPageModeEnabled(bool enabled);
+    void SetTraceLogger(TraceLogger* trace_logger);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -126,6 +128,7 @@ private:
     u8 m_zn_flags_lut[256];
     Memory* m_memory;
     Bus* m_bus;
+    TraceLogger* m_trace_logger;
     M6502_State m_s;
     bool m_breakpoints_enabled;
     u8 m_breakpoints_irq_enabled;

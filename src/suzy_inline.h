@@ -25,6 +25,7 @@
 #include "m6502.h"
 #include "input.h"
 #include "bus.h"
+#include "trace_logger.h"
 
 INLINE void Suzy::Clock(u32 cycles)
 {
@@ -188,11 +189,39 @@ INLINE u8 Suzy::Read(u16 address)
         return ret;
     }
     case SUZY_JOYSTICK:    // 0xFCB0
-        DebugSuzy("Reading JOYSTICK: %02X", m_input->ReadJoystick());
-        return m_input->ReadJoystick();
+    {
+        u8 joy = m_input->ReadJoystick();
+        DebugSuzy("Reading JOYSTICK: %02X", joy);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
+        {
+            GLYNX_Trace_Entry e;
+            e.type = TRACE_SUZY_INPUT;
+            e.cycle = 0;
+            e.input.value = joy;
+            e.input.is_joystick = true;
+            m_trace_logger->TraceLog(e);
+        }
+#endif
+        return joy;
+    }
     case SUZY_SWITCHES:    // 0xFCB1
-        DebugSuzy("Reading SWITCHES: %02X", m_input->ReadSwitches());
-        return m_input->ReadSwitches();
+    {
+        u8 sw = m_input->ReadSwitches();
+        DebugSuzy("Reading SWITCHES: %02X", sw);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
+        {
+            GLYNX_Trace_Entry e;
+            e.type = TRACE_SUZY_INPUT;
+            e.cycle = 0;
+            e.input.value = sw;
+            e.input.is_joystick = false;
+            m_trace_logger->TraceLog(e);
+        }
+#endif
+        return sw;
+    }
     case SUZY_RCART0:      // 0xFCB2
         //DebugSuzy("Reading RCART0");
         if (!debug)
@@ -621,12 +650,34 @@ INLINE void Suzy::SpritesGo()
     m_state.sprite_cycles = 0;
     m_state.sprsys_spritesbusy = true;
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_SUZY_SPRITE;
+        e.sprite.scb_addr = m_state.SCBNEXT.value;
+        e.sprite.is_start = true;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
+
     while ((m_state.SCBNEXT.value & 0xFF00) != 0)
     {
         DrawSprite();
     }
 
     DebugSuzy("SpritesGo finished: total cycles = %d", m_state.sprite_cycles);
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_SUZY_SPRITE;
+        e.sprite.is_end = true;
+        e.sprite.total_cycles = m_state.sprite_cycles;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
 
     if (m_state.sprite_cycles == 0)
     {
@@ -652,6 +703,17 @@ INLINE void Suzy::DrawSprite()
     if (IS_SET_BIT(m_state.SPRCTL1, 2))
     {
         DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", m_state.SCBADR.value);
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
+        {
+            GLYNX_Trace_Entry e = {};
+            e.type = TRACE_SUZY_SPRITE;
+            e.sprite.scb_addr = m_state.SCBADR.value;
+            e.sprite.skipped = true;
+            m_trace_logger->TraceLog(e);
+        }
+#endif
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
         if (m_scb_accumulation_enabled)
         {
@@ -777,6 +839,22 @@ INLINE void Suzy::DrawSprite()
 #endif
 
     m_state.everon = false;
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_SUZY_SPRITE;
+        e.sprite.scb_addr = m_state.SCBADR.value;
+        e.sprite.scb_next = m_state.SCBNEXT.value;
+        e.sprite.hpos = (s16)m_state.HPOSSTRT.value;
+        e.sprite.vpos = (s16)m_state.VPOSSTRT.value;
+        e.sprite.sprctl0 = m_state.SPRCTL0;
+        e.sprite.bpp = (u8)bpp;
+        e.sprite.type = (u8)type;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
 
     s32 hoff = (s16)m_state.HOFF.value;
     s32 voff = (s16)m_state.VOFF.value;
@@ -1244,6 +1322,15 @@ INLINE void Suzy::UpdateMath(u32 cycles)
             DebugSuzy("Math operation completed");
             m_state.math_cycles = 0;
             m_state.sprsys_mathbusy = false;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (m_trace_logger->IsEnabled(TRACE_SUZY_MATH))
+            {
+                GLYNX_Trace_Entry e = {};
+                e.type = TRACE_SUZY_MATH;
+                e.math.completed = true;
+                m_trace_logger->TraceLog(e);
+            }
+#endif
         }
     }
 }

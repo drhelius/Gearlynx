@@ -32,6 +32,7 @@ M6502::M6502(Bus* bus)
 {
     m_bus = bus;
     InitPointer(m_memory);
+    InitPointer(m_trace_logger);
     m_opcode_cycles = k_m6502_opcode_cycles_lynx2;
     m_opcode_sizes = k_m6502_opcode_sizes_lynx2;
     m_s.cycles = 0;
@@ -67,6 +68,11 @@ void M6502::Init(Memory* memory)
 {
     m_memory = memory;
     CreateZNFlagsTable();
+}
+
+void M6502::SetTraceLogger(TraceLogger* trace_logger)
+{
+    m_trace_logger = trace_logger;
 }
 
 void M6502::Reset(bool is_lynx2)

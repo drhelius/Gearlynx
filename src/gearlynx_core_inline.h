@@ -72,9 +72,6 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
 
         do
         {
-            if (debug_enable && (IsValidPointer(m_debug_callback)) && !m_m6502->IsHalted())
-                m_debug_callback();
-
             u32 cpu_cycles = m_m6502->RunInstruction();
             u32 lynx_cycles = cpu_cycles + m_bus->ConsumeCycles();
             m_total_cycles += lynx_cycles;

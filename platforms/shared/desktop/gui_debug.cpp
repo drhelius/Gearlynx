@@ -68,11 +68,6 @@ void gui_debug_reset(void)
     gui_debug_reset_memory_watches();
 }
 
-void gui_debug_callback(void)
-{
-    gui_debug_trace_logger_update();
-}
-
 void gui_debug_windows(void)
 {
     if (config_debug.debug)

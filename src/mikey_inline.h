@@ -28,6 +28,7 @@
 #include "bit_ops.h"
 #include "bus.h"
 #include "lcd_screen.h"
+#include "trace_logger.h"
 #include "eeprom.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
@@ -253,10 +254,22 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Writing AUDIN (unused): %02X", value);
             break;
         case MIKEY_SYSCTL1:       // 0xFD87
+        {
             DebugMikey("Setting SYSCTL1 to %02X (was %02X)", value, m_state.SYSCTL1);
             m_media->ShiftRegisterStrobe(IS_SET_BIT(value, 0));
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (m_trace_logger->IsEnabled(TRACE_CART_SHIFT) && IS_SET_BIT(value, 0) && !IS_SET_BIT(m_state.SYSCTL1, 0))
+            {
+                GLYNX_Trace_Entry e = {};
+                e.type = TRACE_CART_SHIFT;
+                e.cart.addr_shift = (u8)m_media->GetAddressShift();
+                e.cart.bit = m_media->GetShiftRegisterBit() ? 1 : 0;
+                m_trace_logger->TraceLog(e);
+            }
+#endif
             m_state.SYSCTL1 = value;
             break;
+        }
         case MIKEY_MIKEYHREV:     // 0xFD88
             DebugMikey("Writing to read-only MIKEYHREV: %02X", value);
             break;
@@ -596,6 +609,18 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
     int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
     GLYNX_Mikey_Audio* c = &m_state.audio[i];
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_MIKEY_AUDIO))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_MIKEY_AUDIO;
+        e.audio.channel = (u8)i;
+        e.audio.reg = (u8)reg;
+        e.audio.value = value;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
+
     switch (reg)
     {
     case 0:
@@ -814,7 +839,20 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
 
         // IRQ on borrow attempt (except timer 4 / UART baud)
         if (IS_SET_BIT(t->control_a, 7) && (i != 4))
+        {
             m_state.irq_pending = SET_BIT(m_state.irq_pending, i);
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (m_trace_logger->IsEnabled(TRACE_MIKEY_TIMER))
+            {
+                GLYNX_Trace_Entry e = {};
+                e.type = TRACE_MIKEY_TIMER;
+                e.timer.timer_id = (u8)i;
+                e.timer.backup = t->backup;
+                m_trace_logger->TraceLog(e);
+            }
+#endif
+        }
 
         if (likely(i == 0))
             HorizontalBlank();
@@ -1057,6 +1095,18 @@ inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
         m_state.uart.rxq_data[tail] = data;
         m_state.uart.rxq_flags[tail] = flags;
         m_state.uart.rxq_count++;
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+        {
+            GLYNX_Trace_Entry e = {};
+            e.type = TRACE_MIKEY_UART;
+            e.uart.data = data;
+            e.uart.flags = flags;
+            e.uart.is_tx = false;
+            m_trace_logger->TraceLog(e);
+        }
+#endif
     }
     else
         m_state.uart.ovr_err = true;
@@ -1068,6 +1118,17 @@ inline void Mikey::UartBeginFrame(u8 data)
 {
     m_state.uart.tx_data = data;
     m_state.uart.tx_bit_index = 0;
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_MIKEY_UART;
+        e.uart.data = data;
+        e.uart.is_tx = true;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
 
     if (m_state.uart.par_en)
     {

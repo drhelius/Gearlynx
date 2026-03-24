@@ -35,6 +35,7 @@ class M6502;
 class Input;
 class Bus;
 class StateSerializer;
+class TraceLogger;
 
 class Suzy
 {
@@ -116,6 +117,7 @@ public:
     template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
     bool IsBlitterBusy();
+    void SetTraceLogger(TraceLogger* trace_logger);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     struct GLYNX_SCB_Info
@@ -179,6 +181,7 @@ private:
     Bus* m_bus;
     Suzy_State m_state;
     u8* m_ram;
+    TraceLogger* m_trace_logger;
     QuadPos m_quad_lut[4][4][4] = {};
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     std::vector<GLYNX_SCB_Info> m_frame_scb_list;

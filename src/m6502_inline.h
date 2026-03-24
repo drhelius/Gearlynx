@@ -26,6 +26,7 @@
 #include "m6502_names.h"
 #include "memory.h"
 #include "bus.h"
+#include "trace_logger.h"
 
 INLINE u32 M6502::RunInstruction()
 {
@@ -53,6 +54,7 @@ INLINE u32 M6502::RunInstruction()
     }
     else
     {
+        m_prev_opcode_address = m_s.PC.GetValue();
         u8 opcode = FetchOpcode8();
 
         CheckIRQs();
@@ -62,6 +64,22 @@ INLINE u32 M6502::RunInstruction()
             HandleIRQ();
 
         DisassembleNextOPCode();
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_trace_logger->IsEnabled(TRACE_CPU))
+        {
+            GLYNX_Trace_Entry e;
+            e.type = TRACE_CPU;
+            e.cycle = m_s.total_ticks;
+            e.cpu.pc = m_prev_opcode_address;
+            e.cpu.a = m_s.A.GetValue();
+            e.cpu.x = m_s.X.GetValue();
+            e.cpu.y = m_s.Y.GetValue();
+            e.cpu.s = m_s.S.GetValue();
+            e.cpu.p = m_s.P.GetValue();
+            m_trace_logger->TraceLog(e);
+        }
+#endif
 
         m_s.cycles += m_opcode_cycles[opcode];
     }
@@ -91,6 +109,17 @@ inline void M6502::HandleIRQ()
     m_s.debug_next_irq = 3;
     u16 dest = m_s.PC.GetValue();
     PushCallStack(pc, dest, pc);
+
+    if (m_trace_logger->IsEnabled(TRACE_CPU_IRQ))
+    {
+        GLYNX_Trace_Entry e;
+        e.type = TRACE_CPU_IRQ;
+        e.cycle = m_s.total_ticks;
+        e.irq.pc = pc;
+        e.irq.vector = dest;
+        e.irq.irq_mask = (u8)m_s.debug_irq_mask;
+        m_trace_logger->TraceLog(e);
+    }
 #endif
 }
 

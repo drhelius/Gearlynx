@@ -33,6 +33,7 @@
 #include "m6502.h"
 #include "suzy.h"
 #include "mikey.h"
+#include "trace_logger.h"
 #include "memory_stream.h"
 
 GearlynxCore::GearlynxCore()
@@ -45,7 +46,7 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_m6502);
     InitPointer(m_suzy);
     InitPointer(m_mikey);
-    InitPointer(m_debug_callback);
+    InitPointer(m_trace_logger);
     m_paused = true;
     m_total_cycles = 0;
 }
@@ -60,6 +61,7 @@ GearlynxCore::~GearlynxCore()
     SafeDelete(m_memory);
     SafeDelete(m_suzy);
     SafeDelete(m_mikey);
+    SafeDelete(m_trace_logger);
 }
 
 void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
@@ -76,6 +78,7 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_mikey = new Mikey(m_suzy, m_media, m_m6502, m_bus);
     m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502, m_bus);
     m_audio = new Audio(m_mikey);
+    m_trace_logger = new TraceLogger();
 
     m_media->Init();
     m_memory->Init();
@@ -86,6 +89,10 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_mikey->Init(m_memory, pixel_format);
     m_mikey->SetAudio(m_audio);
     m_m6502->Init(m_memory);
+
+    m_m6502->SetTraceLogger(m_trace_logger);
+    m_suzy->SetTraceLogger(m_trace_logger);
+    m_mikey->SetTraceLogger(m_trace_logger);
 }
 
 bool GearlynxCore::LoadROM(const char* file_path)
@@ -144,14 +151,14 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     return m_media->IsReady();
 }
 
-void GearlynxCore::SetDebugCallback(GLYNX_Debug_Callback callback)
-{
-    m_debug_callback = callback;
-}
-
 u64 GearlynxCore::GetTotalCycles()
 {
     return m_total_cycles;
+}
+
+TraceLogger* GearlynxCore::GetTraceLogger()
+{
+    return m_trace_logger;
 }
 
 void GearlynxCore::KeyPressed(GLYNX_Keys key)

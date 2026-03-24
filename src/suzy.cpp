@@ -25,6 +25,7 @@
 #include "m6502.h"
 #include "input.h"
 #include "state_serializer.h"
+#include "trace_logger.h"
 
 Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
 {
@@ -34,6 +35,7 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
     m_bus = bus;
     InitPointer(m_memory);
     InitPointer(m_ram);
+    InitPointer(m_trace_logger);
     Reset();
 }
 Suzy::~Suzy()
@@ -46,6 +48,11 @@ void Suzy::Init(Memory* memory)
     m_ram = m_memory->GetRAM();
     ComputeQuadLUT();
     Reset();
+}
+
+void Suzy::SetTraceLogger(TraceLogger* trace_logger)
+{
+    m_trace_logger = trace_logger;
 }
 
 void Suzy::Reset()
@@ -101,6 +108,24 @@ void Suzy::MathRunMultiply()
     m_state.sprsys_unsafe = true;
     m_state.sprsys_mathbusy = true;
     m_state.math_cycles = 44 + ((m_state.sprsys_accumulate || m_state.sprsys_sign) ? 10 : 0);
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_SUZY_MATH))
+    {
+        GLYNX_Trace_Entry e;
+        e.type = TRACE_SUZY_MATH;
+        e.cycle = 0;
+        e.math.op_a = ab;
+        e.math.op_b = cd;
+        e.math.result = result;
+        e.math.remainder = 0;
+        e.math.is_divide = false;
+        e.math.is_signed = m_state.sprsys_sign;
+        e.math.accumulate = m_state.sprsys_accumulate;
+        e.math.div_by_zero = false;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
 }
 
 void Suzy::MathRunDivide()
@@ -144,6 +169,24 @@ void Suzy::MathRunDivide()
     m_state.sprsys_unsafe = true;
     m_state.sprsys_mathbusy = true;
     m_state.math_cycles = 176 + (14 * l_zero16(divisor));
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_SUZY_MATH))
+    {
+        GLYNX_Trace_Entry e;
+        e.type = TRACE_SUZY_MATH;
+        e.cycle = 0;
+        e.math.op_a = (u16)((dividend >> 16) & 0xFFFF);
+        e.math.op_b = divisor;
+        e.math.result = quotient;
+        e.math.remainder = remainder;
+        e.math.is_divide = true;
+        e.math.is_signed = false;
+        e.math.accumulate = false;
+        e.math.div_by_zero = zero_divisor;
+        m_trace_logger->TraceLog(e);
+    }
+#endif
 }
 
 void Suzy::ComputeQuadLUT()

@@ -29,5 +29,6 @@
 #include "memory.h"
 #include "suzy.h"
 #include "mikey.h"
+#include "trace_logger.h"
 
 #endif /* GEARLYNX_H */
