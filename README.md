@@ -164,6 +164,15 @@ Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/int
 
 For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
 
+### Agent Skills
+
+Gearlynx provides [Agent Skills](https://agentskills.io/) that teach AI assistants how to effectively use the emulator for specific tasks:
+
+- **[gearlynx-debugging](skills/gearlynx-debugging/SKILL.md)** — Game debugging, code tracing, breakpoint management, hardware inspection, and reverse engineering.
+- **[gearlynx-romhacking](skills/gearlynx-romhacking/SKILL.md)** — Cheat creation, memory searching, ROM data modification, text translation, and game patching.
+
+Install with `npx skills add drhelius/gearlynx`. See the [skills README](skills/README.md) for details.
+
 ## Hardware Tests
 - **Atari Lynx Hardware Test ROMs**: [https://github.com/drhelius/lynx-tests](https://github.com/drhelius/lynx-tests).
 <img width="500" src="https://github.com/user-attachments/assets/7b009bdd-725d-4518-b2c1-79ed3bc20784" />
