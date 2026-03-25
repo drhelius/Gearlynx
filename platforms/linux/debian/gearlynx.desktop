@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Gearlynx
+GenericName=Atari Lynx emulator
+Comment=Play Atari Lynx games
+Exec=/usr/games/gearlynx %f
+TryExec=/usr/games/gearlynx
+Icon=gearlynx
+Terminal=false
+Categories=Game;Emulator;
+Keywords=Atari;Lynx;Atari Lynx;
+StartupNotify=true
