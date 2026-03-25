@@ -70,7 +70,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
       <td>PPA</td>
       <td>
         <code>curl -fsSL https://drhelius.github.io/ppa-geardome/geardome-ppa.gpg | sudo tee /usr/share/keyrings/geardome-archive-keyring.gpg > /dev/null</code><br>
-        <code>echo "deb [arch=amd64 signed-by=/usr/share/keyrings/geardome-archive-keyring.gpg] https://drhelius.github.io/ppa-geardome noble main" | sudo tee /etc/apt/sources.list.d/geardome.list</code><br>
+        <code>echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/geardome-archive-keyring.gpg] https://drhelius.github.io/ppa-geardome noble main" | sudo tee /etc/apt/sources.list.d/geardome.list</code><br>
         <code>sudo apt update && sudo apt install gearlynx</code>
       </td>
     </tr>
