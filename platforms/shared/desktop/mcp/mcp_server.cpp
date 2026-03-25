@@ -786,6 +786,22 @@ void McpServer::HandleToolsList(const json& request)
     });
 
     tools.push_back({
+        {"name", "load_bios"},
+        {"title", "Load BIOS"},
+        {"description", "Load a BIOS file (must be exactly 512 bytes)"},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"file_path", {
+                    {"type", "string"},
+                    {"description", "Absolute path to BIOS file"}
+                }}
+            }},
+            {"required", json::array({"file_path"})}
+        }}
+    });
+
+    tools.push_back({
         {"name", "load_symbols"},
         {"title", "Load Symbols"},
         {"description", "Load debug symbols from file (.sym format with 'ADDRESS LABEL' entries). Adds to existing symbols"},
@@ -1841,6 +1857,11 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     {
         std::string file_path = arguments["file_path"];
         return m_debugAdapter.LoadMedia(file_path);
+    }
+    else if (normalizedTool == "load_bios")
+    {
+        std::string file_path = arguments["file_path"];
+        return m_debugAdapter.LoadBios(file_path);
     }
     else if (normalizedTool == "load_symbols")
     {

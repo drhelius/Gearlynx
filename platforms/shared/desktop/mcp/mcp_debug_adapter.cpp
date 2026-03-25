@@ -1731,6 +1731,46 @@ json DebugAdapter::LoadMedia(const std::string& file_path)
     return result;
 }
 
+json DebugAdapter::LoadBios(const std::string& file_path)
+{
+    json result;
+
+    if (file_path.empty())
+    {
+        result["error"] = "File path is required";
+        Log("[MCP] LoadBios failed: File path is required");
+        return result;
+    }
+
+    GLYNX_Bios_State bios_result = emu_load_bios(file_path.c_str());
+
+    if (bios_result == BIOS_LOAD_FILE_ERROR)
+    {
+        result["error"] = "Failed to load BIOS file: file not found";
+        Log("[MCP] LoadBios failed: file not found: %s", file_path.c_str());
+        return result;
+    }
+    else if (bios_result == BIOS_LOAD_INVALID_SIZE)
+    {
+        result["error"] = "Failed to load BIOS file: must be exactly 512 bytes";
+        Log("[MCP] LoadBios failed: invalid size: %s", file_path.c_str());
+        return result;
+    }
+
+    result["success"] = true;
+    result["file_path"] = file_path;
+
+    if (bios_result == BIOS_LOAD_INVALID_CRC)
+    {
+        result["valid_crc"] = false;
+        result["warning"] = "CRC does not match original BIOS. Expected md5: fcd403db69f54290b51035d82f835e7b";
+    }
+    else
+        result["valid_crc"] = true;
+
+    return result;
+}
+
 json DebugAdapter::LoadSymbols(const std::string& file_path)
 {
     json result;
