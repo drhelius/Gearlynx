@@ -2823,8 +2823,7 @@ json DebugAdapter::GetTraceLog(int start, int count)
                 char bytes[10] = "";
                 if (IsValidPointer(record))
                 {
-                    strncpy(instr, record->name, sizeof(instr) - 1);
-                    instr[sizeof(instr) - 1] = '\0';
+                    snprintf(instr, sizeof(instr), "%s", record->name);
                     char* p = instr;
                     while (*p)
                     {
@@ -2839,8 +2838,7 @@ json DebugAdapter::GetTraceLog(int start, int count)
                         else
                             p++;
                     }
-                    strncpy(bytes, record->bytes, sizeof(bytes) - 1);
-                    bytes[sizeof(bytes) - 1] = '\0';
+                    snprintf(bytes, sizeof(bytes), "%s", record->bytes);
                 }
                 u8 p = entry.cpu.p;
                 snprintf(buf, sizeof(buf), "%04X  A:%02X X:%02X Y:%02X S:%02X  %c%c-%c%c%c%c%c  %-24s %s",

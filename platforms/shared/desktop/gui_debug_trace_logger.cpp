@@ -197,8 +197,7 @@ static void format_cpu_entry(const GLYNX_Trace_Entry& entry, char* buf, int buf_
     char bytes[10] = "";
     if (IsValidPointer(record))
     {
-        strncpy(instr, record->name, sizeof(instr) - 1);
-        instr[sizeof(instr) - 1] = '\0';
+        snprintf(instr, sizeof(instr), "%s", record->name);
 
         char* p = instr;
         while (*p)
@@ -214,8 +213,7 @@ static void format_cpu_entry(const GLYNX_Trace_Entry& entry, char* buf, int buf_
             else
                 p++;
         }
-        strncpy(bytes, record->bytes, sizeof(bytes) - 1);
-        bytes[sizeof(bytes) - 1] = '\0';
+        snprintf(bytes, sizeof(bytes), "%s", record->bytes);
     }
 
     char registers[40] = "";

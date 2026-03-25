@@ -1622,12 +1622,12 @@ static void add_symbol_popup(void)
 
     if (ImGui::BeginPopupModal("Add Symbol", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        static char address[8] = "";
+        static char address[16] = "";
         static char name[32] = "";
         static bool symbol_modified = false;
 
         if (!symbol_modified && selected_address >= 0)
-            snprintf(address, 8, "%04X", selected_address);
+            snprintf(address, sizeof(address), "%04X", selected_address);
 
         ImGui::Text("Name:");
         ImGui::PushItemWidth(200);ImGui::SetItemDefaultFocus();

@@ -96,7 +96,7 @@ void MemEditor::Reset(const char* title, uint8_t* mem_data, int mem_size, int ba
     while (size >>= 4)
         m_hex_addr_digits++;
 
-    snprintf(m_hex_addr_format, 8, "%%0%dX", m_hex_addr_digits);
+    snprintf(m_hex_addr_format, sizeof(m_hex_addr_format), "%%0%dX", m_hex_addr_digits);
 
     m_search_data = new uint8_t[m_mem_size * m_mem_word];
     memcpy(m_search_data, m_mem_data, m_mem_size * m_mem_word);
