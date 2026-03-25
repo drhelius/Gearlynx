@@ -1285,7 +1285,7 @@ void McpServer::HandleToolsList(const json& request)
     tools.push_back({
         {"name", "get_trace_log"},
         {"title", "Get Trace Log"},
-        {"description", "Read trace logger entries (CPU + hardware events). Must be started from the Trace Logger window first."},
+        {"description", "Read trace logger entries (CPU + hardware events). Use set_trace_log to start/stop the trace logger."},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1301,6 +1301,55 @@ void McpServer::HandleToolsList(const json& request)
                     {"maximum", 1000}
                 }}
             }},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "set_trace_log"},
+        {"title", "Set Trace Logger"},
+        {"description", "Start or stop the trace logger. Records CPU instructions and hardware events into a ring buffer readable with get_trace_log. CPU tracing is always on. Filter event types with optional booleans."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"enabled", {
+                    {"type", "boolean"},
+                    {"description", "true to start logging, false to stop. Existing entries are preserved when stopped."}
+                }},
+                {"cpu_irq", {
+                    {"type", "boolean"},
+                    {"description", "Trace IRQ events (default true)"}
+                }},
+                {"suzy_math", {
+                    {"type", "boolean"},
+                    {"description", "Trace Suzy multiply/divide operations (default true)"}
+                }},
+                {"suzy_sprites", {
+                    {"type", "boolean"},
+                    {"description", "Trace Suzy sprite rendering (default true)"}
+                }},
+                {"suzy_input", {
+                    {"type", "boolean"},
+                    {"description", "Trace Suzy input reads (default true)"}
+                }},
+                {"mikey_timers", {
+                    {"type", "boolean"},
+                    {"description", "Trace Mikey timer IRQ events (default true)"}
+                }},
+                {"mikey_uart", {
+                    {"type", "boolean"},
+                    {"description", "Trace Mikey UART TX/RX (default true)"}
+                }},
+                {"mikey_audio", {
+                    {"type", "boolean"},
+                    {"description", "Trace Mikey audio register writes (default true)"}
+                }},
+                {"cart", {
+                    {"type", "boolean"},
+                    {"description", "Trace cartridge shift register (default true)"}
+                }}
+            }},
+            {"required", json::array({"enabled"})},
             {"additionalProperties", false}
         }}
     });
@@ -1987,6 +2036,23 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         int start = arguments.value("start", -1);
         int count = arguments.value("count", 100);
         return m_debugAdapter.GetTraceLog(start, count);
+    }
+    else if (normalizedTool == "set_trace_log")
+    {
+        bool enabled = arguments["enabled"];
+        u32 flags = TRACE_FLAG_CPU;
+        if (enabled)
+        {
+            if (arguments.value("cpu_irq", true)) flags |= TRACE_FLAG_CPU_IRQ;
+            if (arguments.value("suzy_math", true)) flags |= TRACE_FLAG_SUZY_MATH;
+            if (arguments.value("suzy_sprites", true)) flags |= TRACE_FLAG_SUZY_SPRITE;
+            if (arguments.value("suzy_input", true)) flags |= TRACE_FLAG_SUZY_INPUT;
+            if (arguments.value("mikey_timers", true)) flags |= TRACE_FLAG_MIKEY_TIMER;
+            if (arguments.value("mikey_uart", true)) flags |= TRACE_FLAG_MIKEY_UART;
+            if (arguments.value("mikey_audio", true)) flags |= TRACE_FLAG_MIKEY_AUDIO;
+            if (arguments.value("cart", true)) flags |= TRACE_FLAG_CART_SHIFT;
+        }
+        return m_debugAdapter.SetTraceLog(enabled, flags);
     }
     else
     {
