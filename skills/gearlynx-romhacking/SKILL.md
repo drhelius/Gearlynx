@@ -44,7 +44,7 @@ Alternatively, download from [GitHub Releases](https://github.com/drhelius/Gearl
 
 ### Connecting as MCP Server
 
-Gearlynx runs as an MCP server using STDIO transport (recommended). Configure your AI client:
+Gearlynx runs as an MCP server using STDIO transport (recommended). Add `--headless` on headless machines (no display required).
 
 **VS Code** — create `.vscode/mcp.json`:
 ```json
@@ -73,6 +73,11 @@ claude mcp add --transport stdio gearlynx -- /path/to/gearlynx --mcp-stdio
     }
   }
 }
+```
+
+**Headless (no display)** — add `--headless` for servers or CI environments:
+```json
+"args": ["--headless", "--mcp-stdio"]
 ```
 
 Replace `/path/to/gearlynx` with the actual binary path from the install script.

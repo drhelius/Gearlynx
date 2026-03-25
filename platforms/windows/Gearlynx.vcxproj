@@ -61,6 +61,7 @@
     <ClInclude Include="..\shared\dependencies\miniz\miniz.h" />
     <ClInclude Include="..\..\src\types.h" />
     <ClInclude Include="..\shared\desktop\application.h" />
+    <ClInclude Include="..\shared\desktop\application_headless.h" />
     <ClInclude Include="..\shared\desktop\events.h" />
     <ClInclude Include="..\shared\desktop\backers.h" />
     <ClInclude Include="..\shared\desktop\config.h" />
@@ -138,6 +139,7 @@
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\application.cpp" />
+    <ClCompile Include="..\shared\desktop\application_headless.cpp" />
     <ClCompile Include="..\shared\desktop\events.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />
     <ClCompile Include="..\shared\desktop\emu.cpp" />
