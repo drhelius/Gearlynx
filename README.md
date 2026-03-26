@@ -67,6 +67,11 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
       <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.4/Gearlynx-1.2.4-desktop-ubuntu24.04-arm64.zip">Gearlynx-1.2.4-desktop-ubuntu24.04-arm64.zip</a></td>
     </tr>
     <tr>
+      <td><strong>MCPB</strong></td>
+      <td>All platforms</td>
+      <td><a href="MCP_README.md">MCP Readme</a></td>
+    </tr>
+    <tr>
       <td><strong>RetroArch</strong></td>
       <td>All platforms</td>
       <td><a href="https://docs.libretro.com/library/gearlynx/">Libretro core documentation</a></td>
@@ -75,11 +80,6 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
       <td><strong>Dev Builds</strong></td>
       <td>All platforms</td>
       <td><a href="https://github.com/drhelius/Gearlynx/actions/workflows/gearlynx.yml">GitHub Actions</a></td>
-    </tr>
-    <tr>
-      <td><strong>MCPB</strong></td>
-      <td>All platforms</td>
-      <td><a href="MCP_README.md">MCP Readme</a></td>
     </tr>
   </tbody>
 </table>
