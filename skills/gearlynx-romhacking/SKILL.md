@@ -59,19 +59,27 @@ Configure your AI client to run Gearlynx as an MCP server via STDIO transport. E
 ```
 Replace `/path/to/gearlynx` with the actual binary path from the install script. Add `--headless` before `--mcp-stdio` on headless machines.
 
-### Hardware Documentation (MCP Resources)
+### Hardware Documentation (References)
 
-The Gearlynx MCP server provides built-in Atari Lynx hardware documentation as MCP resources. Load them into your context when you need data formats, memory layout, or hardware details.
+Atari Lynx hardware documentation is available in the [references/](references/) directory. Load them into your context when you need data formats, memory layout, or hardware details.
 
-| Resource | URI | Load when... |
+| Reference | File | Load when... |
 |---|---|---|
-| Hardware Addresses | `gearlynx://hardware/hardware_addresses` | 64K memory map, Mikey/Suzy register addresses ($FC00-$FCFF, $FD00-$FDFF) |
-| Sprite/Collision | `gearlynx://hardware/lynx6_sprite_collision` | SCB format, sprite types, collision depository |
-| Sprite Engine | `gearlynx://hardware/sprite_engine` | Display init, double-buffering, VIDBAS/COLLBAS macros |
-| Display | `gearlynx://hardware/lynx5_display` | Frame rate, pen/palette colors, display buffer addresses |
-| Audio/ROM Cart | `gearlynx://hardware/lynx7_audio_tape_romcart` | 4 audio channels, ROM cart banking (BANK0/BANK1, AUDIN) |
-| Hardware Overview | `gearlynx://hardware/lynx2_hardware_overview` | System block diagram: CPU, Mikey, Suzy, RAM, cart |
-| System Reset | `gearlynx://hardware/lynx10_system_reset` | Reset/power-up sequence, savegame EEPROM, NVRAM |
+| General Overview | [references/lynx1_general_overview.md](references/lynx1_general_overview.md) | System specs, feature set, overall architecture |
+| Hardware Overview | [references/lynx2_hardware_overview.md](references/lynx2_hardware_overview.md) | System block diagram: CPU, Mikey, Suzy, RAM, cart |
+| Hardware Quirks | [references/lynx3_software_hardware_perniciousness.md](references/lynx3_software_hardware_perniciousness.md) | Unsafe register operations, hardware gotchas to avoid when patching |
+| CPU/ROM | [references/lynx4_cpu_rom.md](references/lynx4_cpu_rom.md) | 65C02 cycle timing, CPU sleep, ROM mapping, opcode reference |
+| Display | [references/lynx5_display.md](references/lynx5_display.md) | Frame rate, pen/palette colors, display buffer addresses |
+| Sprite/Collision | [references/lynx6_sprite_collision.md](references/lynx6_sprite_collision.md) | SCB format, sprite types, collision depository, sprite data layout |
+| Audio/ROM Cart | [references/lynx7_audio_tape_romcart.md](references/lynx7_audio_tape_romcart.md) | 4 audio channels, ROM cart banking (BANK0/BANK1, AUDIN) |
+| Timers/Interrupts | [references/lynx8_timers_interrupts.md](references/lynx8_timers_interrupts.md) | 8 timer channels, linking, reload, IRQ sources |
+| UART | [references/lynx8a_uart.md](references/lynx8a_uart.md) | ComLynx serial port, UART registers, baud rate |
+| Other Hardware | [references/lynx9_other_hardware.md](references/lynx9_other_hardware.md) | Hardware multiply/divide, parallel port |
+| System Reset | [references/lynx10_system_reset.md](references/lynx10_system_reset.md) | Reset/power-up sequence, savegame EEPROM, NVRAM |
+| System Bus Interplay | [references/lynx11_system_bus_interplay.md](references/lynx11_system_bus_interplay.md) | Bus masters, page mode, DMA timing |
+| Hardware Addresses | [references/hardware_addresses.md](references/hardware_addresses.md) | 64K memory map, Mikey/Suzy register addresses ($FC00-$FCFF, $FD00-$FDFF) |
+| Interrupts & CPU Sleep | [references/irq_interrupts_cpu_sleep.md](references/irq_interrupts_cpu_sleep.md) | IRQ vector, interrupt enable/status bits, CPU sleep (JAM) |
+| Sprite Engine | [references/sprite_engine.md](references/sprite_engine.md) | Display init, double-buffering, VIDBAS/COLLBAS macros |
 
 ---
 
@@ -186,7 +194,7 @@ To find text strings for translation or modification:
 4. `read_memory` on the sprite data area to analyze the packed pixel format
 5. `get_screenshot` before/after modifications to see visual changes
 
-Reference the Sprite/Collision hardware docs (`gearlynx://hardware/lynx6_sprite_collision`) for SCB structure details.
+Reference the Sprite/Collision hardware docs ([references/lynx6_sprite_collision.md](references/lynx6_sprite_collision.md)) for SCB structure details.
 
 ### Data Tables and Structures
 
