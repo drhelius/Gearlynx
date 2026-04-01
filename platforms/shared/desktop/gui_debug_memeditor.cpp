@@ -994,7 +994,7 @@ void MemEditor::SearchCapture()
 {
     if (!IsValidPointer(m_mem_data) || !IsValidPointer(m_search_data) || m_mem_size <= 0)
         return;
-    memcpy(m_search_data, m_mem_data, m_mem_size);
+    memcpy(m_search_data, m_mem_data, m_mem_size * m_mem_word);
 }
 
 int MemEditor::PerformSearch(int op, int compare_type, int compare_value, int data_type)
