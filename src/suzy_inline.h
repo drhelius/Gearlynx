@@ -243,6 +243,7 @@ INLINE u8 Suzy::Read(u16 address)
         DebugSuzy("Reading RCART1");
         if (!debug)
         {
+            m_bus->InjectCycles(k_bus_cycles_cart_read);
             if (m_media->GetAudin() && m_media->GetAudinValue())
                 return m_media->ReadBank1A();
             else
