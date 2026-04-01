@@ -79,10 +79,6 @@ s32 EEPROM::GetSize()
             break;
     }
 
-    // 8-bit mode doubles the size in bytes
-    if (m_type & GLYNX_EEPROM_8BIT)
-        size *= 2;
-
     return size;
 }
 
