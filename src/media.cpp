@@ -538,7 +538,7 @@ bool Media::GatherBS93Header(const u8* buffer)
 
     if (header.magic[0] != 0x80 || header.magic[1] != 0x08)
     {
-        Debug("WARNING: Invalid BS93 header magic: %c%c", p[0], p[1]);
+        Debug("WARNING: Invalid BS93 header magic: %c%c", header.magic[0], header.magic[1]);
     }
 
     header.boot_address = read_u16_be(p);
@@ -553,7 +553,7 @@ bool Media::GatherBS93Header(const u8* buffer)
     if (header.bs93[0] != 'B' || header.bs93[1] != 'S' 
         || header.bs93[2] != '9' || header.bs93[3] != '3')
     {
-        Log("Invalid BS93 header string: %c%c%c%c", p[0], p[1], p[2], p[3]);
+        Log("Invalid BS93 header string: %c%c%c%c", header.bs93[0], header.bs93[1], header.bs93[2], header.bs93[3]);
         return false;
     }
 
