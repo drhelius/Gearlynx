@@ -129,6 +129,7 @@ private:
     void FindBytesNext(int start_offset);
     bool ParseHexByteString(const char* str, uint8_t* out, int* out_len, int max_len);
     uint32_t ReadWatchValue(const Watch& watch);
+    void WriteWatchValue(const Watch& watch, uint32_t value);
     int WatchSizeBytes(int size);
     void DrawWatchValue(uint32_t value, int size, int format);
     void PushGuiFont();
