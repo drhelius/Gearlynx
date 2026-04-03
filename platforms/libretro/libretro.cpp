@@ -115,14 +115,32 @@ static void load_bootroms(void)
             log_cb(RETRO_LOG_INFO, "BIOS loaded successfully from %s\n", bios_path);
             break;
         case BIOS_LOAD_FILE_ERROR:
+        {
+            struct retro_message msg = {};
+            msg.msg = "BIOS not found: lynxboot.img";
+            msg.frames = 360;
+            environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
             log_cb(RETRO_LOG_ERROR, "BIOS file error: %s\n", bios_path);
             break;
+        }
         case BIOS_LOAD_INVALID_SIZE:
+        {
+            struct retro_message msg = {};
+            msg.msg = "BIOS has invalid size: lynxboot.img";
+            msg.frames = 360;
+            environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
             log_cb(RETRO_LOG_ERROR, "BIOS file has invalid size: %s\n", bios_path);
             break;
+        }
         case BIOS_LOAD_INVALID_CRC:
+        {
+            struct retro_message msg = {};
+            msg.msg = "BIOS has invalid CRC: lynxboot.img";
+            msg.frames = 360;
+            environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
             log_cb(RETRO_LOG_WARN, "BIOS file has invalid CRC: %s\n", bios_path);
             break;
+        }
         default:
             log_cb(RETRO_LOG_ERROR, "Unknown error loading BIOS: %s\n", bios_path);
             break;
