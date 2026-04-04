@@ -545,13 +545,10 @@ static void update_input(void)
     {
         for (int i = 0; i < JOYPAD_BUTTONS; i++)
         {
-            if (joypad_current[j][i] != joypad_old[j][i])
-            {
-                if (joypad_current[j][i])
-                    core->KeyPressed(keymap[i]);
-                else
-                    core->KeyReleased(keymap[i]);
-            }
+            if (joypad_current[j][i])
+                core->KeyPressed(keymap[i]);
+            else
+                core->KeyReleased(keymap[i]);
         }
     }
 }
