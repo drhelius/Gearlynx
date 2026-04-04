@@ -557,18 +557,35 @@ bool GearlynxCore::LoadState(std::istream& stream)
         return false;
     }
 
-#if defined(__LIBRETRO__)
     GLYNX_SaveState_Header_Libretro header;
-#else
-    GLYNX_SaveState_Header header;
-#endif
+    bool is_desktop_savestate = false;
 
     stream.seekg(0, ios::end);
     size_t size = static_cast<size_t>(stream.tellg());
-    stream.seekg(0, ios::beg);
 
-    stream.seekg(size - sizeof(header), ios::beg);
-    stream.read(reinterpret_cast<char*> (&header), sizeof(header));
+    // Try desktop header first (larger, contains all info)
+    GLYNX_SaveState_Header desktop_header;
+    if (size >= sizeof(desktop_header))
+    {
+        stream.seekg(size - sizeof(desktop_header), ios::beg);
+        stream.read(reinterpret_cast<char*> (&desktop_header), sizeof(desktop_header));
+
+        if (desktop_header.magic == GLYNX_SAVESTATE_MAGIC)
+        {
+            header.magic = desktop_header.magic;
+            header.version = desktop_header.version;
+            is_desktop_savestate = true;
+            Log("Loading desktop save state");
+        }
+    }
+
+    // Fallback to libretro header
+    if (header.magic != GLYNX_SAVESTATE_MAGIC)
+    {
+        stream.seekg(size - sizeof(header), ios::beg);
+        stream.read(reinterpret_cast<char*> (&header), sizeof(header));
+    }
+
     stream.seekg(0, ios::beg);
 
     Debug("Load state header magic: 0x%08x", header.magic);
@@ -587,37 +604,28 @@ bool GearlynxCore::LoadState(std::istream& stream)
     }
 
 #if !defined(__LIBRETRO__)
-    Debug("Load state header size: %d", header.size);
-    Debug("Load state header timestamp: %d", header.timestamp);
-    Debug("Load state header rom name: %s", header.rom_name);
-    Debug("Load state header rom crc: 0x%08x", header.rom_crc);
-    Debug("Load state header screenshot size: %d", header.screenshot_size);
-    Debug("Load state header screenshot width: %d", header.screenshot_width);
-    Debug("Load state header screenshot height: %d", header.screenshot_height);
-    Debug("Load state header emu build: %s", header.emu_build);
-
-    if ((header.magic != GLYNX_SAVESTATE_MAGIC))
+    if (is_desktop_savestate)
     {
-        Log("Invalid save state: 0x%08x", header.magic);
-        return false;
-    }
+        Debug("Load state header size: %d", desktop_header.size);
+        Debug("Load state header timestamp: %d", desktop_header.timestamp);
+        Debug("Load state header rom name: %s", desktop_header.rom_name);
+        Debug("Load state header rom crc: 0x%08x", desktop_header.rom_crc);
+        Debug("Load state header screenshot size: %d", desktop_header.screenshot_size);
+        Debug("Load state header screenshot width: %d", desktop_header.screenshot_width);
+        Debug("Load state header screenshot height: %d", desktop_header.screenshot_height);
+        Debug("Load state header emu build: %s", desktop_header.emu_build);
 
-    if (header.version != GLYNX_SAVESTATE_VERSION)
-    {
-        Error("Invalid save state version: %d", header.version);
-        return false;
-    }
+        if (desktop_header.size != size)
+        {
+            Error("Invalid save state size: %d", desktop_header.size);
+            return false;
+        }
 
-    if (header.size != size)
-    {
-        Error("Invalid save state size: %d", header.size);
-        return false;
-    }
-
-    if (header.rom_crc != m_media->GetCRC())
-    {
-        Error("Invalid save state rom crc: 0x%08x", header.rom_crc);
-        return false;
+        if (desktop_header.rom_crc != m_media->GetCRC())
+        {
+            Error("Invalid save state rom crc: 0x%08x", desktop_header.rom_crc);
+            return false;
+        }
     }
 #endif
 
