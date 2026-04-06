@@ -75,6 +75,7 @@ bool emu_init(void)
 
     core = new GearlynxCore();
     core->Init();
+    core->GetMikey()->SetDebugBufferEnabled(config_debug.debug_buffer_enabled);
 
     sound_queue_init();
 

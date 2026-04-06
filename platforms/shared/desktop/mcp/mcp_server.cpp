@@ -1370,6 +1370,43 @@ void McpServer::HandleToolsList(const json& request)
         }}
     });
 
+    tools.push_back({
+        {"name", "get_debug_buffer"},
+        {"title", "Get External Debug Buffer"},
+        {"description", "Read the external debug buffer. Games write bytes to Mikey register $FDC0 (DBGOUT) to append data. Returns buffer contents as text and hex, plus current size."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "clear_debug_buffer"},
+        {"title", "Clear External Debug Buffer"},
+        {"description", "Clear the external debug buffer. Equivalent to writing any value to Mikey register $FDC1 (DBGCTL)."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "set_debug_buffer"},
+        {"title", "Enable/Disable External Debug Buffer"},
+        {"description", "Enable or disable the external debug buffer. When disabled, registers $FDC0/$FDC1 behave as unused (no-op write, $FF read). Must be enabled for game code to write debug output."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"enabled", {
+                    {"type", "boolean"},
+                    {"description", "true to enable, false to disable"}
+                }}
+            }},
+            {"required", json::array({"enabled"})},
+            {"additionalProperties", false}
+        }}
+    });
+
     json response;
     response["jsonrpc"] = "2.0";
     response["id"] = id;
@@ -2074,6 +2111,19 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
             if (arguments.value("cart", true)) flags |= TRACE_FLAG_CART_SHIFT;
         }
         return m_debugAdapter.SetTraceLog(enabled, flags);
+    }
+    else if (normalizedTool == "get_debug_buffer")
+    {
+        return m_debugAdapter.GetDebugBuffer();
+    }
+    else if (normalizedTool == "clear_debug_buffer")
+    {
+        return m_debugAdapter.ClearDebugBuffer();
+    }
+    else if (normalizedTool == "set_debug_buffer")
+    {
+        bool enabled = arguments["enabled"];
+        return m_debugAdapter.SetDebugBufferEnabled(enabled);
     }
     else
     {

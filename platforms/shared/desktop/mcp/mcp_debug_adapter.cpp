@@ -3003,3 +3003,69 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
     result["total_entries"] = tl->GetCount();
     return result;
 }
+
+json DebugAdapter::GetDebugBuffer()
+{
+    Mikey* mikey = m_core->GetMikey();
+    const std::vector<u8>& buffer = mikey->GetDebugBuffer();
+
+    json result;
+    result["enabled"] = mikey->IsDebugBufferEnabled();
+    result["size"] = buffer.size();
+    result["max_size"] = k_debug_buffer_max_size;
+    result["register_data"] = "FDC0";
+    result["register_control"] = "FDC1";
+
+    // Text representation (printable chars, dots for non-printable)
+    std::string text;
+    text.reserve(buffer.size());
+    for (u8 b : buffer)
+    {
+        if (b == '\n' || b == '\r' || b == '\t' || (b >= 0x20 && b < 0x7F))
+            text += (char)b;
+        else
+            text += '.';
+    }
+    result["text"] = text;
+
+    // Hex representation
+    if (!buffer.empty())
+    {
+        std::ostringstream hex_ss;
+        hex_ss << std::hex << std::uppercase << std::setfill('0');
+        for (size_t i = 0; i < buffer.size(); i++)
+        {
+            if (i > 0) hex_ss << ' ';
+            hex_ss << std::setw(2) << (int)buffer[i];
+        }
+        result["hex"] = hex_ss.str();
+    }
+    else
+    {
+        result["hex"] = "";
+    }
+
+    return result;
+}
+
+json DebugAdapter::ClearDebugBuffer()
+{
+    Mikey* mikey = m_core->GetMikey();
+    size_t prev_size = mikey->GetDebugBuffer().size();
+    mikey->ClearDebugBuffer();
+
+    json result;
+    result["status"] = "cleared";
+    result["previous_size"] = prev_size;
+    return result;
+}
+
+json DebugAdapter::SetDebugBufferEnabled(bool enabled)
+{
+    Mikey* mikey = m_core->GetMikey();
+    mikey->SetDebugBufferEnabled(enabled);
+
+    json result;
+    result["enabled"] = enabled;
+    return result;
+}

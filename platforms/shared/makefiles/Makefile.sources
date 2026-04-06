@@ -40,6 +40,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/gui_debug_lcd.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_eeprom.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_cart.cpp \
+    $(DESKTOP_SRC_DIR)/gui_debug_buffer.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_debug_adapter.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_server.cpp \
     $(DESKTOP_SRC_DIR)/ogl_renderer.cpp \

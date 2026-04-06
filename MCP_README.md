@@ -56,6 +56,7 @@ This server provides tools for game development, rom hacking, reverse engineerin
 - **Bookmarks**: Memory and disassembler bookmarks for navigation
 - **Call Stack**: View function call hierarchy
 - **Trace Logger**: CPU instruction trace with interleaved hardware events (Suzy math/sprites, Mikey timers/audio/UART, cart)
+- **External Debug Buffer**: Game code writes to $FDC0 to output debug data; read via MCP or GUI window
 - **Screenshot Capture**: Get current frame as PNG image
 - **Documentation Resources**: Built-in hardware and programming documentation for AI context
 - **GUI Integration**: MCP server runs alongside the emulator GUI, sharing the same state
@@ -330,6 +331,11 @@ The server exposes tools organized in the following categories:
 
 ### Controller Input
 - `controller_button` - Control a button on the Lynx controller. Use action 'press' to hold, 'release' to let go, or 'press_and_release' for a quick tap. Buttons: up, down, left, right, a, b, option1, option2, pause
+
+### External Debug Buffer
+- `get_debug_buffer` - Read the external debug buffer contents (text, hex, size, and enabled status). Games write bytes to Mikey register $FDC0 (DBGOUT) to append data
+- `clear_debug_buffer` - Clear the external debug buffer. Equivalent to writing any value to Mikey register $FDC1 (DBGCTL)
+- `set_debug_buffer` - Enable or disable the external debug buffer. Must be enabled for game code to write debug output
 
 ## Available MCP Resources
 

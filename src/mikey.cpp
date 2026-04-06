@@ -34,6 +34,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
     InitPointer(m_audio);
     InitPointer(m_lcd_screen);
     InitPointer(m_trace_logger);
+    m_debug_buffer_enabled = false;
 }
 
 Mikey::~Mikey()
@@ -70,6 +71,8 @@ void Mikey::Reset(bool is_lynx2)
     ResetTimers();
     ResetAudio();
     ResetUART();
+
+    m_debug_buffer.clear();
 }
 
 void Mikey::ResetTimers()
@@ -327,4 +330,20 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
     G_SERIALIZE(s, m_state.refresh_cycle_counter);
+
+    if (s.IsSaving())
+    {
+        u32 debug_buffer_size = (u32)m_debug_buffer.size();
+        G_SERIALIZE(s, debug_buffer_size);
+        if (debug_buffer_size > 0)
+            s.SerializeArray(m_debug_buffer.data(), debug_buffer_size);
+    }
+    else
+    {
+        u32 debug_buffer_size = 0;
+        G_SERIALIZE(s, debug_buffer_size);
+        m_debug_buffer.resize(debug_buffer_size);
+        if (debug_buffer_size > 0)
+            s.SerializeArray(m_debug_buffer.data(), debug_buffer_size);
+    }
 }

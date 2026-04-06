@@ -36,6 +36,7 @@
 #include "gui_debug_lcd.h"
 #include "gui_debug_eeprom.h"
 #include "gui_debug_cart.h"
+#include "gui_debug_buffer.h"
 #include "emu.h"
 #include "config.h"
 
@@ -46,6 +47,7 @@ void gui_debug_init(void)
     gui_debug_memory_init();
     gui_debug_timers_init();
     gui_debug_uart_init();
+    gui_debug_buffer_init();
 }
 
 void gui_debug_destroy(void)
@@ -55,6 +57,7 @@ void gui_debug_destroy(void)
     gui_debug_memory_destroy();
     gui_debug_timers_destroy();
     gui_debug_uart_destroy();
+    gui_debug_buffer_destroy();
 }
 
 void gui_debug_reset(void)
@@ -110,6 +113,8 @@ void gui_debug_windows(void)
             gui_debug_window_eeprom();
         if (config_debug.show_cart)
             gui_debug_window_cart();
+        if (config_debug.show_debug_buffer)
+            gui_debug_buffer_window();
 
         gui_debug_memory_watches_window();
         gui_debug_memory_search_window();

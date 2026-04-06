@@ -42,7 +42,7 @@ This downloads and configures the skills for use with your AI agent. See the [sk
 - Call stack analysis
 - Organizing debug sessions with symbols, bookmarks, and watches
 
-**Key MCP tools used**: `debug_pause`, `debug_step_into`, `debug_step_over`, `debug_step_out`, `set_breakpoint`, `set_breakpoint_on_irq`, `get_6502_status`, `get_disassembly`, `get_call_stack`, `get_trace_log`, `get_mikey_registers`, `get_mikey_timers`, `get_suzy_registers`, `add_symbol`, `get_screenshot`
+**Key MCP tools used**: `debug_pause`, `debug_step_into`, `debug_step_over`, `debug_step_out`, `set_breakpoint`, `set_breakpoint_on_irq`, `get_6502_status`, `get_disassembly`, `get_call_stack`, `get_trace_log`, `get_mikey_registers`, `get_mikey_timers`, `get_suzy_registers`, `add_symbol`, `get_screenshot`, `get_debug_buffer`, `clear_debug_buffer`, `set_debug_buffer`
 
 **Example prompts**:
 - "Find the VBlank interrupt handler and analyze what it does"
