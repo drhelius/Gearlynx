@@ -95,7 +95,7 @@ void Suzy::MathRunMultiply()
 
     if (m_state.sprsys_accumulate)
     {
-        u32 acc = REG_MATHJ << 24 | REG_MATHK << 16 | REG_MATHL << 8 | REG_MATHM;
+        u32 acc = (u32(REG_MATHJ) << 24) | (u32(REG_MATHK) << 16) | (u32(REG_MATHL) << 8) | u32(REG_MATHM);
         u64 sum = u64(acc) + u64(result);
         m_state.sprsys_lastcarrybit = (sum > 0xFFFFFFFF);
         m_state.sprsys_mathbit = (sum > 0xFFFFFFFF);
