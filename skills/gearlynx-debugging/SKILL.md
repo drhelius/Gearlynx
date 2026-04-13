@@ -219,6 +219,45 @@ Use screenshots after stepping or continuing to see the visual impact of changes
 4. Analyze timer reload values via `get_mikey_timers`
 5. Correlate timer fires with code execution in the trace
 
+### Debug Output for Homebrew Development
+
+Homebrew games can send debug text to the Trace Logger via unused Mikey registers `$FDC0`–`$FDC4` — a `printf`-style mechanism without breakpoints.
+
+1. `set_trace_log` with `enabled: true` and `debug_output: true`
+2. Run your game — text written through the registers appears in `get_trace_log`
+
+| Register | Write |
+|----------|-------|
+| `$FDC0` | Flush buffer to Trace Logger (any non-zero value) |
+| `$FDC1` | Append byte as ASCII character |
+| `$FDC2` | Append byte as two hex digits |
+| `$FDC3` | Set string pointer low byte |
+| `$FDC4` | Set string pointer high byte (triggers copy) |
+
+**ca65 example:**
+
+```asm
+; Print string + hex value in a single trace entry
+; A/X = string pointer, Y = hex value
+.proc debug_print
+    sta $FDC3       ; pointer low
+    stx $FDC4       ; pointer high (triggers copy)
+    sty $FDC2       ; append Y as hex
+    lda #1
+    sta $FDC0       ; flush
+    rts
+.endproc
+
+    lda #<message
+    ldx #>message
+    ldy player_hp
+    jsr debug_print
+
+message: .asciiz "Player HP: "
+```
+
+When disabled (the default), these registers are no-ops — safe to leave in shipping code.
+
 ---
 
 ## Organizing Your Debug Session
