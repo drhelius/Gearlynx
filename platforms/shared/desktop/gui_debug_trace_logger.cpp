@@ -147,18 +147,34 @@ static void trace_logger_menu(void)
         ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("CPU"))
+    if (ImGui::BeginMenu("Settings"))
     {
-        ImGui::MenuItem("Instruction Counter", "", &config_debug.trace_counter);
-        ImGui::MenuItem("Registers", "", &config_debug.trace_registers);
-        ImGui::MenuItem("Flags", "", &config_debug.trace_flags);
-        ImGui::MenuItem("Bytes", "", &config_debug.trace_bytes);
+        if (ImGui::BeginMenu("CPU"))
+        {
+            ImGui::MenuItem("Instruction Counter", "", &config_debug.trace_counter);
+            ImGui::MenuItem("Registers", "", &config_debug.trace_registers);
+            ImGui::MenuItem("Flags", "", &config_debug.trace_flags);
+            ImGui::MenuItem("Bytes", "", &config_debug.trace_bytes);
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::MenuItem("Debug Output", "", &config_debug.debug_output_enabled))
+            emu_get_core()->GetMikey()->SetDebugOutputEnabled(config_debug.debug_output_enabled);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Enable debug output registers ($FDC0-$FDC4).");
+            ImGui::Text("Games can send text to the Trace Logger.");
+            ImGui::EndTooltip();
+        }
 
         ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Filter"))
     {
+        ImGui::MenuItem("CPU", "", &config_debug.trace_cpu);
         ImGui::MenuItem("IRQs", "", &config_debug.trace_cpu_irq);
         ImGui::MenuItem("Suzy Math", "", &config_debug.trace_suzy_math);
         ImGui::MenuItem("Suzy Sprites", "", &config_debug.trace_suzy_sprites);
@@ -167,6 +183,7 @@ static void trace_logger_menu(void)
         ImGui::MenuItem("Mikey UART", "", &config_debug.trace_mikey_uart);
         ImGui::MenuItem("Mikey Audio", "", &config_debug.trace_mikey_audio);
         ImGui::MenuItem("Cart", "", &config_debug.trace_cart);
+        ImGui::MenuItem("Debug Messages", "", &config_debug.trace_debug_messages);
 
         ImGui::EndMenu();
     }
@@ -176,8 +193,9 @@ static void trace_logger_menu(void)
 
 static void trace_logger_sync_flags(void)
 {
-    u32 flags = TRACE_FLAG_CPU;
-    if (config_debug.trace_cpu_irq)       flags |= TRACE_FLAG_CPU_IRQ;
+    u32 flags = 0;
+    if (config_debug.trace_cpu)          flags |= TRACE_FLAG_CPU;
+    if (config_debug.trace_cpu_irq)      flags |= TRACE_FLAG_CPU_IRQ;
     if (config_debug.trace_suzy_math)    flags |= TRACE_FLAG_SUZY_MATH;
     if (config_debug.trace_suzy_sprites) flags |= TRACE_FLAG_SUZY_SPRITE;
     if (config_debug.trace_suzy_input)   flags |= TRACE_FLAG_SUZY_INPUT;
@@ -185,6 +203,7 @@ static void trace_logger_sync_flags(void)
     if (config_debug.trace_mikey_uart)   flags |= TRACE_FLAG_MIKEY_UART;
     if (config_debug.trace_mikey_audio)  flags |= TRACE_FLAG_MIKEY_AUDIO;
     if (config_debug.trace_cart)         flags |= TRACE_FLAG_CART_SHIFT;
+    if (config_debug.trace_debug_messages) flags |= TRACE_FLAG_DEBUG_MSG;
     emu_get_core()->GetTraceLogger()->SetEnabledFlags(flags);
 }
 
@@ -305,6 +324,9 @@ static void format_entry_text(const GLYNX_Trace_Entry& entry, char* buf, int buf
         case TRACE_CART_SHIFT:
             snprintf(buf, buf_size, "  [CART]  SHIFT    Addr:$%02X  Bit:%d",
                      entry.cart.addr_shift, entry.cart.bit);
+            break;
+        case TRACE_DEBUG_MESSAGE:
+            snprintf(buf, buf_size, "  [DEBUG] %s", entry.debug_msg.text);
             break;
         default:
             snprintf(buf, buf_size, "  [???]");
@@ -434,6 +456,10 @@ static void render_entry_colored(const GLYNX_Trace_Entry& entry, u32 index)
         case TRACE_CART_SHIFT:
             format_entry_text(entry, buf, sizeof(buf));
             ImGui::TextColored(magenta, "%s", buf);
+            break;
+        case TRACE_DEBUG_MESSAGE:
+            format_entry_text(entry, buf, sizeof(buf));
+            ImGui::TextColored(green, "%s", buf);
             break;
         default:
             break;

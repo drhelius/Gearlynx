@@ -35,6 +35,7 @@ enum GLYNX_Trace_Type : u8
     TRACE_MIKEY_UART,
     TRACE_MIKEY_AUDIO,
     TRACE_CART_SHIFT,
+    TRACE_DEBUG_MESSAGE,
     TRACE_TYPE_COUNT,
 };
 
@@ -47,7 +48,8 @@ enum GLYNX_Trace_Type : u8
 #define TRACE_FLAG_MIKEY_UART   (1 << TRACE_MIKEY_UART)
 #define TRACE_FLAG_MIKEY_AUDIO  (1 << TRACE_MIKEY_AUDIO)
 #define TRACE_FLAG_CART_SHIFT   (1 << TRACE_CART_SHIFT)
-#define TRACE_FLAG_ALL          0xFF
+#define TRACE_FLAG_DEBUG_MSG    (1 << TRACE_DEBUG_MESSAGE)
+#define TRACE_FLAG_ALL          0x3FF
 
 struct GLYNX_Trace_Entry
 {
@@ -127,6 +129,11 @@ struct GLYNX_Trace_Entry
             u8 addr_shift;
             u8 bit;
         } cart;
+
+        struct
+        {
+            char text[GLYNX_DEBUG_MSG_MAX_SIZE];
+        } debug_msg;
     };
 };
 

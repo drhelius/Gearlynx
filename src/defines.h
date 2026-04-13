@@ -54,6 +54,8 @@
 #define GLYNX_SAVESTATE_VERSION 12
 #define GLYNX_SAVESTATE_MAGIC 0x56191212
 
+#define GLYNX_DEBUG_MSG_MAX_SIZE 80
+
 #if !defined(NULL)
     #define NULL 0
 #endif

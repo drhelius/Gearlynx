@@ -2947,6 +2947,9 @@ json DebugAdapter::GetTraceLog(int start, int count)
                 snprintf(buf, sizeof(buf), "  [CART]  SHIFT    Addr:$%02X  Bit:%d",
                          entry.cart.addr_shift, entry.cart.bit);
                 break;
+            case TRACE_DEBUG_MESSAGE:
+                snprintf(buf, sizeof(buf), "  [DEBUG] %s", entry.debug_msg.text);
+                break;
             default:
                 snprintf(buf, sizeof(buf), "  [???]");
                 break;
@@ -2962,7 +2965,7 @@ json DebugAdapter::GetTraceLog(int start, int count)
     return result;
 }
 
-json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
+json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output)
 {
     json result;
 
@@ -2972,6 +2975,9 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
         result["error"] = "Trace logger not available";
         return result;
     }
+
+    m_core->GetMikey()->SetDebugOutputEnabled(debug_output);
+    result["debug_output"] = debug_output;
 
     if (enabled)
     {
@@ -2992,6 +2998,7 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
         if (flags & TRACE_FLAG_MIKEY_UART) enabled_list.push_back("mikey_uart");
         if (flags & TRACE_FLAG_MIKEY_AUDIO) enabled_list.push_back("mikey_audio");
         if (flags & TRACE_FLAG_CART_SHIFT) enabled_list.push_back("cart");
+        if (flags & TRACE_FLAG_DEBUG_MSG) enabled_list.push_back("debug_messages");
         result["enabled"] = enabled_list;
     }
     else

@@ -32,8 +32,10 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
     m_m6502 = m6502;
     m_bus = bus;
     InitPointer(m_audio);
+    InitPointer(m_memory);
     InitPointer(m_lcd_screen);
     InitPointer(m_trace_logger);
+    m_debug_output_enabled = false;
 }
 
 Mikey::~Mikey()
@@ -43,6 +45,7 @@ Mikey::~Mikey()
 
 void Mikey::Init(Memory* memory, GLYNX_Pixel_Format pixel_format)
 {
+    m_memory = memory;
     m_lcd_screen = new LcdScreen(this, memory, m_bus);
     m_lcd_screen->Init(pixel_format);
     Reset(true);
@@ -56,6 +59,16 @@ void Mikey::SetAudio(Audio* audio)
 void Mikey::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void Mikey::SetDebugOutputEnabled(bool enabled)
+{
+    m_debug_output_enabled = enabled;
+}
+
+bool Mikey::IsDebugOutputEnabled()
+{
+    return m_debug_output_enabled;
 }
 
 void Mikey::Reset(bool is_lynx2)
@@ -327,4 +340,28 @@ void Mikey::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
     G_SERIALIZE(s, m_state.refresh_cycle_counter);
+}
+
+void Mikey::DebugOutputFlush()
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (!m_debug_output_enabled || m_state.debug_msg_pos <= 0)
+        return;
+
+    if (m_trace_logger->IsEnabled(TRACE_DEBUG_MESSAGE))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_DEBUG_MESSAGE;
+        e.cycle = 0;
+
+        int len = m_state.debug_msg_pos;
+        memcpy(e.debug_msg.text, m_state.debug_msg_buffer, len);
+        e.debug_msg.text[len] = '\0';
+
+        m_trace_logger->TraceLog(e);
+    }
+
+    m_state.debug_msg_pos = 0;
+    m_state.debug_msg_buffer[0] = '\0';
+#endif
 }
