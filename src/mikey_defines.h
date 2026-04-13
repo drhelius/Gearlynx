@@ -157,4 +157,10 @@
 #define MIKEY_BLUEREDE      0xFDBE
 #define MIKEY_BLUEREDF      0xFDBF
 
+#define MIKEY_DBGOUT        0xFDC0
+#define MIKEY_DBGASCII      0xFDC1
+#define MIKEY_DBGHEX        0xFDC2
+#define MIKEY_DBGSTRL       0xFDC3
+#define MIKEY_DBGSTRH       0xFDC4
+
 #endif /* SUZY_DEFINES_H */

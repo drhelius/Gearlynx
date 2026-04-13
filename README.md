@@ -120,6 +120,15 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - **Multi-viewport**: In Windows or macOS, you can enable "multi-viewport" in the debug menu. You must restart the emulator for the change to take effect. Once enabled, you can drag debugger windows outside the main window.
 - **Single Instance**: You can enable "Single Instance" in the ```Emulator``` menu. When enabled, opening a ROM while another instance is running will send the ROM to the running instance instead of starting a new one.
 - **Debug Symbols**: The emulator automatically tries to load a symbol file when loading a ROM. For example, for ```path_to_rom_file.rom``` it tries to load ```path_to_rom_file.sym```, ```path_to_rom_file.lbl``` and ```path_to_rom_file.noi```. You can also load symbol files using the GUI or the CLI. It supports *cc65* (VICE label file), *lyxass* (EQU) and *mads* (lab and hea) file formats.
+- **Debug Output**: Homebrew games can send debug text to the Trace Logger window using unused Mikey registers `$FDC0`–`$FDC4`. Enable *Debug Output* in the Trace Logger *Settings* menu and make sure the *Debug Messages* filter is active. See the register protocol below.
+
+| Register | Write |
+|----------|-------|
+| `$FDC0` | Send buffer to Trace Logger (write any non-zero value) |
+| `$FDC1` | Append byte as ASCII character |
+| `$FDC2` | Append byte as two hex digits |
+| `$FDC3` | Set string pointer low byte |
+| `$FDC4` | Set string pointer high byte (writing this triggers the copy) |
 
 ### Command Line Usage
 ```

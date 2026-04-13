@@ -198,6 +198,7 @@ void config_read(void)
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
     config_debug.trace_bytes = read_bool("Debug", "TraceBytes", true);
+    config_debug.trace_cpu = read_bool("Debug", "TraceCpu", true);
     config_debug.trace_cpu_irq = read_bool("Debug", "TraceCpuIrq", true);
     config_debug.trace_suzy_math = read_bool("Debug", "TraceSuzyMath", true);
     config_debug.trace_suzy_sprites = read_bool("Debug", "TraceSuzySprites", true);
@@ -206,6 +207,8 @@ void config_read(void)
     config_debug.trace_mikey_uart = read_bool("Debug", "TraceMikeyUart", true);
     config_debug.trace_mikey_audio = read_bool("Debug", "TraceMikeyAudio", true);
     config_debug.trace_cart = read_bool("Debug", "TraceCart", true);
+    config_debug.trace_debug_messages = read_bool("Debug", "TraceDebugMessages", true);
+    config_debug.debug_output_enabled = read_bool("Debug", "DebugOutputEnabled", false);
     config_debug.dis_show_mem = read_bool("Debug", "DisMem", true);
     config_debug.dis_show_symbols = read_bool("Debug", "DisSymbols", true);
     config_debug.dis_show_segment = read_bool("Debug", "DisSegment", true);
@@ -398,6 +401,7 @@ void config_write(void)
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);
     write_bool("Debug", "TraceFlags", config_debug.trace_flags);
     write_bool("Debug", "TraceBytes", config_debug.trace_bytes);
+    write_bool("Debug", "TraceCpu", config_debug.trace_cpu);
     write_bool("Debug", "TraceCpuIrq", config_debug.trace_cpu_irq);
     write_bool("Debug", "TraceSuzyMath", config_debug.trace_suzy_math);
     write_bool("Debug", "TraceSuzySprites", config_debug.trace_suzy_sprites);
@@ -406,6 +410,8 @@ void config_write(void)
     write_bool("Debug", "TraceMikeyUart", config_debug.trace_mikey_uart);
     write_bool("Debug", "TraceMikeyAudio", config_debug.trace_mikey_audio);
     write_bool("Debug", "TraceCart", config_debug.trace_cart);
+    write_bool("Debug", "TraceDebugMessages", config_debug.trace_debug_messages);
+    write_bool("Debug", "DebugOutputEnabled", config_debug.debug_output_enabled);
     write_bool("Debug", "DisMem", config_debug.dis_show_mem);
     write_bool("Debug", "DisSymbols", config_debug.dis_show_symbols);
     write_bool("Debug", "DisSegment", config_debug.dis_show_segment);

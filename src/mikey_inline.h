@@ -30,6 +30,7 @@
 #include "lcd_screen.h"
 #include "trace_logger.h"
 #include "eeprom.h"
+#include "memory.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
@@ -404,6 +405,48 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_MTEST2:        // 0xFD9E
             DebugMikey("Writing MTEST2 (unused): %02X", value);
             break;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        case MIKEY_DBGASCII:      // 0xFDC1
+            if (m_debug_output_enabled && m_state.debug_msg_pos < (GLYNX_DEBUG_MSG_MAX_SIZE - 1))
+            {
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = (char)value;
+                m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+            }
+            break;
+        case MIKEY_DBGHEX:        // 0xFDC2
+            if (m_debug_output_enabled && m_state.debug_msg_pos < (GLYNX_DEBUG_MSG_MAX_SIZE - 2))
+            {
+                static const char k_hex[] = "0123456789ABCDEF";
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = k_hex[(value >> 4) & 0x0F];
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = k_hex[value & 0x0F];
+                m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+            }
+            break;
+        case MIKEY_DBGSTRL:       // 0xFDC3
+            if (m_debug_output_enabled)
+                m_state.debug_str_addr.low = value;
+            break;
+        case MIKEY_DBGSTRH:       // 0xFDC4
+            if (m_debug_output_enabled)
+            {
+                m_state.debug_str_addr.high = value;
+                u16 addr = m_state.debug_str_addr.value;
+                int max_copy = (GLYNX_DEBUG_MSG_MAX_SIZE - 1) - m_state.debug_msg_pos;
+                for (int i = 0; i < max_copy; i++)
+                {
+                    u8 ch = m_memory->Read<true>(addr++);
+                    if (ch == 0)
+                        break;
+                    m_state.debug_msg_buffer[m_state.debug_msg_pos++] = (char)ch;
+                }
+                m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+            }
+            break;
+        case MIKEY_DBGOUT:        // 0xFDC0
+            if (m_debug_output_enabled && value != 0)
+                DebugOutputFlush();
+            break;
+#endif
         default:
             //assert(false && "Unhandled Mikey Write Address");
             DebugMikey("Register WRITE called with unknown address: %04X, value: %02X", address, value);

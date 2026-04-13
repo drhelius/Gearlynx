@@ -189,6 +189,7 @@ struct config_Debug
     bool trace_registers = true;
     bool trace_flags = true;
     bool trace_bytes = true;
+    bool trace_cpu = true;
     bool trace_cpu_irq = true;
     bool trace_suzy_math = true;
     bool trace_suzy_sprites = true;
@@ -197,6 +198,8 @@ struct config_Debug
     bool trace_mikey_uart = true;
     bool trace_mikey_audio = true;
     bool trace_cart = true;
+    bool trace_debug_messages = true;
+    bool debug_output_enabled = false;
     bool dis_show_mem = true;
     bool dis_show_symbols = true;
     bool dis_show_segment = true;

@@ -290,7 +290,7 @@ The server exposes tools organized in the following categories:
 - `list_disassembler_bookmarks` - List all disassembler bookmarks
 - `get_call_stack` - View function call hierarchy
 - `get_trace_log` - Read trace logger entries (CPU + hardware events). Use set_trace_log to start/stop the logger
-- `set_trace_log` - Start or stop the trace logger. Records CPU instructions and hardware events into a ring buffer. Filter event types with optional booleans
+- `set_trace_log` - Start or stop the trace logger. Use `filters` (nested object) to select event types (cpu, cpu_irq, suzy_math, suzy_sprites, suzy_input, mikey_timers, mikey_uart, mikey_audio, cart, debug_messages). Use `debug_output` (bool) to enable the $FDC0-$FDC4 debug output registers so game code can send text to the trace logger
 
 ### Breakpoints
 - `set_breakpoint` - Set execution, read, or write breakpoint at address. Read/write breakpoints stop with PC at instruction after memory access

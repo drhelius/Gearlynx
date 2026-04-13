@@ -104,11 +104,12 @@ bool gui_init(void)
     for (int i = 0; i < 4; i++)
         emu_audio_set_volume(i, config_audio.volume[i]);
 
+    emu_get_core()->GetMikey()->SetDebugOutputEnabled(config_debug.debug_output_enabled);
+
     strcpy(gui_savefiles_path, config_emulator.savefiles_path.c_str());
     strcpy(gui_savestates_path, config_emulator.savestates_path.c_str());
     strcpy(gui_screenshots_path, config_emulator.screenshots_path.c_str());
     strcpy(gui_bios_path, config_emulator.bios_path.c_str());
-    //strcpy(gui_backup_ram_path, config_emulator.backup_ram_path.c_str());
 
     if (strlen(gui_bios_path) > 0)
         gui_load_bios(gui_bios_path);

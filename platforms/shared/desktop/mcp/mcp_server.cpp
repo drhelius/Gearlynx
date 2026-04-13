@@ -1324,7 +1324,7 @@ void McpServer::HandleToolsList(const json& request)
     tools.push_back({
         {"name", "set_trace_log"},
         {"title", "Set Trace Logger"},
-        {"description", "Start or stop the trace logger. Records CPU instructions and hardware events into a ring buffer readable with get_trace_log. CPU tracing is always on. Filter event types with optional booleans."},
+        {"description", "Start or stop the trace logger. Records CPU instructions and hardware events into a ring buffer readable with get_trace_log. Use 'filters' to select which event types to record. Use 'debug_output' to enable the $FDC0-$FDC4 registers so game code can send text to the trace logger."},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1332,37 +1332,56 @@ void McpServer::HandleToolsList(const json& request)
                     {"type", "boolean"},
                     {"description", "true to start logging, false to stop. Existing entries are preserved when stopped."}
                 }},
-                {"cpu_irq", {
+                {"debug_output", {
                     {"type", "boolean"},
-                    {"description", "Trace IRQ events (default true)"}
+                    {"description", "Enable/disable debug output registers $FDC0-$FDC4 so game code can send text to the trace logger (default false)"}
                 }},
-                {"suzy_math", {
-                    {"type", "boolean"},
-                    {"description", "Trace Suzy multiply/divide operations (default true)"}
-                }},
-                {"suzy_sprites", {
-                    {"type", "boolean"},
-                    {"description", "Trace Suzy sprite rendering (default true)"}
-                }},
-                {"suzy_input", {
-                    {"type", "boolean"},
-                    {"description", "Trace Suzy input reads (default true)"}
-                }},
-                {"mikey_timers", {
-                    {"type", "boolean"},
-                    {"description", "Trace Mikey timer IRQ events (default true)"}
-                }},
-                {"mikey_uart", {
-                    {"type", "boolean"},
-                    {"description", "Trace Mikey UART TX/RX (default true)"}
-                }},
-                {"mikey_audio", {
-                    {"type", "boolean"},
-                    {"description", "Trace Mikey audio register writes (default true)"}
-                }},
-                {"cart", {
-                    {"type", "boolean"},
-                    {"description", "Trace cartridge shift register (default true)"}
+                {"filters", {
+                    {"type", "object"},
+                    {"description", "Select which event types to record. All default to true when omitted."},
+                    {"properties", {
+                        {"cpu", {
+                            {"type", "boolean"},
+                            {"description", "CPU instructions (default true)"}
+                        }},
+                        {"cpu_irq", {
+                            {"type", "boolean"},
+                            {"description", "IRQ events (default true)"}
+                        }},
+                        {"suzy_math", {
+                            {"type", "boolean"},
+                            {"description", "Suzy multiply/divide operations (default true)"}
+                        }},
+                        {"suzy_sprites", {
+                            {"type", "boolean"},
+                            {"description", "Suzy sprite rendering (default true)"}
+                        }},
+                        {"suzy_input", {
+                            {"type", "boolean"},
+                            {"description", "Suzy input reads (default true)"}
+                        }},
+                        {"mikey_timers", {
+                            {"type", "boolean"},
+                            {"description", "Mikey timer IRQ events (default true)"}
+                        }},
+                        {"mikey_uart", {
+                            {"type", "boolean"},
+                            {"description", "Mikey UART TX/RX (default true)"}
+                        }},
+                        {"mikey_audio", {
+                            {"type", "boolean"},
+                            {"description", "Mikey audio register writes (default true)"}
+                        }},
+                        {"cart", {
+                            {"type", "boolean"},
+                            {"description", "Cartridge shift register (default true)"}
+                        }},
+                        {"debug_messages", {
+                            {"type", "boolean"},
+                            {"description", "Debug output messages from game code via $FDC0-$FDC4 (default true)"}
+                        }}
+                    }},
+                    {"additionalProperties", false}
                 }}
             }},
             {"required", json::array({"enabled"})},
@@ -2061,19 +2080,23 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     else if (normalizedTool == "set_trace_log")
     {
         bool enabled = arguments["enabled"];
-        u32 flags = TRACE_FLAG_CPU;
+        u32 flags = 0;
         if (enabled)
         {
-            if (arguments.value("cpu_irq", true)) flags |= TRACE_FLAG_CPU_IRQ;
-            if (arguments.value("suzy_math", true)) flags |= TRACE_FLAG_SUZY_MATH;
-            if (arguments.value("suzy_sprites", true)) flags |= TRACE_FLAG_SUZY_SPRITE;
-            if (arguments.value("suzy_input", true)) flags |= TRACE_FLAG_SUZY_INPUT;
-            if (arguments.value("mikey_timers", true)) flags |= TRACE_FLAG_MIKEY_TIMER;
-            if (arguments.value("mikey_uart", true)) flags |= TRACE_FLAG_MIKEY_UART;
-            if (arguments.value("mikey_audio", true)) flags |= TRACE_FLAG_MIKEY_AUDIO;
-            if (arguments.value("cart", true)) flags |= TRACE_FLAG_CART_SHIFT;
+            json filters = arguments.value("filters", json::object());
+            if (filters.value("cpu", true)) flags |= TRACE_FLAG_CPU;
+            if (filters.value("cpu_irq", true)) flags |= TRACE_FLAG_CPU_IRQ;
+            if (filters.value("suzy_math", true)) flags |= TRACE_FLAG_SUZY_MATH;
+            if (filters.value("suzy_sprites", true)) flags |= TRACE_FLAG_SUZY_SPRITE;
+            if (filters.value("suzy_input", true)) flags |= TRACE_FLAG_SUZY_INPUT;
+            if (filters.value("mikey_timers", true)) flags |= TRACE_FLAG_MIKEY_TIMER;
+            if (filters.value("mikey_uart", true)) flags |= TRACE_FLAG_MIKEY_UART;
+            if (filters.value("mikey_audio", true)) flags |= TRACE_FLAG_MIKEY_AUDIO;
+            if (filters.value("cart", true)) flags |= TRACE_FLAG_CART_SHIFT;
+            if (filters.value("debug_messages", true)) flags |= TRACE_FLAG_DEBUG_MSG;
         }
-        return m_debugAdapter.SetTraceLog(enabled, flags);
+        bool debug_output = arguments.value("debug_output", false);
+        return m_debugAdapter.SetTraceLog(enabled, flags, debug_output);
     }
     else
     {
