@@ -160,11 +160,6 @@ public:
     json GetTraceLog(int start, int count);
     json SetTraceLog(bool enabled, u32 flags);
 
-    // External debug buffer
-    json GetDebugBuffer();
-    json ClearDebugBuffer();
-    json SetDebugBufferEnabled(bool enabled);
-
     // Core access
     GearlynxCore* GetCore() { return m_core; }
 

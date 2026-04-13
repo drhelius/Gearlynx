@@ -201,22 +201,6 @@ INLINE u8 Mikey::Read(u16 address)
         case MIKEY_MTEST2:        // 0xFD9E
             DebugMikey("Reading MTEST2 (unused): FF");
             return 0xFF;
-        case MIKEY_DBGOUT:        // 0xFDC0
-        {
-            if (!m_debug_buffer_enabled)
-                return 0xFF;
-            u8 size_lo = (u8)(m_debug_buffer.size() & 0xFF);
-            DebugMikey("Reading DBGOUT (buffer size low): %02X", size_lo);
-            return size_lo;
-        }
-        case MIKEY_DBGCTL:        // 0xFDC1
-        {
-            if (!m_debug_buffer_enabled)
-                return 0xFF;
-            u8 size_hi = (u8)((m_debug_buffer.size() >> 8) & 0xFF);
-            DebugMikey("Reading DBGCTL (buffer size high): %02X", size_hi);
-            return size_hi;
-        }
         default:
             //assert(false && "Unhandled Mikey Read Address");
             DebugMikey("Register READ called with unknown address: %04X", address);
@@ -420,19 +404,6 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_MTEST2:        // 0xFD9E
             DebugMikey("Writing MTEST2 (unused): %02X", value);
             break;
-        case MIKEY_DBGOUT:        // 0xFDC0
-            if (!m_debug_buffer_enabled)
-                break;
-            DebugMikey("Writing DBGOUT: %02X ('%c')", value, (value >= 0x20 && value < 0x7F) ? value : '.');
-            if (m_debug_buffer.size() < k_debug_buffer_max_size)
-                m_debug_buffer.push_back(value);
-            break;
-        case MIKEY_DBGCTL:        // 0xFDC1
-            if (!m_debug_buffer_enabled)
-                break;
-            DebugMikey("Writing DBGCTL (clear buffer): %02X (had %zu bytes)", value, m_debug_buffer.size());
-            m_debug_buffer.clear();
-            break;
         default:
             //assert(false && "Unhandled Mikey Write Address");
             DebugMikey("Register WRITE called with unknown address: %04X, value: %02X", address, value);
@@ -449,26 +420,6 @@ INLINE Mikey::Mikey_State* Mikey::GetState()
 INLINE LcdScreen* Mikey::GetLcdScreen()
 {
     return m_lcd_screen;
-}
-
-INLINE const std::vector<u8>& Mikey::GetDebugBuffer() const
-{
-    return m_debug_buffer;
-}
-
-INLINE void Mikey::ClearDebugBuffer()
-{
-    m_debug_buffer.clear();
-}
-
-INLINE bool Mikey::IsDebugBufferEnabled() const
-{
-    return m_debug_buffer_enabled;
-}
-
-INLINE void Mikey::SetDebugBufferEnabled(bool enabled)
-{
-    m_debug_buffer_enabled = enabled;
 }
 
 inline u8 Mikey::ReadColor(u16 address)

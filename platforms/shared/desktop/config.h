@@ -185,8 +185,6 @@ struct config_Debug
     bool show_uart = false;
     bool show_eeprom = false;
     bool show_cart = false;
-    bool show_debug_buffer = false;
-    bool debug_buffer_enabled = false;
     bool trace_counter = true;
     bool trace_registers = true;
     bool trace_flags = true;

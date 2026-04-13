@@ -939,10 +939,6 @@ static void menu_debug(void)
 
         ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
 
-        ImGui::Separator();
-
-        ImGui::MenuItem("Show Debug Buffer", "", &config_debug.show_debug_buffer, config_debug.debug);
-
 #if defined(__APPLE__) || defined(_WIN32)
         ImGui::Separator();
         ImGui::MenuItem("Multi-Viewport", "", &config_debug.multi_viewport, config_debug.debug);

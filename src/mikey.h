@@ -22,7 +22,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
 #include "common.h"
 #include "mikey_defines.h"
 
@@ -81,10 +80,6 @@ public:
     Mikey_State* GetState();
     LcdScreen* GetLcdScreen();
     bool SwitchAudInValue();
-    const std::vector<u8>& GetDebugBuffer() const;
-    void ClearDebugBuffer();
-    bool IsDebugBufferEnabled() const;
-    void SetDebugBufferEnabled(bool enabled);
     void SetTraceLogger(TraceLogger* trace_logger);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
@@ -128,8 +123,6 @@ private:
     Bus* m_bus;
     LcdScreen* m_lcd_screen;
     Mikey_State m_state;
-    std::vector<u8> m_debug_buffer;
-    bool m_debug_buffer_enabled;
     bool m_is_lynx2;
     TraceLogger* m_trace_logger;
 };
@@ -143,7 +136,6 @@ static const int k_mikey_audio_backward_links[4] = { -1, 0, 1, 2 };
 
 static const u32 k_mikey_refresh_period_cycles = 256;
 static const u32 k_mikey_refresh_inject_cycles = 4;
-static const size_t k_debug_buffer_max_size = 0x10000; // 64 KiB
 
 #include "mikey_inline.h"
 

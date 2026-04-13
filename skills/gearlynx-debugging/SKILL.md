@@ -168,14 +168,6 @@ Tracing is essential for understanding timing-sensitive code, interrupt handlers
 - `get_cart_status` — cartridge address generation, bank info, AUDIN
 - `get_eeprom_status` — EEPROM type, size, mode, state, IO pins
 
-### External Debug Buffer
-
-- `get_debug_buffer` — read buffer contents (text + hex) written by game code via $FDC0
-- `clear_debug_buffer` — clear the buffer (equivalent to game writing to $FDC1)
-- `set_debug_buffer` — enable or disable the buffer (disabled by default)
-
-Games write bytes to Mikey register `$FDC0` (DBGOUT) to append debug output. Read `$FDC0`/`$FDC1` to get buffer size (low/high bytes). Write any value to `$FDC1` (DBGCTL) to clear. Buffer capacity is 64 KiB.
-
 ### Frame Buffers and Screenshots
 
 - `get_screenshot` — current rendered frame as PNG
@@ -236,4 +228,3 @@ Use screenshots after stepping or continuing to see the visual impact of changes
 - **Watches**: Use `add_memory_watch` for variables you're tracking across steps
 - **Save states**: Use `save_state` / `load_state` to snapshot and restore emulator state at interesting points
 - **Screenshots**: Capture visual state with `get_screenshot` after significant changes
-- **Debug buffer**: If the game writes to `$FDC0`, use `get_debug_buffer` to read debug output and `clear_debug_buffer` to reset it

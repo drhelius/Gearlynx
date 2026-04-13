@@ -194,8 +194,6 @@ void config_read(void)
     config_debug.show_uart = read_bool("Debug", "UART", false);
     config_debug.show_eeprom = read_bool("Debug", "EEPROM", false);
     config_debug.show_cart = read_bool("Debug", "Cart", false);
-    config_debug.show_debug_buffer = read_bool("Debug", "DebugBuffer", false);
-    config_debug.debug_buffer_enabled = read_bool("Debug", "DebugBufferEnabled", false);
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
@@ -396,8 +394,6 @@ void config_write(void)
     write_bool("Debug", "UART", config_debug.show_uart);
     write_bool("Debug", "EEPROM", config_debug.show_eeprom);
     write_bool("Debug", "Cart", config_debug.show_cart);
-    write_bool("Debug", "DebugBuffer", config_debug.show_debug_buffer);
-    write_bool("Debug", "DebugBufferEnabled", config_debug.debug_buffer_enabled);
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);
     write_bool("Debug", "TraceFlags", config_debug.trace_flags);

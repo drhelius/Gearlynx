@@ -74,7 +74,6 @@
     <ClInclude Include="..\shared\desktop\gui_debug_disassembler.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_eeprom.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_cart.h" />
-    <ClInclude Include="..\shared\desktop\gui_debug_buffer.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_scb_viewer.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_lcd.h" />
     <ClInclude Include="..\shared\desktop\gui_debug_m6502.h" />
@@ -150,7 +149,6 @@
     <ClCompile Include="..\shared\desktop\gui_debug_disassembler.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_eeprom.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_cart.cpp" />
-    <ClCompile Include="..\shared\desktop\gui_debug_buffer.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_scb_viewer.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_lcd.cpp" />
     <ClCompile Include="..\shared\desktop\gui_debug_m6502.cpp" />
