@@ -67,12 +67,16 @@ s32 EEPROM::GetSize()
             size = 128;
             break;
         case GLYNX_EEPROM_93C56:
-        case GLYNX_EEPROM_93C66:
             size = 256;
             break;
+        case GLYNX_EEPROM_93C66:
+            size = 512;
+            break;
         case GLYNX_EEPROM_93C76:
-        case GLYNX_EEPROM_93C86:
             size = 1024;
+            break;
+        case GLYNX_EEPROM_93C86:
+            size = 2048;
             break;
         default:
             size = 128;
@@ -296,10 +300,14 @@ void EEPROM::SetType(GLYNX_EEPROM type)
             m_addr_bits = 6;
             break;
         case GLYNX_EEPROM_93C56:
+            m_addr_bits = 7;
+            break;
         case GLYNX_EEPROM_93C66:
             m_addr_bits = 8;
             break;
         case GLYNX_EEPROM_93C76:
+            m_addr_bits = 9;
+            break;
         case GLYNX_EEPROM_93C86:
             m_addr_bits = 10;
             break;
