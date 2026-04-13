@@ -119,8 +119,8 @@ void VgmRecorder::Stop()
         header[0x22] = 0x00;
         header[0x23] = 0x00;
 
-        // Rate (60Hz for NTSC)
-        u32 rate = 60;
+        // Rate (0 = use timing from wait commands)
+        u32 rate = 0;
         header[0x24] = (rate >> 0) & 0xFF;
         header[0x25] = (rate >> 8) & 0xFF;
         header[0x26] = (rate >> 16) & 0xFF;
