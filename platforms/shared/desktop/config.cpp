@@ -219,6 +219,8 @@ void config_read(void)
     config_debug.dis_look_ahead_count = read_int("Debug", "DisLookAheadCount", 20);
     config_debug.step_skip_interrupts = read_bool("Debug", "StepSkipInterrupts", false);
     config_debug.font_size = read_int("Debug", "FontSize", 0);
+    if (config_debug.font_size < 0 || config_debug.font_size > 3)
+        config_debug.font_size = 0;
     config_debug.scale = read_int("Debug", "Scale", 2);
     config_debug.multi_viewport = read_bool("Debug", "MultiViewport", false);
     config_debug.single_instance = read_bool("Debug", "SingleInstance", false);
