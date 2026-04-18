@@ -960,6 +960,8 @@ static void update_debug_sprites_accumulated(void)
             info.stretch = 0;
             info.tilt = 0;
             memset(info.pen_map, 0, 16);
+            info.hoff = src.hoff;
+            info.voff = src.voff;
             continue;
         }
 
