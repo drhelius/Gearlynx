@@ -141,17 +141,19 @@ void Audio::SetLowpassCutoff(float fc)
 void Audio::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
 }
 
-void Audio::LoadState(std::istream& stream)
+void Audio::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, version);
 }
 
-void Audio::Serialize(StateSerializer& s)
+void Audio::Serialize(StateSerializer& s, int version)
 {
+    if (version >= 13)
+        G_SERIALIZE(s, m_is_lynx2);
     G_SERIALIZE(s, m_cycles);
     G_SERIALIZE(s, m_lpf_left);
     G_SERIALIZE(s, m_lpf_right);

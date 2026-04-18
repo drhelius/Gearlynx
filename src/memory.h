@@ -56,7 +56,7 @@ public:
     void ResetDisassemblerRecords();
     GLYNX_Disassembler_Record** GetAllDisassemblerRecords();
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
     void SetMapCtl(u8 mapctl);
@@ -73,7 +73,7 @@ private:
     u8 BiosRead(u16 address);
     u8 LastPageRead(u16 address);
     void LastPageWrite(u16 address, u8 value);
-    void Serialize(StateSerializer& s);
+    void Serialize(StateSerializer& s, int version);
 
 private:
     Media* m_media;

@@ -87,7 +87,7 @@ public:
     void SetDebugOutputEnabled(bool enabled);
     bool IsDebugOutputEnabled();
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
     void ResetTimers();
@@ -118,7 +118,7 @@ private:
     void UartClock();
     void HorizontalBlank();
     void UpdateVideo(u32 cycles);
-    void Serialize(StateSerializer& s);
+    void Serialize(StateSerializer& s, int version);
     void DebugOutputFlush();
 
 private:

@@ -235,21 +235,24 @@ bool Mikey::SwitchAudInValue()
 void Mikey::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
 
     m_lcd_screen->SaveState(stream);
 }
 
-void Mikey::LoadState(std::istream& stream)
+void Mikey::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, version);
 
     m_lcd_screen->LoadState(stream);
 }
 
-void Mikey::Serialize(StateSerializer& s)
+void Mikey::Serialize(StateSerializer& s, int version)
 {
+    if (version >= 13)
+        G_SERIALIZE(s, m_is_lynx2);
+
     for (int i = 0; i < 8; i++)
     {
         G_SERIALIZE(s, m_state.timers[i].backup);

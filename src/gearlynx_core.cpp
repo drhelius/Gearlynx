@@ -601,7 +601,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
         return false;
     }
 
-    if (header.version != GLYNX_SAVESTATE_VERSION)
+    if (header.version < GLYNX_SAVESTATE_MIN_VERSION || header.version > GLYNX_SAVESTATE_VERSION)
     {
         Error("Invalid save state version: %d", header.version);
         return false;
@@ -636,10 +636,10 @@ bool GearlynxCore::LoadState(std::istream& stream)
     Debug("Unserializing save state...");
 
     m_m6502->LoadState(stream);
-    m_memory->LoadState(stream);
-    m_mikey->LoadState(stream);
+    m_memory->LoadState(stream, header.version);
+    m_mikey->LoadState(stream, header.version);
     m_suzy->LoadState(stream);
-    m_audio->LoadState(stream);
+    m_audio->LoadState(stream, header.version);
     m_input->LoadState(stream);
     m_media->LoadState(stream);
 
