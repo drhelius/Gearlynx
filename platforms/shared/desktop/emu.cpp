@@ -34,6 +34,7 @@ static GearlynxCore* core;
 static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
+static const int k_frame_buffer_size = 256 * 256 * 4;
 
 static void save_ram(void);
 static void load_ram(void);
@@ -67,7 +68,7 @@ bool emu_init(void)
     emu_collision_palette[14] = 0xFF55FFFF; // 14: Yellow
     emu_collision_palette[15] = 0xFFFFFFFF; // 15: White
 
-    emu_frame_buffer = new u8[256 * 256 * 4];
+    emu_frame_buffer = new u8[k_frame_buffer_size];
     audio_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
 
     init_debug();
@@ -212,6 +213,11 @@ void emu_key_pressed(GLYNX_Keys key)
 void emu_key_released(GLYNX_Keys key)
 {
     core->KeyReleased(key);
+}
+
+void emu_clear_frame_buffer(void)
+{
+    memset(emu_frame_buffer, 0, k_frame_buffer_size);
 }
 
 void emu_pause(void)
@@ -636,8 +642,7 @@ static void load_ram(void)
 
 static void reset_buffers(void)
 {
-    for (int i = 0; i < (256 * 256 * 4); i++)
-        emu_frame_buffer[i] = 0;
+    emu_clear_frame_buffer();
 
     for (int i = 0; i < GLYNX_AUDIO_BUFFER_SIZE; i++)
         audio_buffer[i] = 0;

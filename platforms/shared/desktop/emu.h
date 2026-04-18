@@ -100,6 +100,7 @@ EXTERN void emu_update(void);
 EXTERN bool emu_load_rom(const char* file_path);
 EXTERN void emu_key_pressed(GLYNX_Keys key);
 EXTERN void emu_key_released(GLYNX_Keys key);
+EXTERN void emu_clear_frame_buffer(void);
 EXTERN void emu_pause(void);
 EXTERN void emu_resume(void);
 EXTERN bool emu_is_paused(void);

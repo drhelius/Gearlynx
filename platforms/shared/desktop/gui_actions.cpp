@@ -39,8 +39,7 @@ void gui_action_reset(void)
     {
         emu_pause();
 
-        for (int i = 0; i < 1024 * 512 * 4; i++)
-            emu_frame_buffer[i] = 0;
+        emu_clear_frame_buffer();
     }
 }
 

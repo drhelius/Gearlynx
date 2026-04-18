@@ -301,8 +301,7 @@ void gui_load_rom(const char* path)
     {
         emu_pause();
 
-        for (int i = 0; i < 1024 * 512 * 4; i++)
-            emu_frame_buffer[i] = 0;
+        emu_clear_frame_buffer();
     }
 
     if (!emu_is_empty())
