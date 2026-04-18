@@ -234,7 +234,7 @@ void events_emu(const SDL_Event* event)
                     if (pressed)
                         emu_key_pressed(GLYNX_KEY_A);
                     else
-                        emu_key_released(GLYNX_KEY_UP);
+                        emu_key_released(GLYNX_KEY_A);
                 }
                 else if (config_input.gamepad_B == vbtn)
                 {
