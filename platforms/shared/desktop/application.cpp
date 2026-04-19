@@ -436,10 +436,10 @@ static void sdl_events(void)
                 ImGui_ImplSDL3_ProcessEvent(&event);
 
             if (!gui_in_use && !file_dialog_active)
-            {
                 events_emu(&event);
+
+            if (!file_dialog_active && !ImGui::GetIO().WantCaptureKeyboard)
                 events_shortcuts(&event);
-            }
         }
     }
 

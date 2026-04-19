@@ -46,6 +46,7 @@ static void set_defaults(void)
     config_emulator = config_Emulator();
     config_video = config_Video();
     config_audio = config_Audio();
+    config_rewind = config_Rewind();
     config_input = config_Input();
     config_debug = config_Debug();
 
@@ -80,6 +81,7 @@ static void set_defaults(void)
     config_hotkeys[config_HotkeyIndex_Reset] = make_hotkey(SDL_SCANCODE_R, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_Pause] = make_hotkey(SDL_SCANCODE_P, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_FFWD] = make_hotkey(SDL_SCANCODE_F, SDL_KMOD_CTRL);
+    config_hotkeys[config_HotkeyIndex_Rewind] = make_hotkey(SDL_SCANCODE_BACKSPACE, SDL_KMOD_NONE);
     config_hotkeys[config_HotkeyIndex_SaveState] = make_hotkey(SDL_SCANCODE_S, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_LoadState] = make_hotkey(SDL_SCANCODE_L, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_Screenshot] = make_hotkey(SDL_SCANCODE_X, SDL_KMOD_CTRL);
@@ -306,6 +308,15 @@ void config_read(void)
     config_audio.lowpass_cutoff = read_int("Audio", "LowpassCutoff", 3000);
     config_audio.buffer_count = read_int("Audio", "BufferCount", 3);
 
+    config_rewind.enabled = read_bool("Rewind", "Enabled", true);
+    config_rewind.buffer_seconds = read_int("Rewind", "BufferSeconds", 10);
+    config_rewind.buffer_seconds = CLAMP(config_rewind.buffer_seconds, 1, 10);
+    config_rewind.frames_per_snapshot = read_int("Rewind", "FramesPerSnapshot", 1);
+    if (config_rewind.frames_per_snapshot < 1)
+        config_rewind.frames_per_snapshot = 1;
+    config_rewind.speed = read_float("Rewind", "Speed", 2.0f);
+    config_rewind.speed = CLAMP(config_rewind.speed, 1.0f, 8.0f);
+
     config_input.key_left = (SDL_Scancode)read_int("Input", "KeyLeft", SDL_SCANCODE_LEFT);
     config_input.key_right = (SDL_Scancode)read_int("Input", "KeyRight", SDL_SCANCODE_RIGHT);
     config_input.key_up = (SDL_Scancode)read_int("Input", "KeyUp", SDL_SCANCODE_UP);
@@ -342,6 +353,7 @@ void config_read(void)
     config_hotkeys[config_HotkeyIndex_Reset] = read_hotkey("Hotkeys", "Reset", make_hotkey(SDL_SCANCODE_R, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_Pause] = read_hotkey("Hotkeys", "Pause", make_hotkey(SDL_SCANCODE_P, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_FFWD] = read_hotkey("Hotkeys", "FFWD", make_hotkey(SDL_SCANCODE_F, SDL_KMOD_CTRL));
+    config_hotkeys[config_HotkeyIndex_Rewind] = read_hotkey("Hotkeys", "Rewind", make_hotkey(SDL_SCANCODE_BACKSPACE, SDL_KMOD_NONE));
     config_hotkeys[config_HotkeyIndex_SaveState] = read_hotkey("Hotkeys", "SaveState", make_hotkey(SDL_SCANCODE_S, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_LoadState] = read_hotkey("Hotkeys", "LoadState", make_hotkey(SDL_SCANCODE_L, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_Screenshot] = read_hotkey("Hotkeys", "Screenshot", make_hotkey(SDL_SCANCODE_X, SDL_KMOD_CTRL));
@@ -493,6 +505,11 @@ void config_write(void)
     write_int("Audio", "LowpassCutoff", config_audio.lowpass_cutoff);
     write_int("Audio", "BufferCount", config_audio.buffer_count);
 
+    write_bool("Rewind", "Enabled", config_rewind.enabled);
+    write_int("Rewind", "BufferSeconds", config_rewind.buffer_seconds);
+    write_int("Rewind", "FramesPerSnapshot", config_rewind.frames_per_snapshot);
+    write_float("Rewind", "Speed", config_rewind.speed);
+
     write_int("Input", "KeyLeft", config_input.key_left);
     write_int("Input", "KeyRight", config_input.key_right);
     write_int("Input", "KeyUp", config_input.key_up);
@@ -529,6 +546,7 @@ void config_write(void)
     write_hotkey("Hotkeys", "Reset", config_hotkeys[config_HotkeyIndex_Reset]);
     write_hotkey("Hotkeys", "Pause", config_hotkeys[config_HotkeyIndex_Pause]);
     write_hotkey("Hotkeys", "FFWD", config_hotkeys[config_HotkeyIndex_FFWD]);
+    write_hotkey("Hotkeys", "Rewind", config_hotkeys[config_HotkeyIndex_Rewind]);
     write_hotkey("Hotkeys", "SaveState", config_hotkeys[config_HotkeyIndex_SaveState]);
     write_hotkey("Hotkeys", "LoadState", config_hotkeys[config_HotkeyIndex_LoadState]);
     write_hotkey("Hotkeys", "Screenshot", config_hotkeys[config_HotkeyIndex_Screenshot]);

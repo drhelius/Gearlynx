@@ -21,6 +21,7 @@
 #include "gearlynx.h"
 #include "config.h"
 #include "gui.h"
+#include "gui_actions.h"
 #include "emu.h"
 #include "application.h"
 #include "gamepad.h"
@@ -29,11 +30,25 @@
 #include "events.h"
 
 static bool events_check_hotkey(const SDL_Event* event, const config_Hotkey& hotkey, bool allow_repeat);
+static bool events_match_hotkey_scancode(const SDL_Event* event, const config_Hotkey& hotkey);
 
 void events_shortcuts(const SDL_Event* event)
 {
+    if (event->type == SDL_EVENT_KEY_UP)
+    {
+        if (events_match_hotkey_scancode(event, config_hotkeys[config_HotkeyIndex_Rewind]))
+            gui_action_rewind_released();
+        return;
+    }
+
     if (event->type != SDL_EVENT_KEY_DOWN)
         return;
+
+    if (events_check_hotkey(event, config_hotkeys[config_HotkeyIndex_Rewind], false))
+    {
+        gui_action_rewind_pressed();
+        return;
+    }
 
     if (events_check_hotkey(event, config_hotkeys[config_HotkeyIndex_Quit], false))
     {
@@ -355,4 +370,13 @@ static bool events_check_hotkey(const SDL_Event* event, const config_Hotkey& hot
     if (expected & (SDL_KMOD_LGUI | SDL_KMOD_RGUI | SDL_KMOD_GUI)) expected_normalized = (SDL_Keymod)(expected_normalized | SDL_KMOD_GUI);
 
     return mods_normalized == expected_normalized;
+}
+
+static bool events_match_hotkey_scancode(const SDL_Event* event, const config_Hotkey& hotkey)
+{
+    if (event->type != SDL_EVENT_KEY_UP && event->type != SDL_EVENT_KEY_DOWN)
+        return false;
+    if (hotkey.key == SDL_SCANCODE_UNKNOWN)
+        return false;
+    return event->key.scancode == hotkey.key;
 }
