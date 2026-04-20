@@ -23,6 +23,7 @@
 #include "sound_queue.h"
 #include "config.h"
 #include "mcp/mcp_manager.h"
+#include "debug_monitor_server.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #if defined(_WIN32)
@@ -34,6 +35,7 @@ static GearlynxCore* core;
 static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
+static DebugMonitorServer* debug_monitor;
 
 static void save_ram(void);
 static void load_ram(void);
@@ -93,12 +95,16 @@ bool emu_init(void)
     mcp_manager = new McpManager();
     mcp_manager->Init(core);
 
+    debug_monitor = new DebugMonitorServer();
+    debug_monitor->Init(core);
+
     return true;
 }
 
 void emu_destroy(void)
 {
     save_ram();
+    SafeDelete(debug_monitor);
     SafeDelete(mcp_manager);
     SafeDeleteArray(audio_buffer);
     sound_queue_destroy();
@@ -136,6 +142,9 @@ void emu_update(void)
 {
     emu_mcp_pump_commands();
 
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->PumpCommands();
+
     if (emu_is_empty())
         return;
 
@@ -159,6 +168,10 @@ void emu_update(void)
         }
 
         bool executed = (emu_debug_command != Debug_Command_None);
+
+        // Notify debug monitor of resumed state before execution
+        if (executed && debug_monitor && debug_monitor->IsRunning())
+            debug_monitor->NotifyResumed();
 
         if (executed)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
@@ -185,6 +198,16 @@ void emu_update(void)
         }
         else if (emu_debug_command != Debug_Command_Continue)
             emu_debug_command = Debug_Command_None;
+
+        // Notify debug monitor of stopped state after execution
+        if (debug_monitor && debug_monitor->IsRunning() && emu_debug_command == Debug_Command_None && executed)
+        {
+            u16 pc = core->GetM6502()->GetState()->PC.GetValue();
+            DebugMonitorStopReason reason = DM_STOP_STEP;
+            if (breakpoint_hit)
+                reason = DM_STOP_BREAKPOINT;
+            debug_monitor->NotifyStopped(reason, pc);
+        }
 
         if (executed)
             update_debug();
@@ -1562,4 +1585,34 @@ void emu_mcp_pump_commands(void)
 {
     if (mcp_manager && mcp_manager->IsRunning())
         mcp_manager->PumpCommands(core);
+}
+
+void emu_debug_monitor_start(int port)
+{
+    if (debug_monitor)
+    {
+        if (debug_monitor->IsRunning())
+            debug_monitor->Stop();
+
+        SafeDelete(debug_monitor);
+        debug_monitor = new DebugMonitorServer(port);
+        debug_monitor->Init(core);
+        debug_monitor->Start();
+    }
+}
+
+void emu_debug_monitor_stop(void)
+{
+    if (debug_monitor)
+        debug_monitor->Stop();
+}
+
+bool emu_debug_monitor_is_running(void)
+{
+    return debug_monitor && debug_monitor->IsRunning();
+}
+
+int emu_debug_monitor_get_port(void)
+{
+    return debug_monitor ? debug_monitor->GetPort() : 0;
 }

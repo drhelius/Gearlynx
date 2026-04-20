@@ -147,6 +147,11 @@ EXTERN bool emu_mcp_is_running(void);
 EXTERN int emu_mcp_get_transport_mode(void);
 EXTERN void emu_mcp_pump_commands(void);
 
+EXTERN void emu_debug_monitor_start(int port);
+EXTERN void emu_debug_monitor_stop(void);
+EXTERN bool emu_debug_monitor_is_running(void);
+EXTERN int emu_debug_monitor_get_port(void);
+
 #undef EMU_IMPORT
 #undef EXTERN
 #endif /* EMU_H */

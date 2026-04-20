@@ -1,0 +1,5 @@
+out/
+node_modules/
+src/
+tsconfig.json
+.eslintrc.json

@@ -1,0 +1,152 @@
+{
+  "name": "lynxdebug",
+  "displayName": "LynxDebug",
+  "description": "Source-level debugger for Atari Lynx games using the Gearlynx emulator",
+  "version": "0.1.0",
+  "publisher": "gearlynx",
+  "license": "GPL-3.0",
+  "engines": {
+    "vscode": "^1.87.0"
+  },
+  "main": "./out/extension.js",
+  "categories": [
+    "Debuggers"
+  ],
+  "activationEvents": [
+    "onDebugResolve:lynx"
+  ],
+  "contributes": {
+    "breakpoints": [
+      { "language": "c" },
+      { "language": "cpp" },
+      { "language": "asm" }
+    ],
+    "debuggers": [
+      {
+        "type": "lynx",
+        "label": "Lynx Debug",
+        "languages": ["c", "cpp", "asm"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["rom"],
+            "properties": {
+              "rom": {
+                "type": "string",
+                "description": "Path to ROM file (.lnx, .lyx, .o)"
+              },
+              "debugFile": {
+                "type": "string",
+                "description": "Path to debug info file (.dbg or .sym). Auto-detected if omitted."
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Pause execution at entry point.",
+                "default": false
+              },
+              "port": {
+                "type": "number",
+                "description": "Debug monitor port on Gearlynx.",
+                "default": 6502
+              },
+              "gearlynxPath": {
+                "type": "string",
+                "description": "Path to Gearlynx executable. Uses setting if omitted."
+              },
+              "sourceRoots": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Additional directories to search for source files referenced in debug info.",
+                "default": []
+              }
+            }
+          },
+          "attach": {
+            "properties": {
+              "debugFile": {
+                "type": "string",
+                "description": "Path to debug info file (.dbg or .sym)."
+              },
+              "hostname": {
+                "type": "string",
+                "description": "Host running Gearlynx.",
+                "default": "localhost"
+              },
+              "port": {
+                "type": "number",
+                "description": "Debug monitor port.",
+                "default": 6502
+              },
+              "sourceRoots": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Additional directories to search for source files.",
+                "default": []
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "lynx",
+            "request": "launch",
+            "name": "Launch Lynx Game",
+            "rom": "${workspaceFolder}/game.lnx",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Lynx Debug: Launch",
+            "description": "Launch a Lynx game in Gearlynx with debugging",
+            "body": {
+              "type": "lynx",
+              "request": "launch",
+              "name": "Launch Lynx",
+              "rom": "^\"\\${workspaceFolder}/${1:game.lnx}\"",
+              "stopOnEntry": true
+            }
+          },
+          {
+            "label": "Lynx Debug: Attach",
+            "description": "Attach to a running Gearlynx instance",
+            "body": {
+              "type": "lynx",
+              "request": "attach",
+              "name": "Attach to Gearlynx",
+              "port": 6502
+            }
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "Lynx Debug",
+      "properties": {
+        "lynxDebug.gearlynxPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Gearlynx executable"
+        },
+        "lynxDebug.defaultPort": {
+          "type": "number",
+          "default": 6502,
+          "description": "Default debug monitor port"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@vscode/debugadapter": "^1.68.0",
+    "await-notify": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.87.0",
+    "typescript": "^5.0.0"
+  }
+}

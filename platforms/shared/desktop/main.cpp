@@ -23,6 +23,7 @@
 #include "application_headless.h"
 #include "config.h"
 #include "console_utils.h"
+#include "emu.h"
 
 extern bool g_mcp_stdio_mode;
 
@@ -37,6 +38,7 @@ int main(int argc, char* argv[])
     bool force_windowed = false;
     int mcp_mode = -1; // -1 = disabled, 0 = stdio, 1 = tcp
     int mcp_tcp_port = 7777;
+    int debug_monitor_port = -1; // -1 = disabled
     int ret = 0;
     bool mcp_stdio_set = false;
     bool mcp_http_set = false;
@@ -94,6 +96,22 @@ int main(int argc, char* argv[])
                     }
                 }
             }
+            else if (strcmp(argv[i], "--debug-monitor") == 0)
+            {
+                debug_monitor_port = 6502;
+            }
+            else if (strcmp(argv[i], "--debug-monitor-port") == 0)
+            {
+                if (i + 1 < argc)
+                {
+                    debug_monitor_port = atoi(argv[++i]);
+                    if (debug_monitor_port <= 0 || debug_monitor_port > 65535)
+                    {
+                        printf("Invalid debug monitor port: %d\n", debug_monitor_port);
+                        debug_monitor_port = 6502;
+                    }
+                }
+            }
             else
             {
                 printf("Unknown option: %s\n", argv[i]);
@@ -106,21 +124,29 @@ int main(int argc, char* argv[])
     int non_option_count = 0;
     for (int i = 1; i < argc; i++)
     {
-        if (argv[i][0] != '-')
+        if (argv[i][0] == '-')
         {
-            if (non_option_count == 0)
-                rom_file = argv[i];
-            else if (non_option_count == 1)
-                symbol_file = argv[i];
-            
-            non_option_count++;
-            
-            if (non_option_count > 2)
+            // Skip value arguments consumed by options that take a parameter
+            if ((strcmp(argv[i], "--mcp-http-port") == 0 ||
+                 strcmp(argv[i], "--debug-monitor-port") == 0) && i + 1 < argc)
             {
-                show_usage = true;
-                ret = -1;
-                break;
+                i++;
             }
+            continue;
+        }
+
+        if (non_option_count == 0)
+            rom_file = argv[i];
+        else if (non_option_count == 1)
+            symbol_file = argv[i];
+        
+        non_option_count++;
+        
+        if (non_option_count > 2)
+        {
+            show_usage = true;
+            ret = -1;
+            break;
         }
     }
 
@@ -140,6 +166,8 @@ int main(int argc, char* argv[])
         printf("      --mcp-stdio       Auto-start MCP server with stdio transport\n");
         printf("      --mcp-http        Auto-start MCP server with HTTP transport\n");
         printf("      --mcp-http-port N HTTP port for MCP server (default: 7777)\n");
+        printf("      --debug-monitor   Start debug monitor TCP server (default port: 6502)\n");
+        printf("      --debug-monitor-port N  Port for debug monitor (default: 6502)\n");
         printf("      --headless        Run without GUI (requires --mcp-stdio or --mcp-http)\n");
         printf("  -v, --version         Display version information\n");
         printf("  -h, --help            Display this help message\n");
@@ -176,7 +204,12 @@ int main(int argc, char* argv[])
     ret = application_init(rom_file, symbol_file, force_fullscreen, force_windowed, mcp_mode, mcp_tcp_port);
 
     if (ret == 0)
+    {
+        if (debug_monitor_port > 0)
+            emu_debug_monitor_start(debug_monitor_port);
+
         application_mainloop();
+    }
 
     application_destroy();
 

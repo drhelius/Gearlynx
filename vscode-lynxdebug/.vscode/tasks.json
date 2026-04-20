@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "compile",
+            "type": "shell",
+            "command": "C:\\Users\\brian\\Downloads\\node-v25.9.0-win-x64\\node.exe",
+            "args": ["node_modules\\typescript\\bin\\tsc"],
+            "problemMatcher": "$tsc",
+            "isBackground": false,
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

@@ -1,0 +1,869 @@
+import {
+    LoggingDebugSession,
+    InitializedEvent,
+    StoppedEvent,
+    ContinuedEvent,
+    TerminatedEvent,
+    Thread,
+    StackFrame,
+    Scope,
+    Source,
+    Variable,
+} from '@vscode/debugadapter';
+import { DebugProtocol } from '@vscode/debugprotocol';
+import * as path from 'path';
+import * as cp from 'child_process';
+import { DebugMonitorClient } from './debug_monitor_client';
+import { DebugInfo } from './debug_info';
+import { CpuRegisters } from './types';
+
+const THREAD_ID = 1;
+
+interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+    rom: string;
+    debugFile?: string;
+    stopOnEntry?: boolean;
+    port?: number;
+    gearlynxPath?: string;
+    sourceRoots?: string[];
+}
+
+interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
+    debugFile?: string;
+    hostname?: string;
+    port?: number;
+    sourceRoots?: string[];
+}
+
+export class LynxDebugSession extends LoggingDebugSession {
+    private monitor: DebugMonitorClient;
+    private debugInfo: DebugInfo | null = null;
+    private emulatorProcess: cp.ChildProcess | null = null;
+    private variableHandles = new Map<number, string>();
+    private nextVarRef = 1;
+    // Track breakpoints per source file for proper clear/re-set
+    private sourceBreakpoints = new Map<string, number[]>();
+    // Source-line stepping state
+    private sourceStepActive = false;
+    private sourceStepOriginFile = '';
+    private sourceStepOriginLine = 0;
+    private sourceStepFn: (() => Promise<void>) | null = null;
+    private static readonly SOURCE_STEP_MAX = 500;
+
+    public constructor() {
+        super('lynxdebug-adapter.log');
+        this.monitor = new DebugMonitorClient();
+
+        this.monitor.on('stopped', (data: Record<string, unknown>) => {
+            const reason = (data?.reason as string) || 'step';
+
+            // If we're in a source-line step loop, check if line changed
+            if (this.sourceStepActive && reason === 'step') {
+                this.handleSourceStepStopped();
+                return;
+            }
+
+            this.sendEvent(new StoppedEvent(reason, THREAD_ID));
+        });
+
+        this.monitor.on('resumed', () => {
+            // Don't send ContinuedEvent during source-line step loop
+            if (this.sourceStepActive) return;
+            this.sendEvent(new ContinuedEvent(THREAD_ID));
+        });
+
+        this.monitor.on('terminated', () => {
+            this.sendEvent(new TerminatedEvent());
+        });
+
+        this.monitor.on('close', () => {
+            this.sendEvent(new TerminatedEvent());
+        });
+    }
+
+    protected initializeRequest(
+        response: DebugProtocol.InitializeResponse,
+        _args: DebugProtocol.InitializeRequestArguments
+    ): void {
+        response.body = response.body || {};
+        response.body.supportsConfigurationDoneRequest = true;
+        response.body.supportsEvaluateForHovers = true;
+        response.body.supportsReadMemoryRequest = true;
+        response.body.supportsDisassembleRequest = true;
+        response.body.supportsSteppingGranularity = true;
+        response.body.supportsInstructionBreakpoints = true;
+
+        this.sendResponse(response);
+    }
+
+    protected async launchRequest(
+        response: DebugProtocol.LaunchResponse,
+        args: LaunchRequestArguments
+    ): Promise<void> {
+        try {
+            // Load debug info
+            if (args.debugFile) {
+                this.debugInfo = DebugInfo.load(args.debugFile, args.sourceRoots);
+            }
+
+            const port = args.port || 6502;
+
+            // Start Gearlynx process
+            if (args.gearlynxPath) {
+                const emulatorArgs = [
+                    '--debug-monitor',
+                    '--debug-monitor-port', port.toString(),
+                    args.rom
+                ];
+                this.emulatorProcess = cp.spawn(args.gearlynxPath, emulatorArgs, {
+                    stdio: 'ignore',
+                    detached: false
+                });
+
+                this.emulatorProcess.on('exit', () => {
+                    this.sendEvent(new TerminatedEvent());
+                });
+            }
+
+            // Connect to debug monitor with retry
+            await this.monitor.connect('localhost', port);
+
+            // If we didn't spawn the emulator, load the ROM via protocol
+            if (!args.gearlynxPath) {
+                await this.monitor.loadRom(args.rom);
+            }
+
+            this.sendEvent(new InitializedEvent());
+
+            if (args.stopOnEntry) {
+                // Emulator starts paused in debug mode
+                this.sendEvent(new StoppedEvent('entry', THREAD_ID));
+            } else {
+                await this.monitor.continue_();
+            }
+
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Launch failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    protected async attachRequest(
+        response: DebugProtocol.AttachResponse,
+        args: AttachRequestArguments
+    ): Promise<void> {
+        try {
+            if (args.debugFile) {
+                this.debugInfo = DebugInfo.load(args.debugFile, args.sourceRoots);
+            }
+
+            const hostname = args.hostname || 'localhost';
+            const port = args.port || 6502;
+
+            await this.monitor.connect(hostname, port);
+            this.sendEvent(new InitializedEvent());
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Connect failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    protected configurationDoneRequest(
+        response: DebugProtocol.ConfigurationDoneResponse,
+        _args: DebugProtocol.ConfigurationDoneArguments
+    ): void {
+        this.sendResponse(response);
+    }
+
+    protected async disconnectRequest(
+        response: DebugProtocol.DisconnectResponse,
+        _args: DebugProtocol.DisconnectArguments
+    ): Promise<void> {
+        this.monitor.disconnect();
+        if (this.emulatorProcess) {
+            this.emulatorProcess.kill();
+            this.emulatorProcess = null;
+        }
+        this.sendResponse(response);
+    }
+
+    // -- Execution control --
+
+    protected async continueRequest(
+        response: DebugProtocol.ContinueResponse,
+        _args: DebugProtocol.ContinueArguments
+    ): Promise<void> {
+        await this.monitor.continue_();
+        response.body = { allThreadsContinued: true };
+        this.sendResponse(response);
+    }
+
+    protected async nextRequest(
+        response: DebugProtocol.NextResponse,
+        args: DebugProtocol.NextArguments
+    ): Promise<void> {
+        if (args.granularity === 'instruction' || !this.debugInfo) {
+            await this.monitor.stepOver();
+        } else {
+            await this.beginSourceLineStep(() => this.monitor.stepOver());
+        }
+        this.sendResponse(response);
+    }
+
+    protected async stepInRequest(
+        response: DebugProtocol.StepInResponse,
+        args: DebugProtocol.StepInArguments
+    ): Promise<void> {
+        if (args.granularity === 'instruction' || !this.debugInfo) {
+            await this.monitor.stepIn();
+        } else {
+            await this.beginSourceLineStep(() => this.monitor.stepIn());
+        }
+        this.sendResponse(response);
+    }
+
+    protected async stepOutRequest(
+        response: DebugProtocol.StepOutResponse,
+        _args: DebugProtocol.StepOutArguments
+    ): Promise<void> {
+        // stepOut always runs until RTS -- no source-line looping needed
+        await this.monitor.stepOut();
+        this.sendResponse(response);
+    }
+
+    protected async pauseRequest(
+        response: DebugProtocol.PauseResponse,
+        _args: DebugProtocol.PauseArguments
+    ): Promise<void> {
+        await this.monitor.pause();
+        this.sendResponse(response);
+    }
+
+    // -- Threads --
+
+    protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+        response.body = {
+            threads: [new Thread(THREAD_ID, '65C02')]
+        };
+        this.sendResponse(response);
+    }
+
+    // -- Stack trace --
+
+    protected async stackTraceRequest(
+        response: DebugProtocol.StackTraceResponse,
+        _args: DebugProtocol.StackTraceArguments
+    ): Promise<void> {
+        try {
+            const regs = await this.monitor.getRegisters();
+            const frames: StackFrame[] = [];
+
+            // Current frame
+            const source = this.resolveSource(regs.pc);
+            const topFrame = new StackFrame(
+                0,
+                this.formatAddress(regs.pc),
+                source?.vscodeSource,
+                source?.line
+            );
+            topFrame.instructionPointerReference = regs.pc.toString();
+            frames.push(topFrame);
+
+            // Call stack from emulator
+            const callStackData = await this.monitor.getCallStack();
+            if (callStackData && callStackData['entries']) {
+                const entries = callStackData['entries'] as Array<{
+                    src: number;
+                    dest: number;
+                    back: number;
+                }>;
+                for (let i = 0; i < entries.length; i++) {
+                    const entry = entries[i];
+                    const entrySource = this.resolveSource(entry.dest);
+                    const frame = new StackFrame(
+                        i + 1,
+                        this.formatAddress(entry.dest),
+                        entrySource?.vscodeSource,
+                        entrySource?.line
+                    );
+                    frame.instructionPointerReference = entry.dest.toString();
+                    frames.push(frame);
+                }
+            }
+
+            response.body = {
+                stackFrames: frames,
+                totalFrames: frames.length
+            };
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Stack trace failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    // -- Scopes and variables --
+
+    protected scopesRequest(
+        response: DebugProtocol.ScopesResponse,
+        _args: DebugProtocol.ScopesArguments
+    ): void {
+        this.variableHandles.clear();
+        this.nextVarRef = 1;
+
+        const registersRef = this.allocVariableRef('registers');
+        const flagsRef = this.allocVariableRef('flags');
+
+        const scopes: Scope[] = [
+            new Scope('Registers', registersRef, false),
+            new Scope('Flags', flagsRef, false),
+        ];
+
+        if (this.debugInfo) {
+            const localsRef = this.allocVariableRef('locals');
+            scopes.push(new Scope('Locals', localsRef, false));
+
+            const zpRef = this.allocVariableRef('zeropage');
+            scopes.push(new Scope('Zero Page', zpRef, false));
+
+            const globalsRef = this.allocVariableRef('globals');
+            scopes.push(new Scope('Globals', globalsRef, false));
+        }
+
+        const hwRef = this.allocVariableRef('hardware');
+        scopes.push(new Scope('Hardware', hwRef, false));
+
+        response.body = { scopes };
+        this.sendResponse(response);
+    }
+
+    protected async variablesRequest(
+        response: DebugProtocol.VariablesResponse,
+        args: DebugProtocol.VariablesArguments
+    ): Promise<void> {
+        const scopeName = this.variableHandles.get(args.variablesReference);
+        const variables: Variable[] = [];
+
+        try {
+            if (scopeName === 'registers') {
+                const regs = await this.monitor.getRegisters();
+                const pcVar = this.makeVar('PC', regs.pc, 16, 4);
+                (pcVar as unknown as DebugProtocol.Variable).memoryReference = regs.pc.toString();
+                variables.push(pcVar);
+                variables.push(this.makeVar('A', regs.a, 16, 2));
+                variables.push(this.makeVar('X', regs.x, 16, 2));
+                variables.push(this.makeVar('Y', regs.y, 16, 2));
+                const spVar = this.makeVar('S', regs.s, 16, 2);
+                (spVar as unknown as DebugProtocol.Variable).memoryReference = (0x0100 + regs.s).toString();
+                variables.push(spVar);
+                variables.push(this.makeVar('P', regs.p, 16, 2));
+            } else if (scopeName === 'flags') {
+                const regs = await this.monitor.getRegisters();
+                const p = regs.p;
+                variables.push(new Variable('N (Negative)', (p & 0x80) ? '1' : '0', 0));
+                variables.push(new Variable('V (Overflow)', (p & 0x40) ? '1' : '0', 0));
+                variables.push(new Variable('B (Break)', (p & 0x10) ? '1' : '0', 0));
+                variables.push(new Variable('D (Decimal)', (p & 0x08) ? '1' : '0', 0));
+                variables.push(new Variable('I (IRQ Disable)', (p & 0x04) ? '1' : '0', 0));
+                variables.push(new Variable('Z (Zero)', (p & 0x02) ? '1' : '0', 0));
+                variables.push(new Variable('C (Carry)', (p & 0x01) ? '1' : '0', 0));
+            } else if (scopeName === 'locals' && this.debugInfo) {
+                await this.populateLocals(variables);
+            } else if (scopeName === 'zeropage' && this.debugInfo) {
+                await this.populateZeroPage(variables);
+            } else if (scopeName === 'globals' && this.debugInfo) {
+                await this.populateGlobals(variables);
+            } else if (scopeName === 'hardware') {
+                await this.populateHardware(variables);
+            }
+        } catch {
+            // Return empty if disconnected
+        }
+
+        response.body = { variables };
+        this.sendResponse(response);
+    }
+
+    private async populateLocals(variables: Variable[]): Promise<void> {
+        if (!this.debugInfo) return;
+
+        const regs = await this.monitor.getRegisters();
+        const localVars = this.debugInfo.getLocalsForAddress(regs.pc);
+
+        if (localVars.length === 0) {
+            // Check if we're in a known function but cc65 didn't emit local info
+            const funcs = this.debugInfo.getFunctions();
+            const inFunc = funcs.find(f => regs.pc >= f.address && regs.pc <= f.addressEnd);
+            if (inFunc) {
+                variables.push(new Variable(
+                    `(${inFunc.name})`,
+                    'no local variable info from cc65',
+                    0
+                ));
+            }
+            return;
+        }
+
+        // Read the cc65 software stack pointer from zero page
+        const spAddr = this.debugInfo.getZeropageStackPointerAddr();
+        const spHex = await this.monitor.getMemory(0, spAddr, 2);
+        const spLo = parseInt(spHex.substring(0, 2), 16);
+        const spHi = parseInt(spHex.substring(2, 4), 16);
+        const stackPtr = spLo | (spHi << 8);
+
+        for (const local of localVars) {
+            if (local.stackOffset !== undefined) {
+                // Has stack offset -- read value from stack
+                const addr = stackPtr + local.stackPointerOffset + local.stackOffset;
+                try {
+                    const hex = await this.monitor.getMemory(0, addr & 0xFFFF, 2);
+                    const lo = parseInt(hex.substring(0, 2), 16);
+                    const hi = parseInt(hex.substring(2, 4), 16);
+                    const word = lo | (hi << 8);
+                    const addrStr = `$${(addr & 0xFFFF).toString(16).toUpperCase().padStart(4, '0')}`;
+                    variables.push(new Variable(
+                        local.name,
+                        `$${lo.toString(16).toUpperCase().padStart(2, '0')} (${lo}) [w:$${word.toString(16).toUpperCase().padStart(4, '0')}] @${addrStr}`,
+                        0
+                    ));
+                } catch {
+                    variables.push(new Variable(local.name, '<unavailable>', 0));
+                }
+            } else {
+                // No stack offset -- show as known local without value
+                variables.push(new Variable(local.name, '<no offset info>', 0));
+            }
+        }
+    }
+
+    private async populateGlobals(variables: Variable[]): Promise<void> {
+        if (!this.debugInfo) return;
+        const symbols = this.debugInfo.getSymbols();
+        for (const sym of symbols) {
+            if (!sym.isCVariable || sym.isZeroPage) continue;
+            const v = await this.readSymbolValue(sym.name, sym.address);
+            variables.push(v);
+        }
+    }
+
+    private async populateZeroPage(variables: Variable[]): Promise<void> {
+        if (!this.debugInfo) return;
+        const zpSymbols = this.debugInfo.getZeroPageSymbols();
+        for (const sym of zpSymbols) {
+            if (!sym.isCVariable) continue;
+            const v = await this.readSymbolValue(sym.name, sym.address);
+            variables.push(v);
+        }
+    }
+
+    private async readSymbolValue(name: string, address: number): Promise<Variable> {
+        try {
+            const hex = await this.monitor.getMemory(0, address, 2);
+            const lo = parseInt(hex.substring(0, 2), 16);
+            const hi = parseInt(hex.substring(2, 4), 16);
+            const word = lo | (hi << 8);
+            const addrStr = `$${address.toString(16).toUpperCase().padStart(4, '0')}`;
+            const v: DebugProtocol.Variable = {
+                name: name,
+                value: `$${lo.toString(16).toUpperCase().padStart(2, '0')} (${lo}) [w:$${word.toString(16).toUpperCase().padStart(4, '0')}] @${addrStr}`,
+                variablesReference: 0,
+                memoryReference: address.toString(),
+            };
+            return v as Variable;
+        } catch {
+            return new Variable(name, '<unavailable>', 0);
+        }
+    }
+
+    private async populateHardware(variables: Variable[]): Promise<void> {
+        try {
+            const hw = await this.monitor.getHardwareStatus();
+            const regs = await this.monitor.getRegisters();
+
+            variables.push(new Variable('Cycles', `${regs.cycles}`, 0));
+            variables.push(new Variable('Total Ticks', `${hw['total_ticks']}`, 0));
+            variables.push(new Variable('CPU Halted', `${hw['halted']}`, 0));
+            variables.push(new Variable('IRQ Asserted', `${hw['irq_asserted']}`, 0));
+            variables.push(new Variable('IRQ Pending', `${hw['irq_pending']}`, 0));
+
+            // Timers
+            const timers = hw['timers'] as Record<string, unknown> | undefined;
+            if (timers && timers['timers']) {
+                const timerArr = timers['timers'] as Array<Record<string, unknown>>;
+                for (const t of timerArr) {
+                    const idx = t['index'] as number;
+                    const name = t['name'] as string || `Timer ${idx}`;
+                    const counter = t['counter'] as string || '00';
+                    const backup = t['backup'] as string || '00';
+                    const enabled = t['enabled'] as boolean;
+                    variables.push(new Variable(
+                        `Timer ${idx} (${name})`,
+                        `cnt:$${counter} bkp:$${backup} ${enabled ? 'ON' : 'off'}`,
+                        0
+                    ));
+                }
+            }
+
+            // Audio channels
+            const audio = hw['audio'] as Record<string, unknown> | undefined;
+            if (audio && audio['channels']) {
+                const channels = audio['channels'] as Array<Record<string, unknown>>;
+                for (const ch of channels) {
+                    const idx = ch['index'] as number;
+                    const vol = ch['volume'] as string || '00';
+                    const output = ch['output'] as string || '00';
+                    const enabled = ch['enabled'] as boolean;
+                    variables.push(new Variable(
+                        `Audio Ch ${idx}`,
+                        `vol:$${vol} out:$${output} ${enabled ? 'ON' : 'off'}`,
+                        0
+                    ));
+                }
+            }
+
+            // LCD
+            const lcd = hw['lcd'] as Record<string, unknown> | undefined;
+            if (lcd) {
+                const lineStatus = lcd['line_status'] as Record<string, unknown> | undefined;
+                if (lineStatus) {
+                    const lineNum = lineStatus['line_number'];
+                    const lineType = lineStatus['line_type'] as string || '';
+                    if (lineNum !== undefined)
+                        variables.push(new Variable('LCD Line', `${lineNum} (${lineType})`, 0));
+                }
+                const dispAdr = lcd['display_address'] as Record<string, unknown> | undefined;
+                if (dispAdr && dispAdr['value'])
+                    variables.push(new Variable('DISPADR', `$${dispAdr['value']}`, 0));
+                const vidBas = lcd['video_base'] as Record<string, unknown> | undefined;
+                if (vidBas && vidBas['value'])
+                    variables.push(new Variable('VIDBAS', `$${vidBas['value']}`, 0));
+            }
+
+            // Cart
+            const cart = hw['cart'] as Record<string, unknown> | undefined;
+            if (cart) {
+                const addrGen = cart['address_generation'] as Record<string, unknown> | undefined;
+                if (addrGen) {
+                    if (addrGen['page_offset'] !== undefined)
+                        variables.push(new Variable('Cart Page', `$${addrGen['page_offset']}`, 0));
+                }
+                const bank0 = cart['bank0'] as Record<string, unknown> | undefined;
+                const bank1 = cart['bank1'] as Record<string, unknown> | undefined;
+                if (bank0 && bank0['page_size'] !== undefined)
+                    variables.push(new Variable('Cart Bank0', `page:${bank0['page_size']}`, 0));
+                if (bank1 && bank1['page_size'] !== undefined)
+                    variables.push(new Variable('Cart Bank1', `page:${bank1['page_size']}`, 0));
+            }
+        } catch {
+            variables.push(new Variable('Hardware', '<unavailable>', 0));
+        }
+    }
+
+    // -- Breakpoints --
+
+    protected async setBreakPointsRequest(
+        response: DebugProtocol.SetBreakpointsResponse,
+        args: DebugProtocol.SetBreakpointsArguments
+    ): Promise<void> {
+        const sourcePath = args.source.path || '';
+        const requestedBps = args.breakpoints || [];
+        const resultBps: DebugProtocol.Breakpoint[] = [];
+
+        // Clear previous breakpoints for this source file
+        const prevAddresses = this.sourceBreakpoints.get(sourcePath) || [];
+        for (const addr of prevAddresses) {
+            try {
+                await this.monitor.deleteBreakpoint(addr);
+            } catch {
+                // ignore errors on delete
+            }
+        }
+
+        const newAddresses: number[] = [];
+
+        for (const reqBp of requestedBps) {
+            let address: number | undefined;
+            let verifiedLine = reqBp.line;
+
+            if (this.debugInfo) {
+                const location = this.debugInfo.findNearestCodeLine(sourcePath, reqBp.line);
+                if (location) {
+                    address = location.address;
+                    verifiedLine = location.line;
+                }
+            }
+
+            if (address !== undefined) {
+                try {
+                    await this.monitor.setBreakpoint(address, 'exec');
+                    newAddresses.push(address);
+                    resultBps.push({
+                        verified: true,
+                        line: verifiedLine,
+                        source: args.source
+                    });
+                } catch {
+                    resultBps.push({ verified: false, line: reqBp.line });
+                }
+            } else {
+                resultBps.push({
+                    verified: false,
+                    line: reqBp.line,
+                    message: 'No code at this line'
+                });
+            }
+        }
+
+        this.sourceBreakpoints.set(sourcePath, newAddresses);
+        response.body = { breakpoints: resultBps };
+        this.sendResponse(response);
+    }
+
+    // -- Evaluate (hover/watch) --
+
+    protected async evaluateRequest(
+        response: DebugProtocol.EvaluateResponse,
+        args: DebugProtocol.EvaluateArguments
+    ): Promise<void> {
+        try {
+            const expr = args.expression.trim();
+
+            // Check for register names
+            const regNames = ['pc', 'a', 'x', 'y', 's', 'p'];
+            const lowerExpr = expr.toLowerCase();
+            if (regNames.includes(lowerExpr)) {
+                const regs = await this.monitor.getRegisters();
+                const val = regs[lowerExpr as keyof CpuRegisters] as number;
+                const width = lowerExpr === 'pc' ? 4 : 2;
+                response.body = {
+                    result: `$${val.toString(16).toUpperCase().padStart(width, '0')} (${val})`,
+                    variablesReference: 0
+                };
+                this.sendResponse(response);
+                return;
+            }
+
+            // Check for hex address ($xxxx or 0xXXXX)
+            let addrMatch = expr.match(/^\$([0-9a-fA-F]{1,4})$/);
+            if (!addrMatch) {
+                addrMatch = expr.match(/^0x([0-9a-fA-F]{1,4})$/i);
+            }
+            if (addrMatch) {
+                const addr = parseInt(addrMatch[1], 16);
+                const hex = await this.monitor.getMemory(0, addr, 1);
+                const val = parseInt(hex.substring(0, 2), 16);
+                response.body = {
+                    result: `[$${addr.toString(16).toUpperCase().padStart(4, '0')}] = $${val.toString(16).toUpperCase().padStart(2, '0')} (${val})`,
+                    variablesReference: 0
+                };
+                this.sendResponse(response);
+                return;
+            }
+
+            // Check for symbol lookup -- read the VALUE at the symbol's address
+            if (this.debugInfo) {
+                const sym = this.debugInfo.findSymbol(expr);
+                if (sym) {
+                    const hex = await this.monitor.getMemory(0, sym.address, 2);
+                    const lo = parseInt(hex.substring(0, 2), 16);
+                    const hi = parseInt(hex.substring(2, 4), 16);
+                    const word = lo | (hi << 8);
+                    const addrStr = `$${sym.address.toString(16).toUpperCase().padStart(4, '0')}`;
+                    response.body = {
+                        result: `$${lo.toString(16).toUpperCase().padStart(2, '0')} (${lo}) [w:$${word.toString(16).toUpperCase().padStart(4, '0')}] @${addrStr}`,
+                        variablesReference: 0,
+                        memoryReference: sym.address.toString()
+                    };
+                    this.sendResponse(response);
+                    return;
+                }
+            }
+
+            response.body = {
+                result: `'${expr}' not found`,
+                variablesReference: 0
+            };
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Evaluate failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    // -- Disassembly --
+
+    protected async disassembleRequest(
+        response: DebugProtocol.DisassembleResponse,
+        args: DebugProtocol.DisassembleArguments
+    ): Promise<void> {
+        try {
+            // Parse memoryReference as hex address
+            const baseAddr = parseInt(args.memoryReference, 10) || 0;
+            const offset = args.offset || 0;
+            const count = args.instructionCount || 32;
+            const startAddr = Math.max(0, baseAddr + offset);
+            // Request a generous range since we don't know instruction sizes ahead of time
+            const endAddr = Math.min(0xFFFF, startAddr + count * 3);
+
+            const lines = await this.monitor.getDisassembly(startAddr, endAddr);
+            const instructions: DebugProtocol.DisassembledInstruction[] = [];
+
+            for (const line of lines) {
+                if (instructions.length >= count) break;
+
+                const addrHex = `0x${line.address.toString(16).toUpperCase().padStart(4, '0')}`;
+                const source = this.resolveSource(line.address);
+
+                const instr: DebugProtocol.DisassembledInstruction = {
+                    address: addrHex,
+                    instruction: line.name,
+                    instructionBytes: line.bytes,
+                };
+
+                if (source) {
+                    instr.location = source.vscodeSource;
+                    instr.line = source.line;
+                }
+
+                // Show symbol label if present
+                if (this.debugInfo) {
+                    const sym = this.debugInfo.findSymbolAtAddress(line.address);
+                    if (sym) {
+                        instr.symbol = sym.name;
+                    }
+                }
+
+                instructions.push(instr);
+            }
+
+            response.body = { instructions };
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Disassembly failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    // -- Read memory --
+
+    protected async readMemoryRequest(
+        response: DebugProtocol.ReadMemoryResponse,
+        args: DebugProtocol.ReadMemoryArguments
+    ): Promise<void> {
+        try {
+            const baseAddr = parseInt(args.memoryReference, 10) || 0;
+            const offset = args.offset || 0;
+            const count = args.count;
+            const addr = Math.max(0, baseAddr + offset);
+
+            const hex = await this.monitor.getMemory(0, addr, count);
+            // Convert hex string to base64
+            const bytes = Buffer.from(hex, 'hex');
+            response.body = {
+                address: `0x${addr.toString(16)}`,
+                data: bytes.toString('base64'),
+                unreadableBytes: 0,
+            };
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Read memory failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    // -- Source-line stepping --
+
+    private async beginSourceLineStep(stepFn: () => Promise<void>): Promise<void> {
+        if (!this.debugInfo) {
+            await stepFn();
+            return;
+        }
+
+        // Record current source location
+        const regs = await this.monitor.getRegisters();
+        const loc = this.debugInfo.findSourceForAddress(regs.pc);
+
+        this.sourceStepOriginFile = loc?.source || '';
+        this.sourceStepOriginLine = loc?.line || 0;
+        this.sourceStepFn = stepFn;
+        this.sourceStepActive = true;
+
+        // Fire the first step
+        await stepFn();
+    }
+
+    private async handleSourceStepStopped(): Promise<void> {
+        if (!this.debugInfo || !this.sourceStepFn) {
+            this.sourceStepActive = false;
+            this.sendEvent(new StoppedEvent('step', THREAD_ID));
+            return;
+        }
+
+        try {
+            const regs = await this.monitor.getRegisters();
+            const loc = this.debugInfo.findSourceForAddress(regs.pc);
+
+            const sameLocation = loc &&
+                loc.source === this.sourceStepOriginFile &&
+                loc.line === this.sourceStepOriginLine;
+
+            // No source mapping = we've left mapped code, stop
+            // Different line = we've moved to a new statement, stop
+            if (!loc || !sameLocation) {
+                this.sourceStepActive = false;
+                this.sendEvent(new StoppedEvent('step', THREAD_ID));
+                return;
+            }
+
+            // Same line -- keep stepping
+            await this.sourceStepFn();
+        } catch {
+            this.sourceStepActive = false;
+            this.sendEvent(new StoppedEvent('step', THREAD_ID));
+        }
+    }
+
+    // -- Helpers --
+
+    private resolveSource(address: number): { vscodeSource: Source; line: number } | null {
+        if (!this.debugInfo) return null;
+
+        const loc = this.debugInfo.findSourceForAddress(address);
+        if (!loc) return null;
+
+        return {
+            vscodeSource: new Source(path.basename(loc.source), loc.source),
+            line: loc.line
+        };
+    }
+
+    private formatAddress(addr: number): string {
+        let label = `$${addr.toString(16).toUpperCase().padStart(4, '0')}`;
+        if (this.debugInfo) {
+            const sym = this.debugInfo.findSymbolAtAddress(addr);
+            if (sym) {
+                label = `${sym.name} (${label})`;
+            }
+        }
+        return label;
+    }
+
+    private makeVar(name: string, value: number, radix: number, width: number): Variable {
+        const hexStr = `$${value.toString(16).toUpperCase().padStart(width, '0')}`;
+        return new Variable(name, `${hexStr} (${value})`, 0);
+    }
+
+    private allocVariableRef(name: string): number {
+        const ref = this.nextVarRef++;
+        this.variableHandles.set(ref, name);
+        return ref;
+    }
+}
