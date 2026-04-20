@@ -1,12 +1,14 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, DebugInfoData } from './types';
+import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, OverlayGroup, DebugInfoData } from './types';
 import { Cc65DebugInfo } from './debug_info_cc65';
 import { SymDebugInfo } from './debug_info_sym';
 
 export class DebugInfo {
     private data: DebugInfoData;
     private sourceRoots: string[];
+    private activeOverlaySegments: Set<number> | null = null;
+    private activeOverlayName: string | null = null;
 
     private constructor(data: DebugInfoData, sourceRoots: string[]) {
         this.data = data;
@@ -37,18 +39,20 @@ export class DebugInfo {
     findSourceForAddress(address: number): SourceLocation | null {
         // Exact match first
         let loc = this.data.addressToSource.get(address);
-        if (loc) return this.resolveLocation(loc);
+        if (loc && this.isSegmentActive(loc.segmentId)) {
+            return this.resolveLocation(loc);
+        }
 
-        // Find nearest address <= target
+        // Find nearest address <= target, respecting active overlay
         let bestAddr = -1;
-        for (const [addr, _loc] of this.data.addressToSource) {
-            if (addr <= address && addr > bestAddr) {
+        for (const [addr, candidate] of this.data.addressToSource) {
+            if (addr <= address && addr > bestAddr && this.isSegmentActive(candidate.segmentId)) {
                 bestAddr = addr;
             }
         }
         if (bestAddr >= 0) {
             loc = this.data.addressToSource.get(bestAddr);
-            if (loc && address <= loc.addressEnd) {
+            if (loc && address <= loc.addressEnd && this.isSegmentActive(loc.segmentId)) {
                 return this.resolveLocation(loc);
             }
         }
@@ -105,6 +109,52 @@ export class DebugInfo {
 
     getZeroPageSymbols(): DebugSymbol[] {
         return this.data.symbols.filter(s => s.isZeroPage);
+    }
+
+    // -- Overlay management --
+
+    getOverlayGroups(): OverlayGroup[] {
+        return this.data.overlayGroups;
+    }
+
+    hasOverlays(): boolean {
+        return this.data.overlayGroups.length > 0;
+    }
+
+    setActiveOverlay(segmentName: string): void {
+        for (const group of this.data.overlayGroups) {
+            const idx = group.segmentNames.indexOf(segmentName);
+            if (idx >= 0) {
+                this.activeOverlaySegments = new Set<number>();
+                this.activeOverlaySegments.add(group.segmentIds[idx]);
+                this.activeOverlayName = segmentName;
+                return;
+            }
+        }
+    }
+
+    getActiveOverlayName(): string | null {
+        return this.activeOverlayName;
+    }
+
+    clearActiveOverlay(): void {
+        this.activeOverlaySegments = null;
+        this.activeOverlayName = null;
+    }
+
+    private isSegmentActive(segmentId: number): boolean {
+        if (!this.activeOverlaySegments) return true;
+        // Non-overlay segments are always active
+        let isOverlaySegment = false;
+        for (const group of this.data.overlayGroups) {
+            if (group.segmentIds.includes(segmentId)) {
+                isOverlaySegment = true;
+                break;
+            }
+        }
+        if (!isOverlaySegment) return true;
+        // Overlay segment -- only active if selected
+        return this.activeOverlaySegments.has(segmentId);
     }
 
     // -- Internal helpers --

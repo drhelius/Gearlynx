@@ -74,6 +74,7 @@ export interface SourceLocation {
     line: number;
     address: number;
     addressEnd: number;
+    segmentId: number;
 }
 
 export interface DebugSymbol {
@@ -109,4 +110,12 @@ export interface DebugInfoData {
     functions: DebugFunction[];
     locals: LocalVariable[];
     zeropageStackPointerAddr: number;
+    overlayGroups: OverlayGroup[];
+    segmentForAddress: Map<number, number>;
+}
+
+export interface OverlayGroup {
+    name: string;
+    segmentIds: number[];
+    segmentNames: string[];
 }

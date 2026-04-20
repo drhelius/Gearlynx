@@ -33,7 +33,7 @@ DebugMonitorServer::DebugMonitorServer(int port)
     m_debug_adapter = NULL;
     m_server_socket = DM_INVALID_SOCKET;
     m_client_socket = DM_INVALID_SOCKET;
-    m_connection_id = 0;
+    m_connection_id.store(0);
     m_running.store(false);
     m_client_connected.store(false);
     m_port = port;
@@ -207,7 +207,7 @@ void DebugMonitorServer::AcceptLoop()
             m_client_connected.store(true);
         }
 
-        Log("[DebugMonitor] Client connected (id=%u)", m_connection_id);
+        Log("[DebugMonitor] Client connected (id=%u)", m_connection_id.load());
         m_recv_thread = std::thread(&DebugMonitorServer::RecvLoop, this);
     }
 }
@@ -284,7 +284,7 @@ void DebugMonitorServer::SendLoop()
         bool sent = false;
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
-            if (m_client_connected.load() && msg->connection_id == m_connection_id)
+            if (m_client_connected.load() && msg->connection_id == m_connection_id.load())
             {
                 std::string json_str = msg->data.dump();
                 sent = SendMessage(m_client_socket, json_str);
@@ -440,7 +440,7 @@ void DebugMonitorServer::EnqueueResponse(int64_t id, bool success, const json& d
 {
     DebugMonitorMessage* msg = new DebugMonitorMessage();
     msg->data = {{"id", id}, {"success", success}, {"data", data}};
-    msg->connection_id = m_connection_id;
+    msg->connection_id = m_connection_id.load();
     m_out_queue.Push(msg);
 }
 
@@ -450,7 +450,7 @@ void DebugMonitorServer::EnqueueEvent(const std::string& event, const json& data
     msg->data = {{"id", 0}, {"event", event}};
     if (!data.empty())
         msg->data["data"] = data;
-    msg->connection_id = m_connection_id;
+    msg->connection_id = m_connection_id.load();
     m_out_queue.Push(msg);
 }
 

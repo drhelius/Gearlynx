@@ -12,9 +12,11 @@ import {
 } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as cp from 'child_process';
 import { DebugMonitorClient } from './debug_monitor_client';
 import { DebugInfo } from './debug_info';
+import { setActiveSession } from './extension';
 import { CpuRegisters } from './types';
 
 const THREAD_ID = 1;
@@ -81,6 +83,22 @@ export class LynxDebugSession extends LoggingDebugSession {
         });
     }
 
+    public getDebugInfo(): DebugInfo | null {
+        return this.debugInfo;
+    }
+
+    public async refreshStoppedState(): Promise<void> {
+        // Only re-emit if the emulator is actually stopped
+        try {
+            const status = await this.monitor.getStatus();
+            if (status.idle || status.paused) {
+                this.sendEvent(new StoppedEvent('step', THREAD_ID));
+            }
+        } catch {
+            // ignore -- not connected
+        }
+    }
+
     protected initializeRequest(
         response: DebugProtocol.InitializeResponse,
         _args: DebugProtocol.InitializeRequestArguments
@@ -106,6 +124,8 @@ export class LynxDebugSession extends LoggingDebugSession {
                 this.debugInfo = DebugInfo.load(args.debugFile, args.sourceRoots);
             }
 
+            setActiveSession(this);
+
             const port = args.port || 6502;
 
             // Start Gearlynx process
@@ -115,6 +135,22 @@ export class LynxDebugSession extends LoggingDebugSession {
                     '--debug-monitor-port', port.toString(),
                     args.rom
                 ];
+
+                // Find a .sym file to pass to Gearlynx for its internal symbol table
+                const romBase = args.rom.replace(/\.[^.]+$/, '');
+                const symCandidates = [
+                    romBase + '.sym',
+                    args.rom + '.sym',
+                    romBase + '.lbl',
+                    args.rom + '.lbl',
+                ];
+                for (const symPath of symCandidates) {
+                    if (fs.existsSync(symPath)) {
+                        emulatorArgs.push(symPath);
+                        break;
+                    }
+                }
+
                 this.emulatorProcess = cp.spawn(args.gearlynxPath, emulatorArgs, {
                     stdio: 'ignore',
                     detached: false
@@ -158,6 +194,8 @@ export class LynxDebugSession extends LoggingDebugSession {
             if (args.debugFile) {
                 this.debugInfo = DebugInfo.load(args.debugFile, args.sourceRoots);
             }
+
+            setActiveSession(this);
 
             const hostname = args.hostname || 'localhost';
             const port = args.port || 6502;

@@ -16,6 +16,13 @@
     "onDebugResolve:lynx"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "lynxDebug.selectOverlay",
+        "title": "Select Active Overlay",
+        "category": "Lynx Debug"
+      }
+    ],
     "breakpoints": [
       { "language": "c" },
       { "language": "cpp" },

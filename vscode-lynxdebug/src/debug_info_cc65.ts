@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, DebugInfoData } from './types';
+import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, OverlayGroup, DebugInfoData } from './types';
 
 interface DbgFile {
     id: number;
@@ -155,6 +155,7 @@ export class Cc65DebugInfo {
         const symbols: DebugSymbol[] = [];
         const functions: DebugFunction[] = [];
         const locals: LocalVariable[] = [];
+        const segmentForAddress = new Map<number, number>();
 
         // Find zeropage stack pointer address (default 0x02 for cc65 on Lynx)
         let zeropageStackPointerAddr = 0x02;
@@ -162,6 +163,34 @@ export class Cc65DebugInfo {
             if (seg.name === 'ZEROPAGE') {
                 zeropageStackPointerAddr = seg.start;
                 break;
+            }
+        }
+
+        // Detect overlay groups -- code segments sharing the same start address
+        const startAddrToSegs = new Map<number, number[]>();
+        for (const seg of data.segs) {
+            if (seg.size === 0 || seg.type !== 'ro') continue;
+            if (seg.name === 'NULL' || seg.name === 'EXEHDR' || seg.name === 'DIRECTORY') continue;
+            const existing = startAddrToSegs.get(seg.start);
+            if (existing) {
+                existing.push(seg.id);
+            } else {
+                startAddrToSegs.set(seg.start, [seg.id]);
+            }
+        }
+
+        const overlayGroups: OverlayGroup[] = [];
+        for (const [_addr, segIds] of startAddrToSegs) {
+            if (segIds.length > 1) {
+                const names = segIds.map(id => {
+                    const s = data.segs.find(seg => seg.id === id);
+                    return s?.name || `seg${id}`;
+                });
+                overlayGroups.push({
+                    name: names[0],
+                    segmentIds: segIds,
+                    segmentNames: names,
+                });
             }
         }
 
@@ -215,7 +244,10 @@ export class Cc65DebugInfo {
                     line: line.line,
                     address: addr,
                     addressEnd: addrEnd,
+                    segmentId: span.seg,
                 };
+
+                segmentForAddress.set(addr, span.seg);
 
                 // Prefer C lines (type 0 or undefined) over assembly lines (type 1)
                 const existing = addressToSource.get(addr);
@@ -371,7 +403,7 @@ export class Cc65DebugInfo {
             }
         }
 
-        return { addressToSource, sourceToAddresses, symbols, functions, locals, zeropageStackPointerAddr };
+        return { addressToSource, sourceToAddresses, symbols, functions, locals, zeropageStackPointerAddr, overlayGroups, segmentForAddress };
     }
 
     private static parseLine(line: string): { key: string; attrs: Map<string, unknown> } | null {
@@ -433,6 +465,12 @@ export class Cc65DebugInfo {
         if (/\.c\.\d+\.\d+\.s$/i.test(name)) return true;
         // Build artifact directories
         if (/CMakeFiles/i.test(name)) return true;
+        // cc65 macro include files (.mac, .inc)
+        if (/\.mac$/i.test(name)) return true;
+        if (/\.inc$/i.test(name)) return true;
+        // ca65 assembly files in cc65 library paths
+        if (/[\\/]asminc[\\/]/i.test(name)) return true;
+        if (/[\\/]libsrc[\\/]/i.test(name)) return true;
         return false;
     }
 }

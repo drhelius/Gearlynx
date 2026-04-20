@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import * as fs from 'fs';
 import { LynxDebugSession } from './lynx_debug_session';
+
+let overlayStatusBarItem: vscode.StatusBarItem | undefined;
+let activeSession: LynxDebugSession | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
     const factory = new LynxDebugAdapterFactory();
@@ -13,10 +15,96 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.debug.registerDebugConfigurationProvider('lynx', provider)
     );
+
+    // Overlay selector command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('lynxDebug.selectOverlay', async () => {
+            if (!activeSession) return;
+            const debugInfo = activeSession.getDebugInfo();
+            if (!debugInfo || !debugInfo.hasOverlays()) {
+                vscode.window.showInformationMessage('No overlays detected in debug info.');
+                return;
+            }
+
+            const groups = debugInfo.getOverlayGroups();
+            const items: vscode.QuickPickItem[] = [];
+            const currentName = debugInfo.getActiveOverlayName();
+
+            for (const group of groups) {
+                for (const name of group.segmentNames) {
+                    items.push({
+                        label: name,
+                        description: name === currentName ? '(active)' : '',
+                    });
+                }
+            }
+
+            const picked = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Select the active code overlay',
+            });
+
+            if (picked) {
+                debugInfo.setActiveOverlay(picked.label);
+                updateOverlayStatusBar(picked.label);
+                // Re-emit stopped event so VSCode re-queries stack trace
+                // and repositions the editor to the correct source line
+                activeSession?.refreshStoppedState();
+            }
+        })
+    );
+
+    // Status bar item
+    overlayStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
+    overlayStatusBarItem.command = 'lynxDebug.selectOverlay';
+    context.subscriptions.push(overlayStatusBarItem);
+
+    // Show/hide status bar based on debug session
+    context.subscriptions.push(
+        vscode.debug.onDidStartDebugSession((session) => {
+            if (session.type === 'lynx') {
+                updateOverlayStatusBar(null);
+            }
+        })
+    );
+    context.subscriptions.push(
+        vscode.debug.onDidTerminateDebugSession((session) => {
+            if (session.type === 'lynx') {
+                overlayStatusBarItem?.hide();
+                activeSession = undefined;
+            }
+        })
+    );
+}
+
+function updateOverlayStatusBar(overlayName: string | null): void {
+    if (!overlayStatusBarItem) return;
+    if (!activeSession) {
+        overlayStatusBarItem.hide();
+        return;
+    }
+    const debugInfo = activeSession.getDebugInfo();
+    if (!debugInfo || !debugInfo.hasOverlays()) {
+        overlayStatusBarItem.hide();
+        return;
+    }
+    const name = overlayName || debugInfo.getActiveOverlayName() || 'Select Overlay';
+    overlayStatusBarItem.text = `$(layers) Lynx: ${name}`;
+    overlayStatusBarItem.tooltip = 'Click to select active code overlay';
+    overlayStatusBarItem.show();
+}
+
+export function setActiveSession(session: LynxDebugSession | undefined): void {
+    activeSession = session;
+    if (session) {
+        const debugInfo = session.getDebugInfo();
+        updateOverlayStatusBar(debugInfo?.getActiveOverlayName() || null);
+    }
 }
 
 export function deactivate(): void {
-    // nothing to clean up
+    overlayStatusBarItem?.dispose();
+    overlayStatusBarItem = undefined;
+    activeSession = undefined;
 }
 
 class LynxDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {

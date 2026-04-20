@@ -227,7 +227,7 @@ private:
     dm_socket_t m_server_socket;
     dm_socket_t m_client_socket;
     std::mutex m_client_mutex;
-    u32 m_connection_id;
+    std::atomic<u32> m_connection_id;
 
     std::thread m_accept_thread;
     std::thread m_recv_thread;
