@@ -111,7 +111,7 @@ export class LynxDebugSession extends LoggingDebugSession {
         return this.monitor;
     }
 
-    public getWsPort(): number {
+    public getStreamPort(): number {
         return (this.launchArgs?.port || 6502) + 1;
     }
 

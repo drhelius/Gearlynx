@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef FRAMEBUFFER_WS_SERVER_H
-#define FRAMEBUFFER_WS_SERVER_H
+#ifndef FRAMEBUFFER_SERVER_H
+#define FRAMEBUFFER_SERVER_H
 
 #include <thread>
 #include <atomic>
@@ -42,11 +42,11 @@
     #define FB_SOCKET_CLOSE(s) ::close(s)
 #endif
 
-class FramebufferWsServer
+class FramebufferServer
 {
 public:
-    FramebufferWsServer(int port = 6503);
-    ~FramebufferWsServer();
+    FramebufferServer(int port = 6503);
+    ~FramebufferServer();
 
     void Start();
     void Stop();
@@ -59,9 +59,6 @@ public:
 private:
     void AcceptLoop();
     void ClientLoop(fb_socket_t client);
-
-    bool DoWebSocketHandshake(fb_socket_t client);
-    bool SendWebSocketBinaryFrame(fb_socket_t client, const u8* data, size_t len);
 
     int m_port;
     fb_socket_t m_server_socket;
@@ -81,4 +78,4 @@ private:
     std::atomic<bool> m_frame_ready;
 };
 
-#endif /* FRAMEBUFFER_WS_SERVER_H */
+#endif /* FRAMEBUFFER_SERVER_H */

@@ -24,7 +24,7 @@
 #include "config.h"
 #include "mcp/mcp_manager.h"
 #include "debug_monitor_server.h"
-#include "framebuffer_ws_server.h"
+#include "framebuffer_server.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #if defined(_WIN32)
@@ -37,7 +37,7 @@ static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
 static DebugMonitorServer* debug_monitor;
-static FramebufferWsServer* fb_ws_server;
+static FramebufferServer* fb_server;
 
 static void save_ram(void);
 static void load_ram(void);
@@ -106,7 +106,7 @@ bool emu_init(void)
 void emu_destroy(void)
 {
     save_ram();
-    SafeDelete(fb_ws_server);
+    SafeDelete(fb_server);
     SafeDelete(debug_monitor);
     SafeDelete(mcp_manager);
     SafeDeleteArray(audio_buffer);
@@ -230,11 +230,11 @@ void emu_update(void)
     }
 
     // Push framebuffer to WebSocket clients
-    if (fb_ws_server && fb_ws_server->IsRunning())
+    if (fb_server && fb_server->IsRunning())
     {
         GLYNX_Runtime_Info runtime;
         core->GetRuntimeInfo(runtime);
-        fb_ws_server->PushFrame(emu_frame_buffer, runtime.screen_width, runtime.screen_height, runtime.screen_width);
+        fb_server->PushFrame(emu_frame_buffer, runtime.screen_width, runtime.screen_height, runtime.screen_width);
     }
 }
 
@@ -1610,17 +1610,17 @@ void emu_debug_monitor_start(int port)
         debug_monitor->Init(core);
         debug_monitor->Start();
 
-        // Start framebuffer WebSocket server on port+1
-        SafeDelete(fb_ws_server);
-        fb_ws_server = new FramebufferWsServer(port + 1);
-        fb_ws_server->Start();
+        // Start framebuffer stream server on port+1
+        SafeDelete(fb_server);
+        fb_server = new FramebufferServer(port + 1);
+        fb_server->Start();
     }
 }
 
 void emu_debug_monitor_stop(void)
 {
-    if (fb_ws_server)
-        fb_ws_server->Stop();
+    if (fb_server)
+        fb_server->Stop();
     if (debug_monitor)
         debug_monitor->Stop();
 }

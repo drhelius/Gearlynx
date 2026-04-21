@@ -73,8 +73,8 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
             const monitor = activeSession.getMonitor();
-            const wsPort = activeSession.getWsPort();
-            ScreenViewerPanel.show(context.extensionUri, wsPort, monitor);
+            const streamPort = activeSession.getStreamPort();
+            ScreenViewerPanel.show(context.extensionUri, streamPort, monitor);
         })
     );
 
@@ -147,12 +147,12 @@ export function activate(context: vscode.ExtensionContext): void {
 
                 if (activeSession) {
                     const monitor = activeSession.getMonitor();
-                    const wsPort = activeSession.getWsPort();
+                    const streamPort = activeSession.getStreamPort();
 
                     // Connect the persistent panel view
                     setTimeout(() => {
                         if (screenViewProvider) {
-                            screenViewProvider.setConnection(wsPort, monitor);
+                            screenViewProvider.setConnection(streamPort, monitor);
                         }
                     }, 1000);
 
@@ -160,7 +160,7 @@ export function activate(context: vscode.ExtensionContext): void {
                     const cfg = vscode.workspace.getConfiguration('lynxDebug');
                     if (cfg.get<boolean>('autoOpenScreen', false)) {
                         setTimeout(() => {
-                            ScreenViewerPanel.show(context.extensionUri, wsPort, monitor);
+                            ScreenViewerPanel.show(context.extensionUri, streamPort, monitor);
                         }, 1000);
                     }
                 }

@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as net from 'net';
-import * as crypto from 'crypto';
 import { DebugMonitorClient } from './debug_monitor_client';
 import { SegmentInfo } from './types';
 
@@ -11,25 +10,24 @@ export class ScreenViewerPanel {
     private panel: vscode.WebviewPanel;
     private disposed = false;
     private socket: net.Socket | null = null;
-    private wsConnected = false;
+    private connected = false;
     private recvBuf = Buffer.alloc(0);
-    private wsHandshakeDone = false;
     private monitor: DebugMonitorClient | null = null;
     private keymap: Map<string, string> = new Map();
 
-    public static show(extensionUri: vscode.Uri, wsPort: number, monitor: DebugMonitorClient): void {
+    public static show(extensionUri: vscode.Uri, streamPort: number, monitor: DebugMonitorClient): void {
         if (ScreenViewerPanel.instance) {
             ScreenViewerPanel.instance.panel.reveal();
             return;
         }
-        ScreenViewerPanel.instance = new ScreenViewerPanel(extensionUri, wsPort, monitor);
+        ScreenViewerPanel.instance = new ScreenViewerPanel(extensionUri, streamPort, monitor);
     }
 
     public static dispose(): void {
         ScreenViewerPanel.instance?.panel.dispose();
     }
 
-    private constructor(_extensionUri: vscode.Uri, wsPort: number, monitor: DebugMonitorClient) {
+    private constructor(_extensionUri: vscode.Uri, streamPort: number, monitor: DebugMonitorClient) {
         this.monitor = monitor;
         this.loadKeymap();
 
@@ -42,7 +40,7 @@ export class ScreenViewerPanel {
 
         this.panel.onDidDispose(() => {
             this.disposed = true;
-            this.disconnectWs();
+            this.disconnectStream();
             ScreenViewerPanel.instance = undefined;
         });
 
@@ -53,7 +51,7 @@ export class ScreenViewerPanel {
         });
 
         this.panel.webview.html = this.getHtml();
-        this.connectWs(wsPort);
+        this.connectStream(streamPort);
     }
 
     private loadKeymap(): void {
@@ -78,119 +76,57 @@ export class ScreenViewerPanel {
         }
     }
 
-    private connectWs(port: number): void {
-        this.disconnectWs();
+    private connectStream(port: number): void {
+        this.disconnectStream();
 
         this.socket = new net.Socket();
-        this.wsHandshakeDone = false;
         this.recvBuf = Buffer.alloc(0);
 
         this.socket.connect(port, '127.0.0.1', () => {
-            // Send WebSocket upgrade request
-            const key = crypto.randomBytes(16).toString('base64');
-            const request =
-                'GET / HTTP/1.1\r\n' +
-                'Host: 127.0.0.1:' + port + '\r\n' +
-                'Upgrade: websocket\r\n' +
-                'Connection: Upgrade\r\n' +
-                'Sec-WebSocket-Key: ' + key + '\r\n' +
-                'Sec-WebSocket-Version: 13\r\n' +
-                '\r\n';
-            this.socket!.write(request);
+            this.connected = true;
+            this.panel.webview.postMessage({ command: 'status', connected: true });
         });
 
         this.socket.on('data', (data: Buffer) => {
-            if (!this.wsHandshakeDone) {
-                // Look for end of HTTP response
-                this.recvBuf = Buffer.concat([this.recvBuf, data]);
-                const headerEnd = this.recvBuf.indexOf('\r\n\r\n');
-                if (headerEnd >= 0) {
-                    this.wsHandshakeDone = true;
-                    this.wsConnected = true;
-                    this.panel.webview.postMessage({ command: 'status', connected: true });
-                    // Process remaining data as WebSocket frames
-                    this.recvBuf = this.recvBuf.subarray(headerEnd + 4);
-                    this.processWsFrames();
-                }
-            } else {
-                this.recvBuf = Buffer.concat([this.recvBuf, data]);
-                this.processWsFrames();
-            }
+            this.recvBuf = Buffer.concat([this.recvBuf, data]);
+            this.processFrames();
         });
 
         this.socket.on('close', () => {
-            this.wsConnected = false;
+            this.connected = false;
             if (!this.disposed) {
                 this.panel.webview.postMessage({ command: 'status', connected: false });
-                // Auto-reconnect
-                setTimeout(() => {
-                    if (!this.disposed) this.connectWs(port);
-                }, 2000);
+                setTimeout(() => { if (!this.disposed) this.connectStream(port); }, 2000);
             }
         });
 
-        this.socket.on('error', () => {
-            // close event will handle reconnect
-        });
+        this.socket.on('error', () => {});
     }
 
-    private disconnectWs(): void {
-        this.wsConnected = false;
-        if (this.socket) {
-            this.socket.destroy();
-            this.socket = null;
-        }
+    private disconnectStream(): void {
+        this.connected = false;
+        if (this.socket) { this.socket.destroy(); this.socket = null; }
     }
 
-    private processWsFrames(): void {
-        while (this.recvBuf.length >= 2) {
-            const byte0 = this.recvBuf[0];
-            const byte1 = this.recvBuf[1];
-            const masked = (byte1 & 0x80) !== 0;
-            let payloadLen = byte1 & 0x7F;
-            let headerLen = 2;
+    private processFrames(): void {
+        // Raw TCP: 8-byte header (w u16 LE, h u16 LE, size u32 LE) + pixels
+        while (this.recvBuf.length >= 8) {
+            const w = this.recvBuf[0] | (this.recvBuf[1] << 8);
+            const h = this.recvBuf[2] | (this.recvBuf[3] << 8);
+            const size = this.recvBuf[4] | (this.recvBuf[5] << 8)
+                       | (this.recvBuf[6] << 16) | (this.recvBuf[7] << 24);
 
-            if (payloadLen === 126) {
-                if (this.recvBuf.length < 4) return;
-                payloadLen = (this.recvBuf[2] << 8) | this.recvBuf[3];
-                headerLen = 4;
-            } else if (payloadLen === 127) {
-                if (this.recvBuf.length < 10) return;
-                // Only handle up to 32-bit lengths
-                payloadLen = (this.recvBuf[6] << 24) | (this.recvBuf[7] << 16)
-                           | (this.recvBuf[8] << 8) | this.recvBuf[9];
-                headerLen = 10;
-            }
+            if (this.recvBuf.length < 8 + size) return;
 
-            if (masked) headerLen += 4;
+            const pixels = this.recvBuf.subarray(8, 8 + size);
+            this.recvBuf = this.recvBuf.subarray(8 + size);
 
-            const totalLen = headerLen + payloadLen;
-            if (this.recvBuf.length < totalLen) return;
-
-            const payload = this.recvBuf.subarray(headerLen, totalLen);
-            this.recvBuf = this.recvBuf.subarray(totalLen);
-
-            const opcode = byte0 & 0x0F;
-            if (opcode === 0x02) {
-                // Binary frame -- forward to webview as base64
-                // Parse header: width u16 LE, height u16 LE, 4 reserved
-                if (payload.length >= 8) {
-                    const w = payload[0] | (payload[1] << 8);
-                    const h = payload[2] | (payload[3] << 8);
-                    const pixels = payload.subarray(8);
-                    // Send as array of numbers for efficiency with structured clone
-                    this.panel.webview.postMessage({
-                        command: 'frame',
-                        width: w,
-                        height: h,
-                        pixels: Array.from(pixels),
-                    });
-                }
-            } else if (opcode === 0x08) {
-                // Close frame
-                this.disconnectWs();
-                return;
-            }
+            this.panel.webview.postMessage({
+                command: 'frame',
+                width: w,
+                height: h,
+                pixels: Array.from(pixels),
+            });
         }
     }
 
@@ -319,26 +255,25 @@ export class ScreenViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'lynxDebug.screenView';
 
     private view: vscode.WebviewView | undefined;
-    private wsSocket: net.Socket | null = null;
-    private wsHandshakeDone = false;
+    private streamSocket: net.Socket | null = null;
     private recvBuf = Buffer.alloc(0);
-    private wsPort = 0;
+    private streamPort = 0;
     private monitor: DebugMonitorClient | null = null;
     private keymap: Map<string, string> = new Map();
-    private wsGeneration = 0;
+    private streamGeneration = 0;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
 
-    public setConnection(wsPort: number, monitor: DebugMonitorClient): void {
-        this.wsPort = wsPort;
+    public setConnection(streamPort: number, monitor: DebugMonitorClient): void {
+        this.streamPort = streamPort;
         this.monitor = monitor;
         this.loadKeymap();
-        this.connectWs();
+        this.connectStream();
     }
 
     public clearConnection(): void {
-        this.disconnectWs();
-        this.wsPort = 0;
+        this.disconnectStream();
+        this.streamPort = 0;
         this.monitor = null;
         if (this.view) {
             this.view.webview.postMessage({ command: 'status', connected: false });
@@ -351,7 +286,7 @@ export class ScreenViewProvider implements vscode.WebviewViewProvider {
         _token: vscode.CancellationToken
     ): void {
         // Tear down old connection -- view was destroyed and re-created
-        this.disconnectWs();
+        this.disconnectStream();
 
         this.view = webviewView;
         webviewView.webview.options = { enableScripts: true };
@@ -363,14 +298,14 @@ export class ScreenViewProvider implements vscode.WebviewViewProvider {
         });
 
         webviewView.onDidDispose(() => {
-            this.disconnectWs();
+            this.disconnectStream();
             this.view = undefined;
         });
 
         webviewView.webview.html = this.getHtml();
 
-        if (this.wsPort > 0) {
-            this.connectWs();
+        if (this.streamPort > 0) {
+            this.connectStream();
         }
     }
 
@@ -390,87 +325,57 @@ export class ScreenViewProvider implements vscode.WebviewViewProvider {
         try { await this.monitor.controllerButton(button, action); } catch { /* ignore */ }
     }
 
-    private connectWs(): void {
-        if (this.wsPort <= 0 || !this.view) return;
-        this.disconnectWs();
+    private connectStream(): void {
+        if (this.streamPort <= 0 || !this.view) return;
+        this.disconnectStream();
 
-        const port = this.wsPort;
-        const gen = ++this.wsGeneration;
-        this.wsSocket = new net.Socket();
-        this.wsHandshakeDone = false;
+        const port = this.streamPort;
+        const gen = ++this.streamGeneration;
+        this.streamSocket = new net.Socket();
         this.recvBuf = Buffer.alloc(0);
 
-        this.wsSocket.connect(port, '127.0.0.1', () => {
-            if (gen !== this.wsGeneration) return;
-            const key = crypto.randomBytes(16).toString('base64');
-            this.wsSocket!.write(
-                'GET / HTTP/1.1\r\nHost: 127.0.0.1:' + port +
-                '\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ' +
-                key + '\r\nSec-WebSocket-Version: 13\r\n\r\n'
-            );
+        this.streamSocket.connect(port, '127.0.0.1', () => {
+            if (gen !== this.streamGeneration) return;
+            this.view?.webview.postMessage({ command: 'status', connected: true });
         });
 
-        this.wsSocket.on('data', (data: Buffer) => {
-            if (gen !== this.wsGeneration) return;
-            if (!this.wsHandshakeDone) {
-                this.recvBuf = Buffer.concat([this.recvBuf, data]);
-                const headerEnd = this.recvBuf.indexOf('\r\n\r\n');
-                if (headerEnd >= 0) {
-                    this.wsHandshakeDone = true;
-                    this.view?.webview.postMessage({ command: 'status', connected: true });
-                    this.recvBuf = this.recvBuf.subarray(headerEnd + 4);
-                    this.processWsFrames();
-                }
-            } else {
-                this.recvBuf = Buffer.concat([this.recvBuf, data]);
-                this.processWsFrames();
-            }
+        this.streamSocket.on('data', (data: Buffer) => {
+            if (gen !== this.streamGeneration) return;
+            this.recvBuf = Buffer.concat([this.recvBuf, data]);
+            this.processFrames();
         });
 
-        this.wsSocket.on('close', () => {
-            if (gen !== this.wsGeneration) return;
+        this.streamSocket.on('close', () => {
+            if (gen !== this.streamGeneration) return;
             this.view?.webview.postMessage({ command: 'status', connected: false });
-            if (this.wsPort > 0 && this.view) {
+            if (this.streamPort > 0 && this.view) {
                 setTimeout(() => {
-                    if (gen === this.wsGeneration) this.connectWs();
+                    if (gen === this.streamGeneration) this.connectStream();
                 }, 2000);
             }
         });
 
-        this.wsSocket.on('error', () => {});
+        this.streamSocket.on('error', () => {});
     }
 
-    private disconnectWs(): void {
-        this.wsGeneration++;
-        if (this.wsSocket) { this.wsSocket.destroy(); this.wsSocket = null; }
+    private disconnectStream(): void {
+        this.streamGeneration++;
+        if (this.streamSocket) { this.streamSocket.destroy(); this.streamSocket = null; }
     }
 
-    private processWsFrames(): void {
-        while (this.recvBuf.length >= 2) {
-            const byte1 = this.recvBuf[1];
-            let payloadLen = byte1 & 0x7F;
-            let headerLen = 2;
-            if (payloadLen === 126) {
-                if (this.recvBuf.length < 4) return;
-                payloadLen = (this.recvBuf[2] << 8) | this.recvBuf[3]; headerLen = 4;
-            } else if (payloadLen === 127) {
-                if (this.recvBuf.length < 10) return;
-                payloadLen = (this.recvBuf[6] << 24) | (this.recvBuf[7] << 16)
-                           | (this.recvBuf[8] << 8) | this.recvBuf[9]; headerLen = 10;
-            }
-            if (byte1 & 0x80) headerLen += 4;
-            const totalLen = headerLen + payloadLen;
-            if (this.recvBuf.length < totalLen) return;
-            const payload = this.recvBuf.subarray(headerLen, totalLen);
-            this.recvBuf = this.recvBuf.subarray(totalLen);
-            if (payload.length >= 8) {
-                const w = payload[0] | (payload[1] << 8);
-                const h = payload[2] | (payload[3] << 8);
-                this.view?.webview.postMessage({
-                    command: 'frame', width: w, height: h,
-                    pixels: Array.from(payload.subarray(8)),
-                });
-            }
+    private processFrames(): void {
+        while (this.recvBuf.length >= 8) {
+            const w = this.recvBuf[0] | (this.recvBuf[1] << 8);
+            const h = this.recvBuf[2] | (this.recvBuf[3] << 8);
+            const size = this.recvBuf[4] | (this.recvBuf[5] << 8)
+                       | (this.recvBuf[6] << 16) | (this.recvBuf[7] << 24);
+            if (this.recvBuf.length < 8 + size) return;
+            const pixels = this.recvBuf.subarray(8, 8 + size);
+            this.recvBuf = this.recvBuf.subarray(8 + size);
+            this.view?.webview.postMessage({
+                command: 'frame', width: w, height: h,
+                pixels: Array.from(pixels),
+            });
         }
     }
 
