@@ -4,6 +4,7 @@ import {
     StoppedEvent,
     ContinuedEvent,
     TerminatedEvent,
+    OutputEvent,
     Thread,
     StackFrame,
     Scope,
@@ -45,6 +46,18 @@ export class LynxDebugSession extends LoggingDebugSession {
     private nextVarRef = 1;
     // Track breakpoints per source file for proper clear/re-set
     private sourceBreakpoints = new Map<string, number[]>();
+    // Track conditions for conditional breakpoints (address -> condition expression)
+    private breakpointConditions = new Map<number, string>();
+    // Track logpoint messages (address -> log message template)
+    private breakpointLogMessages = new Map<number, string>();
+    // Track data breakpoints (address -> type)
+    private dataBreakpoints = new Map<number, string>();
+    // Track function breakpoints (address -> function name)
+    private functionBreakpoints = new Map<number, string>();
+    // Track instruction breakpoints (address set)
+    private instructionBreakpoints = new Set<number>();
+    // Saved launch args for restart
+    private launchArgs: LaunchRequestArguments | null = null;
     // Source-line stepping state
     private sourceStepActive = false;
     private sourceStepOriginFile = '';
@@ -62,6 +75,12 @@ export class LynxDebugSession extends LoggingDebugSession {
             // If we're in a source-line step loop, check if line changed
             if (this.sourceStepActive && reason === 'step') {
                 this.handleSourceStepStopped();
+                return;
+            }
+
+            // Check conditional breakpoints and logpoints
+            if (reason === 'breakpoint') {
+                this.handleBreakpointHit();
                 return;
             }
 
@@ -107,9 +126,21 @@ export class LynxDebugSession extends LoggingDebugSession {
         response.body.supportsConfigurationDoneRequest = true;
         response.body.supportsEvaluateForHovers = true;
         response.body.supportsReadMemoryRequest = true;
+        response.body.supportsWriteMemoryRequest = true;
         response.body.supportsDisassembleRequest = true;
         response.body.supportsSteppingGranularity = true;
         response.body.supportsInstructionBreakpoints = true;
+        response.body.supportsConditionalBreakpoints = true;
+        response.body.supportsHitConditionalBreakpoints = true;
+        response.body.supportsDataBreakpoints = true;
+        response.body.supportsSetVariable = true;
+        response.body.supportsRestartRequest = true;
+        response.body.supportsFunctionBreakpoints = true;
+        response.body.supportsLogPoints = true;
+        response.body.supportsLoadedSourcesRequest = true;
+        response.body.supportsGotoTargetsRequest = true;
+        response.body.supportsCompletionsRequest = true;
+        response.body.completionTriggerCharacters = ['$', '.'];
 
         this.sendResponse(response);
     }
@@ -118,6 +149,7 @@ export class LynxDebugSession extends LoggingDebugSession {
         response: DebugProtocol.LaunchResponse,
         args: LaunchRequestArguments
     ): Promise<void> {
+        this.launchArgs = args;
         try {
             // Load debug info
             if (args.debugFile) {
@@ -400,6 +432,10 @@ export class LynxDebugSession extends LoggingDebugSession {
                 (spVar as unknown as DebugProtocol.Variable).memoryReference = (0x0100 + regs.s).toString();
                 variables.push(spVar);
                 variables.push(this.makeVar('P', regs.p, 16, 2));
+                // Memory region shortcuts
+                const ramVar = new Variable('RAM', '$0000-$FFFF', 0);
+                (ramVar as unknown as DebugProtocol.Variable).memoryReference = '0';
+                variables.push(ramVar);
             } else if (scopeName === 'flags') {
                 const regs = await this.monitor.getRegisters();
                 const p = regs.p;
@@ -612,9 +648,11 @@ export class LynxDebugSession extends LoggingDebugSession {
         const requestedBps = args.breakpoints || [];
         const resultBps: DebugProtocol.Breakpoint[] = [];
 
-        // Clear previous breakpoints for this source file
+        // Clear previous breakpoints, conditions, and logpoints for this source file
         const prevAddresses = this.sourceBreakpoints.get(sourcePath) || [];
         for (const addr of prevAddresses) {
+            this.breakpointConditions.delete(addr);
+            this.breakpointLogMessages.delete(addr);
             try {
                 await this.monitor.deleteBreakpoint(addr);
             } catch {
@@ -640,6 +678,21 @@ export class LynxDebugSession extends LoggingDebugSession {
                 try {
                     await this.monitor.setBreakpoint(address, 'exec');
                     newAddresses.push(address);
+
+                    // Track condition if present
+                    if (reqBp.condition) {
+                        this.breakpointConditions.set(address, reqBp.condition);
+                    }
+                    // Hit count condition
+                    if (reqBp.hitCondition) {
+                        const hitExpr = `__hitcount__ ${reqBp.hitCondition}`;
+                        this.breakpointConditions.set(address, hitExpr);
+                    }
+                    // Logpoint message
+                    if (reqBp.logMessage) {
+                        this.breakpointLogMessages.set(address, reqBp.logMessage);
+                    }
+
                     resultBps.push({
                         verified: true,
                         line: verifiedLine,
@@ -815,6 +868,473 @@ export class LynxDebugSession extends LoggingDebugSession {
             response.message = `Read memory failed: ${err}`;
             this.sendResponse(response);
         }
+    }
+
+    // -- Breakpoint hit handling (conditional, logpoints) --
+
+    private hitCounts = new Map<number, number>();
+
+    private async handleBreakpointHit(): Promise<void> {
+        try {
+            const regs = await this.monitor.getRegisters();
+
+            // Check for logpoint first
+            const logMsg = this.breakpointLogMessages.get(regs.pc);
+            if (logMsg) {
+                const output = await this.interpolateLogMessage(logMsg);
+                this.sendEvent(new OutputEvent(output + '\n', 'console'));
+                await this.monitor.continue_();
+                return;
+            }
+
+            const condition = this.breakpointConditions.get(regs.pc);
+
+            if (!condition) {
+                this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+                return;
+            }
+
+            // Handle hit count conditions
+            if (condition.startsWith('__hitcount__ ')) {
+                const target = parseInt(condition.substring(13), 10);
+                const count = (this.hitCounts.get(regs.pc) || 0) + 1;
+                this.hitCounts.set(regs.pc, count);
+                if (count >= target) {
+                    this.hitCounts.set(regs.pc, 0);
+                    this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+                } else {
+                    await this.monitor.continue_();
+                }
+                return;
+            }
+
+            // Evaluate condition expression
+            const result = await this.evaluateCondition(condition);
+            if (result) {
+                this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+            } else {
+                await this.monitor.continue_();
+            }
+        } catch {
+            this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+        }
+    }
+
+    private async interpolateLogMessage(msg: string): Promise<string> {
+        // Replace {expression} with evaluated values
+        const regs = await this.monitor.getRegisters();
+        return msg.replace(/\{([^}]+)\}/g, (_match, expr: string) => {
+            const e = expr.trim().toLowerCase();
+            // Register names
+            if (['pc', 'a', 'x', 'y', 's', 'p'].includes(e)) {
+                const val = regs[e as keyof CpuRegisters] as number;
+                const w = e === 'pc' ? 4 : 2;
+                return `$${val.toString(16).toUpperCase().padStart(w, '0')}`;
+            }
+            // Symbol lookup
+            if (this.debugInfo) {
+                const sym = this.debugInfo.findSymbol(expr.trim());
+                if (sym) return `$${sym.address.toString(16).toUpperCase().padStart(4, '0')}`;
+            }
+            return `{${expr}}`;
+        });
+    }
+
+    private async evaluateCondition(expr: string): Promise<boolean> {
+        // Supported forms:
+        //   A == 5, X != 0, Y > 10
+        //   $addr == value (memory byte comparison)
+        //   symbolName == value
+        const regs = await this.monitor.getRegisters();
+
+        // Try "register op value"
+        const regMatch = expr.match(/^(pc|a|x|y|s|p)\s*(==|!=|<|>|<=|>=)\s*(\$?[0-9a-fA-Fx]+)$/i);
+        if (regMatch) {
+            const regName = regMatch[1].toLowerCase();
+            const op = regMatch[2];
+            const val = this.parseNumber(regMatch[3]);
+            const regVal = regs[regName as keyof CpuRegisters] as number;
+            return this.compareValues(regVal, op, val);
+        }
+
+        // Try "$addr op value" (memory comparison)
+        const memMatch = expr.match(/^\$([0-9a-fA-F]{1,4})\s*(==|!=|<|>|<=|>=)\s*(\$?[0-9a-fA-Fx]+)$/);
+        if (memMatch) {
+            const addr = parseInt(memMatch[1], 16);
+            const op = memMatch[2];
+            const val = this.parseNumber(memMatch[3]);
+            const hex = await this.monitor.getMemory(0, addr, 1);
+            const memVal = parseInt(hex.substring(0, 2), 16);
+            return this.compareValues(memVal, op, val);
+        }
+
+        // Try "symbol op value"
+        if (this.debugInfo) {
+            const symMatch = expr.match(/^(\w+)\s*(==|!=|<|>|<=|>=)\s*(\$?[0-9a-fA-Fx]+)$/);
+            if (symMatch) {
+                const sym = this.debugInfo.findSymbol(symMatch[1]);
+                if (sym) {
+                    const op = symMatch[2];
+                    const val = this.parseNumber(symMatch[3]);
+                    const hex = await this.monitor.getMemory(0, sym.address, 1);
+                    const memVal = parseInt(hex.substring(0, 2), 16);
+                    return this.compareValues(memVal, op, val);
+                }
+            }
+        }
+
+        // Can't parse -- treat as true (stop)
+        return true;
+    }
+
+    private parseNumber(s: string): number {
+        s = s.trim();
+        if (s.startsWith('$')) return parseInt(s.substring(1), 16);
+        if (s.startsWith('0x') || s.startsWith('0X')) return parseInt(s.substring(2), 16);
+        return parseInt(s, 10);
+    }
+
+    private compareValues(left: number, op: string, right: number): boolean {
+        switch (op) {
+            case '==': return left === right;
+            case '!=': return left !== right;
+            case '<': return left < right;
+            case '>': return left > right;
+            case '<=': return left <= right;
+            case '>=': return left >= right;
+            default: return true;
+        }
+    }
+
+    // -- Data breakpoints --
+
+    protected dataBreakpointInfoRequest(
+        response: DebugProtocol.DataBreakpointInfoResponse,
+        args: DebugProtocol.DataBreakpointInfoArguments
+    ): void {
+        // Variables with a memoryReference can have data breakpoints
+        const name = args.name;
+        let address: number | undefined;
+
+        // Check if it's a hex address
+        if (name.startsWith('$') || name.startsWith('0x')) {
+            address = this.parseNumber(name);
+        }
+
+        // Check if it's a known symbol
+        if (address === undefined && this.debugInfo) {
+            const sym = this.debugInfo.findSymbol(name);
+            if (sym) address = sym.address;
+        }
+
+        // Check if variablesReference points to a variable with memoryReference
+        if (address === undefined && args.variablesReference) {
+            // Try to parse from the variable name (format: "varname")
+            // The memoryReference was set on the variable, but DAP passes the name here
+            if (this.debugInfo) {
+                const sym = this.debugInfo.findSymbol(name);
+                if (sym) address = sym.address;
+            }
+        }
+
+        if (address !== undefined) {
+            const addrStr = `$${address.toString(16).toUpperCase().padStart(4, '0')}`;
+            response.body = {
+                dataId: address.toString(),
+                description: `${name} @${addrStr}`,
+                accessTypes: ['read', 'write', 'readWrite'],
+                canPersist: false,
+            };
+        } else {
+            response.body = {
+                dataId: null,
+                description: 'Cannot set data breakpoint',
+            };
+        }
+
+        this.sendResponse(response);
+    }
+
+    protected async setDataBreakpointsRequest(
+        response: DebugProtocol.SetDataBreakpointsResponse,
+        args: DebugProtocol.SetDataBreakpointsArguments
+    ): Promise<void> {
+        // Clear existing data breakpoints
+        for (const [addr, _type] of this.dataBreakpoints) {
+            try {
+                await this.monitor.deleteBreakpoint(addr);
+            } catch {
+                // ignore
+            }
+        }
+        this.dataBreakpoints.clear();
+
+        const resultBps: DebugProtocol.Breakpoint[] = [];
+
+        for (const dbp of args.breakpoints) {
+            const address = parseInt(dbp.dataId, 10);
+            if (isNaN(address)) {
+                resultBps.push({ verified: false });
+                continue;
+            }
+
+            let type: string;
+            switch (dbp.accessType) {
+                case 'read': type = 'read'; break;
+                case 'write': type = 'write'; break;
+                case 'readWrite': type = 'all'; break;
+                default: type = 'write'; break;
+            }
+
+            try {
+                await this.monitor.setBreakpoint(address, type);
+                this.dataBreakpoints.set(address, type);
+                resultBps.push({ verified: true });
+            } catch {
+                resultBps.push({ verified: false });
+            }
+        }
+
+        response.body = { breakpoints: resultBps };
+        this.sendResponse(response);
+    }
+
+    // -- Set variable (edit registers) --
+
+    protected async setVariableRequest(
+        response: DebugProtocol.SetVariableResponse,
+        args: DebugProtocol.SetVariableArguments
+    ): Promise<void> {
+        const scopeName = this.variableHandles.get(args.variablesReference);
+        try {
+            if (scopeName === 'registers') {
+                const val = this.parseNumber(args.value);
+                await this.monitor.setRegister(args.name, val);
+                const width = args.name === 'PC' ? 4 : 2;
+                response.body = {
+                    value: `$${val.toString(16).toUpperCase().padStart(width, '0')} (${val})`,
+                };
+            } else {
+                response.success = false;
+                response.message = 'Cannot set this variable';
+            }
+        } catch (err) {
+            response.success = false;
+            response.message = `${err}`;
+        }
+        this.sendResponse(response);
+    }
+
+    // -- Write memory --
+
+    protected async writeMemoryRequest(
+        response: DebugProtocol.WriteMemoryResponse,
+        args: DebugProtocol.WriteMemoryArguments
+    ): Promise<void> {
+        try {
+            const addr = parseInt(args.memoryReference, 10) || 0;
+            const offset = args.offset || 0;
+            const targetAddr = Math.max(0, addr + offset);
+            const data = Buffer.from(args.data, 'base64');
+            const hex = data.toString('hex');
+            await this.monitor.setMemory(0, targetAddr, hex);
+            response.body = { bytesWritten: data.length };
+            this.sendResponse(response);
+        } catch (err) {
+            response.success = false;
+            response.message = `Write memory failed: ${err}`;
+            this.sendResponse(response);
+        }
+    }
+
+    // -- Restart --
+
+    protected async restartRequest(
+        response: DebugProtocol.RestartResponse,
+        _args: DebugProtocol.RestartArguments
+    ): Promise<void> {
+        try {
+            await this.monitor.reset();
+            if (this.launchArgs?.stopOnEntry) {
+                this.sendEvent(new StoppedEvent('entry', THREAD_ID));
+            } else {
+                await this.monitor.continue_();
+            }
+        } catch (err) {
+            response.success = false;
+            response.message = `Restart failed: ${err}`;
+        }
+        this.sendResponse(response);
+    }
+
+    // -- Function breakpoints --
+
+    protected async setFunctionBreakPointsRequest(
+        response: DebugProtocol.SetFunctionBreakpointsResponse,
+        args: DebugProtocol.SetFunctionBreakpointsArguments
+    ): Promise<void> {
+        // Clear existing function breakpoints
+        for (const [addr] of this.functionBreakpoints) {
+            try { await this.monitor.deleteBreakpoint(addr); } catch { /* ignore */ }
+        }
+        this.functionBreakpoints.clear();
+
+        const resultBps: DebugProtocol.Breakpoint[] = [];
+
+        for (const fbp of args.breakpoints) {
+            let address: number | undefined;
+            if (this.debugInfo) {
+                const sym = this.debugInfo.findSymbol(fbp.name);
+                if (sym) address = sym.address;
+            }
+
+            if (address !== undefined) {
+                try {
+                    await this.monitor.setBreakpoint(address, 'exec');
+                    this.functionBreakpoints.set(address, fbp.name);
+                    if (fbp.condition) {
+                        this.breakpointConditions.set(address, fbp.condition);
+                    }
+                    resultBps.push({ verified: true });
+                } catch {
+                    resultBps.push({ verified: false, message: 'Failed to set breakpoint' });
+                }
+            } else {
+                resultBps.push({ verified: false, message: `Symbol '${fbp.name}' not found` });
+            }
+        }
+
+        response.body = { breakpoints: resultBps };
+        this.sendResponse(response);
+    }
+
+    // -- Instruction breakpoints --
+
+    protected async setInstructionBreakpointsRequest(
+        response: DebugProtocol.SetInstructionBreakpointsResponse,
+        args: DebugProtocol.SetInstructionBreakpointsArguments
+    ): Promise<void> {
+        // Clear existing instruction breakpoints
+        for (const addr of this.instructionBreakpoints) {
+            try { await this.monitor.deleteBreakpoint(addr); } catch { /* ignore */ }
+        }
+        this.instructionBreakpoints.clear();
+
+        const resultBps: DebugProtocol.Breakpoint[] = [];
+
+        for (const ibp of args.breakpoints) {
+            const addr = parseInt(ibp.instructionReference, 10) || 0;
+            const offset = ibp.offset || 0;
+            const targetAddr = addr + offset;
+
+            try {
+                await this.monitor.setBreakpoint(targetAddr, 'exec');
+                this.instructionBreakpoints.add(targetAddr);
+                resultBps.push({
+                    verified: true,
+                    instructionReference: targetAddr.toString(),
+                });
+            } catch {
+                resultBps.push({ verified: false });
+            }
+        }
+
+        response.body = { breakpoints: resultBps };
+        this.sendResponse(response);
+    }
+
+    // -- Loaded sources --
+
+    protected loadedSourcesRequest(
+        response: DebugProtocol.LoadedSourcesResponse,
+        _args: DebugProtocol.LoadedSourcesArguments
+    ): void {
+        const sources: DebugProtocol.Source[] = [];
+        if (this.debugInfo) {
+            const seen = new Set<string>();
+            for (const [, loc] of this.debugInfo.getAllAddressToSource()) {
+                if (!seen.has(loc.source)) {
+                    seen.add(loc.source);
+                    sources.push({ name: path.basename(loc.source), path: loc.source });
+                }
+            }
+        }
+        response.body = { sources };
+        this.sendResponse(response);
+    }
+
+    // -- Goto targets (set next statement) --
+
+    protected async gotoTargetsRequest(
+        response: DebugProtocol.GotoTargetsResponse,
+        args: DebugProtocol.GotoTargetsArguments
+    ): Promise<void> {
+        const targets: DebugProtocol.GotoTarget[] = [];
+        const sourcePath = args.source.path || '';
+        const line = args.line;
+
+        if (this.debugInfo) {
+            const loc = this.debugInfo.findNearestCodeLine(sourcePath, line);
+            if (loc) {
+                targets.push({
+                    id: loc.address,
+                    label: `Line ${loc.line} ($${loc.address.toString(16).toUpperCase().padStart(4, '0')})`,
+                    line: loc.line,
+                });
+            }
+        }
+
+        response.body = { targets };
+        this.sendResponse(response);
+    }
+
+    protected async gotoRequest(
+        response: DebugProtocol.GotoResponse,
+        args: DebugProtocol.GotoArguments
+    ): Promise<void> {
+        try {
+            // targetId is the address from gotoTargetsRequest
+            await this.monitor.setRegister('PC', args.targetId);
+            this.sendEvent(new StoppedEvent('goto', THREAD_ID));
+        } catch (err) {
+            response.success = false;
+            response.message = `Goto failed: ${err}`;
+        }
+        this.sendResponse(response);
+    }
+
+    // -- Completions (debug console autocomplete) --
+
+    protected completionsRequest(
+        response: DebugProtocol.CompletionsResponse,
+        args: DebugProtocol.CompletionsArguments
+    ): void {
+        const text = args.text.substring(0, args.column - 1);
+        const targets: DebugProtocol.CompletionItem[] = [];
+
+        // Register names
+        for (const reg of ['PC', 'A', 'X', 'Y', 'S', 'P']) {
+            if (reg.toLowerCase().startsWith(text.toLowerCase())) {
+                targets.push({ label: reg });
+            }
+        }
+
+        // Symbol names
+        if (this.debugInfo) {
+            const symbols = this.debugInfo.getSymbols();
+            for (const sym of symbols) {
+                if (sym.name.toLowerCase().startsWith(text.toLowerCase())) {
+                    targets.push({ label: sym.name });
+                }
+                const bare = sym.name.startsWith('_') ? sym.name.substring(1) : null;
+                if (bare && bare.toLowerCase().startsWith(text.toLowerCase())) {
+                    targets.push({ label: bare });
+                }
+            }
+        }
+
+        response.body = { targets };
+        this.sendResponse(response);
     }
 
     // -- Source-line stepping --

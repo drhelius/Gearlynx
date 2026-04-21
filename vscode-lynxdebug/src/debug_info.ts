@@ -97,6 +97,10 @@ export class DebugInfo {
         return this.data.functions;
     }
 
+    getAllAddressToSource(): Map<number, SourceLocation> {
+        return this.data.addressToSource;
+    }
+
     getLocalsForAddress(pc: number): LocalVariable[] {
         return this.data.locals.filter(
             l => pc >= l.functionAddress && pc <= l.functionEndAddress
