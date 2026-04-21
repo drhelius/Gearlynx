@@ -153,8 +153,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@vscode/debugadapter": "^1.68.0",
-    "await-notify": "^1.0.1"
+    "@vscode/debugadapter": "^1.68.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

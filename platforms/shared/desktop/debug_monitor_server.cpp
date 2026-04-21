@@ -544,10 +544,15 @@ json DebugMonitorServer::HandleMemorySet(const json& params)
     u32 offset = params.value("offset", (u32)0);
     std::string hex = params.value("hex", "");
 
+    if (hex.size() % 2 != 0)
+        return {{"error", "hex string must have even length"}};
+
     std::vector<u8> data;
     data.reserve(hex.size() / 2);
     for (size_t i = 0; i + 1 < hex.size(); i += 2)
     {
+        if (!is_hex_digit(hex[i]) || !is_hex_digit(hex[i + 1]))
+            return {{"error", "invalid hex character in data"}};
         u8 b = (u8)((as_hex(hex[i]) << 4) | as_hex(hex[i + 1]));
         data.push_back(b);
     }
