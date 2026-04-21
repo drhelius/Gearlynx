@@ -200,6 +200,15 @@ export class DebugMonitorClient extends EventEmitter {
         await this.sendCommand('controller_button', { button, action });
     }
 
+    async setTraceLog(enabled: boolean, flags: number = 0xFF): Promise<void> {
+        await this.sendCommand('trace_log_set', { enabled, flags });
+    }
+
+    async getTraceLog(start: number = -1, count: number = 200): Promise<Record<string, unknown>> {
+        const resp = await this.sendCommand('trace_log_get', { start, count });
+        return resp.data;
+    }
+
     // -- Low-level send/receive --
 
     private async sendCommand(cmd: string, params: Record<string, unknown> = {}): Promise<MonitorResponse> {

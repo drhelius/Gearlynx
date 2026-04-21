@@ -31,6 +31,21 @@
         "command": "lynxDebug.showMemoryMap",
         "title": "Show Memory Map",
         "category": "Lynx Debug"
+      },
+      {
+        "command": "lynxDebug.startTraceLog",
+        "title": "Start Trace Logger",
+        "category": "Lynx Debug"
+      },
+      {
+        "command": "lynxDebug.stopTraceLog",
+        "title": "Stop Trace Logger",
+        "category": "Lynx Debug"
+      },
+      {
+        "command": "lynxDebug.showTraceLog",
+        "title": "Show Trace Log",
+        "category": "Lynx Debug"
       }
     ],
     "viewsContainers": {

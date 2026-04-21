@@ -485,6 +485,8 @@ json DebugMonitorServer::ExecuteCommand(const std::string& cmd, const json& para
     if (cmd == "screenshot")        return HandleScreenshot();
     if (cmd == "screenshot_raw")    return HandleScreenshotRaw();
     if (cmd == "controller_button") return HandleControllerButton(params);
+    if (cmd == "trace_log_set")     return HandleTraceLogSet(params);
+    if (cmd == "trace_log_get")     return HandleTraceLogGet(params);
 
     return {{"error", "unknown command: " + cmd}};
 }
@@ -840,4 +842,18 @@ json DebugMonitorServer::HandleControllerButton(const json& params)
         return {{"error", "missing button or action"}};
 
     return m_debug_adapter->ControllerButton(button, action);
+}
+
+json DebugMonitorServer::HandleTraceLogSet(const json& params)
+{
+    bool enabled = params.value("enabled", true);
+    u32 flags = params.value("flags", (u32)0xFF);
+    return m_debug_adapter->SetTraceLog(enabled, flags);
+}
+
+json DebugMonitorServer::HandleTraceLogGet(const json& params)
+{
+    int start = params.value("start", -1);
+    int count = params.value("count", 200);
+    return m_debug_adapter->GetTraceLog(start, count);
 }

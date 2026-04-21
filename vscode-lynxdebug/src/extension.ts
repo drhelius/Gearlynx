@@ -7,6 +7,7 @@ import { MemoryMapPanel } from './memory_map';
 let overlayStatusBarItem: vscode.StatusBarItem | undefined;
 let activeSession: LynxDebugSession | undefined;
 let screenViewProvider: ScreenViewProvider | undefined;
+let traceOutputChannel: vscode.OutputChannel | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
     const factory = new LynxDebugAdapterFactory();
@@ -90,6 +91,46 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
             MemoryMapPanel.show(debugInfo.getSegments());
+        })
+    );
+
+    // Trace logger commands
+    context.subscriptions.push(
+        vscode.commands.registerCommand('lynxDebug.startTraceLog', async () => {
+            if (!activeSession) return;
+            const monitor = activeSession.getMonitor();
+            await monitor.setTraceLog(true);
+            vscode.window.showInformationMessage('Trace logger started.');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('lynxDebug.stopTraceLog', async () => {
+            if (!activeSession) return;
+            const monitor = activeSession.getMonitor();
+            await monitor.setTraceLog(false);
+            vscode.window.showInformationMessage('Trace logger stopped.');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('lynxDebug.showTraceLog', async () => {
+            if (!activeSession) {
+                vscode.window.showInformationMessage('No active Lynx debug session.');
+                return;
+            }
+            const monitor = activeSession.getMonitor();
+            const data = await monitor.getTraceLog(-1, 500);
+            const lines = data['lines'] as string[] || [];
+
+            if (!traceOutputChannel) {
+                traceOutputChannel = vscode.window.createOutputChannel('Lynx Trace Log');
+            }
+            traceOutputChannel.clear();
+            for (const line of lines) {
+                traceOutputChannel.appendLine(line);
+            }
+            traceOutputChannel.show(true);
         })
     );
 
