@@ -73,8 +73,8 @@ export class LynxDebugSession extends LoggingDebugSession {
         this.monitor.on('stopped', (data: Record<string, unknown>) => {
             const reason = (data?.reason as string) || 'step';
 
-            // If we're in a source-line step loop, check if line changed
-            if (this.sourceStepActive && reason === 'step') {
+            // If we're in a source-line step loop, keep going regardless of stop reason
+            if (this.sourceStepActive) {
                 this.handleSourceStepStopped();
                 return;
             }
@@ -1389,19 +1389,18 @@ export class LynxDebugSession extends LoggingDebugSession {
             const regs = await this.monitor.getRegisters();
             const loc = this.debugInfo.findSourceForAddress(regs.pc);
 
-            const sameLocation = loc &&
-                loc.source === this.sourceStepOriginFile &&
-                loc.line === this.sourceStepOriginLine;
+            if (loc) {
+                const sameFile = loc.source.toLowerCase() === this.sourceStepOriginFile.toLowerCase();
+                const sameLine = loc.line === this.sourceStepOriginLine;
 
-            // No source mapping = we've left mapped code, stop
-            // Different line = we've moved to a new statement, stop
-            if (!loc || !sameLocation) {
-                this.sourceStepActive = false;
-                this.sendEvent(new StoppedEvent('step', THREAD_ID));
-                return;
+                if (!sameFile || !sameLine) {
+                    // Different source line -- stop here
+                    this.sourceStepActive = false;
+                    this.sendEvent(new StoppedEvent('step', THREAD_ID));
+                    return;
+                }
             }
-
-            // Same line -- keep stepping
+            // Same line or no mapping (compiler-generated code) -- keep stepping
             await this.sourceStepFn();
         } catch {
             this.sourceStepActive = false;
