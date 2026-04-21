@@ -196,6 +196,10 @@ export class DebugMonitorClient extends EventEmitter {
         return resp.data;
     }
 
+    async controllerButton(button: string, action: string): Promise<void> {
+        await this.sendCommand('controller_button', { button, action });
+    }
+
     // -- Low-level send/receive --
 
     private async sendCommand(cmd: string, params: Record<string, unknown> = {}): Promise<MonitorResponse> {

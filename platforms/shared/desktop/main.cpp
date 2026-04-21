@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
         printf("      --mcp-http-port N HTTP port for MCP server (default: 7777)\n");
         printf("      --debug-monitor   Start debug monitor TCP server (default port: 6502)\n");
         printf("      --debug-monitor-port N  Port for debug monitor (default: 6502)\n");
-        printf("      --headless        Run without GUI (requires --mcp-stdio or --mcp-http)\n");
+        printf("      --headless        Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)\n");
         printf("  -v, --version         Display version information\n");
         printf("  -h, --help            Display this help message\n");
         return ret;
@@ -182,10 +182,12 @@ int main(int argc, char* argv[])
 
     if (headless)
     {
-        ret = application_headless_init(rom_file, symbol_file, mcp_mode, mcp_tcp_port);
+        ret = application_headless_init(rom_file, symbol_file, mcp_mode, mcp_tcp_port, debug_monitor_port);
 
         if (ret == 0)
+        {
             application_headless_mainloop();
+        }
 
         application_headless_destroy();
 

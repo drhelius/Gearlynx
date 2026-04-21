@@ -220,6 +220,7 @@ private:
     json HandlePalette();
     json HandleScreenshot();
     json HandleScreenshotRaw();
+    json HandleControllerButton(const json& params);
 
     void EnqueueResponse(int64_t id, bool success, const json& data);
     void EnqueueEvent(const std::string& event, const json& data = json::object());

@@ -29,6 +29,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     port?: number;
     gearlynxPath?: string;
     sourceRoots?: string[];
+    headless?: boolean;
 }
 
 interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -173,8 +174,13 @@ export class LynxDebugSession extends LoggingDebugSession {
                 const emulatorArgs = [
                     '--debug-monitor',
                     '--debug-monitor-port', port.toString(),
-                    args.rom
                 ];
+
+                if (args.headless) {
+                    emulatorArgs.push('--headless');
+                }
+
+                emulatorArgs.push(args.rom);
 
                 // Find a .sym file to pass to Gearlynx for its internal symbol table
                 const romBase = args.rom.replace(/\.[^.]+$/, '');
@@ -192,9 +198,15 @@ export class LynxDebugSession extends LoggingDebugSession {
                 }
 
                 this.emulatorProcess = cp.spawn(args.gearlynxPath, emulatorArgs, {
-                    stdio: 'ignore',
+                    stdio: ['ignore', 'ignore', args.headless ? 'pipe' : 'ignore'],
                     detached: false
                 });
+
+                if (args.headless && this.emulatorProcess.stderr) {
+                    this.emulatorProcess.stderr.on('data', (data: Buffer) => {
+                        this.sendEvent(new OutputEvent(data.toString(), 'stderr'));
+                    });
+                }
 
                 this.emulatorProcess.on('exit', () => {
                     this.sendEvent(new TerminatedEvent());

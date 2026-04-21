@@ -28,6 +28,25 @@
         "category": "Lynx Debug"
       }
     ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "lynxDebugPanel",
+          "title": "Lynx",
+          "icon": "$(game)"
+        }
+      ]
+    },
+    "views": {
+      "lynxDebugPanel": [
+        {
+          "type": "webview",
+          "id": "lynxDebug.screenView",
+          "name": "Screen",
+          "when": "debugType == 'lynx'"
+        }
+      ]
+    },
     "breakpoints": [
       { "language": "c" },
       { "language": "cpp" },
@@ -69,6 +88,11 @@
                 "items": { "type": "string" },
                 "description": "Additional directories to search for source files referenced in debug info.",
                 "default": []
+              },
+              "headless": {
+                "type": "boolean",
+                "description": "Run Gearlynx without GUI window. Use the Screen Viewer in VSCode instead.",
+                "default": false
               }
             }
           },
@@ -143,6 +167,56 @@
           "type": "number",
           "default": 6502,
           "description": "Default debug monitor port"
+        },
+        "lynxDebug.autoOpenScreen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open the Screen Viewer when a debug session starts"
+        },
+        "lynxDebug.keymap.up": {
+          "type": "string",
+          "default": "ArrowUp",
+          "description": "Key for D-pad Up"
+        },
+        "lynxDebug.keymap.down": {
+          "type": "string",
+          "default": "ArrowDown",
+          "description": "Key for D-pad Down"
+        },
+        "lynxDebug.keymap.left": {
+          "type": "string",
+          "default": "ArrowLeft",
+          "description": "Key for D-pad Left"
+        },
+        "lynxDebug.keymap.right": {
+          "type": "string",
+          "default": "ArrowRight",
+          "description": "Key for D-pad Right"
+        },
+        "lynxDebug.keymap.a": {
+          "type": "string",
+          "default": "z",
+          "description": "Key for A button"
+        },
+        "lynxDebug.keymap.b": {
+          "type": "string",
+          "default": "x",
+          "description": "Key for B button"
+        },
+        "lynxDebug.keymap.option1": {
+          "type": "string",
+          "default": "1",
+          "description": "Key for Option 1"
+        },
+        "lynxDebug.keymap.option2": {
+          "type": "string",
+          "default": "2",
+          "description": "Key for Option 2"
+        },
+        "lynxDebug.keymap.pause": {
+          "type": "string",
+          "default": "3",
+          "description": "Key for Pause"
         }
       }
     }

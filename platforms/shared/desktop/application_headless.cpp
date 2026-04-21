@@ -35,14 +35,14 @@ static void headless_signal_handler(int sig)
     headless_running = false;
 }
 
-int application_headless_init(const char* rom_file, const char* symbol_file, int mcp_mode, int mcp_tcp_port)
+int application_headless_init(const char* rom_file, const char* symbol_file, int mcp_mode, int mcp_tcp_port, int debug_monitor_port)
 {
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Headless Mode", GLYNX_TITLE, GLYNX_VERSION);
 
-    if (mcp_mode < 0)
+    if (mcp_mode < 0 && debug_monitor_port <= 0)
     {
-        Error("Headless mode requires --mcp-stdio or --mcp-http");
+        Error("Headless mode requires --mcp-stdio, --mcp-http, or --debug-monitor");
         return 1;
     }
 
@@ -62,7 +62,6 @@ int application_headless_init(const char* rom_file, const char* symbol_file, int
 
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
-    emu_audio_mute(true);
 
     gui_debug_init();
 
@@ -85,9 +84,17 @@ int application_headless_init(const char* rom_file, const char* symbol_file, int
         gui_debug_load_symbols_file(symbol_file);
     }
 
-    Log("Starting MCP server (mode: %s, port: %d)...", mcp_mode == 0 ? "stdio" : "http", mcp_tcp_port);
-    emu_mcp_set_transport(mcp_mode, mcp_tcp_port);
-    emu_mcp_start();
+    if (mcp_mode >= 0)
+    {
+        Log("Starting MCP server (mode: %s, port: %d)...", mcp_mode == 0 ? "stdio" : "http", mcp_tcp_port);
+        emu_mcp_set_transport(mcp_mode, mcp_tcp_port);
+        emu_mcp_start();
+    }
+
+    if (debug_monitor_port > 0)
+    {
+        emu_debug_monitor_start(debug_monitor_port);
+    }
 
     signal(SIGINT, headless_signal_handler);
     signal(SIGTERM, headless_signal_handler);
@@ -112,9 +119,9 @@ void application_headless_mainloop(void)
 
         emu_update();
 
-        if (!emu_mcp_is_running())
+        if (!emu_mcp_is_running() && !emu_debug_monitor_is_running())
         {
-            Log("MCP server stopped, exiting headless mode");
+            Log("No server running, exiting headless mode");
             break;
         }
 

@@ -20,7 +20,7 @@
 #ifndef APPLICATION_HEADLESS_H
 #define APPLICATION_HEADLESS_H
 
-int application_headless_init(const char* rom_file, const char* symbol_file, int mcp_mode, int mcp_tcp_port);
+int application_headless_init(const char* rom_file, const char* symbol_file, int mcp_mode, int mcp_tcp_port, int debug_monitor_port);
 void application_headless_destroy(void);
 void application_headless_mainloop(void);
 

@@ -484,6 +484,7 @@ json DebugMonitorServer::ExecuteCommand(const std::string& cmd, const json& para
     if (cmd == "palette")           return HandlePalette();
     if (cmd == "screenshot")        return HandleScreenshot();
     if (cmd == "screenshot_raw")    return HandleScreenshotRaw();
+    if (cmd == "controller_button") return HandleControllerButton(params);
 
     return {{"error", "unknown command: " + cmd}};
 }
@@ -828,4 +829,15 @@ json DebugMonitorServer::HandleScreenshotRaw()
         {"height", h},
         {"format", "rgba"}
     };
+}
+
+json DebugMonitorServer::HandleControllerButton(const json& params)
+{
+    std::string button = params.value("button", "");
+    std::string action = params.value("action", "");
+
+    if (button.empty() || action.empty())
+        return {{"error", "missing button or action"}};
+
+    return m_debug_adapter->ControllerButton(button, action);
 }

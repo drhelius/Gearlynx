@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { LynxDebugSession } from './lynx_debug_session';
-import { ScreenViewerPanel } from './webviews';
+import { ScreenViewerPanel, ScreenViewProvider } from './webviews';
 
 let overlayStatusBarItem: vscode.StatusBarItem | undefined;
 let activeSession: LynxDebugSession | undefined;
+let screenViewProvider: ScreenViewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
     const factory = new LynxDebugAdapterFactory();
@@ -15,6 +16,14 @@ export function activate(context: vscode.ExtensionContext): void {
     const provider = new LynxConfigurationProvider();
     context.subscriptions.push(
         vscode.debug.registerDebugConfigurationProvider('lynx', provider)
+    );
+
+    // Register persistent screen view in panel
+    screenViewProvider = new ScreenViewProvider(context.extensionUri);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(ScreenViewProvider.viewType, screenViewProvider, {
+            webviewOptions: { retainContextWhenHidden: true }
+        })
     );
 
     // Overlay selector command
@@ -61,8 +70,9 @@ export function activate(context: vscode.ExtensionContext): void {
                 vscode.window.showInformationMessage('No active Lynx debug session.');
                 return;
             }
+            const monitor = activeSession.getMonitor();
             const wsPort = activeSession.getWsPort();
-            ScreenViewerPanel.show(context.extensionUri, wsPort);
+            ScreenViewerPanel.show(context.extensionUri, wsPort, monitor);
         })
     );
 
@@ -76,6 +86,26 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.debug.onDidStartDebugSession((session) => {
             if (session.type === 'lynx') {
                 updateOverlayStatusBar(null);
+
+                if (activeSession) {
+                    const monitor = activeSession.getMonitor();
+                    const wsPort = activeSession.getWsPort();
+
+                    // Connect the persistent panel view
+                    setTimeout(() => {
+                        if (screenViewProvider) {
+                            screenViewProvider.setConnection(wsPort, monitor);
+                        }
+                    }, 1000);
+
+                    // Also auto-open floating panel if setting enabled
+                    const cfg = vscode.workspace.getConfiguration('lynxDebug');
+                    if (cfg.get<boolean>('autoOpenScreen', false)) {
+                        setTimeout(() => {
+                            ScreenViewerPanel.show(context.extensionUri, wsPort, monitor);
+                        }, 1000);
+                    }
+                }
             }
         })
     );
@@ -83,6 +113,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.debug.onDidTerminateDebugSession((session) => {
             if (session.type === 'lynx') {
                 overlayStatusBarItem?.hide();
+                screenViewProvider?.clearConnection();
                 activeSession = undefined;
             }
         })
