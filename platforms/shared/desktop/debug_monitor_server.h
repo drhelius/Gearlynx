@@ -214,6 +214,12 @@ private:
     json HandleCallStack();
     json HandleMemoryAreas();
     json HandleHardwareStatus();
+    json HandleSpriteCount();
+    json HandleSpriteInfo(const json& params);
+    json HandleSpriteImage(const json& params);
+    json HandlePalette();
+    json HandleScreenshot();
+    json HandleScreenshotRaw();
 
     void EnqueueResponse(int64_t id, bool success, const json& data);
     void EnqueueEvent(const std::string& event, const json& data = json::object());

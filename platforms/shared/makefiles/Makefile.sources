@@ -43,6 +43,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/mcp/mcp_debug_adapter.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_server.cpp \
     $(DESKTOP_SRC_DIR)/debug_monitor_server.cpp \
+    $(DESKTOP_SRC_DIR)/framebuffer_ws_server.cpp \
     $(DESKTOP_SRC_DIR)/ogl_renderer.cpp \
     $(DESKTOP_SRC_DIR)/display.cpp \
     $(DESKTOP_SRC_DIR)/emu.cpp \

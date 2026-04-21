@@ -166,6 +166,36 @@ export class DebugMonitorClient extends EventEmitter {
         return resp.data;
     }
 
+    async getSpriteCount(): Promise<number> {
+        const resp = await this.sendCommand('sprite_count');
+        return resp.data['count'] as number;
+    }
+
+    async getSpriteInfo(index: number): Promise<Record<string, unknown>> {
+        const resp = await this.sendCommand('sprite_info', { index });
+        return resp.data;
+    }
+
+    async getSpriteImage(index: number): Promise<Record<string, unknown>> {
+        const resp = await this.sendCommand('sprite_image', { index });
+        return resp.data;
+    }
+
+    async getPalette(): Promise<Array<Record<string, unknown>>> {
+        const resp = await this.sendCommand('palette');
+        return resp.data['colors'] as Array<Record<string, unknown>>;
+    }
+
+    async getScreenshot(): Promise<Record<string, unknown>> {
+        const resp = await this.sendCommand('screenshot');
+        return resp.data;
+    }
+
+    async getScreenshotRaw(): Promise<Record<string, unknown>> {
+        const resp = await this.sendCommand('screenshot_raw');
+        return resp.data;
+    }
+
     // -- Low-level send/receive --
 
     private async sendCommand(cmd: string, params: Record<string, unknown> = {}): Promise<MonitorResponse> {

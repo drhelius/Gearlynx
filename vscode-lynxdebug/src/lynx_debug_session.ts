@@ -106,6 +106,14 @@ export class LynxDebugSession extends LoggingDebugSession {
         return this.debugInfo;
     }
 
+    public getMonitor(): DebugMonitorClient {
+        return this.monitor;
+    }
+
+    public getWsPort(): number {
+        return (this.launchArgs?.port || 6502) + 1;
+    }
+
     public async refreshStoppedState(): Promise<void> {
         // Only re-emit if the emulator is actually stopped
         try {

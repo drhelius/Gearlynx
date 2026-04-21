@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { LynxDebugSession } from './lynx_debug_session';
+import { ScreenViewerPanel } from './webviews';
 
 let overlayStatusBarItem: vscode.StatusBarItem | undefined;
 let activeSession: LynxDebugSession | undefined;
@@ -50,6 +51,18 @@ export function activate(context: vscode.ExtensionContext): void {
                 // and repositions the editor to the correct source line
                 activeSession?.refreshStoppedState();
             }
+        })
+    );
+
+    // Screen viewer command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('lynxDebug.showScreen', () => {
+            if (!activeSession) {
+                vscode.window.showInformationMessage('No active Lynx debug session.');
+                return;
+            }
+            const wsPort = activeSession.getWsPort();
+            ScreenViewerPanel.show(context.extensionUri, wsPort);
         })
     );
 

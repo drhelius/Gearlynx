@@ -21,6 +21,11 @@
         "command": "lynxDebug.selectOverlay",
         "title": "Select Active Overlay",
         "category": "Lynx Debug"
+      },
+      {
+        "command": "lynxDebug.showScreen",
+        "title": "Show Screen Viewer",
+        "category": "Lynx Debug"
       }
     ],
     "breakpoints": [
