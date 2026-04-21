@@ -64,6 +64,7 @@ export class LynxDebugSession extends LoggingDebugSession {
     private sourceStepOriginFile = '';
     private sourceStepOriginLine = 0;
     private sourceStepFn: (() => Promise<void>) | null = null;
+    private sourceStepCount = 0;
     private static readonly SOURCE_STEP_MAX = 500;
 
     public constructor() {
@@ -1372,6 +1373,7 @@ export class LynxDebugSession extends LoggingDebugSession {
         this.sourceStepOriginFile = loc?.source || '';
         this.sourceStepOriginLine = loc?.line || 0;
         this.sourceStepFn = stepFn;
+        this.sourceStepCount = 0;
         this.sourceStepActive = true;
 
         // Fire the first step
@@ -1379,7 +1381,9 @@ export class LynxDebugSession extends LoggingDebugSession {
     }
 
     private async handleSourceStepStopped(): Promise<void> {
-        if (!this.debugInfo || !this.sourceStepFn) {
+        this.sourceStepCount++;
+
+        if (!this.debugInfo || !this.sourceStepFn || this.sourceStepCount >= LynxDebugSession.SOURCE_STEP_MAX) {
             this.sourceStepActive = false;
             this.sendEvent(new StoppedEvent('step', THREAD_ID));
             return;

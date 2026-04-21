@@ -315,6 +315,9 @@ bool DebugMonitorServer::RecvMessage(dm_socket_t sock, std::string& out_json)
 
         header_buf += c;
 
+        if (header_buf.size() > 8192)
+            return false;
+
         if (c == '\n')
             consecutive_newlines++;
         else if (c != '\r')
