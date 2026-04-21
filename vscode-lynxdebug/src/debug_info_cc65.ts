@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, OverlayGroup, DebugInfoData } from './types';
+import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, OverlayGroup, SegmentInfo, DebugInfoData } from './types';
 
 interface DbgFile {
     id: number;
@@ -403,7 +403,11 @@ export class Cc65DebugInfo {
             }
         }
 
-        return { addressToSource, sourceToAddresses, symbols, functions, locals, zeropageStackPointerAddr, overlayGroups, segmentForAddress };
+        const segments: SegmentInfo[] = data.segs
+            .filter(s => s.size > 0)
+            .map(s => ({ id: s.id, name: s.name, start: s.start, size: s.size, type: s.type || 'rw' }));
+
+        return { addressToSource, sourceToAddresses, symbols, functions, locals, zeropageStackPointerAddr, overlayGroups, segmentForAddress, segments };
     }
 
     private static parseLine(line: string): { key: string; attrs: Map<string, unknown> } | null {

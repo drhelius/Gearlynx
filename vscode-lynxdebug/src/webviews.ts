@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as net from 'net';
 import * as crypto from 'crypto';
 import { DebugMonitorClient } from './debug_monitor_client';
+import { SegmentInfo } from './types';
 
 export class ScreenViewerPanel {
     public static readonly viewType = 'lynxDebug.screenViewer';

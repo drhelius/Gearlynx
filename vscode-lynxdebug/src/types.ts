@@ -112,6 +112,15 @@ export interface DebugInfoData {
     zeropageStackPointerAddr: number;
     overlayGroups: OverlayGroup[];
     segmentForAddress: Map<number, number>;
+    segments: SegmentInfo[];
+}
+
+export interface SegmentInfo {
+    id: number;
+    name: string;
+    start: number;
+    size: number;
+    type: string;
 }
 
 export interface OverlayGroup {

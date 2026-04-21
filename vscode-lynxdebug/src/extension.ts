@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { LynxDebugSession } from './lynx_debug_session';
 import { ScreenViewerPanel, ScreenViewProvider } from './webviews';
+import { MemoryMapPanel } from './memory_map';
 
 let overlayStatusBarItem: vscode.StatusBarItem | undefined;
 let activeSession: LynxDebugSession | undefined;
@@ -73,6 +74,22 @@ export function activate(context: vscode.ExtensionContext): void {
             const monitor = activeSession.getMonitor();
             const wsPort = activeSession.getWsPort();
             ScreenViewerPanel.show(context.extensionUri, wsPort, monitor);
+        })
+    );
+
+    // Memory map command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('lynxDebug.showMemoryMap', () => {
+            if (!activeSession) {
+                vscode.window.showInformationMessage('No active Lynx debug session.');
+                return;
+            }
+            const debugInfo = activeSession.getDebugInfo();
+            if (!debugInfo) {
+                vscode.window.showInformationMessage('No debug info loaded.');
+                return;
+            }
+            MemoryMapPanel.show(debugInfo.getSegments());
         })
     );
 

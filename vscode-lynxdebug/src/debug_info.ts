@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, OverlayGroup, DebugInfoData } from './types';
+import { SourceLocation, DebugSymbol, DebugFunction, LocalVariable, OverlayGroup, SegmentInfo, DebugInfoData } from './types';
 import { Cc65DebugInfo } from './debug_info_cc65';
 import { SymDebugInfo } from './debug_info_sym';
 
@@ -113,6 +113,10 @@ export class DebugInfo {
 
     getZeroPageSymbols(): DebugSymbol[] {
         return this.data.symbols.filter(s => s.isZeroPage);
+    }
+
+    getSegments(): SegmentInfo[] {
+        return this.data.segments;
     }
 
     // -- Overlay management --

@@ -26,6 +26,11 @@
         "command": "lynxDebug.showScreen",
         "title": "Show Screen Viewer",
         "category": "Lynx Debug"
+      },
+      {
+        "command": "lynxDebug.showMemoryMap",
+        "title": "Show Memory Map",
+        "category": "Lynx Debug"
       }
     ],
     "viewsContainers": {
