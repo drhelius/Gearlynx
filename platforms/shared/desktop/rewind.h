@@ -36,14 +36,17 @@
 // config_rewind (buffer_seconds / frames_per_snapshot) and clamped to this.
 #define REWIND_MAX_SNAPSHOTS        600
 
-EXTERN bool   rewind_init(void);
-EXTERN void   rewind_destroy(void);
-EXTERN void   rewind_reset(void);
-EXTERN void   rewind_push(void);
-EXTERN bool   rewind_pop(void);
-EXTERN void   rewind_set_active(bool a);
-EXTERN bool   rewind_is_active(void);
-EXTERN int    rewind_get_snapshot_count(void);
+EXTERN bool rewind_init(void);
+EXTERN void rewind_destroy(void);
+EXTERN void rewind_reset(void);
+EXTERN void rewind_push(void);
+EXTERN bool rewind_pop(void);
+EXTERN bool rewind_seek(int age);
+EXTERN void rewind_set_active(bool a);
+EXTERN bool rewind_is_active(void);
+EXTERN int rewind_get_snapshot_count(void);
+EXTERN int rewind_get_capacity(void);
+EXTERN int rewind_get_frames_per_snapshot(void);
 EXTERN size_t rewind_get_memory_usage(void);
 
 #undef REWIND_IMPORT

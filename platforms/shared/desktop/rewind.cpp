@@ -142,6 +142,30 @@ size_t rewind_get_memory_usage(void)
     return (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE;
 }
 
+bool rewind_seek(int age)
+{
+    if (age < 0 || age >= count)
+        return false;
+    if (!IsValidPointer(buffer))
+        return false;
+
+    int idx = slot_at(age);
+    const u8* slot = buffer + (size_t)idx * REWIND_MAX_STATE_SIZE;
+    size_t size = sizes[idx];
+
+    return emu_get_core()->LoadState(slot, size);
+}
+
+int rewind_get_capacity(void)
+{
+    return capacity;
+}
+
+int rewind_get_frames_per_snapshot(void)
+{
+    return config_rewind.frames_per_snapshot;
+}
+
 static int slot_at(int age)
 {
     int idx = head - 1 - age;
