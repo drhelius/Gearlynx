@@ -31,9 +31,12 @@ static int count = 0;
 static int capacity = 0;
 static int frame_accum = 0;
 static bool active = false;
+static int seek_age = -1;
 
 static int slot_at(int age);
+static int get_target_capacity(void);
 static void refresh_capacity(void);
+static void truncate_to_seek_position(void);
 
 bool rewind_init(void)
 {
@@ -60,6 +63,7 @@ void rewind_destroy(void)
     head = 0;
     frame_accum = 0;
     active = false;
+    seek_age = -1;
 }
 
 void rewind_reset(void)
@@ -68,6 +72,7 @@ void rewind_reset(void)
     count = 0;
     frame_accum = 0;
     active = false;
+    seek_age = -1;
     for (int i = 0; i < REWIND_MAX_SNAPSHOTS; i++)
         sizes[i] = 0;
 }
@@ -117,7 +122,13 @@ bool rewind_pop(void)
 
     head = idx;
     count--;
+    seek_age = -1;
     return ok;
+}
+
+void rewind_commit_seek(void)
+{
+    truncate_to_seek_position();
 }
 
 void rewind_set_active(bool a)
@@ -153,12 +164,17 @@ bool rewind_seek(int age)
     const u8* slot = buffer + (size_t)idx * REWIND_MAX_STATE_SIZE;
     size_t size = sizes[idx];
 
-    return emu_get_core()->LoadState(slot, size);
+    bool ok = emu_get_core()->LoadState(slot, size);
+
+    if (ok)
+        seek_age = age;
+
+    return ok;
 }
 
 int rewind_get_capacity(void)
 {
-    return capacity;
+    return get_target_capacity();
 }
 
 int rewind_get_frames_per_snapshot(void)
@@ -174,22 +190,44 @@ static int slot_at(int age)
     return idx;
 }
 
-static void refresh_capacity(void)
+static int get_target_capacity(void)
 {
     int fps = config_rewind.frames_per_snapshot;
     if (fps < 1)
         fps = 1;
 
-    int target = config_rewind.buffer_seconds * (60 / fps);
+    int target = (config_rewind.buffer_seconds * 60 + fps - 1) / fps;
     if (target < 1)
         target = 1;
     if (target > REWIND_MAX_SNAPSHOTS)
         target = REWIND_MAX_SNAPSHOTS;
+
+    return target;
+}
+
+static void refresh_capacity(void)
+{
+    int target = get_target_capacity();
 
     if (target != capacity)
     {
         capacity = target;
         head = 0;
         count = 0;
+        seek_age = -1;
     }
+}
+
+static void truncate_to_seek_position(void)
+{
+    if (seek_age <= 0)
+    {
+        seek_age = -1;
+        return;
+    }
+
+    int idx = slot_at(seek_age);
+    head = (idx + 1) % capacity;
+    count -= seek_age;
+    seek_age = -1;
 }

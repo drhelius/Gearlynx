@@ -210,6 +210,7 @@ void emu_update(void)
 
         if (executed)
         {
+            rewind_commit_seek();
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
             frame_executed = true;
         }
@@ -242,6 +243,7 @@ void emu_update(void)
     }
     else
     {
+        rewind_commit_seek();
         core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
         frame_executed = true;
     }

@@ -3030,6 +3030,11 @@ json DebugAdapter::GetRewindStatus()
 
 json DebugAdapter::RewindSeek(int snapshot)
 {
+    bool paused = emu_is_paused() || emu_is_debug_idle();
+
+    if (!paused)
+        return {{"error", "Pause the emulator before seeking the rewind buffer"}};
+
     int count = rewind_get_snapshot_count();
 
     if (count == 0)

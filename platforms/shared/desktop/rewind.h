@@ -42,6 +42,7 @@ EXTERN void rewind_reset(void);
 EXTERN void rewind_push(void);
 EXTERN bool rewind_pop(void);
 EXTERN bool rewind_seek(int age);
+EXTERN void rewind_commit_seek(void);
 EXTERN void rewind_set_active(bool a);
 EXTERN bool rewind_is_active(void);
 EXTERN int rewind_get_snapshot_count(void);

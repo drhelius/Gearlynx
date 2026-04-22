@@ -141,7 +141,7 @@ static void draw_transport_bar(void)
     ImGui::PopFont();
 
     ImGui::SameLine();
-    ImGui::TextColored(emu_is_debug_idle() ? red : green, emu_is_debug_idle() ? "    PAUSED" : "    RUNNING");
+    ImGui::TextColored(is_paused ? red : green, is_paused ? "    PAUSED" : "    RUNNING");
 }
 
 static void draw_timeline(void)

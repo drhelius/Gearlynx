@@ -89,6 +89,8 @@ void gui_action_rewind_pressed(void)
 {
     if (emu_is_empty() || !config_rewind.enabled)
         return;
+    if (rewind_get_snapshot_count() < 1)
+        return;
     if (rewind_is_active())
         return;
 
