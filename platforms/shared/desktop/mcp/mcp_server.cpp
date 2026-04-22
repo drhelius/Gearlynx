@@ -1389,6 +1389,33 @@ void McpServer::HandleToolsList(const json& request)
         }}
     });
 
+    tools.push_back({
+        {"name", "get_rewind_status"},
+        {"title", "Get Rewind Status"},
+        {"description", "Get the current rewind buffer status: snapshot count, capacity, buffered seconds, and configuration. Use this to check how many snapshots are available before seeking."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "rewind_seek"},
+        {"title", "Rewind Seek"},
+        {"description", "Seek to a specific rewind snapshot by number (1 = oldest, snapshot_count = newest). Loads the emulator state from that snapshot and refreshes the screen. Use get_rewind_status first to check how many snapshots are available. The emulator should be paused before seeking. This does NOT consume the snapshot — you can seek to any snapshot multiple times."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"snapshot", {
+                    {"type", "integer"},
+                    {"description", "Snapshot number to seek to (1 = oldest, snapshot_count = newest). Use get_rewind_status to check the valid range."},
+                    {"minimum", 1}
+                }}
+            }},
+            {"required", json::array({"snapshot"})}
+        }}
+    });
+
     json response;
     response["jsonrpc"] = "2.0";
     response["id"] = id;
@@ -2097,6 +2124,15 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         }
         bool debug_output = arguments.value("debug_output", false);
         return m_debugAdapter.SetTraceLog(enabled, flags, debug_output);
+    }
+    else if (normalizedTool == "get_rewind_status")
+    {
+        return m_debugAdapter.GetRewindStatus();
+    }
+    else if (normalizedTool == "rewind_seek")
+    {
+        int snapshot = arguments["snapshot"];
+        return m_debugAdapter.RewindSeek(snapshot);
     }
     else
     {

@@ -160,6 +160,10 @@ public:
     json GetTraceLog(int start, int count);
     json SetTraceLog(bool enabled, u32 flags, bool debug_output);
 
+    // Rewind
+    json GetRewindStatus();
+    json RewindSeek(int snapshot);
+
     // Core access
     GearlynxCore* GetCore() { return m_core; }
 

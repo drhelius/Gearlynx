@@ -57,6 +57,7 @@ This server provides tools for game development, rom hacking, reverse engineerin
 - **Call Stack**: View function call hierarchy
 - **Trace Logger**: CPU instruction trace with interleaved hardware events (Suzy math/sprites, Mikey timers/audio/UART, cart)
 - **Screenshot Capture**: Get current frame as PNG image
+- **Rewind**: Time-travel debugging — seek to any recorded snapshot to inspect past emulator state
 - **Documentation Resources**: Built-in hardware and programming documentation for AI context
 - **GUI Integration**: MCP server runs alongside the emulator GUI, sharing the same state
 
@@ -327,6 +328,8 @@ The server exposes tools organized in the following categories:
 - `load_state` - Load emulator state from currently selected slot
 - `set_fast_forward_speed` - Set fast forward speed multiplier (0: 1.5x, 1: 2x, 2: 2.5x, 3: 3x, 4: Unlimited)
 - `toggle_fast_forward` - Toggle fast forward mode on/off
+- `get_rewind_status` - Get rewind buffer status (snapshot count, capacity, buffered seconds, configuration)
+- `rewind_seek` - Seek to a specific rewind snapshot by number (1 = oldest, snapshot_count = newest). Non-destructive — can seek repeatedly
 
 ### Controller Input
 - `controller_button` - Control a button on the Lynx controller. Use action 'press' to hold, 'release' to let go, or 'press_and_release' for a quick tap. Buttons: up, down, left, right, a, b, option1, option2, pause
