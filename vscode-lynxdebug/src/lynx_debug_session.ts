@@ -429,6 +429,12 @@ export class LynxDebugSession extends LoggingDebugSession {
         const hwRef = this.allocVariableRef('hardware');
         scopes.push(new Scope('Hardware', hwRef, false));
 
+        const timersRef = this.allocVariableRef('timers');
+        scopes.push(new Scope('Timers', timersRef, false));
+
+        const audioRef = this.allocVariableRef('audio');
+        scopes.push(new Scope('Audio', audioRef, false));
+
         response.body = { scopes };
         this.sendResponse(response);
     }
@@ -475,6 +481,10 @@ export class LynxDebugSession extends LoggingDebugSession {
                 await this.populateGlobals(variables);
             } else if (scopeName === 'hardware') {
                 await this.populateHardware(variables);
+            } else if (scopeName === 'timers') {
+                await this.populateTimers(variables);
+            } else if (scopeName === 'audio') {
+                await this.populateAudio(variables);
             }
         } catch {
             // Return empty if disconnected
@@ -538,9 +548,10 @@ export class LynxDebugSession extends LoggingDebugSession {
 
     private async populateGlobals(variables: Variable[]): Promise<void> {
         if (!this.debugInfo) return;
-        const symbols = this.debugInfo.getSymbols();
+        const symbols = this.debugInfo.getSymbols()
+            .filter(s => s.isCVariable && !s.isZeroPage)
+            .sort((a, b) => a.name.localeCompare(b.name));
         for (const sym of symbols) {
-            if (!sym.isCVariable || sym.isZeroPage) continue;
             const v = await this.readSymbolValue(sym.name, sym.address);
             variables.push(v);
         }
@@ -548,9 +559,10 @@ export class LynxDebugSession extends LoggingDebugSession {
 
     private async populateZeroPage(variables: Variable[]): Promise<void> {
         if (!this.debugInfo) return;
-        const zpSymbols = this.debugInfo.getZeroPageSymbols();
+        const zpSymbols = this.debugInfo.getZeroPageSymbols()
+            .filter(s => s.isCVariable)
+            .sort((a, b) => a.name.localeCompare(b.name));
         for (const sym of zpSymbols) {
-            if (!sym.isCVariable) continue;
             const v = await this.readSymbolValue(sym.name, sym.address);
             variables.push(v);
         }
@@ -581,45 +593,9 @@ export class LynxDebugSession extends LoggingDebugSession {
             const regs = await this.monitor.getRegisters();
 
             variables.push(new Variable('Cycles', `${regs.cycles}`, 0));
-            variables.push(new Variable('Total Ticks', `${hw['total_ticks']}`, 0));
             variables.push(new Variable('CPU Halted', `${hw['halted']}`, 0));
             variables.push(new Variable('IRQ Asserted', `${hw['irq_asserted']}`, 0));
             variables.push(new Variable('IRQ Pending', `${hw['irq_pending']}`, 0));
-
-            // Timers
-            const timers = hw['timers'] as Record<string, unknown> | undefined;
-            if (timers && timers['timers']) {
-                const timerArr = timers['timers'] as Array<Record<string, unknown>>;
-                for (const t of timerArr) {
-                    const idx = t['index'] as number;
-                    const name = t['name'] as string || `Timer ${idx}`;
-                    const counter = t['counter'] as string || '00';
-                    const backup = t['backup'] as string || '00';
-                    const enabled = t['enabled'] as boolean;
-                    variables.push(new Variable(
-                        `Timer ${idx} (${name})`,
-                        `cnt:$${counter} bkp:$${backup} ${enabled ? 'ON' : 'off'}`,
-                        0
-                    ));
-                }
-            }
-
-            // Audio channels
-            const audio = hw['audio'] as Record<string, unknown> | undefined;
-            if (audio && audio['channels']) {
-                const channels = audio['channels'] as Array<Record<string, unknown>>;
-                for (const ch of channels) {
-                    const idx = ch['index'] as number;
-                    const vol = ch['volume'] as string || '00';
-                    const output = ch['output'] as string || '00';
-                    const enabled = ch['enabled'] as boolean;
-                    variables.push(new Variable(
-                        `Audio Ch ${idx}`,
-                        `vol:$${vol} out:$${output} ${enabled ? 'ON' : 'off'}`,
-                        0
-                    ));
-                }
-            }
 
             // LCD
             const lcd = hw['lcd'] as Record<string, unknown> | undefined;
@@ -656,6 +632,53 @@ export class LynxDebugSession extends LoggingDebugSession {
             }
         } catch {
             variables.push(new Variable('Hardware', '<unavailable>', 0));
+        }
+    }
+
+    private async populateTimers(variables: Variable[]): Promise<void> {
+        try {
+            const hw = await this.monitor.getHardwareStatus();
+            const timers = hw['timers'] as Record<string, unknown> | undefined;
+            if (timers && timers['timers']) {
+                const timerArr = timers['timers'] as Array<Record<string, unknown>>;
+                for (const t of timerArr) {
+                    const idx = t['index'] as number;
+                    const name = t['name'] as string || `Timer ${idx}`;
+                    const counter = t['counter'] as string || '00';
+                    const backup = t['backup'] as string || '00';
+                    const enabled = t['enabled'] as boolean;
+                    variables.push(new Variable(
+                        `${idx}: ${name}`,
+                        `cnt:$${counter} bkp:$${backup} ${enabled ? 'ON' : 'off'}`,
+                        0
+                    ));
+                }
+            }
+        } catch {
+            variables.push(new Variable('Timers', '<unavailable>', 0));
+        }
+    }
+
+    private async populateAudio(variables: Variable[]): Promise<void> {
+        try {
+            const hw = await this.monitor.getHardwareStatus();
+            const audio = hw['audio'] as Record<string, unknown> | undefined;
+            if (audio && audio['channels']) {
+                const channels = audio['channels'] as Array<Record<string, unknown>>;
+                for (const ch of channels) {
+                    const idx = ch['index'] as number;
+                    const vol = ch['volume'] as string || '00';
+                    const output = ch['output'] as string || '00';
+                    const enabled = ch['enabled'] as boolean;
+                    variables.push(new Variable(
+                        `Ch ${idx}`,
+                        `vol:$${vol} out:$${output} ${enabled ? 'ON' : 'off'}`,
+                        0
+                    ));
+                }
+            }
+        } catch {
+            variables.push(new Variable('Audio', '<unavailable>', 0));
         }
     }
 
