@@ -155,7 +155,6 @@ export class Cc65DebugInfo {
         const symbols: DebugSymbol[] = [];
         const functions: DebugFunction[] = [];
         const locals: LocalVariable[] = [];
-        const segmentForAddress = new Map<number, number>();
 
         // Find zeropage stack pointer address (default 0x02 for cc65 on Lynx)
         let zeropageStackPointerAddr = 0x02;
@@ -187,7 +186,6 @@ export class Cc65DebugInfo {
                     return s?.name || `seg${id}`;
                 });
                 overlayGroups.push({
-                    name: names[0],
                     segmentIds: segIds,
                     segmentNames: names,
                 });
@@ -246,8 +244,6 @@ export class Cc65DebugInfo {
                     addressEnd: addrEnd,
                     segmentId: span.seg,
                 };
-
-                segmentForAddress.set(addr, span.seg);
 
                 // Prefer C lines (type 0 or undefined) over assembly lines (type 1)
                 const existing = addressToSource.get(addr);
@@ -405,9 +401,9 @@ export class Cc65DebugInfo {
 
         const segments: SegmentInfo[] = data.segs
             .filter(s => s.size > 0)
-            .map(s => ({ id: s.id, name: s.name, start: s.start, size: s.size, type: s.type || 'rw' }));
+            .map(s => ({ name: s.name, start: s.start, size: s.size, type: s.type || 'rw' }));
 
-        return { addressToSource, sourceToAddresses, symbols, functions, locals, zeropageStackPointerAddr, overlayGroups, segmentForAddress, segments };
+        return { addressToSource, sourceToAddresses, symbols, functions, locals, zeropageStackPointerAddr, overlayGroups, segments };
     }
 
     private static parseLine(line: string): { key: string; attrs: Map<string, unknown> } | null {

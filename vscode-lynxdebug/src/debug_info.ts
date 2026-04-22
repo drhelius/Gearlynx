@@ -7,7 +7,7 @@ import { SymDebugInfo } from './debug_info_sym';
 export class DebugInfo {
     private data: DebugInfoData;
     private sourceRoots: string[];
-    private activeOverlaySegments: Set<number> | null = null;
+    private activeOverlaySegmentId: number | null = null;
     private activeOverlayName: string | null = null;
 
     private constructor(data: DebugInfoData, sourceRoots: string[]) {
@@ -133,8 +133,7 @@ export class DebugInfo {
         for (const group of this.data.overlayGroups) {
             const idx = group.segmentNames.indexOf(segmentName);
             if (idx >= 0) {
-                this.activeOverlaySegments = new Set<number>();
-                this.activeOverlaySegments.add(group.segmentIds[idx]);
+                this.activeOverlaySegmentId = group.segmentIds[idx];
                 this.activeOverlayName = segmentName;
                 return;
             }
@@ -146,23 +145,20 @@ export class DebugInfo {
     }
 
     clearActiveOverlay(): void {
-        this.activeOverlaySegments = null;
+        this.activeOverlaySegmentId = null;
         this.activeOverlayName = null;
     }
 
     private isSegmentActive(segmentId: number): boolean {
-        if (!this.activeOverlaySegments) return true;
+        if (this.activeOverlaySegmentId === null) return true;
         // Non-overlay segments are always active
-        let isOverlaySegment = false;
         for (const group of this.data.overlayGroups) {
             if (group.segmentIds.includes(segmentId)) {
-                isOverlaySegment = true;
-                break;
+                // This is an overlay segment -- only active if selected
+                return segmentId === this.activeOverlaySegmentId;
             }
         }
-        if (!isOverlaySegment) return true;
-        // Overlay segment -- only active if selected
-        return this.activeOverlaySegments.has(segmentId);
+        return true;
     }
 
     // -- Internal helpers --

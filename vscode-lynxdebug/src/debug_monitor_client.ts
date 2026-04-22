@@ -166,36 +166,6 @@ export class DebugMonitorClient extends EventEmitter {
         return resp.data;
     }
 
-    async getSpriteCount(): Promise<number> {
-        const resp = await this.sendCommand('sprite_count');
-        return resp.data['count'] as number;
-    }
-
-    async getSpriteInfo(index: number): Promise<Record<string, unknown>> {
-        const resp = await this.sendCommand('sprite_info', { index });
-        return resp.data;
-    }
-
-    async getSpriteImage(index: number): Promise<Record<string, unknown>> {
-        const resp = await this.sendCommand('sprite_image', { index });
-        return resp.data;
-    }
-
-    async getPalette(): Promise<Array<Record<string, unknown>>> {
-        const resp = await this.sendCommand('palette');
-        return resp.data['colors'] as Array<Record<string, unknown>>;
-    }
-
-    async getScreenshot(): Promise<Record<string, unknown>> {
-        const resp = await this.sendCommand('screenshot');
-        return resp.data;
-    }
-
-    async getScreenshotRaw(): Promise<Record<string, unknown>> {
-        const resp = await this.sendCommand('screenshot_raw');
-        return resp.data;
-    }
-
     async controllerButton(button: string, action: string): Promise<void> {
         await this.sendCommand('controller_button', { button, action });
     }
@@ -222,8 +192,6 @@ export class DebugMonitorClient extends EventEmitter {
         const frame = `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`;
 
         return new Promise((resolve, reject) => {
-            this.pendingRequests.set(id, { resolve, reject });
-
             const timeout = setTimeout(() => {
                 this.pendingRequests.delete(id);
                 reject(new Error(`Request timeout: ${cmd}`));
@@ -256,12 +224,20 @@ export class DebugMonitorClient extends EventEmitter {
 
         this.socket.on('close', () => {
             this.connected = false;
+            this.rejectAllPending('Connection closed');
             this.emit('close');
         });
 
         this.socket.on('error', (err: Error) => {
             this.emit('error', err);
         });
+    }
+
+    private rejectAllPending(reason: string): void {
+        for (const [id, pending] of this.pendingRequests) {
+            pending.reject(new Error(reason));
+        }
+        this.pendingRequests.clear();
     }
 
     private processBuffer(): void {

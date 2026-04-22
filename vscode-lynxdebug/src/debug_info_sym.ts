@@ -72,7 +72,6 @@ export class SymDebugInfo {
             locals: [],
             zeropageStackPointerAddr: 0x02,
             overlayGroups: [],
-            segmentForAddress: new Map(),
             segments: [],
         };
     }

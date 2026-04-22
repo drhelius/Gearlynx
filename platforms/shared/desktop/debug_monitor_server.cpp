@@ -481,12 +481,6 @@ json DebugMonitorServer::ExecuteCommand(const std::string& cmd, const json& para
     if (cmd == "call_stack")        return HandleCallStack();
     if (cmd == "memory_areas")      return HandleMemoryAreas();
     if (cmd == "hardware_status")   return HandleHardwareStatus();
-    if (cmd == "sprite_count")      return HandleSpriteCount();
-    if (cmd == "sprite_info")       return HandleSpriteInfo(params);
-    if (cmd == "sprite_image")      return HandleSpriteImage(params);
-    if (cmd == "palette")           return HandlePalette();
-    if (cmd == "screenshot")        return HandleScreenshot();
-    if (cmd == "screenshot_raw")    return HandleScreenshotRaw();
     if (cmd == "controller_button") return HandleControllerButton(params);
     if (cmd == "trace_log_set")     return HandleTraceLogSet(params);
     if (cmd == "trace_log_get")     return HandleTraceLogGet(params);
@@ -739,100 +733,6 @@ json DebugMonitorServer::HandleHardwareStatus()
         {"audio", audio},
         {"lcd", lcd},
         {"cart", cart}
-    };
-}
-
-json DebugMonitorServer::HandleSpriteCount()
-{
-    return {{"count", emu_debug_scb_count}};
-}
-
-json DebugMonitorServer::HandleSpriteInfo(const json& params)
-{
-    int index = params.value("index", -1);
-    return m_debug_adapter->GetSprite(index, "info");
-}
-
-json DebugMonitorServer::HandleSpriteImage(const json& params)
-{
-    int index = params.value("index", -1);
-    return m_debug_adapter->GetSprite(index, "image");
-}
-
-json DebugMonitorServer::HandlePalette()
-{
-    Mikey* mikey = m_core->GetMikey();
-    json colors = json::array();
-
-    for (int i = 0; i < 16; i++)
-    {
-        u16 color_base = 0xFDA0 + (i * 2);
-        u8 green_reg = mikey->Read<true>(color_base);
-        u8 bluered_reg = mikey->Read<true>(color_base + 1);
-
-        int g = (green_reg & 0x0F) * 17;
-        int b = ((bluered_reg >> 4) & 0x0F) * 17;
-        int r = (bluered_reg & 0x0F) * 17;
-
-        colors.push_back({
-            {"index", i},
-            {"r", r}, {"g", g}, {"b", b},
-            {"green_reg", green_reg},
-            {"bluered_reg", bluered_reg}
-        });
-    }
-
-    return {{"colors", colors}};
-}
-
-json DebugMonitorServer::HandleScreenshot()
-{
-    return m_debug_adapter->GetScreenshot();
-}
-
-json DebugMonitorServer::HandleScreenshotRaw()
-{
-    if (!m_core || !m_core->GetMedia()->IsReady())
-        return {{"error", "No media loaded"}};
-
-    GLYNX_Runtime_Info runtime;
-    m_core->GetRuntimeInfo(runtime);
-
-    int w = runtime.screen_width;
-    int h = runtime.screen_height;
-    int stride = w * 4;
-    int size = stride * h;
-
-    // Base64 encode the raw RGBA data (only the visible region)
-    // Using a simple base64 encoder inline
-    static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string encoded;
-    encoded.reserve((size * 4) / 3 + 4);
-
-    // emu_frame_buffer is 256*4 stride, we need w*4 per row
-    std::vector<u8> pixels(size);
-    for (int y = 0; y < h; y++)
-        memcpy(&pixels[y * stride], &emu_frame_buffer[y * 256 * 4], stride);
-
-    const u8* data = pixels.data();
-    int i = 0;
-    while (i < size)
-    {
-        u32 a = (i < size) ? data[i++] : 0;
-        u32 b_val = (i < size) ? data[i++] : 0;
-        u32 c = (i < size) ? data[i++] : 0;
-        u32 triple = (a << 16) | (b_val << 8) | c;
-        encoded += b64[(triple >> 18) & 0x3F];
-        encoded += b64[(triple >> 12) & 0x3F];
-        encoded += (i > size + 1) ? '=' : b64[(triple >> 6) & 0x3F];
-        encoded += (i > size) ? '=' : b64[triple & 0x3F];
-    }
-
-    return {
-        {"data", encoded},
-        {"width", w},
-        {"height", h},
-        {"format", "rgba"}
     };
 }
 
