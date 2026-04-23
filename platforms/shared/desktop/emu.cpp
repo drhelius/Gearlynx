@@ -144,9 +144,7 @@ bool emu_load_rom(const char* file_path)
 void emu_update(void)
 {
     emu_mcp_pump_commands();
-
-    if (debug_monitor && debug_monitor->IsRunning())
-        debug_monitor->PumpCommands();
+    emu_debug_monitor_pump_commands();
 
     if (emu_is_empty())
         return;
@@ -172,9 +170,8 @@ void emu_update(void)
 
         bool executed = (emu_debug_command != Debug_Command_None);
 
-        // Notify debug monitor of resumed state before execution
-        if (executed && debug_monitor && debug_monitor->IsRunning())
-            debug_monitor->NotifyResumed();
+        if (executed)
+            emu_debug_monitor_notify_resumed();
 
         if (executed)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
@@ -202,14 +199,10 @@ void emu_update(void)
         else if (emu_debug_command != Debug_Command_Continue)
             emu_debug_command = Debug_Command_None;
 
-        // Notify debug monitor of stopped state after execution
-        if (debug_monitor && debug_monitor->IsRunning() && emu_debug_command == Debug_Command_None && executed)
+        if (emu_debug_command == Debug_Command_None && executed)
         {
             u16 pc = core->GetM6502()->GetState()->PC.GetValue();
-            DebugMonitorStopReason reason = DM_STOP_STEP;
-            if (breakpoint_hit)
-                reason = DM_STOP_BREAKPOINT;
-            debug_monitor->NotifyStopped(reason, pc);
+            emu_debug_monitor_notify_stopped(breakpoint_hit, pc);
         }
 
         if (executed)
@@ -229,13 +222,7 @@ void emu_update(void)
         sound_queue_write(audio_buffer, silence_count, false);
     }
 
-    // Push framebuffer to clients
-    if (fb_server && fb_server->IsRunning())
-    {
-        GLYNX_Runtime_Info runtime;
-        core->GetRuntimeInfo(runtime);
-        fb_server->PushFrame(emu_frame_buffer, runtime.screen_width, runtime.screen_height, runtime.screen_width);
-    }
+    emu_debug_monitor_push_frame();
 }
 
 void emu_key_pressed(GLYNX_Keys key)
@@ -1633,4 +1620,32 @@ bool emu_debug_monitor_is_running(void)
 int emu_debug_monitor_get_port(void)
 {
     return debug_monitor ? debug_monitor->GetPort() : 0;
+}
+
+void emu_debug_monitor_pump_commands(void)
+{
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->PumpCommands();
+}
+
+void emu_debug_monitor_notify_resumed(void)
+{
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->NotifyResumed();
+}
+
+void emu_debug_monitor_notify_stopped(bool breakpoint_hit, u16 pc)
+{
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->NotifyStopped(breakpoint_hit ? DM_STOP_BREAKPOINT : DM_STOP_STEP, pc);
+}
+
+void emu_debug_monitor_push_frame(void)
+{
+    if (fb_server && fb_server->IsRunning())
+    {
+        GLYNX_Runtime_Info runtime;
+        emu_get_runtime(runtime);
+        fb_server->PushFrame(emu_frame_buffer, runtime.screen_width, runtime.screen_height, runtime.screen_width);
+    }
 }
