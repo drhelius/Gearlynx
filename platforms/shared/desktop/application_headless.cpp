@@ -63,6 +63,9 @@ int application_headless_init(const char* rom_file, const char* symbol_file, int
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
 
+    if (debug_monitor_port <= 0)
+        emu_audio_mute(true);
+
     gui_debug_init();
 
     if (!config_emulator.bios_path.empty())

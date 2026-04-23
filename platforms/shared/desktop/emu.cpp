@@ -229,7 +229,7 @@ void emu_update(void)
         sound_queue_write(audio_buffer, silence_count, false);
     }
 
-    // Push framebuffer to WebSocket clients
+    // Push framebuffer to clients
     if (fb_server && fb_server->IsRunning())
     {
         GLYNX_Runtime_Info runtime;

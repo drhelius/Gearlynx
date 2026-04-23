@@ -203,15 +203,10 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    ret = application_init(rom_file, symbol_file, force_fullscreen, force_windowed, mcp_mode, mcp_tcp_port);
+    ret = application_init(rom_file, symbol_file, force_fullscreen, force_windowed, mcp_mode, mcp_tcp_port, debug_monitor_port);
 
     if (ret == 0)
-    {
-        if (debug_monitor_port > 0)
-            emu_debug_monitor_start(debug_monitor_port);
-
         application_mainloop();
-    }
 
     application_destroy();
 

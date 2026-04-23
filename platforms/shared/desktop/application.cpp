@@ -69,7 +69,7 @@ extern "C" void* macos_install_fullscreen_observer(void* nswindow, void(*enter_c
 extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter);
 #endif
 
-int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed, int mcp_mode, int mcp_tcp_port)
+int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed, int mcp_mode, int mcp_tcp_port, int debug_monitor_port)
 {
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Desktop App", GLYNX_TITLE, GLYNX_VERSION);
@@ -143,6 +143,12 @@ int application_init(const char* rom_file, const char* symbol_file, bool force_f
         config_debug.debug = true;
         emu_mcp_set_transport(mcp_mode, mcp_tcp_port);
         emu_mcp_start();
+    }
+
+    if (debug_monitor_port > 0)
+    {
+        config_debug.debug = true;
+        emu_debug_monitor_start(debug_monitor_port);
     }
 
     return 0;
