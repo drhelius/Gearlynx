@@ -37,8 +37,8 @@ static void seek_and_render(int age);
 void gui_debug_window_rewind(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::SetNextWindowPos(ImVec2(180, 500), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(480, 0), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(180, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Rewind", &config_debug.show_rewind, ImGuiWindowFlags_AlwaysAutoResize);
 

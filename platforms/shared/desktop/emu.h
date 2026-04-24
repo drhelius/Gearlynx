@@ -148,6 +148,7 @@ EXTERN bool emu_mcp_is_running(void);
 EXTERN int emu_mcp_get_transport_mode(void);
 EXTERN void emu_mcp_pump_commands(void);
 EXTERN void emu_render_current_frame(void);
+EXTERN void emu_reset_rewind_timing(void);
 
 #undef EMU_IMPORT
 #undef EXTERN

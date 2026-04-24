@@ -38,6 +38,8 @@ static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
 static const int k_frame_buffer_size = 256 * 256 * 4;
+static Uint64 rewind_last_counter = 0;
+static double rewind_pop_accumulator = 0.0;
 
 static void save_ram(void);
 static void load_ram(void);
@@ -51,6 +53,8 @@ static void update_debug_framebuffers(void);
 static void update_debug_sprites(void);
 static void update_debug_sprites_accumulated(void);
 static void render_debug_sprites(int count);
+static void reset_rewind_timing(void);
+static int get_rewind_pop_budget(void);
 
 bool emu_init(void)
 {
@@ -155,6 +159,11 @@ void emu_render_current_frame(void)
     lcd_screen->EndFrame(core->GetMedia()->GetRotation());
 }
 
+void emu_reset_rewind_timing(void)
+{
+    reset_rewind_timing();
+}
+
 void emu_update(void)
 {
     emu_mcp_pump_commands();
@@ -167,9 +176,7 @@ void emu_update(void)
 
     if (rewind_is_active())
     {
-        int to_pop = (int)config_rewind.speed;
-        if (to_pop < 1)
-            to_pop = 1;
+        int to_pop = get_rewind_pop_budget();
 
         bool rewound = false;
         for (int i = 0; i < to_pop; i++)
@@ -188,6 +195,8 @@ void emu_update(void)
         sound_queue_write(audio_buffer, silence_count, false);
         return;
     }
+
+    reset_rewind_timing();
 
     if (config_debug.debug)
     {
@@ -261,6 +270,44 @@ void emu_update(void)
         memset(audio_buffer, 0, silence_count * sizeof(s16));
         sound_queue_write(audio_buffer, silence_count, false);
     }
+}
+
+static void reset_rewind_timing(void)
+{
+    rewind_last_counter = 0;
+    rewind_pop_accumulator = 0.0;
+}
+
+static int get_rewind_pop_budget(void)
+{
+    Uint64 now = SDL_GetPerformanceCounter();
+
+    if (rewind_last_counter == 0)
+    {
+        rewind_last_counter = now;
+        return 0;
+    }
+
+    double elapsed = (double)(now - rewind_last_counter) / (double)SDL_GetPerformanceFrequency();
+    rewind_last_counter = now;
+
+    if (elapsed < 0.0)
+        elapsed = 0.0;
+    else if (elapsed > 0.25)
+        elapsed = 0.25;
+
+    int frames_per_snapshot = rewind_get_frames_per_snapshot();
+    if (frames_per_snapshot < 1)
+        frames_per_snapshot = 1;
+
+    double snapshots_per_second = (60.0 * (double)config_rewind.speed) / (double)frames_per_snapshot;
+    rewind_pop_accumulator += elapsed * snapshots_per_second;
+
+    int to_pop = (int)rewind_pop_accumulator;
+    if (to_pop > 0)
+        rewind_pop_accumulator -= (double)to_pop;
+
+    return to_pop;
 }
 
 void emu_key_pressed(GLYNX_Keys key)

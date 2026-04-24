@@ -94,8 +94,9 @@ void gui_action_rewind_pressed(void)
     if (rewind_is_active())
         return;
 
+    emu_reset_rewind_timing();
     rewind_set_active(true);
-    display_set_vsync(false);
+    display_set_vsync(config_video.sync);
     gui_set_status_message("Rewinding...", 500);
 }
 
@@ -105,6 +106,7 @@ void gui_action_rewind_released(void)
         return;
 
     rewind_set_active(false);
+    emu_reset_rewind_timing();
     display_set_vsync(config_emulator.ffwd ? false : config_video.sync);
     emu_audio_reset();
 }
