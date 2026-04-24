@@ -25,6 +25,7 @@
 #include "sound_queue.h"
 #include "config.h"
 #include "rewind.h"
+#include "events.h"
 #include "mcp/mcp_manager.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -448,8 +449,11 @@ void emu_load_state_slot(int index)
     if (!emu_is_empty())
     {
         const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
-        core->LoadState(dir, index);
-        rewind_reset();
+        if (core->LoadState(dir, index))
+        {
+            events_sync_input();
+            rewind_reset();
+        }
     }
 }
 
@@ -463,8 +467,11 @@ void emu_load_state_file(const char* file_path)
 {
     if (!emu_is_empty())
     {
-        core->LoadState(file_path);
-        rewind_reset();
+        if (core->LoadState(file_path))
+        {
+            events_sync_input();
+            rewind_reset();
+        }
     }
 }
 

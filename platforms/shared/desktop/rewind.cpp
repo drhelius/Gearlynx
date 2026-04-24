@@ -19,6 +19,7 @@
 
 #include "emu.h"
 #include "config.h"
+#include "events.h"
 #include "gearlynx.h"
 
 #define REWIND_IMPORT
@@ -120,6 +121,9 @@ bool rewind_pop(void)
 
     bool ok = emu_get_core()->LoadState(slot, size);
 
+    if (ok)
+        events_sync_input();
+
     head = idx;
     count--;
     seek_age = -1;
@@ -167,7 +171,10 @@ bool rewind_seek(int age)
     bool ok = emu_get_core()->LoadState(slot, size);
 
     if (ok)
+    {
+        events_sync_input();
         seek_age = age;
+    }
 
     return ok;
 }

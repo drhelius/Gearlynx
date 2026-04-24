@@ -30,6 +30,7 @@
 
 EXTERN void events_shortcuts(const SDL_Event* event);
 EXTERN void events_emu(const SDL_Event* event);
+EXTERN void events_sync_input(void);
 
 #undef EVENTS_IMPORT
 #undef EXTERN

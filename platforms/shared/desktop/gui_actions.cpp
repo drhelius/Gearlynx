@@ -24,6 +24,7 @@
 #include "config.h"
 #include "emu.h"
 #include "rewind.h"
+#include "events.h"
 #include "gearlynx.h"
 #include "application.h"
 #include "display.h"
@@ -106,6 +107,7 @@ void gui_action_rewind_released(void)
         return;
 
     rewind_set_active(false);
+    events_sync_input();
     emu_reset_rewind_timing();
     display_set_vsync(config_emulator.ffwd ? false : config_video.sync);
     emu_audio_reset();
