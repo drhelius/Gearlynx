@@ -72,7 +72,7 @@ Features:
   JP JR and JSR double clicking), debug symbols, automatic labels, memory editor,
   memory search, Suzy and Mikey register viewer, audio channels, UART, cartridge
   and video inspector
-- MCP server for AI-assisted debugging with GitHub Copilot, Claude, ChatGPT and
+- MCP server for AI-assisted debugging with GitHub Copilot, Claude, Codex and
   similar, exposing tools for execution control, memory inspection, hardware
   status, and more
 - Windows and Linux Portable Mode
@@ -105,7 +105,7 @@ Debugging Features:
 
 MCP Server:
   - Gearlynx includes a Model Context Protocol (MCP) server that enables
-    AI-assisted debugging through AI agents like GitHub Copilot, Claude, ChatGPT
+    AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex
     and similar. The server provides tools for execution control, memory
     inspection, breakpoints, disassembly, hardware status, sprite viewing, and
     more. See MCP_README.md for complete setup instructions
