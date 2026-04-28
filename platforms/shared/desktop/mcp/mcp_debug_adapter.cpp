@@ -341,6 +341,7 @@ std::vector<DisasmLine> DebugAdapter::GetDisassembly(u16 start_address, u16 end_
             line.address = (u16)addr;
             line.rom = record->rom;
             line.name = record->name;
+            strip_color_tags(line.name);
             line.bytes = record->bytes;
             line.segment = record->segment;
             line.size = record->size;
