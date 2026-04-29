@@ -325,6 +325,9 @@ INLINE void Mikey::Write(u16 address, u8 value)
 
             if (m_state.uart.tx_brk)
             {
+                if (!was_tx_brk)
+                    m_state.uart.prescaler = 0;
+
                 m_state.uart.tx_empty = false;
                 m_state.uart.tx_ready = false;
             }
@@ -1095,6 +1098,9 @@ INLINE void Mikey::UpdateIRQs()
 {
     u8 effective_irqs = m_state.irq_pending & m_state.irq_mask;
     m_m6502->AssertIRQ(effective_irqs != 0, effective_irqs);
+
+    if ((effective_irqs != 0) && m_m6502->IsHalted())
+        m_m6502->Halt(false);
 }
 
 INLINE void Mikey::UartRelevelIRQ()
@@ -1193,16 +1199,16 @@ inline void Mikey::UartBeginFrame(u8 data)
 
 inline void Mikey::UartClock()
 {
-    m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
-    if (m_state.uart.prescaler != 0)
-        return;
-
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
     {
         m_state.uart.tx_empty = false;
         return;
     }
+
+    m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
+    if (m_state.uart.prescaler != 0)
+        return;
 
     if (!m_state.uart.tx_active)
     {
