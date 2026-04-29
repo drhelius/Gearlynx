@@ -99,6 +99,7 @@ bool gui_init(void)
 
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
+    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
     emu_audio_mute(!config_audio.enable);
     emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
     for (int i = 0; i < 4; i++)
@@ -263,6 +264,7 @@ void gui_load_rom(const char* path)
 
     push_recent_rom(path);
     emu_resume();
+    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
 
     if (!emu_load_rom(path))
     {

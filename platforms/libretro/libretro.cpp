@@ -608,6 +608,12 @@ static void check_variables(void)
         core->GetMedia()->ForceConsoleType(console_type);
     }
 
+    var.key = "gearlynx_fast_sprite_rendering";
+    var.value = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+        core->GetSuzy()->SetFastSpriteRendering(strcmp(var.value, "Enabled") == 0);
+
     var.key = "gearlynx_lowpass_filter";
     var.value = NULL;
 

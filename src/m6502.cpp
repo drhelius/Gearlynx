@@ -58,6 +58,7 @@ M6502::M6502(Bus* bus)
     m_prev_opcode_address = 0xFFFF;
     m_stream_open = false;
     m_page_mode_tick_discount = 0;
+    m_irq_sample_after_opcode = false;
 }
 
 M6502::~M6502()
@@ -121,6 +122,7 @@ void M6502::Reset(bool is_lynx2)
     m_prev_opcode_address = 0xFFFF;
     m_stream_open = false;
     m_page_mode_tick_discount = 0;
+    m_irq_sample_after_opcode = false;
     ClearDisassemblerCallStack();
 }
 

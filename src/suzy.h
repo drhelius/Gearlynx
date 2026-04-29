@@ -88,6 +88,20 @@ public:
         s32 shift_register_bit;
         u8 fred;
         bool everon;
+        u8 fsm_phase;
+        u8 spr_quadrant;
+        s16 quad_row;
+        s16 quad_pixel_height;
+        s16 row_x;
+        s16 row_emit_count;
+        u16 row_h_accum;
+        u8 row_render;
+        u8 row_pen;
+        u8 pack_state;
+        u8 pack_count;
+        u8 pack_pen;
+        u8 pack_is_literal;
+        u8 pack_pixel_pair;
     };
 
     // Math register macros - these are physically the same as sprite registers
@@ -117,6 +131,7 @@ public:
     template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
     bool IsBlitterBusy();
+    void SetFastSpriteRendering(bool enabled);
     void SetTraceLogger(TraceLogger* trace_logger);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
@@ -146,25 +161,58 @@ public:
 
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
+    enum SuzyPhase
+    {
+        SUZY_PHASE_IDLE = 0,
+        SUZY_PHASE_LEGACY_DELAY,
+        SUZY_PHASE_SCB_FETCH,
+        SUZY_PHASE_SCB_RELOAD,
+        SUZY_PHASE_PALETTE,
+        SUZY_PHASE_QUAD_INIT,
+        SUZY_PHASE_LINE_FETCH,
+        SUZY_PHASE_ROW_BEGIN,
+        SUZY_PHASE_ROW_PAINT,
+        SUZY_PHASE_ROW_END,
+        SUZY_PHASE_QUAD_END,
+        SUZY_PHASE_SPR_END,
+        SUZY_PHASE_SCB_NEXT
+    };
+
+    enum SuzyPackState
+    {
+        SUZY_PACK_HEADER = 0,
+        SUZY_PACK_LITERAL,
+        SUZY_PACK_RLE_PEN,
+        SUZY_PACK_RLE
+    };
+
     void SpritesGo();
+    void StepBlitter(u32 cycles);
+    bool ConsumeBlitterCycleDebt(u32* cycles);
+    void StepBlitterPhase();
+    void FinishBlitter();
     void DrawSprite();
     void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
     void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
+    bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
+    bool DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
+    bool DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id);
+    void AddPackedPixelTicks();
     void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
     void RamWrite(u16 address, u8 value);
     void ShiftRegisterReset(u16 address);
     u32 ShiftRegisterGetBits(int n, u16 stop_addr);
-    void UpdateSprites(u32 cycles);
     void UpdateMath(u32 cycles);
     void MathRunMultiply();
     void MathRunDivide();
     bool MathIsNegative(u16 value);
     void ComputeQuadLUT();
-    void Serialize(StateSerializer& s);
+    void Serialize(StateSerializer& s, int version);
 
 private:
     struct QuadPos
@@ -183,6 +231,7 @@ private:
     u8* m_ram;
     TraceLogger* m_trace_logger;
     QuadPos m_quad_lut[4][4][4] = {};
+    bool m_fast_sprite_rendering;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     std::vector<GLYNX_SCB_Info> m_frame_scb_list;
     std::vector<GLYNX_SCB_Info> m_frame_scb_list_display;

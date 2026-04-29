@@ -22,6 +22,7 @@
 Bus::Bus()
 {
     m_cycles = 0;
+    m_suzy_stolen_cycles = 0;
 }
 
 Bus::~Bus()
@@ -36,6 +37,7 @@ void Bus::Init()
 void Bus::Reset()
 {
     m_cycles = 0;
+    m_suzy_stolen_cycles = 0;
 }
 
 void Bus::InjectCycles(u32 cycles)
@@ -43,9 +45,22 @@ void Bus::InjectCycles(u32 cycles)
     m_cycles += cycles;
 }
 
+void Bus::InjectSuzyStolenCycles(u32 cycles)
+{
+    m_cycles += cycles;
+    m_suzy_stolen_cycles += cycles;
+}
+
 u32 Bus::ConsumeCycles()
 {
     u32 ret = m_cycles;
     m_cycles = 0;
+    return ret;
+}
+
+u32 Bus::ConsumeSuzyStolenCycles()
+{
+    u32 ret = m_suzy_stolen_cycles;
+    m_suzy_stolen_cycles = 0;
     return ret;
 }

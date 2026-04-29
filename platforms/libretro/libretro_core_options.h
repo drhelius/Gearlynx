@@ -78,6 +78,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "Auto"
     },
+    {
+        "gearlynx_fast_sprite_rendering",
+        "Fast Sprite Rendering",
+        NULL,
+        "Use a simpler Suzy sprite renderer. This is faster but it is less accurate for mid-render interrupt effects used on some demos.",
+        NULL,
+        "system",
+        {
+            { "Disabled", NULL },
+            { "Enabled",  NULL },
+            { NULL, NULL },
+        },
+        "Disabled"
+    },
 
     /* Video */
 

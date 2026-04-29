@@ -35,6 +35,7 @@ void gui_action_reset(void)
     gui_debug_trace_logger_clear();
 
     emu_resume();
+    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
     emu_reset();
 
     if (config_emulator.start_paused)

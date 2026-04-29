@@ -715,6 +715,8 @@ int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer)
     if (buffer_index < 0 || buffer_index > 1)
         return 0;
 
+    update_debug_framebuffers();
+
     int stride = GLYNX_SCREEN_WIDTH * 4;
     int len = 0;
 

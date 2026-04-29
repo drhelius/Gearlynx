@@ -20,10 +20,21 @@
 #ifndef SUZY_DEFINES_H
 #define SUZY_DEFINES_H
 
-static const u32 k_suzy_ticks_ram_read    = 5;   // Normal RAM read
-static const u32 k_suzy_ticks_ram_write   = 5;   // Normal RAM write
-static const u32 k_suzy_ticks_rmw         = 10;  // Read-modify-write (read + write)
-static const u32 k_suzy_ticks_process     = 2;   // Internal processing overhead per operation
+static const u32 k_suzy_ram_read_ticks                  = 2;
+static const u32 k_suzy_ram_write_ticks                 = 2;
+static const u32 k_suzy_rmw_ticks                       = 1;
+static const u32 k_suzy_process_ticks                   = 1;
+static const u32 k_suzy_visible_row_ticks               = 60;
+static const u32 k_suzy_control_line_ticks              = 54;
+static const u32 k_suzy_packed_reload_row_ticks         = 2;
+static const u32 k_suzy_packed_wide_row_discount_ticks  = 6;
+static const u32 k_suzy_literal_line_ticks              = 6;
+static const u32 k_suzy_literal_byte_ticks              = 1;
+static const u32 k_suzy_literal_wide_reload_row_ticks   = 14;
+static const u32 k_suzy_packed_line_ticks               = 6;
+static const u32 k_suzy_packed_pair_ticks               = 2;
+static const u32 k_suzy_packed_quad_ticks               = 1;
+static const u32 k_suzy_packed_scb_ticks                = 13;
 
 #include "m6502.h"
 

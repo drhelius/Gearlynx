@@ -73,13 +73,25 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         do
         {
             u32 cpu_cycles = m_m6502->RunInstruction();
-            u32 lynx_cycles = cpu_cycles + m_bus->ConsumeCycles();
+            u32 bus_cycles = m_bus->ConsumeCycles();
+            u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
+            u32 lynx_cycles = cpu_cycles + bus_cycles;
+            u32 suzy_cycles = lynx_cycles - MIN(lynx_cycles, suzy_stolen_cycles);
             m_total_cycles += lynx_cycles;
 
             //Debug("-> CPU cycles=%u, Lynx cycles=%u", cpu_cycles, lynx_cycles);
 
-            m_suzy->Clock(lynx_cycles);
-            stop = m_mikey->Clock(lynx_cycles);
+            if (m_m6502->IsHalted())
+            {
+                stop = m_mikey->Clock(lynx_cycles);
+                if (m_m6502->IsHalted())
+                    m_suzy->Clock(suzy_cycles);
+            }
+            else
+            {
+                m_suzy->Clock(suzy_cycles);
+                stop = m_mikey->Clock(lynx_cycles);
+            }
             m_audio->Clock(lynx_cycles);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
@@ -123,11 +135,23 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         do
         {
             u32 cpu_cycles = m_m6502->RunInstruction();
-            u32 lynx_cycles = cpu_cycles + m_bus->ConsumeCycles();
+            u32 bus_cycles = m_bus->ConsumeCycles();
+            u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
+            u32 lynx_cycles = cpu_cycles + bus_cycles;
+            u32 suzy_cycles = lynx_cycles - MIN(lynx_cycles, suzy_stolen_cycles);
             m_total_cycles += lynx_cycles;
 
-            m_suzy->Clock(lynx_cycles);
-            stop = m_mikey->Clock(lynx_cycles);
+            if (m_m6502->IsHalted())
+            {
+                stop = m_mikey->Clock(lynx_cycles);
+                if (m_m6502->IsHalted())
+                    m_suzy->Clock(suzy_cycles);
+            }
+            else
+            {
+                m_suzy->Clock(suzy_cycles);
+                stop = m_mikey->Clock(lynx_cycles);
+            }
             m_audio->Clock(lynx_cycles);
 
             failsafe_cycle_count += lynx_cycles;

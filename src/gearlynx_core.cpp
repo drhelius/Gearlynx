@@ -638,7 +638,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
     m_m6502->LoadState(stream);
     m_memory->LoadState(stream, header.version);
     m_mikey->LoadState(stream, header.version);
-    m_suzy->LoadState(stream);
+    m_suzy->LoadState(stream, header.version);
     m_audio->LoadState(stream, header.version);
     m_input->LoadState(stream);
     m_media->LoadState(stream);

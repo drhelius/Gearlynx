@@ -156,7 +156,7 @@ INLINE void LcdScreen::DoDMA()
             dst[i * 2 + 1] = src_byte & 0x0F;
         }
 
-        m_bus->InjectCycles(k_dma_burst_cycles);
+        m_bus->InjectSuzyStolenCycles(k_dma_burst_cycles);
     }
     else
     {

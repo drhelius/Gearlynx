@@ -505,6 +505,17 @@ static void menu_emulator(void)
 
         ImGui::Separator();
 
+        ImGui::MenuItem("Fast Sprite Rendering", "", &config_emulator.fast_sprite_rendering);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Use a simpler Suzy sprite renderer.");
+            ImGui::Text("This is faster but it is less accurate.");
+            ImGui::EndTooltip();
+        }
+
+        ImGui::Separator();
+
         ImGui::MenuItem("Single Instance", "", &config_debug.single_instance);
         if (ImGui::IsItemHovered())
         {
