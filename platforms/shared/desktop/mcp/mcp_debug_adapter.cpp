@@ -73,7 +73,7 @@ void DebugAdapter::StepFrame()
 
 void DebugAdapter::Reset()
 {
-    emu_reset();
+    gui_action_reset();
 }
 
 json DebugAdapter::GetDebugStatus()
@@ -462,6 +462,8 @@ json DebugAdapter::GetMediaInfo()
     json info;
     Media* media = m_core->GetMedia();
 
+    info["emulator"] = GLYNX_TITLE;
+    info["emulator_version"] = GLYNX_VERSION;
     info["ready"] = media->IsReady();
     info["file_path"] = media->GetFilePath();
     info["file_name"] = media->GetFileName();
