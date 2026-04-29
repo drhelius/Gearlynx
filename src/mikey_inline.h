@@ -305,6 +305,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_SERCTL:        // 0xFD8C
         {
             DebugMikey("Setting SERCTL to %02X (was %02X)", value, m_state.SERCTL);
+            bool was_tx_brk = m_state.uart.tx_brk;
             m_state.SERCTL = value;
 
             m_state.uart.tx_int_en = IS_SET_BIT(value, 7);
@@ -326,11 +327,12 @@ INLINE void Mikey::Write(u16 address, u8 value)
             {
                 m_state.uart.tx_empty = false;
                 m_state.uart.tx_ready = false;
-                m_state.uart.tx_active = true;
             }
             else
             {
-                if (!m_state.uart.tx_active && !m_state.uart.tx_hold_valid)
+                if (was_tx_brk && !m_state.uart.tx_active && m_state.uart.tx_hold_valid)
+                    m_state.uart.tx_ready_bits = 1;
+                else if (!m_state.uart.tx_active && !m_state.uart.tx_hold_valid)
                 {
                     m_state.uart.tx_empty = true;
                     m_state.uart.tx_ready = true;
@@ -362,7 +364,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
                 m_state.uart.tx_ready = false;
                 m_state.uart.tx_empty = false;
 
-                if (m_state.uart.tx_brk)
+                if (m_state.uart.tx_brk && m_state.uart.tx_active)
                     m_state.uart.tx_suppress_eof_loopback = true;
             }
 
@@ -1198,13 +1200,31 @@ inline void Mikey::UartClock()
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
     {
-        m_state.uart.tx_active = true;
         m_state.uart.tx_empty = false;
         return;
     }
 
     if (!m_state.uart.tx_active)
     {
+        if (m_state.uart.tx_hold_valid)
+        {
+            if (m_state.uart.tx_ready_bits > 0)
+            {
+                m_state.uart.tx_ready_bits--;
+                if (m_state.uart.tx_ready_bits != 0)
+                    return;
+            }
+
+            u8 next = m_state.uart.tx_hold_data;
+            m_state.uart.tx_hold_valid = false;
+            m_state.uart.tx_suppress_eof_loopback = false;
+            UartBeginFrame(next);
+            m_state.uart.tx_ready = true;
+            m_state.uart.tx_ready_bits = 0;
+            UartRelevelIRQ();
+            return;
+        }
+
         if (m_state.uart.tx_empty_bits > 0)
         {
             m_state.uart.tx_empty_bits--;
