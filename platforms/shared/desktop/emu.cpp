@@ -396,6 +396,11 @@ void emu_audio_set_volume(int channel, float volume)
     core->GetAudio()->SetVolume(channel, volume);
 }
 
+void emu_audio_set_master_volume(float volume)
+{
+    core->GetAudio()->SetMasterVolume(volume);
+}
+
 void emu_audio_set_lowpass_cutoff(float fc)
 {
     core->GetAudio()->SetLowpassCutoff(fc);

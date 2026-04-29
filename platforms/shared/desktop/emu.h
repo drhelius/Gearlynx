@@ -113,6 +113,7 @@ EXTERN void emu_force_rotation(int rotation);
 EXTERN void emu_force_console_type(int console_type);
 EXTERN void emu_audio_mute(bool mute);
 EXTERN void emu_audio_set_volume(int channel, float volume);
+EXTERN void emu_audio_set_master_volume(float volume);
 EXTERN void emu_audio_set_lowpass_cutoff(float fc);
 EXTERN void emu_audio_reset(void);
 EXTERN bool emu_is_audio_enabled(void);

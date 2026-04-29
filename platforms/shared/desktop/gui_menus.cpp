@@ -759,6 +759,25 @@ static void menu_audio(void)
 
         ImGui::Separator();
 
+        if (ImGui::BeginMenu("Master Volume", config_audio.enable))
+        {
+            ImGui::PushItemWidth(200.0f);
+            if (ImGui::SliderFloat("##master_volume", &config_audio.master_volume, 0.0f, 2.0f, "Scale = %.2fx", ImGuiSliderFlags_AlwaysClamp))
+            {
+                emu_audio_set_master_volume(config_audio.master_volume);
+            }
+            ImGui::PopItemWidth();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("Anything above 1.00 may cause clipping.");
+                ImGui::EndTooltip();
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
         for (int i = 0; i < 4; i++)
         {
             std::string label = "Channel " + std::to_string(i) + " Volume";

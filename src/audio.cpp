@@ -29,6 +29,7 @@ Audio::Audio(Mikey* mikey)
     m_mute = false;
     m_vgm_recording_enabled = false;
     m_is_lynx2 = true;
+    m_master_volume = 1.0f;
 
     for (int i = 0; i < 4; i++)
     {
@@ -52,6 +53,8 @@ void Audio::Init()
         m_channel[i].mute = false;
         m_channel[i].volume = 1.0f;
     }
+
+    m_master_volume = 1.0f;
 
     SetLowpassCutoff(1000.0f);
 }
@@ -103,8 +106,8 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
 
             if (!m_mute)
             {
-                out_left = CLAMP(y_left * 40, -32768, 32767);
-                out_right = CLAMP(y_right * 40, -32768, 32767);
+                out_left = CLAMP((s32)((float)y_left * 40.0f * m_master_volume), -32768, 32767);
+                out_right = CLAMP((s32)((float)y_right * 40.0f * m_master_volume), -32768, 32767);
             }
 
             sample_buffer[i + 0] = (s16)out_left;
@@ -126,6 +129,11 @@ void Audio::SetVolume(int channel, float volume)
         return;
 
     m_channel[channel].volume = volume;
+}
+
+void Audio::SetMasterVolume(float volume)
+{
+    m_master_volume = CLAMP(volume, 0.0f, 2.0f);
 }
 
 void Audio::SetLowpassCutoff(float fc)

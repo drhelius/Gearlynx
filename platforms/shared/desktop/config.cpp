@@ -305,6 +305,8 @@ void config_read(void)
 
     config_audio.enable = read_bool("Audio", "Enable", true);
     config_audio.sync = read_bool("Audio", "Sync", true);
+    config_audio.master_volume = read_float("Audio", "MasterVolume", 1.0f);
+    config_audio.master_volume = CLAMP(config_audio.master_volume, 0.0f, 2.0f);
     for (int i = 0; i < 4; i++)
         config_audio.volume[i] = read_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), 1.0f);
     config_audio.lowpass_cutoff = read_int("Audio", "LowpassCutoff", 3000);
@@ -504,6 +506,7 @@ void config_write(void)
 
     write_bool("Audio", "Enable", config_audio.enable);
     write_bool("Audio", "Sync", config_audio.sync);
+    write_float("Audio", "MasterVolume", config_audio.master_volume);
     for (int i = 0; i < 4; i++)
         write_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), config_audio.volume[i]);
     write_int("Audio", "LowpassCutoff", config_audio.lowpass_cutoff);

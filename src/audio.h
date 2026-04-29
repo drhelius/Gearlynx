@@ -47,6 +47,7 @@ public:
     GLYNX_Audio_Channel* GetChannels();
     u32 GetFrameSamples();
     void SetVolume(int channel, float volume);
+    void SetMasterVolume(float volume);
     void SetLowpassCutoff(float fc);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream, int version);
@@ -62,6 +63,7 @@ private:
     bool m_mute;
     s32 m_lpf_left;
     s32 m_lpf_right;
+    float m_master_volume;
     u16 m_lpf_alpha_q15;
     u32 m_buffer_pos;
     u32 m_frame_samples;

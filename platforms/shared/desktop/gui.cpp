@@ -101,6 +101,7 @@ bool gui_init(void)
     emu_force_console_type(config_emulator.console_type);
     emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
     emu_audio_mute(!config_audio.enable);
+    emu_audio_set_master_volume(config_audio.master_volume);
     emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
     for (int i = 0; i < 4; i++)
         emu_audio_set_volume(i, config_audio.volume[i]);
