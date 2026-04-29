@@ -850,7 +850,7 @@ INLINE void Suzy::StepBlitterPhase()
         {
             int reload_depth = (m_state.SPRCTL1 >> 4) & 0x03;
 
-#if defined(GLYNX_DEBUG)
+#if defined(GLYNX_DEBUG_SUZY)
             int bpp = ((m_state.SPRCTL0 >> 6) & 0x03) + 1;
             bool h_flip = IS_SET_BIT(m_state.SPRCTL0, 5);
             bool v_flip = IS_SET_BIT(m_state.SPRCTL0, 4);
