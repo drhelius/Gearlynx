@@ -232,8 +232,6 @@ void emu_update(void)
         {
             rewind_commit_seek();
             emu_debug_monitor_notify_resumed();
-
-        if (executed)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
             frame_executed = true;
         }
