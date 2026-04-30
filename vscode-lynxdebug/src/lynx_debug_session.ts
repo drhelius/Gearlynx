@@ -30,6 +30,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     gearlynxPath?: string;
     sourceRoots?: string[];
     headless?: boolean;
+    traceSteps?: boolean;
 }
 
 interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
@@ -37,6 +38,7 @@ interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
     hostname?: string;
     port?: number;
     sourceRoots?: string[];
+    traceSteps?: boolean;
 }
 
 export class LynxDebugSession extends LoggingDebugSession {
@@ -65,6 +67,8 @@ export class LynxDebugSession extends LoggingDebugSession {
     private sourceStepOriginLine = 0;
     private sourceStepFn: (() => Promise<void>) | null = null;
     private sourceStepCount = 0;
+    private sourceStepStopReason = '';
+    private traceSteps = false;
     private static readonly SOURCE_STEP_MAX = 500;
 
     public constructor() {
@@ -76,6 +80,7 @@ export class LynxDebugSession extends LoggingDebugSession {
 
             // If we're in a source-line step loop, keep going regardless of stop reason
             if (this.sourceStepActive) {
+                this.sourceStepStopReason = reason;
                 this.handleSourceStepStopped();
                 return;
             }
@@ -161,6 +166,7 @@ export class LynxDebugSession extends LoggingDebugSession {
         args: LaunchRequestArguments
     ): Promise<void> {
         this.launchArgs = args;
+        this.traceSteps = args.traceSteps || false;
         try {
             // Load debug info
             if (args.debugFile) {
@@ -245,6 +251,7 @@ export class LynxDebugSession extends LoggingDebugSession {
         args: AttachRequestArguments
     ): Promise<void> {
         try {
+            this.traceSteps = args.traceSteps || false;
             if (args.debugFile) {
                 this.debugInfo = DebugInfo.load(args.debugFile, args.sourceRoots);
             }
@@ -1416,7 +1423,6 @@ export class LynxDebugSession extends LoggingDebugSession {
             return;
         }
 
-        // Record current source location
         const regs = await this.monitor.getRegisters();
         const loc = this.debugInfo.findSourceForAddress(regs.pc);
 
@@ -1424,9 +1430,17 @@ export class LynxDebugSession extends LoggingDebugSession {
         this.sourceStepOriginLine = loc?.line || 0;
         this.sourceStepFn = stepFn;
         this.sourceStepCount = 0;
+        this.sourceStepStopReason = '';
         this.sourceStepActive = true;
 
-        // Fire the first step
+        if (this.traceSteps) {
+            const pc = regs.pc.toString(16).toUpperCase().padStart(4, '0');
+            const file = loc ? path.basename(loc.source) : '?';
+            const line = loc?.line || 0;
+            this.sendEvent(new OutputEvent(
+                `[step] begin from $${pc} ${file}:${line}\n`, 'console'));
+        }
+
         await stepFn();
     }
 
@@ -1435,6 +1449,10 @@ export class LynxDebugSession extends LoggingDebugSession {
 
         if (!this.debugInfo || !this.sourceStepFn || this.sourceStepCount >= LynxDebugSession.SOURCE_STEP_MAX) {
             this.sourceStepActive = false;
+            if (this.traceSteps) {
+                this.sendEvent(new OutputEvent(
+                    `[step] hit limit (count=${this.sourceStepCount})\n`, 'console'));
+            }
             this.sendEvent(new StoppedEvent('step', THREAD_ID));
             return;
         }
@@ -1442,19 +1460,32 @@ export class LynxDebugSession extends LoggingDebugSession {
         try {
             const regs = await this.monitor.getRegisters();
             const loc = this.debugInfo.findSourceForAddress(regs.pc);
+            const pc = regs.pc.toString(16).toUpperCase().padStart(4, '0');
 
             if (loc) {
                 const sameFile = loc.source.toLowerCase() === this.sourceStepOriginFile.toLowerCase();
                 const sameLine = loc.line === this.sourceStepOriginLine;
 
+                if (this.traceSteps) {
+                    const file = path.basename(loc.source);
+                    const decision = (!sameFile || !sameLine) ? 'STOP' : 'continue (same line)';
+                    this.sendEvent(new OutputEvent(
+                        `[step] #${this.sourceStepCount} $${pc} -> ${file}:${loc.line} ${decision}\n`, 'console'));
+                }
+
                 if (!sameFile || !sameLine) {
-                    // Different source line -- stop here
                     this.sourceStepActive = false;
-                    this.sendEvent(new StoppedEvent('step', THREAD_ID));
+                    const reason = this.sourceStepStopReason === 'breakpoint' ? 'breakpoint' : 'step';
+                    this.sendEvent(new StoppedEvent(reason, THREAD_ID));
                     return;
                 }
+            } else {
+                // No source mapping -- keep stepping through unmapped code
+                if (this.traceSteps) {
+                    this.sendEvent(new OutputEvent(
+                        `[step] #${this.sourceStepCount} $${pc} -> unmapped\n`, 'console'));
+                }
             }
-            // Same line or no mapping (compiler-generated code) -- keep stepping
             await this.sourceStepFn();
         } catch {
             this.sourceStepActive = false;

@@ -113,6 +113,11 @@
                 "type": "boolean",
                 "description": "Run Gearlynx without GUI window. Use the Screen Viewer in VSCode instead.",
                 "default": false
+              },
+              "traceSteps": {
+                "type": "boolean",
+                "description": "Log each micro-step decision to the Debug Console for diagnosing source-line stepping.",
+                "default": false
               }
             }
           },
@@ -137,6 +142,11 @@
                 "items": { "type": "string" },
                 "description": "Additional directories to search for source files.",
                 "default": []
+              },
+              "traceSteps": {
+                "type": "boolean",
+                "description": "Log each micro-step decision to the Debug Console for diagnosing source-line stepping.",
+                "default": false
               }
             }
           }
