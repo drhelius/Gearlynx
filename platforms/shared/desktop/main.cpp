@@ -188,9 +188,7 @@ int main(int argc, char* argv[])
         ret = application_headless_init(rom_file, symbol_file, mcp_mode, mcp_tcp_port, debug_monitor_port);
 
         if (ret == 0)
-        {
             application_headless_mainloop();
-        }
 
         application_headless_destroy();
 
