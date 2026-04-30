@@ -151,6 +151,7 @@ export class LynxDebugSession extends LoggingDebugSession {
         response.body.supportsGotoTargetsRequest = true;
         response.body.supportsCompletionsRequest = true;
         response.body.completionTriggerCharacters = ['$', '.'];
+        response.body.supportsStepBack = true;
 
         this.sendResponse(response);
     }
@@ -332,6 +333,32 @@ export class LynxDebugSession extends LoggingDebugSession {
     ): Promise<void> {
         await this.monitor.pause();
         this.sendResponse(response);
+    }
+
+    protected async stepBackRequest(
+        response: DebugProtocol.StepBackResponse,
+        _args: DebugProtocol.StepBackArguments
+    ): Promise<void> {
+        try {
+            const ok = await this.monitor.rewindStepBack();
+            this.sendResponse(response);
+            if (ok) {
+                this.sendEvent(new StoppedEvent('step', THREAD_ID));
+            }
+            return;
+        } catch (err) {
+            response.success = false;
+            response.message = `Step back failed: ${err}`;
+        }
+        this.sendResponse(response);
+    }
+
+    protected reverseContinueRequest(
+        response: DebugProtocol.ReverseContinueResponse,
+        _args: DebugProtocol.ReverseContinueArguments
+    ): void {
+        // Reverse continue not supported -- just do a single step back
+        this.stepBackRequest(response as unknown as DebugProtocol.StepBackResponse, _args as unknown as DebugProtocol.StepBackArguments);
     }
 
     // -- Threads --

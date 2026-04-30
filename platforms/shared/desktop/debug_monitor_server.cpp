@@ -20,6 +20,7 @@
 #include "debug_monitor_server.h"
 #include "emu.h"
 #include "config.h"
+#include "rewind.h"
 #include <sstream>
 #include <cstring>
 
@@ -486,6 +487,7 @@ json DebugMonitorServer::ExecuteCommand(const std::string& cmd, const json& para
     if (cmd == "controller_button") return HandleControllerButton(params);
     if (cmd == "trace_log_set")     return HandleTraceLogSet(params);
     if (cmd == "trace_log_get")     return HandleTraceLogGet(params);
+    if (cmd == "rewind_step_back")  return HandleRewindStepBack();
 
     return {{"error", "unknown command: " + cmd}};
 }
@@ -762,4 +764,24 @@ json DebugMonitorServer::HandleTraceLogGet(const json& params)
     int start = params.value("start", -1);
     int count = params.value("count", 200);
     return m_debug_adapter->GetTraceLog(start, count);
+}
+
+json DebugMonitorServer::HandleRewindStepBack()
+{
+    if (rewind_get_snapshot_count() < 1)
+        return {{"ok", false}, {"error", "No rewind snapshots available"}};
+
+    bool ok = rewind_pop();
+    if (ok)
+    {
+        // Ensure emulator stays paused after rewind
+        emu_debug_command = Debug_Command_None;
+        u16 pc = m_core->GetM6502()->GetState()->PC.GetValue();
+
+        if (config_debug.dis_look_ahead_count > 0)
+            m_core->GetM6502()->DisassembleAhead(config_debug.dis_look_ahead_count);
+
+        return {{"ok", true}, {"pc", pc}};
+    }
+    return {{"ok", false}, {"error", "Rewind pop failed"}};
 }

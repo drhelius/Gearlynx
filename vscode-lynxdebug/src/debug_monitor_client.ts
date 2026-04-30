@@ -179,6 +179,11 @@ export class DebugMonitorClient extends EventEmitter {
         return resp.data;
     }
 
+    async rewindStepBack(): Promise<boolean> {
+        const resp = await this.sendCommand('rewind_step_back');
+        return resp.data['ok'] as boolean;
+    }
+
     // -- Low-level send/receive --
 
     private async sendCommand(cmd: string, params: Record<string, unknown> = {}): Promise<MonitorResponse> {

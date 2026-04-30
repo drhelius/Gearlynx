@@ -217,6 +217,7 @@ private:
     json HandleControllerButton(const json& params);
     json HandleTraceLogSet(const json& params);
     json HandleTraceLogGet(const json& params);
+    json HandleRewindStepBack();
 
     void EnqueueResponse(int64_t id, bool success, const json& data);
     void EnqueueEvent(const std::string& event, const json& data = json::object());
