@@ -44,7 +44,6 @@
     #include <netinet/tcp.h>
     #include <arpa/inet.h>
     #include <unistd.h>
-    #include <fcntl.h>
     typedef int dm_socket_t;
     #define DM_INVALID_SOCKET -1
     #define DM_SOCKET_CLOSE(s) ::close(s)
@@ -241,7 +240,7 @@ private:
 
     int m_port;
 
-    // Stop state (written on emu thread, read for event generation)
+    // Stop state (emu thread only)
     DebugMonitorRunState m_run_state;
     DebugMonitorStopReason m_stop_reason;
     u16 m_stop_pc;

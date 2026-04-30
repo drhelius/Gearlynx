@@ -21,7 +21,6 @@
 #include "emu.h"
 #include "config.h"
 #include "rewind.h"
-#include <sstream>
 #include <cstring>
 
 static const char* k_stop_reason_names[] = {
@@ -181,7 +180,7 @@ void DebugMonitorServer::AcceptLoop()
             continue;
         }
 
-        // Single client at a time -- close previous if any
+        // Close previous client under lock, then join outside to avoid deadlock
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
             if (m_client_socket != DM_INVALID_SOCKET)
@@ -191,10 +190,13 @@ void DebugMonitorServer::AcceptLoop()
                 m_client_socket = DM_INVALID_SOCKET;
                 m_client_connected.store(false);
             }
+        }
 
-            // Wait for old recv thread to finish
-            if (m_recv_thread.joinable())
-                m_recv_thread.join();
+        if (m_recv_thread.joinable())
+            m_recv_thread.join();
+
+        {
+            std::lock_guard<std::mutex> lock(m_client_mutex);
 
             int tcp_opt = 1;
 #ifdef _WIN32

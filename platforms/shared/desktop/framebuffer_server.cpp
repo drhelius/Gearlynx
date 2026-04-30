@@ -177,6 +177,7 @@ void FramebufferServer::AcceptLoop()
             continue;
         }
 
+        // Close previous client under lock, then join outside to avoid deadlock
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
             if (m_client_socket != FB_INVALID_SOCKET)
@@ -185,9 +186,9 @@ void FramebufferServer::AcceptLoop()
                 m_client_socket = FB_INVALID_SOCKET;
                 m_client_connected.store(false);
             }
-            if (m_client_thread.joinable())
-                m_client_thread.join();
         }
+        if (m_client_thread.joinable())
+            m_client_thread.join();
 
         int tcp_opt = 1;
 #ifdef _WIN32
@@ -225,33 +226,29 @@ void FramebufferServer::ClientLoop(fb_socket_t client)
 
         m_frame_ready.store(false);
 
-        int w, h, size;
         {
             std::lock_guard<std::mutex> lock(m_frame_mutex);
-            w = m_frame_width;
-            h = m_frame_height;
-            size = m_frame_size;
-        }
+            int w = m_frame_width;
+            int h = m_frame_height;
+            int size = m_frame_size;
 
-        u8 header[8];
-        header[0] = (u8)(w & 0xFF);
-        header[1] = (u8)((w >> 8) & 0xFF);
-        header[2] = (u8)(h & 0xFF);
-        header[3] = (u8)((h >> 8) & 0xFF);
-        header[4] = (u8)(size & 0xFF);
-        header[5] = (u8)((size >> 8) & 0xFF);
-        header[6] = (u8)((size >> 16) & 0xFF);
-        header[7] = (u8)((size >> 24) & 0xFF);
+            u8 header[8];
+            header[0] = (u8)(w & 0xFF);
+            header[1] = (u8)((w >> 8) & 0xFF);
+            header[2] = (u8)(h & 0xFF);
+            header[3] = (u8)((h >> 8) & 0xFF);
+            header[4] = (u8)(size & 0xFF);
+            header[5] = (u8)((size >> 8) & 0xFF);
+            header[6] = (u8)((size >> 16) & 0xFF);
+            header[7] = (u8)((size >> 24) & 0xFF);
 
-        int sent = ::send(client, (const char*)header, 8, 0);
-        if (sent != 8)
-        {
-            Log("[FramebufferStream] Send header failed, client disconnected");
-            break;
-        }
+            int sent = ::send(client, (const char*)header, 8, 0);
+            if (sent != 8)
+            {
+                Log("[FramebufferStream] Send header failed, client disconnected");
+                break;
+            }
 
-        {
-            std::lock_guard<std::mutex> lock(m_frame_mutex);
             int total_sent = 0;
             while (total_sent < size)
             {
