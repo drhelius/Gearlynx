@@ -67,6 +67,6 @@ jobs:
     - name: Install mcp-publisher
       run: brew install mcp-publisher
     - name: Login to MCP Registry
-      run: mcp-publisher login github-oidc
+      run: mcp-publisher login github-oidc --registry=https://registry.modelcontextprotocol.io
     - name: Publish to MCP Registry
-      run: mcp-publisher publish
+      run: mcp-publisher publish --registry=https://registry.modelcontextprotocol.io
