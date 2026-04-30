@@ -127,7 +127,14 @@ int main(int argc, char* argv[])
     int non_option_count = 0;
     for (int i = 1; i < argc; i++)
     {
-        if (argv[i][0] == '-')
+        if (strcmp(argv[i], "--mcp-http-port") == 0)
+        {
+            if (i + 1 < argc)
+                i++;
+            continue;
+        }
+
+        if (argv[i][0] != '-')
         {
             // Skip value arguments consumed by options that take a parameter
             if ((strcmp(argv[i], "--mcp-http-port") == 0 ||

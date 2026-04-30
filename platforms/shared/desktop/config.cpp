@@ -46,6 +46,7 @@ static void set_defaults(void)
     config_emulator = config_Emulator();
     config_video = config_Video();
     config_audio = config_Audio();
+    config_rewind = config_Rewind();
     config_input = config_Input();
     config_debug = config_Debug();
 
@@ -80,6 +81,7 @@ static void set_defaults(void)
     config_hotkeys[config_HotkeyIndex_Reset] = make_hotkey(SDL_SCANCODE_R, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_Pause] = make_hotkey(SDL_SCANCODE_P, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_FFWD] = make_hotkey(SDL_SCANCODE_F, SDL_KMOD_CTRL);
+    config_hotkeys[config_HotkeyIndex_Rewind] = make_hotkey(SDL_SCANCODE_BACKSPACE, SDL_KMOD_NONE);
     config_hotkeys[config_HotkeyIndex_SaveState] = make_hotkey(SDL_SCANCODE_S, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_LoadState] = make_hotkey(SDL_SCANCODE_L, SDL_KMOD_CTRL);
     config_hotkeys[config_HotkeyIndex_Screenshot] = make_hotkey(SDL_SCANCODE_X, SDL_KMOD_CTRL);
@@ -194,10 +196,12 @@ void config_read(void)
     config_debug.show_uart = read_bool("Debug", "UART", false);
     config_debug.show_eeprom = read_bool("Debug", "EEPROM", false);
     config_debug.show_cart = read_bool("Debug", "Cart", false);
+    config_debug.show_rewind = read_bool("Debug", "Rewind", false);
     config_debug.trace_counter = read_bool("Debug", "TraceCounter", true);
     config_debug.trace_registers = read_bool("Debug", "TraceRegisters", true);
     config_debug.trace_flags = read_bool("Debug", "TraceFlags", true);
     config_debug.trace_bytes = read_bool("Debug", "TraceBytes", true);
+    config_debug.trace_cpu = read_bool("Debug", "TraceCpu", true);
     config_debug.trace_cpu_irq = read_bool("Debug", "TraceCpuIrq", true);
     config_debug.trace_suzy_math = read_bool("Debug", "TraceSuzyMath", true);
     config_debug.trace_suzy_sprites = read_bool("Debug", "TraceSuzySprites", true);
@@ -206,6 +210,8 @@ void config_read(void)
     config_debug.trace_mikey_uart = read_bool("Debug", "TraceMikeyUart", true);
     config_debug.trace_mikey_audio = read_bool("Debug", "TraceMikeyAudio", true);
     config_debug.trace_cart = read_bool("Debug", "TraceCart", true);
+    config_debug.trace_debug_messages = read_bool("Debug", "TraceDebugMessages", true);
+    config_debug.debug_output_enabled = read_bool("Debug", "DebugOutputEnabled", false);
     config_debug.dis_show_mem = read_bool("Debug", "DisMem", true);
     config_debug.dis_show_symbols = read_bool("Debug", "DisSymbols", true);
     config_debug.dis_show_segment = read_bool("Debug", "DisSegment", true);
@@ -216,6 +222,8 @@ void config_read(void)
     config_debug.dis_look_ahead_count = read_int("Debug", "DisLookAheadCount", 20);
     config_debug.step_skip_interrupts = read_bool("Debug", "StepSkipInterrupts", false);
     config_debug.font_size = read_int("Debug", "FontSize", 0);
+    if (config_debug.font_size < 0 || config_debug.font_size > 3)
+        config_debug.font_size = 0;
     config_debug.scale = read_int("Debug", "Scale", 2);
     config_debug.multi_viewport = read_bool("Debug", "MultiViewport", false);
     config_debug.single_instance = read_bool("Debug", "SingleInstance", false);
@@ -237,6 +245,7 @@ void config_read(void)
     config_emulator.always_show_menu = read_bool("Emulator", "AlwaysShowMenu", false);
     config_emulator.ffwd_speed = read_int("Emulator", "FFWD", 1);
     config_emulator.save_slot = read_int("Emulator", "SaveSlot", 0);
+    config_emulator.fast_sprite_rendering = read_bool("Emulator", "FastSpriteRendering", false);
     config_emulator.start_paused = read_bool("Emulator", "StartPaused", false);
     config_emulator.pause_when_inactive = read_bool("Emulator", "PauseWhenInactive", true);
     config_emulator.bios_path = read_string("Emulator", "BiosPath");
@@ -296,10 +305,21 @@ void config_read(void)
 
     config_audio.enable = read_bool("Audio", "Enable", true);
     config_audio.sync = read_bool("Audio", "Sync", true);
+    config_audio.master_volume = read_float("Audio", "MasterVolume", 1.0f);
+    config_audio.master_volume = CLAMP(config_audio.master_volume, 0.0f, 2.0f);
     for (int i = 0; i < 4; i++)
         config_audio.volume[i] = read_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), 1.0f);
     config_audio.lowpass_cutoff = read_int("Audio", "LowpassCutoff", 3000);
     config_audio.buffer_count = read_int("Audio", "BufferCount", 3);
+
+    config_rewind.enabled = read_bool("Rewind", "Enabled", true);
+    config_rewind.buffer_seconds = read_int("Rewind", "BufferSeconds", 10);
+    config_rewind.buffer_seconds = CLAMP(config_rewind.buffer_seconds, 1, 10);
+    config_rewind.frames_per_snapshot = read_int("Rewind", "FramesPerSnapshot", 1);
+    if (config_rewind.frames_per_snapshot < 1)
+        config_rewind.frames_per_snapshot = 1;
+    config_rewind.speed = read_float("Rewind", "Speed", 2.0f);
+    config_rewind.speed = CLAMP(config_rewind.speed, 1.0f, 8.0f);
 
     config_input.key_left = (SDL_Scancode)read_int("Input", "KeyLeft", SDL_SCANCODE_LEFT);
     config_input.key_right = (SDL_Scancode)read_int("Input", "KeyRight", SDL_SCANCODE_RIGHT);
@@ -337,6 +357,7 @@ void config_read(void)
     config_hotkeys[config_HotkeyIndex_Reset] = read_hotkey("Hotkeys", "Reset", make_hotkey(SDL_SCANCODE_R, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_Pause] = read_hotkey("Hotkeys", "Pause", make_hotkey(SDL_SCANCODE_P, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_FFWD] = read_hotkey("Hotkeys", "FFWD", make_hotkey(SDL_SCANCODE_F, SDL_KMOD_CTRL));
+    config_hotkeys[config_HotkeyIndex_Rewind] = read_hotkey("Hotkeys", "Rewind", make_hotkey(SDL_SCANCODE_BACKSPACE, SDL_KMOD_NONE));
     config_hotkeys[config_HotkeyIndex_SaveState] = read_hotkey("Hotkeys", "SaveState", make_hotkey(SDL_SCANCODE_S, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_LoadState] = read_hotkey("Hotkeys", "LoadState", make_hotkey(SDL_SCANCODE_L, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_Screenshot] = read_hotkey("Hotkeys", "Screenshot", make_hotkey(SDL_SCANCODE_X, SDL_KMOD_CTRL));
@@ -394,10 +415,12 @@ void config_write(void)
     write_bool("Debug", "UART", config_debug.show_uart);
     write_bool("Debug", "EEPROM", config_debug.show_eeprom);
     write_bool("Debug", "Cart", config_debug.show_cart);
+    write_bool("Debug", "Rewind", config_debug.show_rewind);
     write_bool("Debug", "TraceCounter", config_debug.trace_counter);
     write_bool("Debug", "TraceRegisters", config_debug.trace_registers);
     write_bool("Debug", "TraceFlags", config_debug.trace_flags);
     write_bool("Debug", "TraceBytes", config_debug.trace_bytes);
+    write_bool("Debug", "TraceCpu", config_debug.trace_cpu);
     write_bool("Debug", "TraceCpuIrq", config_debug.trace_cpu_irq);
     write_bool("Debug", "TraceSuzyMath", config_debug.trace_suzy_math);
     write_bool("Debug", "TraceSuzySprites", config_debug.trace_suzy_sprites);
@@ -406,6 +429,8 @@ void config_write(void)
     write_bool("Debug", "TraceMikeyUart", config_debug.trace_mikey_uart);
     write_bool("Debug", "TraceMikeyAudio", config_debug.trace_mikey_audio);
     write_bool("Debug", "TraceCart", config_debug.trace_cart);
+    write_bool("Debug", "TraceDebugMessages", config_debug.trace_debug_messages);
+    write_bool("Debug", "DebugOutputEnabled", config_debug.debug_output_enabled);
     write_bool("Debug", "DisMem", config_debug.dis_show_mem);
     write_bool("Debug", "DisSymbols", config_debug.dis_show_symbols);
     write_bool("Debug", "DisSegment", config_debug.dis_show_segment);
@@ -437,6 +462,7 @@ void config_write(void)
     write_bool("Emulator", "AlwaysShowMenu", config_emulator.always_show_menu);
     write_int("Emulator", "FFWD", config_emulator.ffwd_speed);
     write_int("Emulator", "SaveSlot", config_emulator.save_slot);
+    write_bool("Emulator", "FastSpriteRendering", config_emulator.fast_sprite_rendering);
     write_bool("Emulator", "StartPaused", config_emulator.start_paused);
     write_bool("Emulator", "PauseWhenInactive", config_emulator.pause_when_inactive);
     write_string("Emulator", "BiosPath", config_emulator.bios_path);
@@ -480,10 +506,16 @@ void config_write(void)
 
     write_bool("Audio", "Enable", config_audio.enable);
     write_bool("Audio", "Sync", config_audio.sync);
+    write_float("Audio", "MasterVolume", config_audio.master_volume);
     for (int i = 0; i < 4; i++)
         write_float("Audio", ("Channel" + std::to_string(i) + "Volume").c_str(), config_audio.volume[i]);
     write_int("Audio", "LowpassCutoff", config_audio.lowpass_cutoff);
     write_int("Audio", "BufferCount", config_audio.buffer_count);
+
+    write_bool("Rewind", "Enabled", config_rewind.enabled);
+    write_int("Rewind", "BufferSeconds", config_rewind.buffer_seconds);
+    write_int("Rewind", "FramesPerSnapshot", config_rewind.frames_per_snapshot);
+    write_float("Rewind", "Speed", config_rewind.speed);
 
     write_int("Input", "KeyLeft", config_input.key_left);
     write_int("Input", "KeyRight", config_input.key_right);
@@ -521,6 +553,7 @@ void config_write(void)
     write_hotkey("Hotkeys", "Reset", config_hotkeys[config_HotkeyIndex_Reset]);
     write_hotkey("Hotkeys", "Pause", config_hotkeys[config_HotkeyIndex_Pause]);
     write_hotkey("Hotkeys", "FFWD", config_hotkeys[config_HotkeyIndex_FFWD]);
+    write_hotkey("Hotkeys", "Rewind", config_hotkeys[config_HotkeyIndex_Rewind]);
     write_hotkey("Hotkeys", "SaveState", config_hotkeys[config_HotkeyIndex_SaveState]);
     write_hotkey("Hotkeys", "LoadState", config_hotkeys[config_HotkeyIndex_LoadState]);
     write_hotkey("Hotkeys", "Screenshot", config_hotkeys[config_HotkeyIndex_Screenshot]);

@@ -27,6 +27,7 @@
 #include "gui_debug_text.h"
 #include "gui_debug_memory.h"
 #include "gui.h"
+#include "gui_actions.h"
 #include "gui_filedialogs.h"
 #include "config.h"
 #include "emu.h"
@@ -302,9 +303,9 @@ void gui_debug_save_disassembler(const char* file_path, bool full)
             save_full_disassembler(file);
         else
             save_current_disassembler(file);
-    }
 
-    fclose(file);
+        fclose(file);
+    }
 }
 
 static void draw_controls(void)
@@ -384,7 +385,7 @@ static void draw_controls(void)
     ImGui::SameLine();
     if (ImGui::Button(ICON_MD_REPLAY))
     {
-        emu_reset();
+        gui_action_reset();
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1390,7 +1391,7 @@ static void disassembler_menu(void)
 
         if (ImGui::MenuItem("Reset", config_hotkeys[config_HotkeyIndex_Reset].str))
         {
-            emu_reset();
+            gui_action_reset();
         }
 
         ImGui::Separator();
@@ -1723,7 +1724,7 @@ void gui_debug_window_call_stack(void)
             }
 
             ImGui::TableNextColumn();
-            char selectable_id[16];
+            char selectable_id[32];
             snprintf(selectable_id, sizeof(selectable_id), "##cs%d", row_index);
             if (ImGui::Selectable(selectable_id, false, ImGuiSelectableFlags_SpanAllColumns))
             {
@@ -1911,7 +1912,7 @@ void gui_debug_window_symbols(void)
                 ImGui::TableNextRow();
 
                 ImGui::TableNextColumn();
-                char selectable_id[16];
+                char selectable_id[32];
                 snprintf(selectable_id, sizeof(selectable_id), "##sym%d", (int)idx);
                 if (ImGui::Selectable(selectable_id, false, ImGuiSelectableFlags_SpanAllColumns))
                 {

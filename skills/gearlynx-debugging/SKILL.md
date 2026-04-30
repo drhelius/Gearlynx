@@ -219,6 +219,45 @@ Use screenshots after stepping or continuing to see the visual impact of changes
 4. Analyze timer reload values via `get_mikey_timers`
 5. Correlate timer fires with code execution in the trace
 
+### Debug Output for Homebrew Development
+
+Homebrew games can send debug text to the Trace Logger via unused Mikey registers `$FDC0`–`$FDC4` — a `printf`-style mechanism without breakpoints.
+
+1. `set_trace_log` with `enabled: true` and `debug_output: true`
+2. Run your game — text written through the registers appears in `get_trace_log`
+
+| Register | Write |
+|----------|-------|
+| `$FDC0` | Flush buffer to Trace Logger (any non-zero value) |
+| `$FDC1` | Append byte as ASCII character |
+| `$FDC2` | Append byte as two hex digits |
+| `$FDC3` | Set string pointer low byte |
+| `$FDC4` | Set string pointer high byte (triggers copy) |
+
+**ca65 example:**
+
+```asm
+; Print string + hex value in a single trace entry
+; A/X = string pointer, Y = hex value
+.proc debug_print
+    sta $FDC3       ; pointer low
+    stx $FDC4       ; pointer high (triggers copy)
+    sty $FDC2       ; append Y as hex
+    lda #1
+    sta $FDC0       ; flush
+    rts
+.endproc
+
+    lda #<message
+    ldx #>message
+    ldy player_hp
+    jsr debug_print
+
+message: .asciiz "Player HP: "
+```
+
+When disabled (the default), these registers are no-ops — safe to leave in shipping code.
+
 ---
 
 ## Organizing Your Debug Session
@@ -227,4 +266,42 @@ Use screenshots after stepping or continuing to see the visual impact of changes
 - **Bookmarks**: Use `add_disassembler_bookmark` for code locations and `add_memory_bookmark` for data regions
 - **Watches**: Use `add_memory_watch` for variables you're tracking across steps
 - **Save states**: Use `save_state` / `load_state` to snapshot and restore emulator state at interesting points
+- **Rewind**: Use `get_rewind_status` + `rewind_seek` to scrub back through recent execution history without manual save states
 - **Screenshots**: Capture visual state with `get_screenshot` after significant changes
+
+---
+
+## Rewind (Time Travel Debugging)
+
+The emulator continuously records snapshots into a ring buffer during gameplay. You can seek to any recorded snapshot to restore full emulator state at that point in time — like time travel debugging.
+
+### Workflow
+
+1. **Check availability**: `get_rewind_status` — returns snapshot count, capacity, buffered seconds
+2. **Pause**: `debug_pause` — the emulator must be paused before seeking
+3. **Seek**: `rewind_seek` with a snapshot number (1 = oldest, snapshot_count = newest)
+4. **Inspect**: `get_6502_status`, `get_disassembly`, `get_screenshot`, `read_memory`, etc.
+5. **Iterate**: Seek to different snapshots to narrow down when a bug first appeared
+6. **Resume or continue debugging**: `debug_continue` to resume from the seeked state
+
+### Tools
+
+| Tool | Description |
+|---|---|
+| `get_rewind_status` | Snapshot count, capacity, buffered seconds, configuration |
+| `rewind_seek` | Jump to snapshot N (1=oldest, count=newest). Non-destructive — can seek repeatedly |
+
+### Key Details
+
+- **Non-destructive seeking**: `rewind_seek` loads a snapshot without removing it. You can seek to the same snapshot multiple times, or jump between different snapshots freely.
+- **Snapshot numbering**: Snapshot 1 is the oldest available, snapshot_count is the newest (most recent).
+- **Buffer size**: Configured by the user (default: 10 seconds). When full, oldest snapshots are overwritten.
+- **Granularity**: Snapshots are taken every N frames (configurable). Default is every frame for maximum precision.
+
+### Bug Reproduction with Rewind
+
+1. Let the game run past the bug occurrence
+2. `debug_pause` → `get_rewind_status` to see how far back you can go
+3. Binary search with `rewind_seek`: try the midpoint, check if the bug is visible (`get_screenshot`), then narrow the range
+4. Once you find the exact snapshot where the bug appears, inspect CPU/memory state
+5. Set breakpoints at the relevant code, then `rewind_seek` to a snapshot just before the bug and `debug_continue`

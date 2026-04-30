@@ -30,10 +30,13 @@ public:
     void Init();
     void Reset();
     void InjectCycles(u32 cycles);
+    void InjectSuzyStolenCycles(u32 cycles);
     u32 ConsumeCycles();
+    u32 ConsumeSuzyStolenCycles();
 
 private:
     u32 m_cycles;
+    u32 m_suzy_stolen_cycles;
 };
 
 static const u32 k_bus_cycles_suzy_read         = 3;    // Suzy register read

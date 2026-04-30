@@ -66,6 +66,9 @@ public:
         u16 dispadr_latch;
         bool rest;
         u32 refresh_cycle_counter;
+        char debug_msg_buffer[GLYNX_DEBUG_MSG_MAX_SIZE];
+        int debug_msg_pos;
+        u16_union debug_str_addr;
     };
 
 public:
@@ -81,8 +84,10 @@ public:
     LcdScreen* GetLcdScreen();
     bool SwitchAudInValue();
     void SetTraceLogger(TraceLogger* trace_logger);
+    void SetDebugOutputEnabled(bool enabled);
+    bool IsDebugOutputEnabled();
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
     void ResetTimers();
@@ -113,10 +118,12 @@ private:
     void UartClock();
     void HorizontalBlank();
     void UpdateVideo(u32 cycles);
-    void Serialize(StateSerializer& s);
+    void Serialize(StateSerializer& s, int version);
+    void DebugOutputFlush();
 
 private:
     Media* m_media;
+    Memory* m_memory;
     Suzy* m_suzy;
     M6502* m_m6502;
     Audio* m_audio;
@@ -124,6 +131,7 @@ private:
     LcdScreen* m_lcd_screen;
     Mikey_State m_state;
     bool m_is_lynx2;
+    bool m_debug_output_enabled;
     TraceLogger* m_trace_logger;
 };
 

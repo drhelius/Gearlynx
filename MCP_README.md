@@ -2,7 +2,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for the Gearlynx emulator, enabling AI-assisted debugging and development of Atari Lynx games.
 
-This server provides tools for game development, rom hacking, reverse engineering, and debugging through standardized MCP protocols compatible with AI agents like GitHub Copilot, Claude, ChatGPT and others.
+This server provides tools for game development, rom hacking, reverse engineering, and debugging through standardized MCP protocols compatible with AI agents like GitHub Copilot, Claude, Codex and others.
 
 ## Downloads
 
@@ -18,29 +18,29 @@ This server provides tools for game development, rom hacking, reverse engineerin
     <tr>
       <td rowspan="2"><strong>Windows</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.6/Gearlynx-1.2.6-mcpb-windows-x64.mcpb">Gearlynx-1.2.6-mcpb-windows-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-mcpb-windows-x64.mcpb">Gearlynx-1.2.9-mcpb-windows-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.6/Gearlynx-1.2.6-mcpb-windows-arm64.mcpb">Gearlynx-1.2.6-mcpb-windows-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-mcpb-windows-arm64.mcpb">Gearlynx-1.2.9-mcpb-windows-arm64.mcpb</a></td>
     </tr>
     <tr>
       <td rowspan="2"><strong>macOS</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.6/Gearlynx-1.2.6-mcpb-macos-x64.mcpb">Gearlynx-1.2.6-mcpb-macos-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-mcpb-macos-x64.mcpb">Gearlynx-1.2.9-mcpb-macos-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.6/Gearlynx-1.2.6-mcpb-macos-arm64.mcpb">Gearlynx-1.2.6-mcpb-macos-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-mcpb-macos-arm64.mcpb">Gearlynx-1.2.9-mcpb-macos-arm64.mcpb</a></td>
     </tr>
     <tr>
       <td rowspan="2"><strong>Linux</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.6/Gearlynx-1.2.6-mcpb-linux-x64.mcpb">Gearlynx-1.2.6-mcpb-linux-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-mcpb-linux-x64.mcpb">Gearlynx-1.2.9-mcpb-linux-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.6/Gearlynx-1.2.6-mcpb-linux-arm64.mcpb">Gearlynx-1.2.6-mcpb-linux-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-mcpb-linux-arm64.mcpb">Gearlynx-1.2.9-mcpb-linux-arm64.mcpb</a></td>
     </tr>
   </tbody>
 </table>
@@ -57,6 +57,7 @@ This server provides tools for game development, rom hacking, reverse engineerin
 - **Call Stack**: View function call hierarchy
 - **Trace Logger**: CPU instruction trace with interleaved hardware events (Suzy math/sprites, Mikey timers/audio/UART, cart)
 - **Screenshot Capture**: Get current frame as PNG image
+- **Rewind**: Time-travel debugging — seek to any recorded snapshot to inspect past emulator state
 - **Documentation Resources**: Built-in hardware and programming documentation for AI context
 - **GUI Integration**: MCP server runs alongside the emulator GUI, sharing the same state
 
@@ -290,7 +291,7 @@ The server exposes tools organized in the following categories:
 - `list_disassembler_bookmarks` - List all disassembler bookmarks
 - `get_call_stack` - View function call hierarchy
 - `get_trace_log` - Read trace logger entries (CPU + hardware events). Use set_trace_log to start/stop the logger
-- `set_trace_log` - Start or stop the trace logger. Records CPU instructions and hardware events into a ring buffer. Filter event types with optional booleans
+- `set_trace_log` - Start or stop the trace logger. Use `filters` (nested object) to select event types (cpu, cpu_irq, suzy_math, suzy_sprites, suzy_input, mikey_timers, mikey_uart, mikey_audio, cart, debug_messages). Use `debug_output` (bool) to enable the $FDC0-$FDC4 debug output registers so game code can send text to the trace logger
 
 ### Breakpoints
 - `set_breakpoint` - Set execution, read, or write breakpoint at address. Read/write breakpoints stop with PC at instruction after memory access
@@ -327,6 +328,8 @@ The server exposes tools organized in the following categories:
 - `load_state` - Load emulator state from currently selected slot
 - `set_fast_forward_speed` - Set fast forward speed multiplier (0: 1.5x, 1: 2x, 2: 2.5x, 3: 3x, 4: Unlimited)
 - `toggle_fast_forward` - Toggle fast forward mode on/off
+- `get_rewind_status` - Get rewind buffer status (snapshot count, capacity, buffered seconds, configuration)
+- `rewind_seek` - Seek to a specific rewind snapshot by number (1 = oldest, snapshot_count = newest). Non-destructive — can seek repeatedly
 
 ### Controller Input
 - `controller_button` - Control a button on the Lynx controller. Use action 'press' to hold, 'release' to let go, or 'press_and_release' for a quick tap. Buttons: up, down, left, right, a, b, option1, option2, pause

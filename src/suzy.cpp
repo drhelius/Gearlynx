@@ -36,6 +36,7 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
     InitPointer(m_memory);
     InitPointer(m_ram);
     InitPointer(m_trace_logger);
+    m_fast_sprite_rendering = false;
     Reset();
 }
 Suzy::~Suzy()
@@ -53,6 +54,11 @@ void Suzy::Init(Memory* memory)
 void Suzy::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void Suzy::SetFastSpriteRendering(bool enabled)
+{
+    m_fast_sprite_rendering = enabled;
 }
 
 void Suzy::Reset()
@@ -95,7 +101,7 @@ void Suzy::MathRunMultiply()
 
     if (m_state.sprsys_accumulate)
     {
-        u32 acc = REG_MATHJ << 24 | REG_MATHK << 16 | REG_MATHL << 8 | REG_MATHM;
+        u32 acc = (u32(REG_MATHJ) << 24) | (u32(REG_MATHK) << 16) | (u32(REG_MATHL) << 8) | u32(REG_MATHM);
         u64 sum = u64(acc) + u64(result);
         m_state.sprsys_lastcarrybit = (sum > 0xFFFFFFFF);
         m_state.sprsys_mathbit = (sum > 0xFFFFFFFF);
@@ -216,16 +222,34 @@ void Suzy::ComputeQuadLUT()
 void Suzy::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
 }
 
 void Suzy::LoadState(std::istream& stream)
 {
-    StateSerializer serializer(stream);
-    Serialize(serializer);
+    LoadState(stream, GLYNX_SAVESTATE_VERSION);
 }
 
-void Suzy::Serialize(StateSerializer& s)
+void Suzy::LoadState(std::istream& stream, int version)
+{
+    StateSerializer serializer(stream);
+    Serialize(serializer, version);
+
+    if (version < 14)
+    {
+        if (m_state.sprsys_spritesbusy && (m_state.sprite_cycles > 0))
+            m_state.fsm_phase = SUZY_PHASE_LEGACY_DELAY;
+        else
+        {
+            m_state.fsm_phase = SUZY_PHASE_IDLE;
+            m_state.sprsys_spritesbusy = false;
+            m_state.sprite_cycles = 0;
+        }
+    }
+
+}
+
+void Suzy::Serialize(StateSerializer& s, int version)
 {
     G_SERIALIZE(s, m_state.TMPADR);
     G_SERIALIZE(s, m_state.TILTACUM);
@@ -278,4 +302,22 @@ void Suzy::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_state.shift_register_bit);
     G_SERIALIZE(s, m_state.fred);
     G_SERIALIZE(s, m_state.everon);
+
+    if (version >= 14)
+    {
+        G_SERIALIZE(s, m_state.fsm_phase);
+        G_SERIALIZE(s, m_state.spr_quadrant);
+        G_SERIALIZE(s, m_state.quad_row);
+        G_SERIALIZE(s, m_state.quad_pixel_height);
+        G_SERIALIZE(s, m_state.row_x);
+        G_SERIALIZE(s, m_state.row_emit_count);
+        G_SERIALIZE(s, m_state.row_h_accum);
+        G_SERIALIZE(s, m_state.row_render);
+        G_SERIALIZE(s, m_state.row_pen);
+        G_SERIALIZE(s, m_state.pack_state);
+        G_SERIALIZE(s, m_state.pack_count);
+        G_SERIALIZE(s, m_state.pack_pen);
+        G_SERIALIZE(s, m_state.pack_is_literal);
+        G_SERIALIZE(s, m_state.pack_pixel_pair);
+    }
 }

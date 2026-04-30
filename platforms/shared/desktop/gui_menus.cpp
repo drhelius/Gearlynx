@@ -33,6 +33,7 @@
 #include "ogl_renderer.h"
 #include "utils.h"
 #include "gearlynx.h"
+#include "rewind.h"
 
 static bool open_rom = false;
 static bool open_ram = false;
@@ -58,6 +59,7 @@ static void menu_input(void);
 static void menu_audio(void);
 static void menu_debug(void);
 static void menu_about(void);
+static void draw_mcp_status(void);
 static void file_dialogs(void);
 static void keyboard_configuration_item(const char* text, SDL_Scancode* key);
 static void gamepad_configuration_item(const char* text, int* button);
@@ -101,6 +103,7 @@ void gui_main_menu(void)
         menu_audio();
         menu_debug();
         menu_about();
+        draw_mcp_status();
 
         gui_main_menu_height = (int)ImGui::GetWindowSize().y;
 
@@ -171,6 +174,17 @@ static void menu_gearlynx(void)
             ImGui::PushItemWidth(100.0f);
             ImGui::Combo("##fwd", &config_emulator.ffwd_speed, "X 1.5\0X 2\0X 2.5\0X 3\0Unlimited\0\0");
             ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Rewind"))
+        {
+            ImGui::MenuItem("Enabled", config_hotkeys[config_HotkeyIndex_Rewind].str, &config_rewind.enabled);
+
+            ImGui::PushItemWidth(140.0f);
+            ImGui::SliderFloat("Speed", &config_rewind.speed, 1.0f, 8.0f, "%.0fx");
+            ImGui::PopItemWidth();
+
             ImGui::EndMenu();
         }
 
@@ -454,6 +468,7 @@ static void menu_emulator(void)
             hotkey_configuration_item("Reset:", &config_hotkeys[config_HotkeyIndex_Reset]);
             hotkey_configuration_item("Pause:", &config_hotkeys[config_HotkeyIndex_Pause]);
             hotkey_configuration_item("Fast Forward:", &config_hotkeys[config_HotkeyIndex_FFWD]);
+            hotkey_configuration_item("Rewind:", &config_hotkeys[config_HotkeyIndex_Rewind]);
             hotkey_configuration_item("Save State:", &config_hotkeys[config_HotkeyIndex_SaveState]);
             hotkey_configuration_item("Load State:", &config_hotkeys[config_HotkeyIndex_LoadState]);
             hotkey_configuration_item("Save State Slot 1:", &config_hotkeys[config_HotkeyIndex_SelectSlot1]);
@@ -486,6 +501,17 @@ static void menu_emulator(void)
             gui_popup_modal_hotkey();
 
             ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Fast Sprite Rendering", "", &config_emulator.fast_sprite_rendering);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Use a simpler Suzy sprite renderer.");
+            ImGui::Text("This is faster but it is less accurate.");
+            ImGui::EndTooltip();
         }
 
         ImGui::Separator();
@@ -705,6 +731,7 @@ static void menu_input(void)
                 gamepad_configuration_item("Reset:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Reset]);
                 gamepad_configuration_item("Pause:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Pause]);
                 gamepad_configuration_item("Fast Forward:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_FFWD]);
+                gamepad_configuration_item("Rewind:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Rewind]);
                 gamepad_configuration_item("Screenshot:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Screenshot]);
 
                 gui_popup_modal_gamepad();
@@ -728,6 +755,25 @@ static void menu_audio(void)
         if (ImGui::MenuItem("Enable Audio", "", &config_audio.enable))
         {
             emu_audio_mute(!config_audio.enable);
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Master Volume", config_audio.enable))
+        {
+            ImGui::PushItemWidth(200.0f);
+            if (ImGui::SliderFloat("##master_volume", &config_audio.master_volume, 0.0f, 2.0f, "Scale = %.2fx", ImGuiSliderFlags_AlwaysClamp))
+            {
+                emu_audio_set_master_volume(config_audio.master_volume);
+            }
+            ImGui::PopItemWidth();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("Anything above 1.00 may cause clipping.");
+                ImGui::EndTooltip();
+            }
+            ImGui::EndMenu();
         }
 
         ImGui::Separator();
@@ -939,6 +985,10 @@ static void menu_debug(void)
 
         ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
 
+        ImGui::Separator();
+
+        ImGui::MenuItem("Show Rewind", "", &config_debug.show_rewind, config_debug.debug);
+
 #if defined(__APPLE__) || defined(_WIN32)
         ImGui::Separator();
         ImGui::MenuItem("Multi-Viewport", "", &config_debug.multi_viewport, config_debug.debug);
@@ -982,6 +1032,42 @@ static void menu_about(void)
         }
         ImGui::EndMenu();
     }
+}
+
+static void draw_mcp_status(void)
+{
+    if (!emu_mcp_is_running())
+        return;
+
+    char status[64];
+    ImVec4 color(0.10f, 0.90f, 0.10f, 1.0f);
+
+    int transport_mode = emu_mcp_get_transport_mode();
+    if (transport_mode == 0)
+    {
+        snprintf(status, sizeof(status), "MCP: STDIO");
+        color = ImVec4(0.90f, 0.70f, 0.10f, 1.0f);
+    }
+    else if (transport_mode == 1)
+    {
+        snprintf(status, sizeof(status), "MCP: HTTP (%d)", config_emulator.mcp_tcp_port);
+    }
+    else
+    {
+        return;
+    }
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    float text_width = ImGui::CalcTextSize(status).x;
+    float status_x = ImGui::GetWindowWidth() - text_width - style.ItemSpacing.x - 10.0f;
+    float cursor_x = ImGui::GetCursorPosX();
+
+    if (status_x <= cursor_x + style.ItemSpacing.x)
+        return;
+
+    ImGui::SameLine(status_x);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(color, "%s", status);
 }
 
 static void file_dialogs(void)

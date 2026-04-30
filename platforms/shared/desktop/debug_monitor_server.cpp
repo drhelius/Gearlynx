@@ -292,7 +292,9 @@ void DebugMonitorServer::SendLoop()
         }
 
         if (!sent)
+        {
             Debug("[DebugMonitor] Dropped outbound message (stale or disconnected)");
+        }
 
         delete msg;
     }
@@ -751,7 +753,8 @@ json DebugMonitorServer::HandleTraceLogSet(const json& params)
 {
     bool enabled = params.value("enabled", true);
     u32 flags = params.value("flags", (u32)0xFF);
-    return m_debug_adapter->SetTraceLog(enabled, flags);
+    bool debug_output = params.value("debug_output", false);
+    return m_debug_adapter->SetTraceLog(enabled, flags, debug_output);
 }
 
 json DebugMonitorServer::HandleTraceLogGet(const json& params)

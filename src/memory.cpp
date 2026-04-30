@@ -274,18 +274,20 @@ void Memory::LastPageWrite(u16 address, u8 value)
 void Memory::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
 }
 
-void Memory::LoadState(std::istream& stream)
+void Memory::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, version);
     RebuildMemoryMap();
 }
 
-void Memory::Serialize(StateSerializer& s)
+void Memory::Serialize(StateSerializer& s, int version)
 {
+    if (version >= 13)
+        G_SERIALIZE(s, m_is_lynx2);
     G_SERIALIZE(s, m_state.MAPCTL);
     G_SERIALIZE_ARRAY(s, m_state.ram, 0x10000);
 }

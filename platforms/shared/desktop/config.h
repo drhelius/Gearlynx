@@ -48,6 +48,7 @@ struct config_Emulator
     bool pause_when_inactive = true;
     bool ffwd = false;
     int ffwd_speed = 1;
+    bool fast_sprite_rendering = false;
     bool show_info = false;
     std::string recent_roms[config_max_recent_roms];
     std::string bios_path;
@@ -87,9 +88,18 @@ struct config_Audio
 {
     bool enable = true;
     bool sync = true;
+    float master_volume = 1.0f;
     float volume[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int lowpass_cutoff = 3000;
     int buffer_count = 3;
+};
+
+struct config_Rewind
+{
+    bool enabled = true;
+    int buffer_seconds = 10;
+    int frames_per_snapshot = 1;
+    float speed = 2.0f;
 };
 
 struct config_Input
@@ -124,6 +134,7 @@ enum config_HotkeyIndex
     config_HotkeyIndex_Reset,
     config_HotkeyIndex_Pause,
     config_HotkeyIndex_FFWD,
+    config_HotkeyIndex_Rewind,
     config_HotkeyIndex_SaveState,
     config_HotkeyIndex_LoadState,
     config_HotkeyIndex_Screenshot,
@@ -185,10 +196,12 @@ struct config_Debug
     bool show_uart = false;
     bool show_eeprom = false;
     bool show_cart = false;
+    bool show_rewind = false;
     bool trace_counter = true;
     bool trace_registers = true;
     bool trace_flags = true;
     bool trace_bytes = true;
+    bool trace_cpu = true;
     bool trace_cpu_irq = true;
     bool trace_suzy_math = true;
     bool trace_suzy_sprites = true;
@@ -197,6 +210,8 @@ struct config_Debug
     bool trace_mikey_uart = true;
     bool trace_mikey_audio = true;
     bool trace_cart = true;
+    bool trace_debug_messages = true;
+    bool debug_output_enabled = false;
     bool dis_show_mem = true;
     bool dis_show_symbols = true;
     bool dis_show_segment = true;
@@ -226,6 +241,7 @@ EXTERN char config_imgui_file_path[260];
 EXTERN config_Emulator config_emulator;
 EXTERN config_Video config_video;
 EXTERN config_Audio config_audio;
+EXTERN config_Rewind config_rewind;
 EXTERN config_Input config_input;
 EXTERN config_Input_Gamepad_Shortcuts config_input_gamepad_shortcuts;
 EXTERN config_Hotkey config_hotkeys[config_HotkeyIndex_COUNT];

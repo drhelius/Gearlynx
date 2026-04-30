@@ -558,7 +558,9 @@ bool GearlynxCore::LoadState(std::istream& stream)
     }
 
     GLYNX_SaveState_Header_Libretro header;
+#if !defined(__LIBRETRO__)
     bool is_desktop_savestate = false;
+#endif
 
     stream.seekg(0, ios::end);
     size_t size = static_cast<size_t>(stream.tellg());
@@ -574,8 +576,10 @@ bool GearlynxCore::LoadState(std::istream& stream)
         {
             header.magic = desktop_header.magic;
             header.version = desktop_header.version;
+#if !defined(__LIBRETRO__)
             is_desktop_savestate = true;
-            Log("Loading desktop save state");
+#endif
+            Debug("Loading desktop save state");
         }
     }
 
@@ -597,7 +601,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
         return false;
     }
 
-    if (header.version != GLYNX_SAVESTATE_VERSION)
+    if (header.version < GLYNX_SAVESTATE_MIN_VERSION || header.version > GLYNX_SAVESTATE_VERSION)
     {
         Error("Invalid save state version: %d", header.version);
         return false;
@@ -632,10 +636,10 @@ bool GearlynxCore::LoadState(std::istream& stream)
     Debug("Unserializing save state...");
 
     m_m6502->LoadState(stream);
-    m_memory->LoadState(stream);
-    m_mikey->LoadState(stream);
-    m_suzy->LoadState(stream);
-    m_audio->LoadState(stream);
+    m_memory->LoadState(stream, header.version);
+    m_mikey->LoadState(stream, header.version);
+    m_suzy->LoadState(stream, header.version);
+    m_audio->LoadState(stream, header.version);
     m_input->LoadState(stream);
     m_media->LoadState(stream);
 

@@ -99,16 +99,19 @@ bool gui_init(void)
 
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
+    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
     emu_audio_mute(!config_audio.enable);
+    emu_audio_set_master_volume(config_audio.master_volume);
     emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
     for (int i = 0; i < 4; i++)
         emu_audio_set_volume(i, config_audio.volume[i]);
 
-    strcpy(gui_savefiles_path, config_emulator.savefiles_path.c_str());
-    strcpy(gui_savestates_path, config_emulator.savestates_path.c_str());
-    strcpy(gui_screenshots_path, config_emulator.screenshots_path.c_str());
-    strcpy(gui_bios_path, config_emulator.bios_path.c_str());
-    //strcpy(gui_backup_ram_path, config_emulator.backup_ram_path.c_str());
+    emu_get_core()->GetMikey()->SetDebugOutputEnabled(config_debug.debug_output_enabled);
+
+    strncpy_fit(gui_savefiles_path, config_emulator.savefiles_path.c_str(), sizeof(gui_savefiles_path));
+    strncpy_fit(gui_savestates_path, config_emulator.savestates_path.c_str(), sizeof(gui_savestates_path));
+    strncpy_fit(gui_screenshots_path, config_emulator.screenshots_path.c_str(), sizeof(gui_screenshots_path));
+    strncpy_fit(gui_bios_path, config_emulator.bios_path.c_str(), sizeof(gui_bios_path));
 
     if (strlen(gui_bios_path) > 0)
         gui_load_bios(gui_bios_path);
@@ -262,6 +265,7 @@ void gui_load_rom(const char* path)
 
     push_recent_rom(path);
     emu_resume();
+    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
 
     if (!emu_load_rom(path))
     {
@@ -300,8 +304,7 @@ void gui_load_rom(const char* path)
     {
         emu_pause();
 
-        for (int i = 0; i < 1024 * 512 * 4; i++)
-            emu_frame_buffer[i] = 0;
+        emu_clear_frame_buffer();
     }
 
     if (!emu_is_empty())
@@ -361,7 +364,7 @@ void gui_set_status_message(const char* message, Uint64 milliseconds)
 {
     if (config_emulator.status_messages)
     {
-        strcpy(status_message, message);
+        strncpy_fit(status_message, message, sizeof(status_message));
         status_message_active = true;
         status_message_start_time = SDL_GetTicks();
         status_message_duration = milliseconds;
@@ -370,7 +373,7 @@ void gui_set_status_message(const char* message, Uint64 milliseconds)
 
 void gui_set_error_message(const char* message)
 {
-    strcpy(error_message, message);
+    strncpy_fit(error_message, message, sizeof(error_message));
     error_window_active = true;
 }
 

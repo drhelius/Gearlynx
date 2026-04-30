@@ -145,6 +145,7 @@ private:
     bool m_stream_open;
     u16 m_prev_opcode_address;
     u8 m_page_mode_tick_discount;
+    bool m_irq_sample_after_opcode;
 
 private:
     void HandleIRQ();

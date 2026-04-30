@@ -27,6 +27,7 @@
 #include "../gui_debug_memory.h"
 #include "../gui_debug_memeditor.h"
 #include "../config.h"
+#include "../rewind.h"
 #include "mikey_defines.h"
 #include <cstring>
 #include <sstream>
@@ -72,7 +73,7 @@ void DebugAdapter::StepFrame()
 
 void DebugAdapter::Reset()
 {
-    emu_reset();
+    gui_action_reset();
 }
 
 json DebugAdapter::GetDebugStatus()
@@ -340,6 +341,7 @@ std::vector<DisasmLine> DebugAdapter::GetDisassembly(u16 start_address, u16 end_
             line.address = (u16)addr;
             line.rom = record->rom;
             line.name = record->name;
+            strip_color_tags(line.name);
             line.bytes = record->bytes;
             line.segment = record->segment;
             line.size = record->size;
@@ -460,6 +462,8 @@ json DebugAdapter::GetMediaInfo()
     json info;
     Media* media = m_core->GetMedia();
 
+    info["emulator"] = GLYNX_TITLE;
+    info["emulator_version"] = GLYNX_VERSION;
     info["ready"] = media->IsReady();
     info["file_path"] = media->GetFilePath();
     info["file_name"] = media->GetFileName();
@@ -2947,6 +2951,9 @@ json DebugAdapter::GetTraceLog(int start, int count)
                 snprintf(buf, sizeof(buf), "  [CART]  SHIFT    Addr:$%02X  Bit:%d",
                          entry.cart.addr_shift, entry.cart.bit);
                 break;
+            case TRACE_DEBUG_MESSAGE:
+                snprintf(buf, sizeof(buf), "  [DEBUG] %s", entry.debug_msg.text);
+                break;
             default:
                 snprintf(buf, sizeof(buf), "  [???]");
                 break;
@@ -2962,7 +2969,7 @@ json DebugAdapter::GetTraceLog(int start, int count)
     return result;
 }
 
-json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
+json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output)
 {
     json result;
 
@@ -2972,6 +2979,9 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
         result["error"] = "Trace logger not available";
         return result;
     }
+
+    m_core->GetMikey()->SetDebugOutputEnabled(debug_output);
+    result["debug_output"] = debug_output;
 
     if (enabled)
     {
@@ -2992,6 +3002,7 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
         if (flags & TRACE_FLAG_MIKEY_UART) enabled_list.push_back("mikey_uart");
         if (flags & TRACE_FLAG_MIKEY_AUDIO) enabled_list.push_back("mikey_audio");
         if (flags & TRACE_FLAG_CART_SHIFT) enabled_list.push_back("cart");
+        if (flags & TRACE_FLAG_DEBUG_MSG) enabled_list.push_back("debug_messages");
         result["enabled"] = enabled_list;
     }
     else
@@ -3001,5 +3012,59 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags)
     }
 
     result["total_entries"] = tl->GetCount();
+    return result;
+}
+
+json DebugAdapter::GetRewindStatus()
+{
+    json result;
+    result["enabled"] = config_rewind.enabled;
+    result["snapshot_count"] = rewind_get_snapshot_count();
+    result["capacity"] = rewind_get_capacity();
+    result["frames_per_snapshot"] = rewind_get_frames_per_snapshot();
+    result["buffer_seconds"] = config_rewind.buffer_seconds;
+
+    int fps = rewind_get_frames_per_snapshot();
+    if (fps < 1) fps = 1;
+    result["buffered_seconds"] = (double)(rewind_get_snapshot_count() * fps) / 60.0;
+
+    return result;
+}
+
+json DebugAdapter::RewindSeek(int snapshot)
+{
+    bool paused = emu_is_paused() || emu_is_debug_idle();
+
+    if (!paused)
+        return {{"error", "Pause the emulator before seeking the rewind buffer"}};
+
+    int count = rewind_get_snapshot_count();
+
+    if (count == 0)
+        return {{"error", "No rewind snapshots available"}};
+
+    if (snapshot < 1 || snapshot > count)
+        return {{"error", "Snapshot out of range (1-" + std::to_string(count) + ")"}};
+
+    int age = count - snapshot;
+
+    if (!rewind_seek(age))
+        return {{"error", "Failed to load snapshot"}};
+
+    emu_render_current_frame();
+
+    M6502::M6502_State* cpu = m_core->GetM6502()->GetState();
+    std::ostringstream ss;
+    ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << cpu->PC.GetValue();
+
+    int fps = rewind_get_frames_per_snapshot();
+    if (fps < 1) fps = 1;
+
+    json result;
+    result["success"] = true;
+    result["snapshot"] = snapshot;
+    result["total"] = count;
+    result["age_seconds"] = (double)(age * fps) / 60.0;
+    result["pc"] = ss.str();
     return result;
 }

@@ -30,6 +30,7 @@
 #include "lcd_screen.h"
 #include "trace_logger.h"
 #include "eeprom.h"
+#include "memory.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
@@ -304,6 +305,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_SERCTL:        // 0xFD8C
         {
             DebugMikey("Setting SERCTL to %02X (was %02X)", value, m_state.SERCTL);
+            bool was_tx_brk = m_state.uart.tx_brk;
             m_state.SERCTL = value;
 
             m_state.uart.tx_int_en = IS_SET_BIT(value, 7);
@@ -323,13 +325,17 @@ INLINE void Mikey::Write(u16 address, u8 value)
 
             if (m_state.uart.tx_brk)
             {
+                if (!was_tx_brk)
+                    m_state.uart.prescaler = 0;
+
                 m_state.uart.tx_empty = false;
                 m_state.uart.tx_ready = false;
-                m_state.uart.tx_active = true;
             }
             else
             {
-                if (!m_state.uart.tx_active && !m_state.uart.tx_hold_valid)
+                if (was_tx_brk && !m_state.uart.tx_active && m_state.uart.tx_hold_valid)
+                    m_state.uart.tx_ready_bits = 1;
+                else if (!m_state.uart.tx_active && !m_state.uart.tx_hold_valid)
                 {
                     m_state.uart.tx_empty = true;
                     m_state.uart.tx_ready = true;
@@ -361,7 +367,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
                 m_state.uart.tx_ready = false;
                 m_state.uart.tx_empty = false;
 
-                if (m_state.uart.tx_brk)
+                if (m_state.uart.tx_brk && m_state.uart.tx_active)
                     m_state.uart.tx_suppress_eof_loopback = true;
             }
 
@@ -404,6 +410,48 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_MTEST2:        // 0xFD9E
             DebugMikey("Writing MTEST2 (unused): %02X", value);
             break;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        case MIKEY_DBGASCII:      // 0xFDC1
+            if (m_debug_output_enabled && m_state.debug_msg_pos < (GLYNX_DEBUG_MSG_MAX_SIZE - 1))
+            {
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = (char)value;
+                m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+            }
+            break;
+        case MIKEY_DBGHEX:        // 0xFDC2
+            if (m_debug_output_enabled && m_state.debug_msg_pos < (GLYNX_DEBUG_MSG_MAX_SIZE - 2))
+            {
+                static const char k_hex[] = "0123456789ABCDEF";
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = k_hex[(value >> 4) & 0x0F];
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = k_hex[value & 0x0F];
+                m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+            }
+            break;
+        case MIKEY_DBGSTRL:       // 0xFDC3
+            if (m_debug_output_enabled)
+                m_state.debug_str_addr.low = value;
+            break;
+        case MIKEY_DBGSTRH:       // 0xFDC4
+            if (m_debug_output_enabled)
+            {
+                m_state.debug_str_addr.high = value;
+                u16 addr = m_state.debug_str_addr.value;
+                int max_copy = (GLYNX_DEBUG_MSG_MAX_SIZE - 1) - m_state.debug_msg_pos;
+                for (int i = 0; i < max_copy; i++)
+                {
+                    u8 ch = m_memory->Read<true>(addr++);
+                    if (ch == 0)
+                        break;
+                    m_state.debug_msg_buffer[m_state.debug_msg_pos++] = (char)ch;
+                }
+                m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+            }
+            break;
+        case MIKEY_DBGOUT:        // 0xFDC0
+            if (m_debug_output_enabled && value != 0)
+                DebugOutputFlush();
+            break;
+#endif
         default:
             //assert(false && "Unhandled Mikey Write Address");
             DebugMikey("Register WRITE called with unknown address: %04X, value: %02X", address, value);
@@ -1050,6 +1098,9 @@ INLINE void Mikey::UpdateIRQs()
 {
     u8 effective_irqs = m_state.irq_pending & m_state.irq_mask;
     m_m6502->AssertIRQ(effective_irqs != 0, effective_irqs);
+
+    if ((effective_irqs != 0) && m_m6502->IsHalted())
+        m_m6502->Halt(false);
 }
 
 INLINE void Mikey::UartRelevelIRQ()
@@ -1148,20 +1199,38 @@ inline void Mikey::UartBeginFrame(u8 data)
 
 inline void Mikey::UartClock()
 {
-    m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
-    if (m_state.uart.prescaler != 0)
-        return;
-
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
     {
-        m_state.uart.tx_active = true;
         m_state.uart.tx_empty = false;
         return;
     }
 
+    m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
+    if (m_state.uart.prescaler != 0)
+        return;
+
     if (!m_state.uart.tx_active)
     {
+        if (m_state.uart.tx_hold_valid)
+        {
+            if (m_state.uart.tx_ready_bits > 0)
+            {
+                m_state.uart.tx_ready_bits--;
+                if (m_state.uart.tx_ready_bits != 0)
+                    return;
+            }
+
+            u8 next = m_state.uart.tx_hold_data;
+            m_state.uart.tx_hold_valid = false;
+            m_state.uart.tx_suppress_eof_loopback = false;
+            UartBeginFrame(next);
+            m_state.uart.tx_ready = true;
+            m_state.uart.tx_ready_bits = 0;
+            UartRelevelIRQ();
+            return;
+        }
+
         if (m_state.uart.tx_empty_bits > 0)
         {
             m_state.uart.tx_empty_bits--;

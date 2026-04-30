@@ -39,6 +39,7 @@ INLINE u32 M6502::RunInstruction()
     m_s.memory_accesses = 0;
     m_s.onebyte_un_nop = false;
     m_s.page_mode_discounts = 0;
+    m_irq_sample_after_opcode = false;
 
     if (unlikely(m_s.halted))
     {
@@ -59,6 +60,9 @@ INLINE u32 M6502::RunInstruction()
 
         CheckIRQs();
         (this->*m_opcodes[opcode])();
+
+        if (m_irq_sample_after_opcode && !m_s.irq_pending)
+            CheckIRQs();
 
         if(m_s.irq_pending && !m_s.onebyte_un_nop && !m_skip_irq_on_step)
             HandleIRQ();

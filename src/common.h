@@ -81,13 +81,14 @@ inline int as_hex(const char c)
     return 0;
 }
 
-inline unsigned int pow_2_ceil(u16 n)
+inline u32 pow_2_ceil(u32 n)
 {
     --n;
     n |= n >> 1;
     n |= n >> 2;
     n |= n >> 4;
     n |= n >> 8;
+    n |= n >> 16;
     ++n;
     return n;
 }
@@ -187,8 +188,12 @@ inline char* strncpy_fit(char* dest, const char* src, size_t dest_size)
     if (dest_size == 0)
         return dest;
 
-    strncpy(dest, src, dest_size - 1);
-    dest[dest_size - 1] = '\0';
+    size_t copy_size = strlen(src);
+    if (copy_size >= dest_size)
+        copy_size = dest_size - 1;
+
+    memcpy(dest, src, copy_size);
+    dest[copy_size] = '\0';
 
     return dest;
 }

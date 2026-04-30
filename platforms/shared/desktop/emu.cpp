@@ -20,8 +20,12 @@
 #include "emu.h"
 
 #include "gearlynx.h"
+#include "mikey.h"
+#include "lcd_screen.h"
 #include "sound_queue.h"
 #include "config.h"
+#include "rewind.h"
+#include "events.h"
 #include "mcp/mcp_manager.h"
 #include "debug_monitor_server.h"
 #include "framebuffer_server.h"
@@ -36,6 +40,9 @@ static GearlynxCore* core;
 static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
+static const int k_frame_buffer_size = 256 * 256 * 4;
+static Uint64 rewind_last_counter = 0;
+static double rewind_pop_accumulator = 0.0;
 static DebugMonitorServer* debug_monitor;
 static FramebufferServer* fb_server;
 
@@ -51,6 +58,8 @@ static void update_debug_framebuffers(void);
 static void update_debug_sprites(void);
 static void update_debug_sprites_accumulated(void);
 static void render_debug_sprites(int count);
+static void reset_rewind_timing(void);
+static int get_rewind_pop_budget(void);
 
 bool emu_init(void)
 {
@@ -71,7 +80,7 @@ bool emu_init(void)
     emu_collision_palette[14] = 0xFF55FFFF; // 14: Yellow
     emu_collision_palette[15] = 0xFFFFFFFF; // 15: White
 
-    emu_frame_buffer = new u8[256 * 256 * 4];
+    emu_frame_buffer = new u8[k_frame_buffer_size];
     audio_buffer = new s16[GLYNX_AUDIO_BUFFER_SIZE];
 
     init_debug();
@@ -97,6 +106,8 @@ bool emu_init(void)
     mcp_manager = new McpManager();
     mcp_manager->Init(core);
 
+    rewind_init();
+
     debug_monitor = new DebugMonitorServer();
     debug_monitor->Init(core);
 
@@ -106,6 +117,7 @@ bool emu_init(void)
 void emu_destroy(void)
 {
     save_ram();
+    rewind_destroy();
     SafeDelete(fb_server);
     SafeDelete(debug_monitor);
     SafeDelete(mcp_manager);
@@ -138,7 +150,28 @@ bool emu_load_rom(const char* file_path)
 
     update_savestates_data();
 
+    rewind_reset();
+
     return true;
+}
+
+void emu_render_current_frame(void)
+{
+    LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
+
+    if (!core->GetMedia()->IsBiosLoaded())
+    {
+        lcd_screen->RenderNoBiosScreen(emu_frame_buffer);
+        return;
+    }
+
+    lcd_screen->SetBuffer(emu_frame_buffer);
+    lcd_screen->EndFrame(core->GetMedia()->GetRotation());
+}
+
+void emu_reset_rewind_timing(void)
+{
+    reset_rewind_timing();
 }
 
 void emu_update(void)
@@ -150,6 +183,31 @@ void emu_update(void)
         return;
 
     int sampleCount = 0;
+    bool frame_executed = false;
+
+    if (rewind_is_active())
+    {
+        int to_pop = get_rewind_pop_budget();
+
+        bool rewound = false;
+        for (int i = 0; i < to_pop; i++)
+        {
+            if (!rewind_pop())
+                break;
+
+            rewound = true;
+        }
+
+        if (rewound)
+            emu_render_current_frame();
+
+        int silence_count = GLYNX_AUDIO_QUEUE_SIZE;
+        memset(audio_buffer, 0, silence_count * sizeof(s16));
+        sound_queue_write(audio_buffer, silence_count, false);
+        return;
+    }
+
+    reset_rewind_timing();
 
     if (config_debug.debug)
     {
@@ -171,10 +229,14 @@ void emu_update(void)
         bool executed = (emu_debug_command != Debug_Command_None);
 
         if (executed)
+        {
+            rewind_commit_seek();
             emu_debug_monitor_notify_resumed();
 
         if (executed)
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
+            frame_executed = true;
+        }
 
         if (breakpoint_hit || emu_debug_command == Debug_Command_StepFrame || emu_debug_command == Debug_Command_Step)
         {
@@ -209,7 +271,14 @@ void emu_update(void)
             update_debug();
     }
     else
+    {
+        rewind_commit_seek();
         core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
+        frame_executed = true;
+    }
+
+    if (frame_executed)
+        rewind_push();
 
     if ((sampleCount > 0) && !core->IsPaused())
     {
@@ -225,6 +294,44 @@ void emu_update(void)
     emu_debug_monitor_push_frame();
 }
 
+static void reset_rewind_timing(void)
+{
+    rewind_last_counter = 0;
+    rewind_pop_accumulator = 0.0;
+}
+
+static int get_rewind_pop_budget(void)
+{
+    Uint64 now = SDL_GetPerformanceCounter();
+
+    if (rewind_last_counter == 0)
+    {
+        rewind_last_counter = now;
+        return 0;
+    }
+
+    double elapsed = (double)(now - rewind_last_counter) / (double)SDL_GetPerformanceFrequency();
+    rewind_last_counter = now;
+
+    if (elapsed < 0.0)
+        elapsed = 0.0;
+    else if (elapsed > 0.25)
+        elapsed = 0.25;
+
+    int frames_per_snapshot = rewind_get_frames_per_snapshot();
+    if (frames_per_snapshot < 1)
+        frames_per_snapshot = 1;
+
+    double snapshots_per_second = (60.0 * (double)config_rewind.speed) / (double)frames_per_snapshot;
+    rewind_pop_accumulator += elapsed * snapshots_per_second;
+
+    int to_pop = (int)rewind_pop_accumulator;
+    if (to_pop > 0)
+        rewind_pop_accumulator -= (double)to_pop;
+
+    return to_pop;
+}
+
 void emu_key_pressed(GLYNX_Keys key)
 {
     core->KeyPressed(key);
@@ -233,6 +340,11 @@ void emu_key_pressed(GLYNX_Keys key)
 void emu_key_released(GLYNX_Keys key)
 {
     core->KeyReleased(key);
+}
+
+void emu_clear_frame_buffer(void)
+{
+    memset(emu_frame_buffer, 0, k_frame_buffer_size);
 }
 
 void emu_pause(void)
@@ -280,6 +392,8 @@ void emu_reset(void)
     save_ram();
     core->ResetROM(false);
     load_ram();
+
+    rewind_reset();
 }
 
 void emu_force_rotation(int rotation)
@@ -301,6 +415,11 @@ void emu_audio_mute(bool mute)
 void emu_audio_set_volume(int channel, float volume)
 {
     core->GetAudio()->SetVolume(channel, volume);
+}
+
+void emu_audio_set_master_volume(float volume)
+{
+    core->GetAudio()->SetMasterVolume(volume);
 }
 
 void emu_audio_set_lowpass_cutoff(float fc)
@@ -337,6 +456,7 @@ void emu_load_ram(const char* file_path)
         save_ram();
         core->ResetROM(false);
         core->LoadRam(file_path, true);
+        rewind_reset();
     }
 }
 
@@ -355,7 +475,11 @@ void emu_load_state_slot(int index)
     if (!emu_is_empty())
     {
         const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
-        core->LoadState(dir, index);
+        if (core->LoadState(dir, index))
+        {
+            events_sync_input();
+            rewind_reset();
+        }
     }
 }
 
@@ -368,7 +492,13 @@ void emu_save_state_file(const char* file_path)
 void emu_load_state_file(const char* file_path)
 {
     if (!emu_is_empty())
-        core->LoadState(file_path);
+    {
+        if (core->LoadState(file_path))
+        {
+            events_sync_input();
+            rewind_reset();
+        }
+    }
 }
 
 void update_savestates_data(void)
@@ -611,6 +741,8 @@ int emu_get_framebuffer_png(int buffer_index, unsigned char** out_buffer)
     if (buffer_index < 0 || buffer_index > 1)
         return 0;
 
+    update_debug_framebuffers();
+
     int stride = GLYNX_SCREEN_WIDTH * 4;
     int len = 0;
 
@@ -657,8 +789,7 @@ static void load_ram(void)
 
 static void reset_buffers(void)
 {
-    for (int i = 0; i < (256 * 256 * 4); i++)
-        emu_frame_buffer[i] = 0;
+    emu_clear_frame_buffer();
 
     for (int i = 0; i < GLYNX_AUDIO_BUFFER_SIZE; i++)
         audio_buffer[i] = 0;
@@ -976,6 +1107,8 @@ static void update_debug_sprites_accumulated(void)
             info.stretch = 0;
             info.tilt = 0;
             memset(info.pen_map, 0, 16);
+            info.hoff = src.hoff;
+            info.voff = src.voff;
             continue;
         }
 

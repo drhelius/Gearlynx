@@ -1,4 +1,4 @@
-name: Trigger PPA Build
+name: Trigger RPM Build
 
 on:
   workflow_dispatch:
@@ -13,12 +13,12 @@ env:
 
 jobs:
   trigger:
-    name: Trigger PPA Build
+    name: Trigger RPM Build
     runs-on: ubuntu-latest
     if: github.repository_owner == 'drhelius'
     strategy:
       matrix:
-        distro: [resolute, noble, jammy]
+        fedora_version: ['43', '42', '41']
     steps:
       - name: Get release version
         run: |
@@ -33,19 +33,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Trigger PPA workflow
+      - name: Trigger RPM workflow
         run: |
-          gh api repos/drhelius/ppa-geardome/dispatches \
+          gh api repos/drhelius/rpm-geardome/dispatches \
             --method POST \
             --input - <<EOF
           {
-            "event_type": "build-package",
+            "event_type": "build-rpm-package",
             "client_payload": {
               "emulator": "${{ env.NAME_LOWER }}",
               "version": "${{ env.VERSION }}",
-              "distro": "${{ matrix.distro }}"
+              "fedora_version": "${{ matrix.fedora_version }}"
             }
           }
           EOF
         env:
-          GH_TOKEN: ${{ secrets.PPA_TRIGGER_TOKEN }}
+          GH_TOKEN: ${{ secrets.RPM_TRIGGER_TOKEN }}

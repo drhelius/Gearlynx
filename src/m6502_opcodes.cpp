@@ -420,6 +420,7 @@ void M6502::OPCode0x40()
     m_s.PC.SetValue(StackPop16());
     ClearFlag(FLAG_BREAK);
     SetFlag(FLAG_UNUSED);
+    m_irq_sample_after_opcode = true;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     PopCallStack();
 #endif
