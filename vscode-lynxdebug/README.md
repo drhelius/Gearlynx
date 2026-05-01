@@ -212,16 +212,16 @@ Provides symbol names and addresses only (no source-line mapping, no locals, no 
 
 ```
 VSCode                              Gearlynx
-+-------------------+   TCP/JSON   +--------------------+
-| LynxDebug         |<------------>| Debug Monitor      |
-| (DAP adapter)     | port 6502   | Server             |
-+-------------------+              +--------------------+
-|                   |   TCP/binary  | Framebuffer        |
-| Screen Viewer     |<------------>| Server             |
-| (webview panel)   | port 6503   | (60fps RGBA stream)|
-+-------------------+              +--------------------+
-                                   | Emulator Core      |
-                                   +--------------------+
++-------------------+   TCP/JSON     +---------------------+
+| LynxDebug         | <------------> | Debug Monitor       |
+| (DAP adapter)     |   port 6502    | Server              |
++-------------------+                +---------------------+
+|                   |   TCP/binary   | Framebuffer         |
+| Screen Viewer     | <------------> | Server              |
+| (webview panel)   |   port 6503    | (60fps RGBA stream) |
++-------------------+                +---------------------+
+                                     | Emulator Core       |
+                                     +---------------------+
 ```
 
 - **Debug protocol**: Content-Length framed JSON over TCP (port 6502 default)
