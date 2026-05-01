@@ -235,14 +235,10 @@ void DebugMonitorServer::RecvLoop()
             break;
         }
 
-        json msg;
-        try
+        json msg = json::parse(json_str, nullptr, false);
+        if (msg.is_discarded())
         {
-            msg = json::parse(json_str);
-        }
-        catch (const json::parse_error& e)
-        {
-            Error("[DebugMonitor] JSON parse error: %s", e.what());
+            Error("[DebugMonitor] JSON parse error");
             continue;
         }
 
