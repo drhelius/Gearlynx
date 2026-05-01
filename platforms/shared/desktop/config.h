@@ -154,6 +154,7 @@ enum config_HotkeyIndex
     config_HotkeyIndex_SelectSlot3,
     config_HotkeyIndex_SelectSlot4,
     config_HotkeyIndex_SelectSlot5,
+    config_HotkeyIndex_Mute,
     config_HotkeyIndex_COUNT
 };
 

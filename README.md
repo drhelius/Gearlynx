@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/github/license/drhelius/Gearlynx)](https://github.com/drhelius/Gearlynx/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/drhelius)](https://x.com/drhelius)
 
-Gearlynx is a very accurate cross-platform Atari Lynx emulator written in C++ that runs on Windows, macOS, Linux, BSD and RetroArch, with an embedded MCP server for debugging and tooling.
+Gearlynx is a very accurate, cross-platform Atari Lynx emulator written in C++ that runs on Windows, macOS, Linux, BSD and RetroArch, with an embedded MCP server for debugging and tooling.
 
 This is an open source project with its ongoing development made possible thanks to the support by these awesome [backers](backers.md). If you find it useful, please consider [sponsoring](https://github.com/sponsors/drhelius).
 
@@ -30,11 +30,11 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
     <tr>
       <td rowspan="2"><strong>Windows</strong></td>
       <td>Desktop x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-windows-x64.zip">Gearlynx-1.2.9-desktop-windows-x64.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-windows-x64.zip">Gearlynx-1.2.10-desktop-windows-x64.zip</a></td>
     </tr>
     <tr>
       <td>Desktop ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-windows-arm64.zip">Gearlynx-1.2.9-desktop-windows-arm64.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-windows-arm64.zip">Gearlynx-1.2.10-desktop-windows-arm64.zip</a></td>
     </tr>
     <tr>
       <td rowspan="3"><strong>macOS</strong></td>
@@ -43,11 +43,11 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
     </tr>
     <tr>
       <td>Desktop Apple Silicon</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-macos-arm64.zip">Gearlynx-1.2.9-desktop-macos-arm64.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-macos-arm64.zip">Gearlynx-1.2.10-desktop-macos-arm64.zip</a></td>
     </tr>
     <tr>
       <td>Desktop Intel</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-macos-intel.zip">Gearlynx-1.2.9-desktop-macos-intel.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-macos-intel.zip">Gearlynx-1.2.10-desktop-macos-intel.zip</a></td>
     </tr>
     <tr>
       <td rowspan="5"><strong>Linux</strong></td>
@@ -60,15 +60,15 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
     </tr>
     <tr>
       <td>Desktop Ubuntu 24.04 x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-ubuntu24.04-x64.zip">Gearlynx-1.2.9-desktop-ubuntu24.04-x64.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-ubuntu24.04-x64.zip">Gearlynx-1.2.10-desktop-ubuntu24.04-x64.zip</a></td>
     </tr>
     <tr>
       <td>Desktop Ubuntu 22.04 x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-ubuntu22.04-x64.zip">Gearlynx-1.2.9-desktop-ubuntu22.04-x64.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-ubuntu22.04-x64.zip">Gearlynx-1.2.10-desktop-ubuntu22.04-x64.zip</a></td>
     </tr>
     <tr>
       <td>Desktop Ubuntu 24.04 ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.9/Gearlynx-1.2.9-desktop-ubuntu24.04-arm64.zip">Gearlynx-1.2.9-desktop-ubuntu24.04-arm64.zip</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.10/Gearlynx-1.2.10-desktop-ubuntu24.04-arm64.zip">Gearlynx-1.2.10-desktop-ubuntu24.04-arm64.zip</a></td>
     </tr>
     <tr>
       <td><strong>MCPB</strong></td>
@@ -95,12 +95,12 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 ## Features
 
 - Very accurate emulation supporting the entire commercial Atari Lynx catalog and most homebrew and demos.
-- User selectable Lynx I or Lynx II emulation. 
-- Compressed and hombrew rom support (lnx, lyx, o, and zip).
+- User selectable Lynx I or Lynx II emulation.
+- Compressed and homebrew ROM support (lnx, lyx, o, and zip).
 - Save states with preview and rewind support.
 - Very accurate audio emulation with configurable low-pass filter (mimics original Lynx audio hardware).
 - VGM recorder.
-- Internal database for automatic rom detection and hardware selection if `Auto` options are selected.
+- Internal database for automatic ROM detection and hardware selection if `Auto` options are selected.
 - Bank switching (BANK1 + AUDIN) and EEPROM.
 - Save files (EEPROM and NVRAM).
 - Supported platforms (standalone): Windows, Linux, BSD and macOS.
@@ -115,15 +115,15 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 ## Tips
 
 ### Basic Usage
-- **BIOS**: Gearlynx requires a BIOS to work. It is possible to load any BIOS but the original with md5 ```fcd403db69f54290b51035d82f835e7b``` is recommended.
+- **BIOS**: Gearlynx requires a BIOS to work. It is possible to load any BIOS but the original with md5 `fcd403db69f54290b51035d82f835e7b` is recommended.
 - **Mouse Cursor**: Automatically hides when hovering over the main output window or when Main Menu is disabled.
 - **Portable Mode**: Create an empty file named `portable.ini` in the same directory as the application binary to enable portable mode.
 
 ### Debugging Features
 - **Docking Windows**: In debug mode, you can dock windows together by pressing SHIFT and dragging a window onto another.
 - **Multi-viewport**: In Windows or macOS, you can enable "multi-viewport" in the debug menu. You must restart the emulator for the change to take effect. Once enabled, you can drag debugger windows outside the main window.
-- **Single Instance**: You can enable "Single Instance" in the ```Emulator``` menu. When enabled, opening a ROM while another instance is running will send the ROM to the running instance instead of starting a new one.
-- **Debug Symbols**: The emulator automatically tries to load a symbol file when loading a ROM. For example, for ```path_to_rom_file.rom``` it tries to load ```path_to_rom_file.sym```, ```path_to_rom_file.lbl``` and ```path_to_rom_file.noi```. You can also load symbol files using the GUI or the CLI. It supports *cc65* (VICE label file), *lyxass* (EQU) and *mads* (lab and hea) file formats.
+- **Single Instance**: You can enable "Single Instance" in the `Emulator` menu. When enabled, opening a ROM while another instance is running will send the ROM to the running instance instead of starting a new one.
+- **Debug Symbols**: The emulator automatically tries to load a symbol file when loading a ROM. For example, for `path_to_rom_file.rom` it tries to load `path_to_rom_file.sym`, `path_to_rom_file.lbl` and `path_to_rom_file.noi`. You can also load symbol files using the GUI or the CLI. It supports *cc65* (VICE label file), *lyxass* (EQU) and *mads* (lab and hea) file formats.
 - **Debug Output**: Homebrew games can send debug text to the Trace Logger window using unused Mikey registers `$FDC0`–`$FDC4`. Enable *Debug Output* in the Trace Logger *Settings* menu and make sure the *Debug Messages* filter is active. See the register protocol below.
 
 | Register | Write |
@@ -139,7 +139,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 gearlynx [options] [game_file] [symbol_file]
 
 Arguments:
-  [game_file]              Game file: accepts ROMs (.pce, .sgx, .hes), CUE (.cue) or ZIP (.zip)
+  [game_file]              Game file: accepts ROMs (.lyx, .lnx, .o) or ZIP (.zip)
   [symbol_file]            Optional symbol file for debugging
 
 Options:
@@ -155,7 +155,7 @@ Options:
 
 ### MCP Server
 
-Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, sprite viewing, and more.
+Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, rewind and more.
 
 For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
 
@@ -209,7 +209,7 @@ make
 For older Ubuntu versions (22.04, 24.04), you need to build SDL3 from source first. Use the following commands to build both SDL3 and Gearlynx:
 
 ``` shell
-sudo apt install build-essential cmake \
+sudo apt install build-essential cmake git curl jq pkg-config \
   libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
   libxi-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
   libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev libxtst-dev
