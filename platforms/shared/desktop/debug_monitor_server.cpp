@@ -73,11 +73,7 @@ void DebugMonitorServer::Start()
     }
 
     int opt = 1;
-#ifdef _WIN32
     setsockopt(m_server_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
-#else
-    setsockopt(m_server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-#endif
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -199,11 +195,7 @@ void DebugMonitorServer::AcceptLoop()
             std::lock_guard<std::mutex> lock(m_client_mutex);
 
             int tcp_opt = 1;
-#ifdef _WIN32
             setsockopt(client, IPPROTO_TCP, TCP_NODELAY, (const char*)&tcp_opt, sizeof(tcp_opt));
-#else
-            setsockopt(client, IPPROTO_TCP, TCP_NODELAY, &tcp_opt, sizeof(tcp_opt));
-#endif
 
             m_client_socket = client;
             m_connection_id++;
