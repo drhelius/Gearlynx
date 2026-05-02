@@ -26,6 +26,7 @@
 #include "../gui_debug_disassembler.h"
 #include "../gui_debug_memory.h"
 #include "../gui_debug_memeditor.h"
+#include "../gui_debug_rewind.h"
 #include "../config.h"
 #include "../rewind.h"
 #include "mikey_defines.h"
@@ -3048,10 +3049,8 @@ json DebugAdapter::RewindSeek(int snapshot)
 
     int age = count - snapshot;
 
-    if (!rewind_seek(age))
+    if (!gui_debug_rewind_seek(age))
         return {{"error", "Failed to load snapshot"}};
-
-    emu_render_current_frame();
 
     M6502::M6502_State* cpu = m_core->GetM6502()->GetState();
     std::ostringstream ss;

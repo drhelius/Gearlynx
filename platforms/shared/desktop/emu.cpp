@@ -253,9 +253,12 @@ void emu_update(void)
     }
     else
     {
-        rewind_commit_seek();
-        core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
-        frame_executed = true;
+        if (!core->IsPaused())
+        {
+            rewind_commit_seek();
+            core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
+            frame_executed = true;
+        }
     }
 
     if (frame_executed)
