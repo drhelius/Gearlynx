@@ -113,6 +113,7 @@ struct config_Input
     SDL_Scancode key_option2;
     SDL_Scancode key_A;
     SDL_Scancode key_B;
+    bool allow_up_down = false;
     bool gamepad;
     int gamepad_directional;
     bool gamepad_invert_x_axis;

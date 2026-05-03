@@ -217,9 +217,15 @@ void events_emu(const SDL_Event* event)
                     int x_motion = event->gaxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
 
                     if (x_motion < -STICK_DEAD_ZONE)
+                    {
                         emu_key_pressed(GLYNX_KEY_LEFT);
+                        emu_key_released(GLYNX_KEY_RIGHT);
+                    }
                     else if (x_motion > STICK_DEAD_ZONE)
+                    {
                         emu_key_pressed(GLYNX_KEY_RIGHT);
+                        emu_key_released(GLYNX_KEY_LEFT);
+                    }
                     else
                     {
                         emu_key_released(GLYNX_KEY_LEFT);
@@ -231,9 +237,15 @@ void events_emu(const SDL_Event* event)
                     int y_motion = event->gaxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
 
                     if (y_motion < -STICK_DEAD_ZONE)
+                    {
                         emu_key_pressed(GLYNX_KEY_UP);
+                        emu_key_released(GLYNX_KEY_DOWN);
+                    }
                     else if (y_motion > STICK_DEAD_ZONE)
+                    {
                         emu_key_pressed(GLYNX_KEY_DOWN);
+                        emu_key_released(GLYNX_KEY_UP);
+                    }
                     else
                     {
                         emu_key_released(GLYNX_KEY_UP);

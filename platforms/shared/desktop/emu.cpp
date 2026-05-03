@@ -38,6 +38,8 @@ static GearlynxCore* core;
 static s16* audio_buffer;
 static bool audio_enabled;
 static McpManager* mcp_manager;
+static u16 input_raw_directions = 0;
+static u16 input_active_directions = 0;
 static const int k_frame_buffer_size = 256 * 256 * 4;
 static Uint64 rewind_last_counter = 0;
 static double rewind_pop_accumulator = 0.0;
@@ -56,6 +58,9 @@ static void update_debug_sprites_accumulated(void);
 static void render_debug_sprites(int count);
 static void reset_rewind_timing(void);
 static int get_rewind_pop_budget(void);
+static bool is_direction_key(GLYNX_Keys key);
+static u16 filter_direction_input(u16 state);
+static void update_direction_input(GLYNX_Keys key, bool pressed);
 
 bool emu_init(void)
 {
@@ -314,14 +319,77 @@ static int get_rewind_pop_budget(void)
     return to_pop;
 }
 
+static bool is_direction_key(GLYNX_Keys key)
+{
+    return (key == GLYNX_KEY_UP) || (key == GLYNX_KEY_DOWN) ||
+        (key == GLYNX_KEY_LEFT) || (key == GLYNX_KEY_RIGHT);
+}
+
+static u16 filter_direction_input(u16 state)
+{
+    if (config_input.allow_up_down)
+        return state;
+
+    u16 filtered = 0;
+
+    if ((state & GLYNX_KEY_UP) &&
+        (!(state & GLYNX_KEY_DOWN) || (input_active_directions & GLYNX_KEY_UP)))
+        filtered |= GLYNX_KEY_UP;
+    if ((state & GLYNX_KEY_DOWN) &&
+        (!(state & GLYNX_KEY_UP) || (input_active_directions & GLYNX_KEY_DOWN)))
+        filtered |= GLYNX_KEY_DOWN;
+    if ((state & GLYNX_KEY_LEFT) &&
+        (!(state & GLYNX_KEY_RIGHT) || (input_active_directions & GLYNX_KEY_LEFT)))
+        filtered |= GLYNX_KEY_LEFT;
+    if ((state & GLYNX_KEY_RIGHT) &&
+        (!(state & GLYNX_KEY_LEFT) || (input_active_directions & GLYNX_KEY_RIGHT)))
+        filtered |= GLYNX_KEY_RIGHT;
+
+    return filtered;
+}
+
+static void update_direction_input(GLYNX_Keys key, bool pressed)
+{
+    if (pressed)
+        input_raw_directions = (u16)(input_raw_directions | key);
+    else
+        input_raw_directions = (u16)(input_raw_directions & ~key);
+
+    u16 filtered = filter_direction_input(input_raw_directions);
+
+    static const GLYNX_Keys directions[] = {
+        GLYNX_KEY_UP, GLYNX_KEY_DOWN, GLYNX_KEY_LEFT, GLYNX_KEY_RIGHT
+    };
+
+    for (int i = 0; i < 4; i++)
+    {
+        GLYNX_Keys direction = directions[i];
+        bool was_pressed = (input_active_directions & direction) != 0;
+        bool is_pressed = (filtered & direction) != 0;
+
+        if (is_pressed && !was_pressed)
+            core->KeyPressed(direction);
+        else if (!is_pressed && was_pressed)
+            core->KeyReleased(direction);
+    }
+
+    input_active_directions = filtered;
+}
+
 void emu_key_pressed(GLYNX_Keys key)
 {
-    core->KeyPressed(key);
+    if (is_direction_key(key))
+        update_direction_input(key, true);
+    else
+        core->KeyPressed(key);
 }
 
 void emu_key_released(GLYNX_Keys key)
 {
-    core->KeyReleased(key);
+    if (is_direction_key(key))
+        update_direction_input(key, false);
+    else
+        core->KeyReleased(key);
 }
 
 void emu_clear_frame_buffer(void)
