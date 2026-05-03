@@ -1278,10 +1278,10 @@ void MemEditor::WatchWindow()
                         switch (bytes)
                         {
                             case 1:
-                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%02X", value); 
+                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%02X", value);
                                 break;
                             case 2:
-                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%04X", value); 
+                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%04X", value);
                                 break;
                             case 3:
                                 snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%06X", value);
@@ -2193,6 +2193,9 @@ uint32_t MemEditor::ReadWatchValue(const Watch& watch)
     int byte_offset = (watch.address - m_mem_base_addr) * m_mem_word;
     int total_bytes = m_mem_size * m_mem_word;
     uint32_t value = 0;
+
+    if (byte_offset < 0 || byte_offset >= total_bytes)
+        return 0;
 
     for (int i = 0; i < bytes && (byte_offset + i) < total_bytes; i++)
     {
