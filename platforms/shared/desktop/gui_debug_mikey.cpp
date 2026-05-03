@@ -204,9 +204,10 @@ void gui_debug_window_mikey_colors(void)
     ImGui::PushFont(gui_default_font);
 
     GearlynxCore* core = emu_get_core();
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
+    Mikey* mikey = core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
 
-    const u16 base = 0xFDA0;
+    const u16 base = MIKEY_GREEN0;
 
     ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_BordersInnerV;
 
@@ -239,7 +240,11 @@ void gui_debug_window_mikey_colors(void)
                 ImGui::ColorEdit3(id, (float*)&float_color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoPicker);
 
                 ImGui::SameLine();
-                EditableColor12(idx, &mikey_state->colors[idx].green, &mikey_state->colors[idx].bluered);
+                if (EditableColor12(idx, &g, &br))
+                {
+                    mikey->Write<true>(MIKEY_GREEN0 + idx, g);
+                    mikey->Write<true>(MIKEY_BLUERED0 + idx, br);
+                }
             }
         }
 
