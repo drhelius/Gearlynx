@@ -735,6 +735,8 @@ static void menu_input(void)
                 gamepad_configuration_item("Rewind:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Rewind]);
                 gamepad_configuration_item("Screenshot:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Screenshot]);
                 gamepad_configuration_item("Mute Audio:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Mute]);
+                gamepad_configuration_item("Fullscreen:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Fullscreen]);
+                gamepad_configuration_item("Show Main Menu:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_ShowMainMenu]);
 
                 gui_popup_modal_gamepad();
 
