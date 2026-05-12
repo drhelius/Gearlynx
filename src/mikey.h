@@ -96,10 +96,10 @@ private:
     void ResetPalette();
     u8 ReadColor(u16 address);
     void WriteColor(u16 address, u8 value);
-    u8 ReadTimer(u16 address);
-    void WriteTimer(u16 address, u8 value);
-    u8 ReadAudio(u16 address);
-    void WriteAudio(u16 address, u8 value);
+    template<bool debug = false> u8 ReadTimer(u16 address);
+    template<bool debug = false> void WriteTimer(u16 address, u8 value);
+    template<bool debug = false> u8 ReadAudio(u16 address);
+    template<bool debug = false> void WriteAudio(u16 address, u8 value);
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
     void UpdateTimers(u32 cycles);

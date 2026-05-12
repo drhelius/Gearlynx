@@ -169,9 +169,10 @@ Gearlynx provides [Agent Skills](https://agentskills.io/) that teach AI assistan
 Install with `npx skills add drhelius/gearlynx`. See the [skills README](skills/README.md) for details.
 
 ## Hardware Tests
-- **Atari Lynx Hardware Test ROMs**: [https://github.com/drhelius/lynx-tests](https://github.com/drhelius/lynx-tests).
-<img width="500" src="https://github.com/user-attachments/assets/7b009bdd-725d-4518-b2c1-79ed3bc20784" />
 
+Gearlynx passes all tests from [Atari Lynx Hardware Test ROMs](https://github.com/drhelius/lynx-tests).
+
+<img width="500" src="https://github.com/user-attachments/assets/7b009bdd-725d-4518-b2c1-79ed3bc20784" />
 
 ## Build Instructions
 

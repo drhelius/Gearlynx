@@ -957,7 +957,7 @@ void MemEditor::WatchPopup()
             {
                 int watch_address = (int)watch_address_value;
 
-                if (watch_address >= m_mem_base_addr && watch_address < (m_mem_base_addr + m_mem_size))
+                if (CanWatchRangeFit(watch_address, size))
                 {
                     Watch watch;
                     watch.address = watch_address;
@@ -1005,6 +1005,12 @@ int MemEditor::PerformSearch(int op, int compare_type, int compare_value, int da
     m_search_compare_specific_address = compare_value;
     m_search_data_type = data_type;
 
+    if (m_search_compare_type == 2 && !CanSearchAddressFit(m_search_compare_specific_address))
+    {
+        m_search_results.clear();
+        return 0;
+    }
+
     CalculateSearchResults();
 
     return (int)m_search_results.size();
@@ -1042,10 +1048,41 @@ void MemEditor::GetSelection(int* start, int* end)
     *end = m_selection_end;
 }
 
-void MemEditor::SetSelection(int start, int end)
+bool MemEditor::SetSelection(int start, int end)
 {
-    m_selection_start = start;
-    m_selection_end = end;
+    int start_offset = 0;
+    int end_offset = 0;
+
+    if (!NormalizeSelectionAddress(start, &start_offset) || !NormalizeSelectionAddress(end, &end_offset))
+        return false;
+
+    if (start_offset > end_offset)
+        std::swap(start_offset, end_offset);
+
+    m_selection_start = start_offset;
+    m_selection_end = end_offset;
+
+    return true;
+}
+
+bool MemEditor::NormalizeSelectionAddress(int address, int* offset)
+{
+    if (!IsValidPointer(offset) || !IsValidPointer(m_mem_data) || m_mem_size <= 0 || address < 0)
+        return false;
+
+    if (address >= m_mem_base_addr && address < (m_mem_base_addr + m_mem_size))
+    {
+        *offset = address - m_mem_base_addr;
+        return true;
+    }
+
+    if (address < m_mem_size)
+    {
+        *offset = address;
+        return true;
+    }
+
+    return false;
 }
 
 void MemEditor::ScrollToAddress(int address)
@@ -1241,10 +1278,10 @@ void MemEditor::WatchWindow()
                         switch (bytes)
                         {
                             case 1:
-                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%02X", value); 
+                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%02X", value);
                                 break;
                             case 2:
-                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%04X", value); 
+                                snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%04X", value);
                                 break;
                             case 3:
                                 snprintf(watch_edit_buffer, sizeof(watch_edit_buffer), "%06X", value);
@@ -1459,6 +1496,18 @@ void MemEditor::CalculateSearchResults()
 
     m_search_results.clear();
 
+    int compare_address_value = 0;
+    if (m_search_compare_type == 2)
+    {
+        if (!CanSearchAddressFit(m_search_compare_specific_address))
+            return;
+
+        if (m_mem_word == 1)
+            compare_address_value = m_mem_data[m_search_compare_specific_address];
+        else if (m_mem_word == 2)
+            compare_address_value = ((uint16_t*)m_mem_data)[m_search_compare_specific_address];
+    }
+
     for (int i = 0; i < m_mem_size; i++)
     {
         int compare_value = 0;
@@ -1506,10 +1555,7 @@ void MemEditor::CalculateSearchResults()
                 break;
             // Specific address
             case 2:
-                if (m_mem_word == 1)
-                    compare_value = m_mem_data[m_search_compare_specific_address];
-                else if (m_mem_word == 2)
-                    compare_value = mem_data_16[m_search_compare_specific_address];
+                compare_value = compare_address_value;
                 break;
         }
 
@@ -1727,10 +1773,25 @@ void MemEditor::ClearSelection()
 
 void MemEditor::SetValueToSelection(int value)
 {
-    int selection_size = (m_selection_end - m_selection_start + 1) * m_mem_word;
-    int start = m_selection_start * m_mem_word;
-    int end = start + selection_size;
+    if (!IsValidPointer(m_mem_data) || m_mem_size <= 0 || m_mem_word <= 0)
+        return;
+
+    int selection_start = m_selection_start;
+    int selection_end = m_selection_end;
+
+    if (selection_start > selection_end)
+        std::swap(selection_start, selection_end);
+
+    if (selection_start < 0 || selection_end < 0 || selection_start >= m_mem_size || selection_end >= m_mem_size)
+        return;
+
+    int start = selection_start * m_mem_word;
+    int end = (selection_end + 1) * m_mem_word;
+    int total = m_mem_size * m_mem_word;
     int mask = m_mem_word == 1 ? 0xFF : 0xFFFF;
+
+    if (start < 0 || end > total || start >= end)
+        return;
 
     for (int i = start; i < end; i++)
     {
@@ -2076,9 +2137,14 @@ void MemEditor::PrepareAddWatch(int address, const char* notes)
     m_add_watch = true;
 }
 
-void MemEditor::AddWatchDirect(int address, const char* notes, int size)
+bool MemEditor::AddWatchDirect(int address, const char* notes, int size)
 {
     Watch watch;
+    int size_index = (size >= 0 && size <= 3) ? size : 0;
+
+    if (!CanWatchRangeFit(address, size_index))
+        return false;
+
     watch.address = address;
 
     if (notes && strlen(notes) > 0)
@@ -2086,18 +2152,50 @@ void MemEditor::AddWatchDirect(int address, const char* notes, int size)
     else
         snprintf(watch.notes, 128, "Watch_%04X", address);
 
-    watch.size = (size >= 0 && size <= 3) ? size : 0;
+    watch.size = size_index;
     watch.format = 0;
     m_watches.push_back(watch);
     m_watch_window = true;
+
+    return true;
+}
+
+bool MemEditor::CanWatchRangeFit(int address, int size)
+{
+    if (!IsValidPointer(m_mem_data) || m_mem_size <= 0 || m_mem_word <= 0)
+        return false;
+
+    int bytes = WatchSizeBytes(size);
+    int total_bytes = m_mem_size * m_mem_word;
+
+    if (address < m_mem_base_addr)
+        return false;
+
+    int byte_offset = (address - m_mem_base_addr) * m_mem_word;
+
+    if (bytes <= 0 || byte_offset < 0 || byte_offset > total_bytes - bytes)
+        return false;
+
+    return true;
+}
+
+bool MemEditor::CanSearchAddressFit(int address)
+{
+    return IsValidPointer(m_mem_data) && IsValidPointer(m_search_data) && m_mem_size > 0 && address >= 0 && address < m_mem_size;
 }
 
 uint32_t MemEditor::ReadWatchValue(const Watch& watch)
 {
+    if (!CanWatchRangeFit(watch.address, watch.size))
+        return 0;
+
     int bytes = WatchSizeBytes(watch.size);
     int byte_offset = (watch.address - m_mem_base_addr) * m_mem_word;
     int total_bytes = m_mem_size * m_mem_word;
     uint32_t value = 0;
+
+    if (byte_offset < 0 || byte_offset >= total_bytes)
+        return 0;
 
     for (int i = 0; i < bytes && (byte_offset + i) < total_bytes; i++)
     {
@@ -2109,6 +2207,9 @@ uint32_t MemEditor::ReadWatchValue(const Watch& watch)
 
 void MemEditor::WriteWatchValue(const Watch& watch, uint32_t value)
 {
+    if (!CanWatchRangeFit(watch.address, watch.size))
+        return;
+
     int bytes = WatchSizeBytes(watch.size);
     int byte_offset = (watch.address - m_mem_base_addr) * m_mem_word;
     int total_bytes = m_mem_size * m_mem_word;

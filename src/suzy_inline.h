@@ -195,7 +195,7 @@ INLINE u8 Suzy::Read(u16 address)
         u8 joy = m_input->ReadJoystick();
         DebugSuzy("Reading JOYSTICK: %02X", joy);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
+        if (!debug && m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
         {
             GLYNX_Trace_Entry e;
             e.type = TRACE_SUZY_INPUT;
@@ -212,7 +212,7 @@ INLINE u8 Suzy::Read(u16 address)
         u8 sw = m_input->ReadSwitches();
         DebugSuzy("Reading SWITCHES: %02X", sw);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
+        if (!debug && m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
         {
             GLYNX_Trace_Entry e;
             e.type = TRACE_SUZY_INPUT;

@@ -26,6 +26,7 @@
 #include "../gui_debug_disassembler.h"
 #include "../gui_debug_memory.h"
 #include "../gui_debug_memeditor.h"
+#include "../gui_debug_rewind.h"
 #include "../config.h"
 #include "../rewind.h"
 #include "mikey_defines.h"
@@ -40,6 +41,40 @@ struct DisassemblerBookmark
     u16 address;
     char name[32];
 };
+
+static bool NormalizeMemoryAreaAddress(const MemoryAreaInfo& info, u32 address, u32* offset)
+{
+    if (!IsValidPointer(offset) || !IsValidPointer(info.data) || info.size == 0)
+        return false;
+
+    u64 display_start = info.cpu_offset;
+    u64 display_end = display_start + info.size;
+
+    if ((u64)address >= display_start && (u64)address < display_end)
+    {
+        *offset = address - info.cpu_offset;
+        return true;
+    }
+
+    if (address < info.size)
+    {
+        *offset = address;
+        return true;
+    }
+
+    return false;
+}
+
+static bool MemoryAreaContainsDisplayAddress(const MemoryAreaInfo& info, u32 address)
+{
+    if (!IsValidPointer(info.data) || info.size == 0)
+        return false;
+
+    u64 display_start = info.cpu_offset;
+    u64 display_end = display_start + info.size;
+
+    return (u64)address >= display_start && (u64)address < display_end;
+}
 
 void DebugAdapter::Pause()
 {
@@ -2101,12 +2136,54 @@ json DebugAdapter::SelectMemoryRange(int editor, int start_address, int end_addr
         return result;
     }
 
-    gui_debug_memory_select_range(editor, start_address, end_address);
+    MemoryAreaInfo info = GetMemoryAreaInfo(editor);
+    if (!IsValidPointer(info.data) || info.size == 0)
+    {
+        result["error"] = "Memory area unavailable";
+        return result;
+    }
+
+    u32 start_offset = 0;
+    u32 end_offset = 0;
+    if (!NormalizeMemoryAreaAddress(info, (u32)start_address, &start_offset) ||
+        !NormalizeMemoryAreaAddress(info, (u32)end_address, &end_offset))
+    {
+        result["error"] = "Selection range outside memory area";
+        return result;
+    }
+
+    if (start_offset > end_offset)
+        std::swap(start_offset, end_offset);
+
+    u32 display_start = info.cpu_offset + start_offset;
+    u32 display_end = info.cpu_offset + end_offset;
+
+    if (!gui_debug_memory_select_range(editor, (int)display_start, (int)display_end))
+    {
+        result["error"] = "Unable to apply memory selection";
+        return result;
+    }
+
+    int actual_start = -1;
+    int actual_end = -1;
+    gui_debug_memory_get_selection(editor, &actual_start, &actual_end);
+    if (actual_start < 0 || actual_end < actual_start || (u32)actual_end >= info.size)
+    {
+        result["error"] = "Unable to read applied memory selection";
+        return result;
+    }
+
+    u32 actual_display_start = info.cpu_offset + (u32)actual_start;
+    u32 actual_display_end = info.cpu_offset + (u32)actual_end;
+
+    std::ostringstream start_ss, end_ss;
+    start_ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << actual_display_start;
+    end_ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << actual_display_end;
 
     result["success"] = true;
-    result["editor"] = editor;
-    result["start_address"] = start_address;
-    result["end_address"] = end_address;
+    result["area"] = editor;
+    result["start_address"] = start_ss.str();
+    result["end_address"] = end_ss.str();
 
     return result;
 }
@@ -2203,7 +2280,18 @@ json DebugAdapter::AddMemoryWatch(int editor, int address, const std::string& no
         return result;
     }
 
-    gui_debug_memory_add_watch(editor, address, notes.c_str(), size);
+    MemoryAreaInfo info = GetMemoryAreaInfo(editor);
+    if (!MemoryAreaContainsDisplayAddress(info, (u32)address))
+    {
+        result["error"] = "Watch address outside memory area";
+        return result;
+    }
+
+    if (!gui_debug_memory_add_watch(editor, address, notes.c_str(), size))
+    {
+        result["error"] = "Unable to add memory watch";
+        return result;
+    }
 
     result["success"] = true;
     result["editor"] = editor;
@@ -2573,6 +2661,19 @@ json DebugAdapter::MemorySearch(int area, const std::string& op, const std::stri
     {
         result["error"] = "Invalid compare_type";
         return result;
+    }
+
+    if (compare_type_index == 2)
+    {
+        MemoryAreaInfo info = GetMemoryAreaInfo(area);
+        u32 compare_offset = 0;
+        if (!NormalizeMemoryAreaAddress(info, (u32)compare_value, &compare_offset))
+        {
+            result["error"] = "Compare address outside memory area";
+            return result;
+        }
+
+        compare_value = (int)compare_offset;
     }
 
     int data_type_index = 0;
@@ -3048,10 +3149,8 @@ json DebugAdapter::RewindSeek(int snapshot)
 
     int age = count - snapshot;
 
-    if (!rewind_seek(age))
+    if (!gui_debug_rewind_seek(age))
         return {{"error", "Failed to load snapshot"}};
-
-    emu_render_current_frame();
 
     M6502::M6502_State* cpu = m_core->GetM6502()->GetState();
     std::ostringstream ss;

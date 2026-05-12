@@ -84,7 +84,7 @@ public:
     void OpenFindBytes();
     void AddWatch();
     void PrepareAddWatch(int address, const char* notes);
-    void AddWatchDirect(int address, const char* notes, int size);
+    bool AddWatchDirect(int address, const char* notes, int size);
     void RemoveWatches();
     std::vector<Watch>* GetWatches();
     void SetGuiFont(ImFont* gui_font);
@@ -99,7 +99,7 @@ public:
     int GetWordBytes();
     char* GetTitle();
     void GetSelection(int* start, int* end);
-    void SetSelection(int start, int end);
+    bool SetSelection(int start, int end);
     void ScrollToAddress(int address);
     void SearchCapture();
     int PerformSearch(int op, int compare_type, int compare_value, int data_type);
@@ -128,6 +128,9 @@ private:
     void DrawSearchValue(int value, ImVec4 color);
     void FindBytesNext(int start_offset);
     bool ParseHexByteString(const char* str, uint8_t* out, int* out_len, int max_len);
+    bool NormalizeSelectionAddress(int address, int* offset);
+    bool CanWatchRangeFit(int address, int size);
+    bool CanSearchAddressFit(int address);
     uint32_t ReadWatchValue(const Watch& watch);
     void WriteWatchValue(const Watch& watch, uint32_t value);
     int WatchSizeBytes(int size);

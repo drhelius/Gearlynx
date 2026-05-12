@@ -396,14 +396,18 @@ static void memory_editor_menu(void)
     ImGui::EndMenuBar();
 }
 
-void gui_debug_memory_select_range(int editor, int start_address, int end_address)
+bool gui_debug_memory_select_range(int editor, int start_address, int end_address)
 {
     if (editor < 0 || editor >= MEMORY_EDITOR_MAX)
-        return;
+        return false;
+
+    if (!mem_edit[editor].SetSelection(start_address, end_address))
+        return false;
 
     mem_edit_select = editor;
-    mem_edit[editor].SetSelection(start_address, end_address);
     mem_edit[editor].ScrollToAddress(start_address);
+
+    return true;
 }
 
 void gui_debug_memory_set_selection_value(int editor, u8 value)
@@ -452,10 +456,10 @@ void gui_debug_memory_remove_bookmark(int editor, int address)
     }
 }
 
-void gui_debug_memory_add_watch(int editor, int address, const char* notes, int size)
+bool gui_debug_memory_add_watch(int editor, int address, const char* notes, int size)
 {
     if (editor < 0 || editor >= MEMORY_EDITOR_MAX)
-        return;
+        return false;
 
     int size_index = 0;
     switch (size)
@@ -467,7 +471,7 @@ void gui_debug_memory_add_watch(int editor, int address, const char* notes, int 
         default: size_index = 0; break;
     }
 
-    mem_edit[editor].AddWatchDirect(address, notes, size_index);
+    return mem_edit[editor].AddWatchDirect(address, notes, size_index);
 }
 
 void gui_debug_memory_open_watch_popup(int editor, int address, const char* notes)

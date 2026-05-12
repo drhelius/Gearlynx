@@ -735,6 +735,8 @@ static void menu_input(void)
                 gamepad_configuration_item("Rewind:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Rewind]);
                 gamepad_configuration_item("Screenshot:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Screenshot]);
                 gamepad_configuration_item("Mute Audio:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Mute]);
+                gamepad_configuration_item("Fullscreen:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_Fullscreen]);
+                gamepad_configuration_item("Show Main Menu:", &config_input_gamepad_shortcuts.gamepad_shortcuts[config_HotkeyIndex_ShowMainMenu]);
 
                 gui_popup_modal_gamepad();
 
@@ -742,6 +744,18 @@ static void menu_input(void)
             }
 
             ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Allow Up+Down / Left+Right", "", &config_input.allow_up_down);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Allow pressing, quickly alternating, or holding");
+            ImGui::Text("both left and right or up and down directions.");
+            ImGui::Text("This may cause movement glitches in certain games.");
+            ImGui::EndTooltip();
         }
 
         ImGui::EndMenu();
