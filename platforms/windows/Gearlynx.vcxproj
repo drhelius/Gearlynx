@@ -206,6 +206,12 @@
     <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp" />
     <ClCompile Include="..\shared\desktop\single_instance.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="Gearlynx.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Gearlynx.rc" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
