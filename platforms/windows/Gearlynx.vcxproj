@@ -209,6 +209,9 @@
   <ItemGroup>
     <ResourceCompile Include="Gearlynx.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="Gearlynx.ico" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
