@@ -48,7 +48,6 @@ static Uint64 status_message_duration = 0;
 static bool error_window_active = false;
 static char error_message[4096] = "";
 static void main_window(void);
-static void push_recent_rom(std::string path);
 static void show_status_message(void);
 static void show_error_window(void);
 static void set_style(void);
@@ -57,7 +56,6 @@ static ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t);
 bool gui_init(void)
 {
     gui_main_window_width = 0;
-    gui_main_window_height = 0;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -286,7 +284,7 @@ void gui_load_rom(const char* path)
 
     gui_debug_auto_save_settings();
 
-    push_recent_rom(path);
+    config_push_recent_media(path);
     emu_resume();
     emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
 
@@ -531,27 +529,6 @@ static void main_window(void)
     ImGui::PopStyleVar();
     ImGui::PopStyleVar();
     ImGui::PopStyleVar();
-}
-
-static void push_recent_rom(std::string path)
-{
-    int slot = 0;
-    for (slot = 0; slot < config_max_recent_roms; slot++)
-    {
-        if (config_emulator.recent_roms[slot].compare(path) == 0)
-        {
-            break;
-        }
-    }
-
-    slot = MIN(slot, config_max_recent_roms - 1);
-
-    for (int i = slot; i > 0; i--)
-    {
-        config_emulator.recent_roms[i] = config_emulator.recent_roms[i - 1];
-    }
-
-    config_emulator.recent_roms[0] = path;
 }
 
 static void show_status_message(void)

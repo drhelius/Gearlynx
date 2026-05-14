@@ -320,6 +320,7 @@ The server exposes tools organized in the following categories:
 
 ### Media & State Management
 - `get_media_info` - Get loaded ROM info (file path, type, size, CRC, rotation, EEPROM, BIOS status)
+- `list_recent_media` - List the 10 most recent ROM files opened by Gearlynx
 - `load_media` - Load ROM file (.lnx, .lyx, .o, .zip). Automatically loads symbol file if present (.sym, .lbl, .noi)
 - `load_bios` - Load BIOS file (must be exactly 512 bytes).
 - `list_save_state_slots` - List all 5 save state slots with information (rom name, timestamp, screenshot availability)
