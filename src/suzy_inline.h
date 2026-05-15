@@ -558,6 +558,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
     case SUZY_SPRGO:       // 0xFC91
         DebugSuzy("Setting SPRGO to %02X (was %02X)", value, m_state.SPRGO);
         m_state.SPRGO = value;
+        m_state.sprsys_stopsprites = false;
         if ((value & 0x01) && IS_SET_BIT(m_state.SUZYBUSEN, 0))
             SpritesGo();
         break;
