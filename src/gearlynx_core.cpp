@@ -237,8 +237,7 @@ void GearlynxCore::SaveRam(const char* path, bool full_path)
             final_path = path;
             if (!full_path)
             {
-                final_path += "/";
-                final_path += m_media->GetFileName();
+                append_path_component(final_path, m_media->GetFileName());
             }
         }
         else
@@ -268,7 +267,7 @@ void GearlynxCore::LoadRam()
 
 void GearlynxCore::LoadRam(const char* path, bool full_path)
 {
-    if (m_media->IsReady())
+    if (m_media->IsReady() && m_media->GetSaveMemorySize() > 0)
     {
         using namespace std;
         string final_path;
@@ -278,8 +277,7 @@ void GearlynxCore::LoadRam(const char* path, bool full_path)
             final_path = path;
             if (!full_path)
             {
-                final_path += "/";
-                final_path += m_media->GetFileName();
+                append_path_component(final_path, m_media->GetFileName());
             }
         }
         else
@@ -331,8 +329,7 @@ std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
     if (IsValidPointer(path))
     {
         full_path = path;
-        full_path += "/";
-        full_path += m_media->GetFileName();
+        append_path_component(full_path, m_media->GetFileName());
     }
     else
         full_path = m_media->GetFilePath();
