@@ -25,29 +25,22 @@
     #include <glad.h>
 #endif
 
+#include <string>
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "emu.h"
 #include "config.h"
 #include "gearlynx.h"
-#include "gui.h"
 
 #define OGL_RENDERER_IMPORT
 #include "ogl_renderer.h"
+#include "ogl_shader_chain.h"
+#include "ogl_shader_program.h"
 
 static uint32_t system_texture;
-static uint32_t persistence_texture[2];
-static uint32_t persistence_fbo[2];
-static int persistence_index = 0;
-static uint32_t history_textures[MAX_FRAME_HISTORY];
-static uint32_t history_fbo[MAX_FRAME_HISTORY];
-static int frame_history_index = 0;
-static uint32_t scanlines_horizontal_texture;
-static uint32_t scanlines_vertical_texture;
-static uint32_t scanlines_grid_texture;
 static uint32_t frame_buffer_object;
 static GLYNX_Runtime_Info current_runtime;
-static bool first_frame;
+static OglRendererScreenGeometry screen_geometry;
 
 static uint32_t quad_shader_program = 0;
 static uint32_t quad_vao = 0;
@@ -56,45 +49,31 @@ static int quad_uniform_texture = -1;
 static int quad_uniform_color = -1;
 static int quad_uniform_tex_scale = -1;
 
-static uint32_t mix_shader_program = 0;
-static int mix_uniform_tex_new = -1;
-static int mix_uniform_tex_old = -1;
-static int mix_uniform_decay = -1;
-static int mix_uniform_tex_scale_new = -1;
-static int mix_uniform_tex_scale_old = -1;
-
-static u8 scanlines_horizontal[64] = {
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0xFF,  0x00, 0x00, 0x00, 0xFF,  0x00, 0x00, 0x00, 0xFF,  0x00, 0x00, 0x00, 0xFF};
-static u8 scanlines_vertical[64] = {
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF};
-static u8 scanlines_grid[64] = {
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF,
-    0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0xFF,
-    0x00, 0x00, 0x00, 0xFF,  0x00, 0x00, 0x00, 0xFF,  0x00, 0x00, 0x00, 0xFF,  0x00, 0x00, 0x00, 0xFF};
-
 static void init_ogl_gui(void);
-static void init_ogl_emu(void);
+static bool init_ogl_emu(void);
 static void init_ogl_debug(void);
 static void init_ogl_savestates(void);
-static void init_scanlines_texture(void);
-static void init_persistence(void);
-static void init_shaders(void);
+static bool init_shaders(void);
 static void render_gui(void);
+static bool should_use_internal_shader_chain(void);
+static void render_internal_shader_chain(void);
+static void render_external_shader_chain(void);
+static void render_internal_shader_chain_feedback(void);
 static void render_emu_normal(void);
-static void render_emu_mix(void);
 static void update_emu_texture(void);
-static void render_quad(float tex_h, float tex_v);
+static void render_quad(uint32_t program, uint32_t texture, int viewport_width, int viewport_height, float tex_h, float tex_v, float red, float green, float blue, float alpha);
+static void render_quad_preset(int pass_index, uint32_t program, uint32_t texture, int input_width, int input_height, int viewport_width, int viewport_height);
 static void update_system_texture(void);
 static void update_debug_textures(void);
 static void update_savestates_texture(void);
-static void render_scanlines(void);
+static void load_configured_shader_preset(void);
+static void apply_shader_parameter_config(void);
+static bool get_active_shader_preset_file(char* preset_file, size_t preset_file_size);
+static float get_original_aspect(void);
+static void configure_texture_2d(bool filter_linear);
+static void create_texture_2d(uint32_t* texture, int width, int height, int internal_format, uint32_t format, uint32_t type, const void* pixels, bool filter_linear);
+static void resize_texture_2d(uint32_t texture, int width, int height, int internal_format, uint32_t format, uint32_t type, const void* pixels, bool filter_linear);
+static bool check_framebuffer_complete(const char* name);
 
 bool ogl_renderer_init(void)
 {
@@ -115,13 +94,22 @@ bool ogl_renderer_init(void)
 
     glDisable(GL_FRAMEBUFFER_SRGB);
 
-    init_shaders();
+    if (!init_shaders())
+        return false;
+
     init_ogl_gui();
-    init_ogl_emu();
+
+    if (!init_ogl_emu())
+        return false;
+
+    if (!ogl_shader_chain_init("internal shader-chain framebuffer"))
+        return false;
+
+    load_configured_shader_preset();
+
     init_ogl_debug();
     init_ogl_savestates();
 
-    first_frame = true;
     return true;
 }
 
@@ -130,17 +118,9 @@ void ogl_renderer_destroy(void)
     glDeleteFramebuffers(1, &frame_buffer_object); 
     glDeleteTextures(1, &ogl_renderer_emu_texture);
     glDeleteTextures(1, &system_texture);
-    glDeleteTextures(1, &scanlines_horizontal_texture);
-    glDeleteTextures(1, &scanlines_vertical_texture);
-    glDeleteTextures(1, &scanlines_grid_texture);
+    ogl_shader_chain_destroy();
 
-    glDeleteTextures(2, persistence_texture);
-    glDeleteFramebuffers(2, persistence_fbo);
-
-    glDeleteTextures(MAX_FRAME_HISTORY, history_textures);
-    glDeleteFramebuffers(MAX_FRAME_HISTORY, history_fbo);
-
-    for (int s = 0; s < 64; s++)
+    for (int s = 0; s < DEBUG_MAX_SPRITES; s++)
         glDeleteTextures(1, &ogl_renderer_emu_debug_sprites[s]);
 
     for (int s = 0; s < 5; s++)
@@ -150,15 +130,12 @@ void ogl_renderer_destroy(void)
 
     if (quad_shader_program)
         glDeleteProgram(quad_shader_program);
-    if (mix_shader_program)
-        glDeleteProgram(mix_shader_program);
     if (quad_vao)
         glDeleteVertexArrays(1, &quad_vao);
     if (quad_vbo)
         glDeleteBuffers(1, &quad_vbo);
 
     quad_shader_program = 0;
-    mix_shader_program = 0;
     quad_vao = 0;
     quad_vbo = 0;
 
@@ -181,13 +158,12 @@ void ogl_renderer_render(void)
 
     update_savestates_texture();
 
-    if (config_video.ghosting)
-        render_emu_mix();
+    bool use_internal_shader_chain = should_use_internal_shader_chain();
+
+    if (use_internal_shader_chain)
+        render_internal_shader_chain();
     else
         render_emu_normal();
-
-    if (config_video.scanlines_type > 0)
-        render_scanlines();
 
     update_emu_texture();
 
@@ -221,6 +197,90 @@ void ogl_renderer_end_render(void)
 #endif
 }
 
+void ogl_renderer_set_screen_geometry(const OglRendererScreenGeometry* geometry)
+{
+    if (!geometry)
+        return;
+
+    screen_geometry = *geometry;
+}
+
+uint32_t ogl_renderer_get_screen_texture(void)
+{
+    if (should_use_internal_shader_chain() && ogl_shader_chain_get_pass_texture() != 0)
+        return ogl_shader_chain_get_pass_texture();
+
+    return ogl_renderer_emu_texture;
+}
+
+void ogl_renderer_get_screen_uv(float* u, float* v)
+{
+    if (should_use_internal_shader_chain())
+    {
+        if (u)
+            *u = 1.0f;
+        if (v)
+            *v = 1.0f;
+        return;
+    }
+
+    GLYNX_Runtime_Info runtime;
+    emu_get_runtime(runtime);
+
+    if (u)
+        *u = (float)runtime.screen_width / (float)SYSTEM_TEXTURE_WIDTH;
+    if (v)
+        *v = (float)runtime.screen_height / (float)SYSTEM_TEXTURE_HEIGHT;
+}
+
+bool ogl_renderer_load_shader_preset(const char* path)
+{
+    char resolved_path[SHADER_PRESET_MAX_PATH];
+    if (!shader_preset_resolve_config_path(path, resolved_path, sizeof(resolved_path)))
+    {
+        Error("Shader preset is not in the bundled shader directory: %s", path ? path : "");
+        return false;
+    }
+
+    if (!ogl_shader_chain_load_preset(resolved_path))
+        return false;
+
+    config_video.shader_mode = config_ShaderMode_External;
+    apply_shader_parameter_config();
+
+    char config_path[SHADER_PRESET_MAX_PATH];
+    if (shader_preset_get_config_path(resolved_path, config_path, sizeof(config_path)))
+        config_video.shader_preset_path.assign(config_path);
+
+    ogl_renderer_save_shader_parameter_config();
+    return true;
+}
+
+void ogl_renderer_unload_shader_preset(void)
+{
+    ogl_shader_chain_unload_preset();
+    config_video.shader_mode = config_ShaderMode_PixelPerfect;
+    config_video.shader_preset_path.clear();
+}
+
+void ogl_renderer_save_shader_parameter_config(void)
+{
+    char preset_file[SHADER_PRESET_MAX_PATH];
+    if (!get_active_shader_preset_file(preset_file, sizeof(preset_file)))
+        return;
+
+    int count = ogl_shader_chain_get_parameter_count();
+
+    for (int i = 0; i < count; i++)
+    {
+        const ShaderPresetParameter* parameter = ogl_shader_chain_get_parameter(i);
+        if (!parameter)
+            continue;
+
+        config_write_shader_parameter(preset_file, parameter->name, parameter->value);
+    }
+}
+
 static void init_ogl_gui(void)
 {
 #if defined(__APPLE__)
@@ -230,322 +290,186 @@ static void init_ogl_gui(void)
 #endif
 }
 
-static void init_ogl_emu(void)
+static bool init_ogl_emu(void)
 {
     glGenFramebuffers(1, &frame_buffer_object);
-    glGenTextures(1, &ogl_renderer_emu_texture);
-    glGenTextures(1, &system_texture);
+    create_texture_2d(&ogl_renderer_emu_texture, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE, NULL, false);
+    create_texture_2d(&system_texture, SYSTEM_TEXTURE_WIDTH, SYSTEM_TEXTURE_HEIGHT, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) emu_frame_buffer, false);
 
     glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_object);
-    glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ogl_renderer_emu_texture, 0);
+
+    bool complete = check_framebuffer_complete("emulator framebuffer");
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    glBindTexture(GL_TEXTURE_2D, system_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SYSTEM_TEXTURE_WIDTH, SYSTEM_TEXTURE_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) emu_frame_buffer);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    init_persistence();
-    init_scanlines_texture();
+    return complete;
 }
 
 static void init_ogl_debug(void)
 {
     for (int s = 0; s < DEBUG_MAX_SPRITES; s++)
     {
-        glGenTextures(1, &ogl_renderer_emu_debug_sprites[s]);
-        glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_sprites[s]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_sprite_buffers[s]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        create_texture_2d(&ogl_renderer_emu_debug_sprites[s], 512, 512, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_sprite_buffers[s], false);
     }
 
     for (int s = 0; s < 5; s++)
     {
-        glGenTextures(1, &ogl_renderer_emu_debug_framebuffer[s]);
-        glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_debug_framebuffer[s]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_framebuffer[s]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        create_texture_2d(&ogl_renderer_emu_debug_framebuffer[s], 256, 128, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)emu_debug_framebuffer[s], false);
     }
 }
 
 static void init_ogl_savestates(void)
 {
-    glGenTextures(1, &ogl_renderer_emu_savestates);
-    glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_savestates);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-}
-
-static void init_scanlines_texture(void)
-{
-    glGenTextures(1, &scanlines_horizontal_texture);
-    glBindTexture(GL_TEXTURE_2D, scanlines_horizontal_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) scanlines_horizontal);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glGenTextures(1, &scanlines_vertical_texture);
-    glBindTexture(GL_TEXTURE_2D, scanlines_vertical_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) scanlines_vertical);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glGenTextures(1, &scanlines_grid_texture);
-    glBindTexture(GL_TEXTURE_2D, scanlines_grid_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) scanlines_grid);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-}
-
-static void init_persistence(void)
-{
-    for (int i = 0; i < 2; i++)
-    {
-        glGenTextures(1, &persistence_texture[i]);
-        glBindTexture(GL_TEXTURE_2D, persistence_texture[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glGenFramebuffers(1, &persistence_fbo[i]);
-        glBindFramebuffer(GL_FRAMEBUFFER, persistence_fbo[i]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, persistence_texture[i], 0);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
-
-    for (int i = 0; i < MAX_FRAME_HISTORY; i++)
-    {
-        glGenTextures(1, &history_textures[i]);
-        glBindTexture(GL_TEXTURE_2D, history_textures[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glGenFramebuffers(1, &history_fbo[i]);
-        glBindFramebuffer(GL_FRAMEBUFFER, history_fbo[i]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, history_textures[i], 0);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    persistence_index = 0;
-    frame_history_index = 0;
-}
-
-static void init_shaders(void)
-{
-#if defined(__APPLE__)
-    const char* version = "#version 150\n";
-#else
-    const char* version = "#version 130\n";
-#endif
-
-    const char* vs_body =
-        "in vec2 aPos;\n"
-        "in vec2 aTexCoord;\n"
-        "out vec2 vTexCoord;\n"
-        "uniform vec2 uTexScale;\n"
-        "void main() {\n"
-        "    gl_Position = vec4(aPos, 0.0, 1.0);\n"
-        "    vTexCoord = aTexCoord * uTexScale;\n"
-        "}\n";
-
-    const char* fs_body =
-        "in vec2 vTexCoord;\n"
-        "out vec4 FragColor;\n"
-        "uniform sampler2D uTexture;\n"
-        "uniform vec4 uColor;\n"
-        "void main() {\n"
-        "    FragColor = texture(uTexture, vTexCoord) * uColor;\n"
-        "}\n";
-
-    const char* vs_sources[2] = { version, vs_body };
-    const char* fs_sources[2] = { version, fs_body };
-
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 2, vs_sources, NULL);
-    glCompileShader(vs);
-
-    GLint compiled = 0;
-    glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled);
-    if (!compiled)
-    {
-        GLchar info[512];
-        glGetShaderInfoLog(vs, 512, NULL, info);
-        Error("Vertex shader compile error: %s", info);
-    }
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 2, fs_sources, NULL);
-    glCompileShader(fs);
-
-    glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled);
-    if (!compiled)
-    {
-        GLchar info[512];
-        glGetShaderInfoLog(fs, 512, NULL, info);
-        Error("Fragment shader compile error: %s", info);
-    }
-
-    quad_shader_program = glCreateProgram();
-    glAttachShader(quad_shader_program, vs);
-    glAttachShader(quad_shader_program, fs);
-    glLinkProgram(quad_shader_program);
-
-    GLint linked = 0;
-    glGetProgramiv(quad_shader_program, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar info[512];
-        glGetProgramInfoLog(quad_shader_program, 512, NULL, info);
-        Error("Shader program link error: %s", info);
-    }
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-
-    quad_uniform_tex_scale = glGetUniformLocation(quad_shader_program, "uTexScale");
-    quad_uniform_texture = glGetUniformLocation(quad_shader_program, "uTexture");
-    quad_uniform_color = glGetUniformLocation(quad_shader_program, "uColor");
-
-    glUseProgram(quad_shader_program);
-    glUniform1i(quad_uniform_texture, 0);
-    glUseProgram(0);
-
-    float quad_vertices[] = {
-        -1.0f, -1.0f,  0.0f,  0.0f,
-         1.0f, -1.0f,  1.0f,  0.0f,
-        -1.0f,  1.0f,  0.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,  1.0f,
-    };
-
-    glGenVertexArrays(1, &quad_vao);
-    glGenBuffers(1, &quad_vbo);
-
-    glBindVertexArray(quad_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
-
-    GLint pos_attrib = glGetAttribLocation(quad_shader_program, "aPos");
-    GLint tex_attrib = glGetAttribLocation(quad_shader_program, "aTexCoord");
-
-    glEnableVertexAttribArray(pos_attrib);
-    glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-
-    glEnableVertexAttribArray(tex_attrib);
-    glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    Debug("Quad shader initialized (program=%u, vao=%u, vbo=%u)", quad_shader_program, quad_vao, quad_vbo);
-
-    const char* mix_vs_body =
-        "in vec2 aPos;\n"
-        "in vec2 aTexCoord;\n"
-        "out vec2 vTexCoordNew;\n"
-        "out vec2 vTexCoordOld;\n"
-        "uniform vec2 uTexScaleNew;\n"
-        "uniform vec2 uTexScaleOld;\n"
-        "void main() {\n"
-        "    gl_Position = vec4(aPos, 0.0, 1.0);\n"
-        "    vTexCoordNew = aTexCoord * uTexScaleNew;\n"
-        "    vTexCoordOld = aTexCoord * uTexScaleOld;\n"
-        "}\n";
-
-    const char* mix_fs_body =
-        "in vec2 vTexCoordNew;\n"
-        "in vec2 vTexCoordOld;\n"
-        "out vec4 FragColor;\n"
-        "uniform sampler2D uTexNew;\n"
-        "uniform sampler2D uTexOld;\n"
-        "uniform float uDecay;\n"
-        "void main() {\n"
-        "    vec3 new_color = texture(uTexNew, vTexCoordNew).rgb;\n"
-        "    vec3 old_color = texture(uTexOld, vTexCoordOld).rgb;\n"
-        "    FragColor = vec4(mix(new_color, old_color, uDecay), 1.0);\n"
-        "}\n";
-
-    const char* mix_vs_sources[2] = { version, mix_vs_body };
-    const char* mix_fs_sources[2] = { version, mix_fs_body };
-
-    GLuint mix_vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(mix_vs, 2, mix_vs_sources, NULL);
-    glCompileShader(mix_vs);
-
-    glGetShaderiv(mix_vs, GL_COMPILE_STATUS, &compiled);
-    if (!compiled)
-    {
-        GLchar info[512];
-        glGetShaderInfoLog(mix_vs, 512, NULL, info);
-        Error("Mix vertex shader compile error: %s", info);
-    }
-
-    GLuint mix_fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(mix_fs, 2, mix_fs_sources, NULL);
-    glCompileShader(mix_fs);
-
-    glGetShaderiv(mix_fs, GL_COMPILE_STATUS, &compiled);
-    if (!compiled)
-    {
-        GLchar info[512];
-        glGetShaderInfoLog(mix_fs, 512, NULL, info);
-        Error("Mix fragment shader compile error: %s", info);
-    }
-
-    mix_shader_program = glCreateProgram();
-    glAttachShader(mix_shader_program, mix_vs);
-    glAttachShader(mix_shader_program, mix_fs);
-    glLinkProgram(mix_shader_program);
-
-    glGetProgramiv(mix_shader_program, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar info[512];
-        glGetProgramInfoLog(mix_shader_program, 512, NULL, info);
-        Error("Mix shader program link error: %s", info);
-    }
-
-    glDeleteShader(mix_vs);
-    glDeleteShader(mix_fs);
-
-    mix_uniform_tex_new = glGetUniformLocation(mix_shader_program, "uTexNew");
-    mix_uniform_tex_old = glGetUniformLocation(mix_shader_program, "uTexOld");
-    mix_uniform_decay = glGetUniformLocation(mix_shader_program, "uDecay");
-    mix_uniform_tex_scale_new = glGetUniformLocation(mix_shader_program, "uTexScaleNew");
-    mix_uniform_tex_scale_old = glGetUniformLocation(mix_shader_program, "uTexScaleOld");
-
-    glUseProgram(mix_shader_program);
-    glUniform1i(mix_uniform_tex_new, 0);
-    glUniform1i(mix_uniform_tex_old, 1);
-    glUseProgram(0);
-
-    Debug("Mix shader initialized (program=%u)", mix_shader_program);
+    create_texture_2d(&ogl_renderer_emu_savestates, SYSTEM_TEXTURE_WIDTH, SYSTEM_TEXTURE_HEIGHT, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, NULL, false);
 }
 
 static void render_gui(void)
 {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+static bool should_use_internal_shader_chain(void)
+{
+    return ogl_shader_chain_is_initialized() &&
+            !config_debug.debug &&
+            screen_geometry.physical_width > 0 &&
+            screen_geometry.physical_height > 0;
+}
+
+static void render_internal_shader_chain(void)
+{
+    bool has_preset = ogl_shader_chain_has_preset();
+    bool filter_linear = has_preset ? ogl_shader_chain_get_preset_filter_linear() : false;
+
+    OglShaderChainSourceTexture source_texture;
+    source_texture.width = current_runtime.screen_width;
+    source_texture.height = current_runtime.screen_height;
+    source_texture.pixels = emu_frame_buffer;
+    source_texture.filter_linear = filter_linear;
+
+    if (!ogl_shader_chain_update_source_texture(&source_texture))
+    {
+        render_emu_normal();
+        return;
+    }
+
+    if (has_preset)
+    {
+        render_external_shader_chain();
+        return;
+    }
+
+    OglShaderChainFramebufferTexture pass_texture;
+    pass_texture.width = screen_geometry.physical_width;
+    pass_texture.height = screen_geometry.physical_height;
+    pass_texture.filter_linear = false;
+    pass_texture.float_framebuffer = false;
+
+    if (!ogl_shader_chain_resize_pass_texture(&pass_texture))
+    {
+        render_emu_normal();
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, ogl_shader_chain_get_pass_framebuffer());
+    glDisable(GL_BLEND);
+
+    render_quad(quad_shader_program, ogl_shader_chain_get_source_texture(),
+            ogl_shader_chain_get_pass_width(), ogl_shader_chain_get_pass_height(),
+            1.0f, 1.0f,
+            1.0f, 1.0f, 1.0f, 1.0f);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+static void render_external_shader_chain(void)
+{
+    glDisable(GL_BLEND);
+
+    int pass_count = ogl_shader_chain_get_preset_pass_count();
+    if (pass_count <= 0)
+        return;
+
+    int original_width = current_runtime.screen_width;
+    int original_height = current_runtime.screen_height;
+    int input_width = original_width;
+    int input_height = original_height;
+    uint32_t input_texture = ogl_shader_chain_get_source_texture();
+    bool input_float_framebuffer = false;
+
+    for (int i = 0; i < pass_count; i++)
+    {
+        int output_width = screen_geometry.physical_width;
+        int output_height = screen_geometry.physical_height;
+        bool final_pass = i == pass_count - 1;
+        OglShaderChainPassSize pass_size;
+        pass_size.source_width = original_width;
+        pass_size.source_height = original_height;
+        pass_size.previous_width = input_width;
+        pass_size.previous_height = input_height;
+        pass_size.viewport_width = screen_geometry.physical_width;
+        pass_size.viewport_height = screen_geometry.physical_height;
+
+        ogl_shader_chain_get_preset_pass_output_size(i, &pass_size, &output_width, &output_height);
+
+        uint32_t output_fbo = 0;
+        uint32_t output_texture = 0;
+        OglShaderChainFramebufferTexture framebuffer_texture;
+        framebuffer_texture.width = output_width;
+        framebuffer_texture.height = output_height;
+        framebuffer_texture.float_framebuffer = ogl_shader_chain_get_preset_pass_float_framebuffer(i);
+
+        if (final_pass)
+        {
+            framebuffer_texture.filter_linear = false;
+            if (!ogl_shader_chain_resize_pass_texture(&framebuffer_texture))
+                return;
+            output_fbo = ogl_shader_chain_get_pass_framebuffer();
+            output_texture = ogl_shader_chain_get_pass_texture();
+        }
+        else
+        {
+            framebuffer_texture.filter_linear = ogl_shader_chain_get_preset_pass_filter_linear(i + 1);
+            if (!ogl_shader_chain_resize_intermediate_texture(i, &framebuffer_texture))
+                return;
+            output_fbo = ogl_shader_chain_get_intermediate_framebuffer(i);
+            output_texture = ogl_shader_chain_get_intermediate_texture(i);
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, output_fbo);
+        render_quad_preset(i, ogl_shader_chain_get_preset_pass_program(i), input_texture, input_width, input_height, output_width, output_height);
+
+        if (ogl_shader_chain_get_preset_pass_uses_history(i))
+        {
+            ogl_shader_chain_store_pass_history(i, input_texture, input_width, input_height,
+                ogl_shader_chain_get_preset_pass_filter_linear(i), input_float_framebuffer);
+        }
+
+        input_texture = output_texture;
+        input_width = output_width;
+        input_height = output_height;
+        input_float_framebuffer = framebuffer_texture.float_framebuffer;
+    }
+
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (ogl_shader_chain_preset_uses_feedback())
+        render_internal_shader_chain_feedback();
+}
+
+static void render_internal_shader_chain_feedback(void)
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, ogl_shader_chain_get_feedback_framebuffer());
+    glDisable(GL_BLEND);
+
+    render_quad(quad_shader_program, ogl_shader_chain_get_pass_texture(),
+            ogl_shader_chain_get_pass_width(), ogl_shader_chain_get_pass_height(),
+            1.0f, 1.0f,
+            1.0f, 1.0f, 1.0f, 1.0f);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 static void render_emu_normal(void)
@@ -559,87 +483,10 @@ static void render_emu_normal(void)
 
     update_system_texture();
 
-    render_quad(tex_h, tex_v);
+    int viewport_width = current_runtime.screen_width * FRAME_BUFFER_SCALE;
+    int viewport_height = current_runtime.screen_height * FRAME_BUFFER_SCALE;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-static void render_emu_mix(void)
-{
-    float tex_h = (float)current_runtime.screen_width / (float)SYSTEM_TEXTURE_WIDTH;
-    float tex_v = (float)current_runtime.screen_height / (float)SYSTEM_TEXTURE_HEIGHT;
-
-    int viewportWidth = current_runtime.screen_width * FRAME_BUFFER_SCALE;
-    int viewportHeight = current_runtime.screen_height * FRAME_BUFFER_SCALE;
-
-    float persist_h = (float)(current_runtime.screen_width * FRAME_BUFFER_SCALE) / (float)FRAME_BUFFER_WIDTH;
-    float persist_v = (float)(current_runtime.screen_height * FRAME_BUFFER_SCALE) / (float)FRAME_BUFFER_HEIGHT;
-
-    update_system_texture();
-
-    // Step 1: Render current frame into the history ring
-    glBindFramebuffer(GL_FRAMEBUFFER, history_fbo[frame_history_index]);
-    glDisable(GL_BLEND);
-    render_quad(tex_h, tex_v);
-
-    frame_history_index = (frame_history_index + 1) % config_video.ghosting_history;
-
-    int src = persistence_index;
-    int dst = 1 - persistence_index;
-
-    if (first_frame)
-    {
-        first_frame = false;
-
-        glBindFramebuffer(GL_FRAMEBUFFER, persistence_fbo[dst]);
-        glDisable(GL_BLEND);
-        glBindTexture(GL_TEXTURE_2D, history_textures[(frame_history_index + config_video.ghosting_history - 1) % config_video.ghosting_history]);
-        render_quad(persist_h, persist_v);
-    }
-    else
-    {
-        float decay = config_video.ghosting_intensity;
-        int history_count = config_video.ghosting_history;
-        float frame_weight = (1.0f - decay) / (float)history_count;
-
-        glBindFramebuffer(GL_FRAMEBUFFER, persistence_fbo[dst]);
-        glViewport(0, 0, viewportWidth, viewportHeight);
-
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE);
-
-        glUseProgram(quad_shader_program);
-
-        glUniform2f(quad_uniform_tex_scale, persist_h, persist_v);
-        glUniform4f(quad_uniform_color, decay, decay, decay, 1.0f);
-        glBindTexture(GL_TEXTURE_2D, persistence_texture[src]);
-
-        glBindVertexArray(quad_vao);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-        glUniform2f(quad_uniform_tex_scale, persist_h, persist_v);
-        glUniform4f(quad_uniform_color, frame_weight, frame_weight, frame_weight, 1.0f);
-
-        for (int i = 0; i < history_count; i++)
-        {
-            glBindTexture(GL_TEXTURE_2D, history_textures[i]);
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        }
-
-        glBindVertexArray(0);
-        glUseProgram(0);
-        glDisable(GL_BLEND);
-    }
-
-    persistence_index = dst;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_object);
-    glDisable(GL_BLEND);
-    glBindTexture(GL_TEXTURE_2D, persistence_texture[dst]);
-    render_quad(persist_h, persist_v);
+    render_quad(quad_shader_program, system_texture, viewport_width, viewport_height, tex_h, tex_v, 1.0f, 1.0f, 1.0f, 1.0f);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -650,19 +497,7 @@ static void update_system_texture(void)
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, current_runtime.screen_width, current_runtime.screen_height,
             GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) emu_frame_buffer);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    if (config_video.bilinear)
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    }
-    else
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    }
+    configure_texture_2d(false);
 }
 
 static void update_debug_textures(void)
@@ -704,73 +539,247 @@ static void update_emu_texture(void)
 {
     glBindTexture(GL_TEXTURE_2D, ogl_renderer_emu_texture);
 
+    configure_texture_2d(false);
+}
+
+static void render_quad(uint32_t program, uint32_t texture, int viewport_width, int viewport_height, float tex_h, float tex_v, float red, float green, float blue, float alpha)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glUseProgram(program);
+    glUniform2f(quad_uniform_tex_scale, tex_h, tex_v);
+    glUniform4f(quad_uniform_color, red, green, blue, alpha);
+
+    glViewport(0, 0, viewport_width, viewport_height);
+
+    glBindVertexArray(quad_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    glUseProgram(0);
+
+    glActiveTexture(GL_TEXTURE0);
+}
+
+static void render_quad_preset(int pass_index, uint32_t program, uint32_t texture, int input_width, int input_height, int viewport_width, int viewport_height)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, ogl_shader_chain_get_source_texture());
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, ogl_shader_chain_get_feedback_texture());
+
+    for (int i = 0; i < SHADER_PRESET_MAX_HISTORY_TEXTURES; i++)
+    {
+        glActiveTexture(GL_TEXTURE3 + i);
+        glBindTexture(GL_TEXTURE_2D, ogl_shader_chain_get_pass_history_texture(pass_index, i));
+    }
+
+    glUseProgram(program);
+    OglShaderChainUniforms uniforms;
+    uniforms.source_width = current_runtime.screen_width;
+    uniforms.source_height = current_runtime.screen_height;
+    uniforms.input_width = input_width;
+    uniforms.input_height = input_height;
+    uniforms.output_width = viewport_width;
+    uniforms.output_height = viewport_height;
+    uniforms.viewport_width = screen_geometry.physical_width;
+    uniforms.viewport_height = screen_geometry.physical_height;
+    uniforms.original_aspect = get_original_aspect();
+    uniforms.background_color[0] = config_video.background_color[0];
+    uniforms.background_color[1] = config_video.background_color[1];
+    uniforms.background_color[2] = config_video.background_color[2];
+
+    ogl_shader_chain_apply_preset_uniforms(pass_index, &uniforms);
+
+    glViewport(0, 0, viewport_width, viewport_height);
+
+    glBindVertexArray(quad_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    glUseProgram(0);
+
+    glActiveTexture(GL_TEXTURE0);
+}
+
+static void load_configured_shader_preset(void)
+{
+    if (config_video.shader_mode != config_ShaderMode_External || config_video.shader_preset_path.empty())
+        return;
+
+    char resolved_path[SHADER_PRESET_MAX_PATH];
+    if (!shader_preset_resolve_config_path(config_video.shader_preset_path.c_str(), resolved_path, sizeof(resolved_path)))
+    {
+        Error("Configured shader preset is not available in the bundled shader directory: %s", config_video.shader_preset_path.c_str());
+        ogl_renderer_unload_shader_preset();
+        return;
+    }
+
+    if (!ogl_shader_chain_load_preset(resolved_path))
+    {
+        Error("Unable to load configured shader preset: %s", ogl_shader_chain_get_last_error());
+        ogl_renderer_unload_shader_preset();
+        return;
+    }
+
+    char config_path[SHADER_PRESET_MAX_PATH];
+    if (shader_preset_get_config_path(resolved_path, config_path, sizeof(config_path)))
+        config_video.shader_preset_path.assign(config_path);
+    else
+        config_video.shader_preset_path.clear();
+
+    apply_shader_parameter_config();
+}
+
+static void apply_shader_parameter_config(void)
+{
+    char preset_file[SHADER_PRESET_MAX_PATH];
+    if (!get_active_shader_preset_file(preset_file, sizeof(preset_file)))
+        return;
+
+    int parameter_count = ogl_shader_chain_get_parameter_count();
+
+    for (int i = 0; i < parameter_count; i++)
+    {
+        const ShaderPresetParameter* parameter = ogl_shader_chain_get_parameter(i);
+        if (!parameter)
+            continue;
+
+        float value = 0.0f;
+        if (config_read_shader_parameter(preset_file, parameter->name, &value))
+            ogl_shader_chain_set_parameter(i, value);
+    }
+}
+
+static bool get_active_shader_preset_file(char* preset_file, size_t preset_file_size)
+{
+    if (!preset_file || preset_file_size == 0 || !ogl_shader_chain_has_preset())
+        return false;
+
+    return shader_preset_get_config_path(ogl_shader_chain_get_preset_path(), preset_file, preset_file_size);
+}
+
+static float get_original_aspect(void)
+{
+    if (current_runtime.screen_height <= 0)
+        return 1.0f;
+
+    return (float)current_runtime.screen_width / (float)current_runtime.screen_height;
+}
+
+static void configure_texture_2d(bool filter_linear)
+{
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    bool scanlines_filter = (config_video.scale >= 2) || (config_video.ratio != 0) ||
-        ((config_video.scale <= 1) && (gui_scale_multiplier >= 3) && (gui_scale_multiplier & 1));
-
-    if ((config_video.scanlines_type > 0) && scanlines_filter)
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    }
-    else
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter_linear ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter_linear ? GL_LINEAR : GL_NEAREST);
 }
 
-static void render_quad(float tex_h, float tex_v)
+static void create_texture_2d(uint32_t* texture, int width, int height, int internal_format, uint32_t format, uint32_t type, const void* pixels, bool filter_linear)
 {
-    int viewportWidth = current_runtime.screen_width * FRAME_BUFFER_SCALE;
-    int viewportHeight = current_runtime.screen_height * FRAME_BUFFER_SCALE;
-
-    glUseProgram(quad_shader_program);
-    glUniform2f(quad_uniform_tex_scale, tex_h, tex_v);
-    glUniform4f(quad_uniform_color, 1.0f, 1.0f, 1.0f, 1.0f);
-
-    glViewport(0, 0, viewportWidth, viewportHeight);
-
-    glBindVertexArray(quad_vao);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);
-    glUseProgram(0);
+    glGenTextures(1, texture);
+    resize_texture_2d(*texture, width, height, internal_format, format, type, pixels, filter_linear);
 }
 
-static void render_scanlines(void)
+static void resize_texture_2d(uint32_t texture, int width, int height, int internal_format, uint32_t format, uint32_t type, const void* pixels, bool filter_linear)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_object);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, type, pixels);
+    configure_texture_2d(filter_linear);
+}
 
-    if (config_video.scanlines_type == 1)
-        glBindTexture(GL_TEXTURE_2D, scanlines_horizontal_texture);
-    else if (config_video.scanlines_type == 2)
-        glBindTexture(GL_TEXTURE_2D, scanlines_vertical_texture);
-    else if (config_video.scanlines_type == 3)
-        glBindTexture(GL_TEXTURE_2D, scanlines_grid_texture);
-    else
-        glBindTexture(GL_TEXTURE_2D, scanlines_vertical_texture);
+static bool check_framebuffer_complete(const char* name)
+{
+    uint32_t status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status == GL_FRAMEBUFFER_COMPLETE)
+        return true;
 
-    int viewportWidth = current_runtime.screen_width * FRAME_BUFFER_SCALE;
-    int viewportHeight = current_runtime.screen_height * FRAME_BUFFER_SCALE;
+    Error("OpenGL framebuffer incomplete (%s): 0x%04X", name, status);
+    return false;
+}
 
-    float tex_h = (float)current_runtime.screen_width;
-    float tex_v = (float)current_runtime.screen_height;
+static bool init_shaders(void)
+{
+    const char* version = ogl_shader_program_get_glsl_version();
+
+    const char* vs_body =
+        "in vec2 aPos;\n"
+        "in vec2 aTexCoord;\n"
+        "out vec2 vTexCoord;\n"
+        "uniform vec2 uTexScale;\n"
+        "void main() {\n"
+        "    gl_Position = vec4(aPos, 0.0, 1.0);\n"
+        "    vTexCoord = aTexCoord * uTexScale;\n"
+        "}\n";
+
+    const char* fs_body =
+        "in vec2 vTexCoord;\n"
+        "out vec4 FragColor;\n"
+        "uniform sampler2D uTexture;\n"
+        "uniform vec4 uColor;\n"
+        "uniform vec2 uTexScale;\n"
+        "void main() {\n"
+        "    FragColor = texture(uTexture, vTexCoord) * uColor;\n"
+        "}\n";
+
+    const char* vs_sources[2] = { version, vs_body };
+    const char* fs_sources[2] = { version, fs_body };
+
+    uint32_t vs = ogl_shader_program_compile_shader(GL_VERTEX_SHADER, "Quad vertex", vs_sources, 2, NULL, 0);
+    if (!vs)
+        return false;
+
+    uint32_t fs = ogl_shader_program_compile_shader(GL_FRAGMENT_SHADER, "Quad fragment", fs_sources, 2, NULL, 0);
+    if (!fs)
+    {
+        glDeleteShader(vs);
+        return false;
+    }
+
+    quad_shader_program = ogl_shader_program_link(vs, fs, "Quad shader", NULL, 0);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    if (!quad_shader_program)
+        return false;
+
+    quad_uniform_tex_scale = glGetUniformLocation(quad_shader_program, "uTexScale");
+    quad_uniform_texture = glGetUniformLocation(quad_shader_program, "uTexture");
+    quad_uniform_color = glGetUniformLocation(quad_shader_program, "uColor");
 
     glUseProgram(quad_shader_program);
-    glUniform2f(quad_uniform_tex_scale, tex_h, tex_v);
-    glUniform4f(quad_uniform_color, 1.0f, 1.0f, 1.0f, config_video.scanlines_intensity);
-
-    glViewport(0, 0, viewportWidth, viewportHeight);
-
-    glBindVertexArray(quad_vao);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);
+    glUniform1i(quad_uniform_texture, 0);
     glUseProgram(0);
 
-    glDisable(GL_BLEND);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    float quad_vertices[] = {
+        -1.0f, -1.0f,  0.0f,  0.0f,
+         3.0f, -1.0f,  2.0f,  0.0f,
+        -1.0f,  3.0f,  0.0f,  2.0f,
+    };
+
+    glGenVertexArrays(1, &quad_vao);
+    glGenBuffers(1, &quad_vbo);
+
+    glBindVertexArray(quad_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
+
+    GLint pos_attrib = glGetAttribLocation(quad_shader_program, "aPos");
+    GLint tex_attrib = glGetAttribLocation(quad_shader_program, "aTexCoord");
+
+    glEnableVertexAttribArray(pos_attrib);
+    glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+    glEnableVertexAttribArray(tex_attrib);
+    glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    Debug("Quad shader initialized (program=%u, vao=%u, vbo=%u)", quad_shader_program, quad_vao, quad_vbo);
+    return true;
 }

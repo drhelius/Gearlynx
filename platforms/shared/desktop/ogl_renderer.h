@@ -32,9 +32,8 @@
 #define FRAME_BUFFER_SCALE 4
 #define SYSTEM_TEXTURE_WIDTH 256
 #define SYSTEM_TEXTURE_HEIGHT 256
-#define FRAME_BUFFER_WIDTH 1024
-#define FRAME_BUFFER_HEIGHT 1024
-#define MAX_FRAME_HISTORY 8
+#define FRAME_BUFFER_WIDTH (SYSTEM_TEXTURE_WIDTH * FRAME_BUFFER_SCALE)
+#define FRAME_BUFFER_HEIGHT (SYSTEM_TEXTURE_HEIGHT * FRAME_BUFFER_SCALE)
 
 EXTERN uint32_t ogl_renderer_emu_texture;
 EXTERN uint32_t ogl_renderer_emu_debug_framebuffer[5];
@@ -42,11 +41,27 @@ EXTERN uint32_t ogl_renderer_emu_debug_sprites[DEBUG_MAX_SPRITES];
 EXTERN uint32_t ogl_renderer_emu_savestates;
 EXTERN const char* ogl_renderer_opengl_version;
 
+struct OglRendererScreenGeometry
+{
+    int logical_width;
+    int logical_height;
+    int physical_width;
+    int physical_height;
+    float framebuffer_scale_x;
+    float framebuffer_scale_y;
+};
+
 EXTERN bool ogl_renderer_init(void);
 EXTERN void ogl_renderer_destroy(void);
 EXTERN void ogl_renderer_begin_render(void);
 EXTERN void ogl_renderer_render(void);
 EXTERN void ogl_renderer_end_render(void);
+EXTERN void ogl_renderer_set_screen_geometry(const OglRendererScreenGeometry* geometry);
+EXTERN uint32_t ogl_renderer_get_screen_texture(void);
+EXTERN void ogl_renderer_get_screen_uv(float* u, float* v);
+EXTERN bool ogl_renderer_load_shader_preset(const char* path);
+EXTERN void ogl_renderer_unload_shader_preset(void);
+EXTERN void ogl_renderer_save_shader_parameter_config(void);
 
 #undef OGL_RENDERER_IMPORT
 #undef EXTERN
