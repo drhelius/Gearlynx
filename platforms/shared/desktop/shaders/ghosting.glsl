@@ -4,17 +4,26 @@ out vec4 FragColor;
 uniform sampler2D Source;
 uniform sampler2D PassFeedback0;
 uniform sampler2D SourceHistory0;
+uniform sampler2D SourceHistory1;
+uniform sampler2D SourceHistory2;
+uniform sampler2D SourceHistory3;
+uniform sampler2D SourceHistory4;
+uniform sampler2D SourceHistory5;
+uniform sampler2D SourceHistory6;
 uniform int SourceHistoryCount;
 uniform float Trails;
-uniform float FrameBlend;
+uniform float FrameHistory;
+
+void accumulate_frame(vec3 sample_color, inout vec3 frame_sum)
+{
+    frame_sum += sample_color;
+}
 
 void main()
 {
     vec3 current = texture(Source, vTexCoord).rgb;
     vec3 frame_sum = current;
-    vec3 darkest = current;
-    float frame_count = 1.0;
-    float history_blend = clamp(FrameBlend, 0.0, 1.0);
+    int frame_history = int(clamp(floor(FrameHistory + 0.5), 2.0, 8.0));
 
     if (SourceHistoryCount == 0)
     {
@@ -22,22 +31,31 @@ void main()
         return;
     }
 
-    if (SourceHistoryCount > 0)
-    {
-        vec3 history = texture(SourceHistory0, vTexCoord).rgb;
-        frame_sum += history * history_blend;
-        darkest = min(darkest, history);
-        frame_count += history_blend;
-    }
+    if (frame_history > 1 && SourceHistoryCount > 0)
+        accumulate_frame(texture(SourceHistory0, vTexCoord).rgb, frame_sum);
 
-    vec3 combined = frame_sum / max(frame_count, 1.0);
-    float current_luma = dot(current, vec3(0.299, 0.587, 0.114));
-    float darkest_luma = dot(darkest, vec3(0.299, 0.587, 0.114));
-    float shadow_hold = clamp((current_luma - darkest_luma) * 3.0, 0.0, 1.0) * history_blend;
-    combined = mix(combined, darkest, shadow_hold);
+    if (frame_history > 2 && SourceHistoryCount > 1)
+        accumulate_frame(texture(SourceHistory1, vTexCoord).rgb, frame_sum);
+
+    if (frame_history > 3 && SourceHistoryCount > 2)
+        accumulate_frame(texture(SourceHistory2, vTexCoord).rgb, frame_sum);
+
+    if (frame_history > 4 && SourceHistoryCount > 3)
+        accumulate_frame(texture(SourceHistory3, vTexCoord).rgb, frame_sum);
+
+    if (frame_history > 5 && SourceHistoryCount > 4)
+        accumulate_frame(texture(SourceHistory4, vTexCoord).rgb, frame_sum);
+
+    if (frame_history > 6 && SourceHistoryCount > 5)
+        accumulate_frame(texture(SourceHistory5, vTexCoord).rgb, frame_sum);
+
+    if (frame_history > 7 && SourceHistoryCount > 6)
+        accumulate_frame(texture(SourceHistory6, vTexCoord).rgb, frame_sum);
+
+    float trails = clamp(Trails, 0.0, 1.0);
+    vec3 combined = frame_sum * ((1.0 - trails) / float(frame_history));
 
     vec3 previous = texture(PassFeedback0, vTexCoord).rgb;
-    float trails = clamp(Trails, 0.0, 0.98);
-    vec3 color = previous * trails + combined * (1.0 - trails);
+    vec3 color = previous * trails + combined;
     FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }
