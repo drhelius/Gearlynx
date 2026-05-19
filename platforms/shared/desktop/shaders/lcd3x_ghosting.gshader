@@ -3,16 +3,16 @@ Name=LCD 3x + Ghosting
 Passes=2
 
 [Pass0]
+Path=lcd3x.glsl
+ScaleType=Viewport
+Filter=Nearest
+
+[Pass1]
 Path=ghosting.glsl
 ScaleType=Viewport
 Filter=Nearest
 Feedback=true
 History=true
-
-[Pass1]
-Path=lcd3x.glsl
-ScaleType=Viewport
-Filter=Nearest
 
 [Parameters]
 Trails=0.8
