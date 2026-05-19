@@ -79,6 +79,7 @@ struct GLYNX_Debug_SCB_Info
 EXTERN u8* emu_frame_buffer;
 EXTERN GLYNX_SaveState_Header emu_savestates[5];
 EXTERN GLYNX_SaveState_Screenshot emu_savestates_screenshots[5];
+EXTERN u32 emu_savestates_generation;
 EXTERN u8* emu_debug_sprite_buffers[DEBUG_MAX_SPRITES];
 EXTERN u8* emu_debug_framebuffer[5];
 EXTERN u32 emu_collision_palette[16];
