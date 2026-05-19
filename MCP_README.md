@@ -18,29 +18,29 @@ This server provides tools for game development, rom hacking, reverse engineerin
     <tr>
       <td rowspan="2"><strong>Windows</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.11/Gearlynx-1.2.11-mcpb-windows-x64.mcpb">Gearlynx-1.2.11-mcpb-windows-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.12/Gearlynx-1.2.12-mcpb-windows-x64.mcpb">Gearlynx-1.2.12-mcpb-windows-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.11/Gearlynx-1.2.11-mcpb-windows-arm64.mcpb">Gearlynx-1.2.11-mcpb-windows-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.12/Gearlynx-1.2.12-mcpb-windows-arm64.mcpb">Gearlynx-1.2.12-mcpb-windows-arm64.mcpb</a></td>
     </tr>
     <tr>
       <td rowspan="2"><strong>macOS</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.11/Gearlynx-1.2.11-mcpb-macos-x64.mcpb">Gearlynx-1.2.11-mcpb-macos-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.12/Gearlynx-1.2.12-mcpb-macos-x64.mcpb">Gearlynx-1.2.12-mcpb-macos-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.11/Gearlynx-1.2.11-mcpb-macos-arm64.mcpb">Gearlynx-1.2.11-mcpb-macos-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.12/Gearlynx-1.2.12-mcpb-macos-arm64.mcpb">Gearlynx-1.2.12-mcpb-macos-arm64.mcpb</a></td>
     </tr>
     <tr>
       <td rowspan="2"><strong>Linux</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.11/Gearlynx-1.2.11-mcpb-linux-x64.mcpb">Gearlynx-1.2.11-mcpb-linux-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.12/Gearlynx-1.2.12-mcpb-linux-x64.mcpb">Gearlynx-1.2.12-mcpb-linux-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.11/Gearlynx-1.2.11-mcpb-linux-arm64.mcpb">Gearlynx-1.2.11-mcpb-linux-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.12/Gearlynx-1.2.12-mcpb-linux-arm64.mcpb">Gearlynx-1.2.12-mcpb-linux-arm64.mcpb</a></td>
     </tr>
   </tbody>
 </table>
