@@ -19,6 +19,9 @@
 #define EMU_IMPORT
 #include "emu.h"
 
+#include <thread>
+#include <atomic>
+#include <string.h>
 #include "gearlynx.h"
 #include "mikey.h"
 #include "lcd_screen.h"
@@ -43,6 +46,19 @@ static u16 input_active_directions = 0;
 static const int k_frame_buffer_size = 256 * 256 * 4;
 static Uint64 rewind_last_counter = 0;
 static double rewind_pop_accumulator = 0.0;
+
+enum Loading_State
+{
+    Loading_State_None = 0,
+    Loading_State_Loading,
+    Loading_State_Finished
+};
+
+static std::atomic<int> loading_state(Loading_State_None);
+static std::thread loading_thread;
+static bool loading_thread_active = false;
+static bool loading_result;
+static char loading_file_path[4096];
 
 static void save_ram(void);
 static void load_ram(void);
@@ -114,6 +130,13 @@ bool emu_init(void)
 
 void emu_destroy(void)
 {
+    if (loading_thread_active)
+    {
+        loading_thread.join();
+        loading_thread_active = false;
+    }
+    loading_state.store(Loading_State_None);
+
     save_ram();
     rewind_destroy();
     SafeDelete(mcp_manager);
@@ -151,6 +174,67 @@ bool emu_load_rom(const char* file_path)
     return true;
 }
 
+static void load_rom_thread_func(void)
+{
+    loading_result = core->LoadROM(loading_file_path);
+    loading_state.store(Loading_State_Finished);
+}
+
+void emu_load_rom_async(const char* file_path)
+{
+    if (loading_state.load() != Loading_State_None)
+        return;
+
+    emu_debug_command = Debug_Command_None;
+    reset_buffers();
+    reset_debug();
+    emu_audio_reset();
+
+    save_ram();
+
+    strncpy(loading_file_path, file_path, sizeof(loading_file_path) - 1);
+    loading_file_path[sizeof(loading_file_path) - 1] = '\0';
+    loading_result = false;
+    loading_state.store(Loading_State_Loading);
+    if (loading_thread_active)
+        loading_thread.join();
+    loading_thread = std::thread(load_rom_thread_func);
+    loading_thread_active = true;
+}
+
+bool emu_is_rom_loading(void)
+{
+    return loading_state.load() == Loading_State_Loading;
+}
+
+bool emu_finish_rom_loading(void)
+{
+    if (loading_state.load() != Loading_State_Finished)
+        return false;
+
+    if (loading_thread_active)
+    {
+        loading_thread.join();
+        loading_thread_active = false;
+    }
+
+    loading_state.store(Loading_State_None);
+
+    if (!loading_result)
+        return false;
+
+    load_ram();
+
+    if (config_debug.debug && (config_debug.dis_look_ahead_count > 0))
+        core->GetM6502()->DisassembleAhead(config_debug.dis_look_ahead_count);
+
+    update_savestates_data();
+
+    rewind_reset();
+
+    return true;
+}
+
 void emu_render_current_frame(void)
 {
     LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
@@ -173,6 +257,9 @@ void emu_reset_rewind_timing(void)
 void emu_update(void)
 {
     emu_mcp_pump_commands();
+
+    if (loading_state.load() != Loading_State_None)
+        return;
 
     if (emu_is_empty())
         return;

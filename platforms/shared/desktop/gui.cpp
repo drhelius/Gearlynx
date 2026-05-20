@@ -47,9 +47,13 @@ static Uint64 status_message_start_time = 0;
 static Uint64 status_message_duration = 0;
 static bool error_window_active = false;
 static char error_message[4096] = "";
+static bool loading_rom_active = false;
+static char loading_rom_path[4096] = "";
 static void main_window(void);
 static void show_status_message(void);
 static void show_error_window(void);
+static void show_loading_popup(void);
+static void finish_loading_rom(void);
 static void set_style(void);
 static ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t);
 
@@ -149,6 +153,7 @@ void gui_render(void)
     if (config_emulator.show_info)
         gui_show_info();
 
+    show_loading_popup();
     show_status_message();
     show_error_window();
 
@@ -276,6 +281,9 @@ void gui_shortcut(gui_ShortCutEvent event)
 
 void gui_load_rom(const char* path)
 {
+    if (loading_rom_active)
+        return;
+
     using namespace std;
 
     string message("Loading ROM ");
@@ -288,17 +296,15 @@ void gui_load_rom(const char* path)
     emu_resume();
     emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
 
-    if (!emu_load_rom(path))
-    {
-        string message("Error loading ROM:\n");
-        message += path;
-        gui_set_error_message(message.c_str());
+    strncpy(loading_rom_path, path, sizeof(loading_rom_path) - 1);
+    loading_rom_path[sizeof(loading_rom_path) - 1] = '\0';
+    loading_rom_active = true;
 
-        emu_get_core()->GetMedia()->HardReset();
-        gui_action_reset();
-        return;
-    }
+    emu_load_rom_async(path);
+}
 
+static void finish_loading_rom(void)
+{
     if (!emu_get_core()->GetMedia()->IsBiosLoaded())
     {
         std::string message;
@@ -313,7 +319,7 @@ void gui_load_rom(const char* path)
 
     gui_debug_reset();
 
-    std::string str(path);
+    std::string str(loading_rom_path);
     str = str.substr(0, str.find_last_of("."));
     if (!gui_debug_load_symbols_file((str + ".sym").c_str()))
         if (!gui_debug_load_symbols_file((str + ".lbl").c_str()))
@@ -614,6 +620,69 @@ static void show_status_message(void)
 
         ImGui::PopStyleVar();
     }
+}
+
+static void show_loading_popup(void)
+{
+    if (!loading_rom_active)
+        return;
+
+    if (!emu_is_rom_loading())
+    {
+        loading_rom_active = false;
+        gui_dialog_in_use = false;
+        bool success = emu_finish_rom_loading();
+
+        if (success)
+        {
+            finish_loading_rom();
+        }
+        else
+        {
+            std::string message("Error loading ROM:\n");
+            message += loading_rom_path;
+            gui_set_error_message(message.c_str());
+
+            emu_get_core()->GetMedia()->HardReset();
+            gui_action_reset();
+        }
+        return;
+    }
+
+    gui_dialog_in_use = true;
+
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4 loading_highlight = style.Colors[ImGuiCol_HeaderHovered];
+    ImVec4 loading_border = loading_highlight;
+    loading_border.w = 0.80f;
+
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30.0f, 20.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 12.0f));
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.10f, 0.10f, 0.10f, 0.95f));
+    ImGui::PushStyleColor(ImGuiCol_Border, loading_border);
+    ImGui::OpenPopup("##loading");
+
+    if (ImGui::BeginPopupModal("##loading", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
+    {
+        ImGui::PushFont(gui_roboto_font);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, loading_highlight);
+        ImGui::TextUnformatted(ICON_MD_HOURGLASS_EMPTY);
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine();
+        ImGui::Text("LOADING...");
+
+        ImGui::PopFont();
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar(3);
 }
 
 static void show_error_window(void)
