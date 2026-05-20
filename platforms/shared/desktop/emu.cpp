@@ -681,6 +681,7 @@ void emu_get_info(char* info, int buffer_size)
         const char* filename = media->GetFileName();
         u32 crc = media->GetCRC();
         int rom_size = media->GetROMSize();
+        const char* is_in_database = media->IsInGameDatabase() ? "YES" : "NO";
         const char* header_name = media->GetHeaderName();
         const char* header_manufacturer = media->GetHeaderManufacturer();
         u16 bank0_page_size = media->GetHeaderBank0PageSize();
@@ -730,6 +731,7 @@ void emu_get_info(char* info, int buffer_size)
         snprintf(info, buffer_size,
             "File Name: %s\n"
             "CRC: %08X\n"
+            "Internal DB: %s\n"
             "ROM Size: %d bytes (%d KB)\n"
             "Screen: %dx%d\n"
             "Header Name: %s\n"
@@ -739,7 +741,7 @@ void emu_get_info(char* info, int buffer_size)
             "Rotation: %s\n"
             "AUDIN: %s\n"
             "EEPROM: %s%s",
-            filename, crc, rom_size, rom_size / 1024,
+            filename, crc, is_in_database, rom_size, rom_size / 1024,
             runtime.screen_width, runtime.screen_height,
             header_name[0] ? header_name : "(none)",
             header_manufacturer[0] ? header_manufacturer : "(none)",

@@ -53,6 +53,7 @@ public:
     bool IsBiosValid();
     int GetROMSize();
     u32 GetCRC();
+    bool IsInGameDatabase();
     void ForceRotation(GLYNX_Rotation rotation);
     GLYNX_Rotation GetRotation();
     void ForceConsoleType(GLYNX_Console_Type type);
@@ -144,6 +145,7 @@ private:
     bool m_is_bios_loaded;
     bool m_is_bios_valid;
     bool m_ready;
+    bool m_is_in_game_database;
     char m_file_path[512];
     char m_file_directory[512];
     char m_file_name[512];

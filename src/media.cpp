@@ -84,6 +84,7 @@ void Media::HardReset()
     SafeDeleteArray(m_rom);
     m_rom_size = 0;
     m_ready = false;
+    m_is_in_game_database = false;
     m_file_path[0] = 0;
     m_file_directory[0] = 0;
     m_file_name[0] = 0;
@@ -389,15 +390,15 @@ bool Media::LoadFromZipFile(const u8* buffer, int size)
 void Media::GatherInfoFromDB()
 {
     int i = 0;
-    bool found = false;
+    m_is_in_game_database = false;
 
-    while(!found && (k_game_database[i].title != 0))
+    while(!m_is_in_game_database && (k_game_database[i].title != 0))
     {
         u32 db_crc = k_game_database[i].crc;
 
         if (db_crc == m_crc)
         {
-            found = true;
+            m_is_in_game_database = true;
             Log("ROM found in database: %s. CRC: %08X", k_game_database[i].title, m_crc);
 
             if (m_rom_size == k_game_database[i].file_size)
@@ -459,7 +460,7 @@ void Media::GatherInfoFromDB()
             i++;
     }
 
-    if (!found)
+    if (!m_is_in_game_database)
     {
         Debug("ROM not found in database. CRC: %08X", m_crc);
     }

@@ -34,6 +34,11 @@ INLINE bool Media::IsReady()
     return m_ready;
 }
 
+INLINE bool Media::IsInGameDatabase()
+{
+    return m_is_in_game_database;
+}
+
 INLINE bool Media::IsBiosLoaded()
 {
     return m_is_bios_loaded;
