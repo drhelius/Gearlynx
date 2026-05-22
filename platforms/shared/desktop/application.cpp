@@ -230,6 +230,7 @@ void application_trigger_fullscreen(bool fullscreen)
         SDL_SetWindowFullscreen(application_sdl_window, false);
         SDL_ERROR("SDL_SetWindowFullscreen");
     }
+    config_emulator.fullscreen = fullscreen;
 #endif
 
     mouse_last_motion_time = SDL_GetTicks();
