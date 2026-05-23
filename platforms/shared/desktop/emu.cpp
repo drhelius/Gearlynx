@@ -247,6 +247,9 @@ void emu_render_current_frame(void)
 
     lcd_screen->SetBuffer(emu_frame_buffer);
     lcd_screen->EndFrame(core->GetMedia()->GetRotation());
+
+    if (config_debug.debug)
+        update_debug();
 }
 
 void emu_reset_rewind_timing(void)
