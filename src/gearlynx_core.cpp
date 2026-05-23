@@ -227,7 +227,7 @@ void GearlynxCore::SaveRam()
 
 void GearlynxCore::SaveRam(const char* path, bool full_path)
 {
-    if (m_media->IsReady() && m_media->IsSaveMemoryDirty())
+    if (m_media->IsReady() && m_media->GetSaveMemorySize() > 0)
     {
         using namespace std;
         string final_path;
