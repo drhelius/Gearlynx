@@ -786,36 +786,72 @@ GLYNX_Rotation Media::ReadHeaderRotation(u8 rotation)
 
 GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
 {
-    switch (eeprom)
+    u8 base_type = eeprom & 0x07;
+    u8 flags = eeprom & (GLYNX_EEPROM_SD | GLYNX_EEPROM_8BIT);
+    u8 unknown_bits = eeprom & ~(0x07 | GLYNX_EEPROM_SD | GLYNX_EEPROM_8BIT);
+
+    if (eeprom == 0)
     {
-        case 0:
-            Debug("Header EEPROM: No EEPROM");
-            return GLYNX_EEPROM_NONE;
-        case 1:
-            Debug("Header EEPROM: 93C46");
-            return GLYNX_EEPROM_93C46;
-        case 2:
-            Debug("Header EEPROM: 93C56");
-            return GLYNX_EEPROM_93C56;
-        case 3:
-            Debug("Header EEPROM: 93C66");
-            return GLYNX_EEPROM_93C66;
-        case 4:
-            Debug("Header EEPROM: 93C76");
-            return GLYNX_EEPROM_93C76;
-        case 5:
-            Debug("Header EEPROM: 93C86");
-            return GLYNX_EEPROM_93C86;
-        case 0x40:
+        Debug("Header EEPROM: No EEPROM");
+        return GLYNX_EEPROM_NONE;
+    }
+
+    if (unknown_bits != 0)
+    {
+        Debug("Invalid EEPROM value in header: %d", eeprom);
+        return GLYNX_EEPROM_NONE;
+    }
+
+    if (base_type == GLYNX_EEPROM_NONE)
+    {
+        if (eeprom & GLYNX_EEPROM_8BIT)
+            base_type = GLYNX_EEPROM_93C46;
+        else if (eeprom == GLYNX_EEPROM_SD)
+        {
             Debug("Header EEPROM: SD");
             return GLYNX_EEPROM_SD;
-        case 0x80:
-            Debug("Header EEPROM: 8-bit");
-            return GLYNX_EEPROM_8BIT;
+        }
+        else
+        {
+            Debug("Invalid EEPROM value in header: %d", eeprom);
+            return GLYNX_EEPROM_NONE;
+        }
+    }
+
+    const char* eeprom_name = NULL;
+
+    switch (base_type)
+    {
+        case GLYNX_EEPROM_93C46:
+            eeprom_name = "93C46";
+            break;
+        case GLYNX_EEPROM_93C56:
+            eeprom_name = "93C56";
+            break;
+        case GLYNX_EEPROM_93C66:
+            eeprom_name = "93C66";
+            break;
+        case GLYNX_EEPROM_93C76:
+            eeprom_name = "93C76";
+            break;
+        case GLYNX_EEPROM_93C86:
+            eeprom_name = "93C86";
+            break;
         default:
             Debug("Invalid EEPROM value in header: %d", eeprom);
             return GLYNX_EEPROM_NONE;
     }
+
+    if ((flags & GLYNX_EEPROM_SD) && (flags & GLYNX_EEPROM_8BIT))
+        Debug("Header EEPROM: %s SD 8-bit", eeprom_name);
+    else if (flags & GLYNX_EEPROM_SD)
+        Debug("Header EEPROM: %s SD", eeprom_name);
+    else if (flags & GLYNX_EEPROM_8BIT)
+        Debug("Header EEPROM: %s 8-bit", eeprom_name);
+    else
+        Debug("Header EEPROM: %s", eeprom_name);
+
+    return (GLYNX_EEPROM)(base_type | flags);
 }
 
 bool Media::IsValidFile(const char* path)
