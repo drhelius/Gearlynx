@@ -31,8 +31,9 @@
 
 static bool events_check_hotkey(const SDL_Event* event, const config_Hotkey& hotkey, bool allow_repeat);
 static bool events_match_hotkey_scancode(const SDL_Event* event, const config_Hotkey& hotkey);
-static bool keyboard_pressed(const bool* keyboard_state, SDL_Scancode key);
+static bool keyboard_pressed(const bool* keyboard_state, int keyboard_state_count, SDL_Scancode key);
 static bool gamepad_button_pressed(SDL_Gamepad* controller, int button);
+static Sint16 gamepad_axis_value(SDL_Gamepad* controller, int axis);
 static void sync_key(GLYNX_Keys key, bool pressed);
 
 void events_shortcuts(const SDL_Event* event)
@@ -355,17 +356,18 @@ void events_sync_input(void)
     for (unsigned i = 0; i < 9; i++)
         emu_key_released(all_keys[i]);
 
-    const bool* keyboard_state = SDL_GetKeyboardState(NULL);
+    int keyboard_state_count = 0;
+    const bool* keyboard_state = SDL_GetKeyboardState(&keyboard_state_count);
 
-    sync_key(GLYNX_KEY_LEFT, keyboard_pressed(keyboard_state, config_input.key_left));
-    sync_key(GLYNX_KEY_RIGHT, keyboard_pressed(keyboard_state, config_input.key_right));
-    sync_key(GLYNX_KEY_UP, keyboard_pressed(keyboard_state, config_input.key_up));
-    sync_key(GLYNX_KEY_DOWN, keyboard_pressed(keyboard_state, config_input.key_down));
-    sync_key(GLYNX_KEY_A, keyboard_pressed(keyboard_state, config_input.key_A));
-    sync_key(GLYNX_KEY_B, keyboard_pressed(keyboard_state, config_input.key_B));
-    sync_key(GLYNX_KEY_PAUSE, keyboard_pressed(keyboard_state, config_input.key_pause));
-    sync_key(GLYNX_KEY_OPTION1, keyboard_pressed(keyboard_state, config_input.key_option1));
-    sync_key(GLYNX_KEY_OPTION2, keyboard_pressed(keyboard_state, config_input.key_option2));
+    sync_key(GLYNX_KEY_LEFT, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_left));
+    sync_key(GLYNX_KEY_RIGHT, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_right));
+    sync_key(GLYNX_KEY_UP, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_up));
+    sync_key(GLYNX_KEY_DOWN, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_down));
+    sync_key(GLYNX_KEY_A, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_A));
+    sync_key(GLYNX_KEY_B, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_B));
+    sync_key(GLYNX_KEY_PAUSE, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_pause));
+    sync_key(GLYNX_KEY_OPTION1, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_option1));
+    sync_key(GLYNX_KEY_OPTION2, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_option2));
 
     SDL_Gamepad* controller = gamepad_controller;
     if (!IsValidPointer(controller) || !config_input.gamepad)
@@ -387,8 +389,8 @@ void events_sync_input(void)
     else
     {
         const int STICK_DEAD_ZONE = 8000;
-        int x_motion = SDL_GetGamepadAxis(controller, (SDL_GamepadAxis)config_input.gamepad_x_axis) * (config_input.gamepad_invert_x_axis ? -1 : 1);
-        int y_motion = SDL_GetGamepadAxis(controller, (SDL_GamepadAxis)config_input.gamepad_y_axis) * (config_input.gamepad_invert_y_axis ? -1 : 1);
+        int x_motion = gamepad_axis_value(controller, config_input.gamepad_x_axis) * (config_input.gamepad_invert_x_axis ? -1 : 1);
+        int y_motion = gamepad_axis_value(controller, config_input.gamepad_y_axis) * (config_input.gamepad_invert_y_axis ? -1 : 1);
 
         sync_key(GLYNX_KEY_LEFT, x_motion < -STICK_DEAD_ZONE);
         sync_key(GLYNX_KEY_RIGHT, x_motion > STICK_DEAD_ZONE);
@@ -397,23 +399,44 @@ void events_sync_input(void)
     }
 }
 
-static bool keyboard_pressed(const bool* keyboard_state, SDL_Scancode key)
+static bool keyboard_pressed(const bool* keyboard_state, int keyboard_state_count, SDL_Scancode key)
 {
     if (key == SDL_SCANCODE_UNKNOWN)
         return false;
+    if (!IsValidPointer(keyboard_state))
+        return false;
 
-    return keyboard_state[key] != 0;
+    int key_index = (int)key;
+    if ((key_index < 0) || (key_index >= keyboard_state_count))
+        return false;
+
+    return keyboard_state[key_index] != 0;
 }
 
 static bool gamepad_button_pressed(SDL_Gamepad* controller, int button)
 {
+    if (!IsValidPointer(controller))
+        return false;
+
     if (button >= GAMEPAD_VBTN_AXIS_BASE)
     {
-        SDL_GamepadAxis axis = (SDL_GamepadAxis)(button - GAMEPAD_VBTN_AXIS_BASE);
-        return SDL_GetGamepadAxis(controller, axis) > GAMEPAD_VBTN_AXIS_THRESHOLD;
+        return gamepad_axis_value(controller, button - GAMEPAD_VBTN_AXIS_BASE) > GAMEPAD_VBTN_AXIS_THRESHOLD;
     }
 
+    if ((button < 0) || (button >= SDL_GAMEPAD_BUTTON_COUNT))
+        return false;
+
     return SDL_GetGamepadButton(controller, (SDL_GamepadButton)button) != 0;
+}
+
+static Sint16 gamepad_axis_value(SDL_Gamepad* controller, int axis)
+{
+    if (!IsValidPointer(controller))
+        return 0;
+    if ((axis < 0) || (axis >= SDL_GAMEPAD_AXIS_COUNT))
+        return 0;
+
+    return SDL_GetGamepadAxis(controller, (SDL_GamepadAxis)axis);
 }
 
 static void sync_key(GLYNX_Keys key, bool pressed)
