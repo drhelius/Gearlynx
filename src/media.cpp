@@ -384,6 +384,7 @@ bool Media::LoadFromZipFile(const u8* buffer, int size)
         }
     }
 
+    mz_zip_reader_end(&zip_archive);
     return false;
 }
 
