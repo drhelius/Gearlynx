@@ -684,6 +684,9 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
         }
     }
 
+    if (opcode == 0x00 && op1 != 0x00)
+        snprintf(record->name, 64, "{n}BRK {o}#$%02X", op1);
+
     // JMP $nn, JSR $nn
     if (opcode == 0x4C || opcode == 0x20)
     {
