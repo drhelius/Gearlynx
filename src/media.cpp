@@ -1118,7 +1118,7 @@ bool Media::IsNVRAMEnabled()
     return m_nvram_enabled;
 }
 
-void Media::SaveRam(std::ostream& file)
+bool Media::SaveRam(std::ostream& file)
 {
     Debug("Saving RAM to stream");
 
@@ -1128,8 +1128,16 @@ void Media::SaveRam(std::ostream& file)
     if (size > 0 && data != NULL)
     {
         file.write(reinterpret_cast<const char*>(data), size);
-        ClearSaveMemoryDirty();
+        if (!file.good())
+        {
+            Error("Failed to save RAM to stream");
+            return false;
+        }
+
+        return true;
     }
+
+    return false;
 }
 
 bool Media::LoadRam(std::istream& file, s32 file_size)
