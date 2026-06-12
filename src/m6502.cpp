@@ -50,8 +50,14 @@ M6502::M6502(Bus* bus)
     m_breakpoints_irq_enabled = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
+    m_debug_brk_breakpoint_hit = false;
+    m_breakpoint_hit_address_valid = false;
+    m_breakpoint_hit_address = 0xFFFF;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
+    m_debug_brk_enabled = false;
+    m_debug_brk_value = 0;
+    m_debug_brk_trigger_irq = false;
     m_skip_irq_on_step = false;
     m_disassembler_call_stack_size = 0;
     m_reset_value = -1;
@@ -117,8 +123,14 @@ void M6502::Reset(bool is_lynx2)
     m_s.total_ticks = 0;
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
+    m_debug_brk_breakpoint_hit = false;
+    m_breakpoint_hit_address_valid = false;
+    m_breakpoint_hit_address = 0xFFFF;
     m_run_to_breakpoint_hit = false;
     m_run_to_breakpoint_requested = false;
+    m_debug_brk_enabled = false;
+    m_debug_brk_value = 0;
+    m_debug_brk_trigger_irq = false;
     m_prev_opcode_address = 0xFFFF;
     m_stream_open = false;
     m_page_mode_tick_discount = 0;
@@ -144,7 +156,16 @@ void M6502::EnableBreakpoints(bool enable, u8 irqs)
 
 bool M6502::BreakpointHit()
 {
-    return (m_cpu_breakpoint_hit || m_memory_breakpoint_hit);
+    return (m_cpu_breakpoint_hit || m_memory_breakpoint_hit || m_debug_brk_breakpoint_hit);
+}
+
+bool M6502::GetBreakpointHitAddress(u16* address)
+{
+    if (!m_breakpoint_hit_address_valid)
+        return false;
+
+    *address = m_breakpoint_hit_address;
+    return true;
 }
 
 void M6502::ResetBreakpoints()
@@ -301,6 +322,7 @@ void M6502::CheckMemoryBreakpoints(u16 address, bool read)
             if (address >= brk->address1 && address <= brk->address2)
             {
                 m_memory_breakpoint_hit = true;
+                SetBreakpointHitAddress(m_prev_opcode_address);
                 m_run_to_breakpoint_requested = false;
                 return;
             }
@@ -310,6 +332,7 @@ void M6502::CheckMemoryBreakpoints(u16 address, bool read)
             if (address == brk->address1)
             {
                 m_memory_breakpoint_hit = true;
+                SetBreakpointHitAddress(m_prev_opcode_address);
                 m_run_to_breakpoint_requested = false;
                 return;
             }

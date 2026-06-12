@@ -33,6 +33,8 @@ INLINE u32 M6502::RunInstruction()
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_memory_breakpoint_hit = false;
     m_cpu_breakpoint_hit = false;
+    m_debug_brk_breakpoint_hit = false;
+    m_breakpoint_hit_address_valid = false;
 #endif
 
     m_s.cycles = 0;
@@ -46,6 +48,7 @@ INLINE u32 M6502::RunInstruction()
         if (m_s.irq_asserted)
         {
             m_s.halted = false;
+            m_prev_opcode_address = m_s.PC.GetValue();
             CheckIRQs();
             if(m_s.irq_pending && !m_skip_irq_on_step)
                 HandleIRQ();
@@ -57,6 +60,7 @@ INLINE u32 M6502::RunInstruction()
     {
         m_prev_opcode_address = m_s.PC.GetValue();
         u8 opcode = FetchOpcode8();
+        m_s.cycles += m_opcode_cycles[opcode];
 
         CheckIRQs();
         (this->*m_opcodes[opcode])();
@@ -85,7 +89,6 @@ INLINE u32 M6502::RunInstruction()
         }
 #endif
 
-        m_s.cycles += m_opcode_cycles[opcode];
     }
 
     u32 ticks = (m_s.cycles * k_bus_cycles_int_tick_factor) - (u32)m_s.page_mode_discounts;
@@ -161,6 +164,19 @@ INLINE void M6502::SetPageModeEnabled(bool enabled)
 INLINE void M6502::SetSkipIRQOnStep(bool skip)
 {
     m_skip_irq_on_step = skip;
+}
+
+INLINE void M6502::SetDebugBRK(bool enable, u8 value, bool trigger_irq)
+{
+    m_debug_brk_enabled = enable;
+    m_debug_brk_value = value;
+    m_debug_brk_trigger_irq = trigger_irq;
+}
+
+INLINE void M6502::SetBreakpointHitAddress(u16 address)
+{
+    m_breakpoint_hit_address_valid = true;
+    m_breakpoint_hit_address = address;
 }
 
 INLINE u8 M6502::FetchOpcode8()
