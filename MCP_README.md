@@ -71,7 +71,7 @@ The default mode uses standard input/output for communication. The emulator is l
 
 ### HTTP Transport
 
-The HTTP transport mode runs the emulator with an embedded web server on `localhost:7777/mcp`. The emulator stays running independently while the AI client connects via HTTP.
+The HTTP transport mode runs the emulator with an embedded web server on `127.0.0.1:7777/mcp` by default. The emulator stays running independently while the AI client connects via HTTP. The listener rejects foreign `Host` and browser `Origin` values that do not match the configured endpoint. If `GEARLYNX_MCP_HTTP_TOKEN` is set, HTTP requests must include `Authorization: Bearer <token>`.
 
 ### Headless Mode
 
@@ -177,11 +177,35 @@ If you prefer to build from source or configure manually:
 1. **Start the emulator manually** with HTTP transport:
    ```bash
    ./gearlynx --mcp-http
-   # Server will start on http://localhost:7777/mcp
+  # Server will start on http://127.0.0.1:7777/mcp
    
    # Or specify a custom port:
    ./gearlynx --mcp-http --mcp-http-port 3000
-   # Server will start on http://localhost:3000/mcp
+  # Server will start on http://127.0.0.1:3000/mcp
+
+  # Or specify a custom bind address:
+  ./gearlynx --mcp-http --mcp-http-address 192.168.1.50 --mcp-http-port 3000
+  # Server will start on http://192.168.1.50:3000/mcp
+  ```
+
+  To require bearer-token authentication, set `GEARLYNX_MCP_HTTP_TOKEN` before starting HTTP mode:
+
+  ```bash
+  GEARLYNX_MCP_HTTP_TOKEN="change-this-token" ./gearlynx --mcp-http
+  ```
+
+  Windows PowerShell:
+
+  ```powershell
+  $env:GEARLYNX_MCP_HTTP_TOKEN = "change-this-token"
+  .\gearlynx.exe --mcp-http
+  ```
+
+  Windows Command Prompt:
+
+  ```cmd
+  set GEARLYNX_MCP_HTTP_TOKEN=change-this-token
+  gearlynx.exe --mcp-http
    ```
 
    You can optionally start the server using the "MCP" menu in the GUI.
@@ -192,8 +216,10 @@ If you prefer to build from source or configure manually:
      "servers": {
        "gearlynx": {
          "type": "http",
-         "url": "http://localhost:7777/mcp",
-         "headers": {}
+         "url": "http://127.0.0.1:7777/mcp",
+         "headers": {
+           "Authorization": "Bearer change-this-token"
+         }
        }
      }
    }
@@ -205,7 +231,10 @@ If you prefer to build from source or configure manually:
      "mcpServers": {
        "gearlynx": {
          "type": "http",
-         "url": "http://localhost:7777/mcp"
+         "url": "http://127.0.0.1:7777/mcp",
+         "headers": {
+           "Authorization": "Bearer change-this-token"
+         }
        }
      }
    }
@@ -213,10 +242,12 @@ If you prefer to build from source or configure manually:
 
 4. **Or configure Claude Code**:
    ```bash
-   claude mcp add --transport http gearlynx http://localhost:7777/mcp
+  claude mcp add --transport http gearlynx http://127.0.0.1:7777/mcp
    ```
 
 5. **Restart your AI client** and start debugging
+
+> **Security:** If `GEARLYNX_MCP_HTTP_TOKEN` is unset, HTTP mode accepts unauthenticated requests from clients that pass the configured `Host` and `Origin` checks. The default bind address is local-only; use a non-loopback address only on trusted networks or with bearer-token authentication enabled.
 
 Once configured, you can ask your AI assistant:
 

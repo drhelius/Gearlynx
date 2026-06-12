@@ -116,6 +116,7 @@ bool gui_init(void)
     strncpy_fit(gui_savestates_path, config_emulator.savestates_path.c_str(), sizeof(gui_savestates_path));
     strncpy_fit(gui_screenshots_path, config_emulator.screenshots_path.c_str(), sizeof(gui_screenshots_path));
     strncpy_fit(gui_bios_path, config_emulator.bios_path.c_str(), sizeof(gui_bios_path));
+    strncpy_fit(gui_mcp_http_address, config_emulator.mcp_http_address.c_str(), sizeof(gui_mcp_http_address));
 
     if (strlen(gui_bios_path) > 0)
         gui_load_bios(gui_bios_path);
