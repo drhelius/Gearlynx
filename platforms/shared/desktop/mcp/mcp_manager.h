@@ -23,6 +23,7 @@
 #include "mcp_server.h"
 #include "mcp_transport.h"
 #include "mcp_debug_adapter.h"
+#include "emu.h"
 #include <vector>
 
 extern bool g_mcp_stdio_mode;
@@ -140,6 +141,8 @@ public:
         DebugCommand* cmd = NULL;
         while ((cmd = m_commandQueue.Pop()) != NULL)
         {
+            bool was_idle = emu_is_debug_idle();
+
             DebugResponse* resp = new DebugResponse();
             resp->requestId = cmd->requestId;
             resp->isError = false;
@@ -165,6 +168,9 @@ public:
 
             m_responseQueue.Push(resp);
             SafeDelete(cmd);
+
+            if (was_idle && !emu_is_debug_idle())
+                break;
         }
     }
 
