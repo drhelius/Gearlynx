@@ -64,10 +64,12 @@ static float current_fps = 60.0f;
 static bool allow_up_down = false;
 static bool categories_supported = false;
 
-static bool libretro_supports_bitmasks;
+static bool libretro_supports_bitmasks = false;
 static int joypad_current[MAX_PADS][JOYPAD_BUTTONS];
 static int joypad_old[MAX_PADS][JOYPAD_BUTTONS];
-static unsigned input_device[MAX_PADS];
+static unsigned input_device[MAX_PADS] = {
+    RETRO_DEVICE_LYNX_PAD
+};
 
 static GLYNX_Keys keymap[] = {
     GLYNX_KEY_UP,
@@ -85,6 +87,9 @@ static GearlynxCore* core;
 static u8* frame_buffer;
 
 static void set_controller_info(void);
+static void clear_input_state(void);
+static void reset_controller_devices(void);
+static void apply_controller_device(unsigned port, unsigned device, bool log_device);
 static void update_input(void);
 static void check_variables(void);
 
@@ -222,17 +227,10 @@ void retro_init(void)
 
     frame_buffer = new u8[256 * 256 * 2];
 
-    for (int i = 0; i < MAX_PADS; i++)
-    {
-        for (int j = 0; j < JOYPAD_BUTTONS; j++)
-        {
-            joypad_current[i][j] = 0;
-            joypad_old[i][j] = 0;
-        }
-    }
+    clear_input_state();
 
     for (int i = 0; i < MAX_PADS; i++)
-        input_device[i] = RETRO_DEVICE_LYNX_PAD;
+        apply_controller_device(i, input_device[i], false);
 
     libretro_supports_bitmasks = environ_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, NULL);
 }
@@ -241,6 +239,17 @@ void retro_deinit(void)
 {
     SafeDeleteArray(frame_buffer);
     SafeDelete(core);
+
+    audio_sample_count = 0;
+    current_screen_width = 0;
+    current_screen_height = 0;
+    current_aspect_ratio = 0.0f;
+    aspect_ratio = 0.0f;
+    current_fps = 60.0f;
+    libretro_supports_bitmasks = false;
+
+    reset_controller_devices();
+    clear_input_state();
 }
 
 void retro_reset(void)
@@ -256,25 +265,14 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 {
     if (port >= MAX_PADS)
     {
-        log_cb(RETRO_LOG_DEBUG, "retro_set_controller_port_device invalid port number: %u\n", port);
+        if (log_cb)
+            log_cb(RETRO_LOG_DEBUG, "retro_set_controller_port_device invalid port number: %u\n", port);
         return;
     }
 
     input_device[port] = device;
 
-    switch ( device )
-    {
-        case RETRO_DEVICE_NONE:
-            log_cb(RETRO_LOG_INFO, "Controller %u: Unplugged\n", port);
-            break;
-        case RETRO_DEVICE_LYNX_PAD:
-        case RETRO_DEVICE_JOYPAD:
-            log_cb(RETRO_LOG_INFO, "Controller %u: Lynx Pad\n", port);
-            break;
-        default:
-            log_cb(RETRO_LOG_DEBUG, "Setting descriptors for unsupported device.\n");
-            break;
-    }
+    apply_controller_device(port, device, true);
 }
 
 void retro_get_system_info(struct retro_system_info *info)
@@ -478,6 +476,44 @@ static void set_controller_info(void)
     };
 
     environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, joypad);
+}
+
+static void clear_input_state(void)
+{
+    for (int i = 0; i < MAX_PADS; i++)
+    {
+        for (int j = 0; j < JOYPAD_BUTTONS; j++)
+        {
+            joypad_current[i][j] = 0;
+            joypad_old[i][j] = 0;
+        }
+    }
+}
+
+static void reset_controller_devices(void)
+{
+    for (int i = 0; i < MAX_PADS; i++)
+        input_device[i] = RETRO_DEVICE_LYNX_PAD;
+}
+
+static void apply_controller_device(unsigned port, unsigned device, bool log_device)
+{
+    if (!log_device || !log_cb)
+        return;
+
+    switch (device)
+    {
+        case RETRO_DEVICE_NONE:
+            log_cb(RETRO_LOG_INFO, "Controller %u: Unplugged\n", port);
+            break;
+        case RETRO_DEVICE_LYNX_PAD:
+        case RETRO_DEVICE_JOYPAD:
+            log_cb(RETRO_LOG_INFO, "Controller %u: Lynx Pad\n", port);
+            break;
+        default:
+            log_cb(RETRO_LOG_DEBUG, "Setting descriptors for unsupported device.\n");
+            break;
+    }
 }
 
 static void update_input(void)
