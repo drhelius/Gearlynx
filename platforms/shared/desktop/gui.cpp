@@ -53,7 +53,7 @@ static void main_window(void);
 static void show_status_message(void);
 static void show_error_window(void);
 static void show_loading_popup(void);
-static void finish_loading_rom(void);
+static bool finish_loading_rom(void);
 static void set_style(void);
 static void set_style_light(ImGuiStyle& style);
 static void set_style_dark(ImGuiStyle& style);
@@ -281,10 +281,10 @@ void gui_shortcut(gui_ShortCutEvent event)
     }
 }
 
-void gui_load_rom(const char* path)
+bool gui_load_rom(const char* path)
 {
     if (loading_rom_active)
-        return;
+        return false;
 
     using namespace std;
 
@@ -303,9 +303,40 @@ void gui_load_rom(const char* path)
     loading_rom_active = true;
 
     emu_load_rom_async(path);
+
+    return true;
 }
 
-static void finish_loading_rom(void)
+bool gui_is_rom_loading(void)
+{
+    return loading_rom_active;
+}
+
+bool gui_finish_loading_rom(void)
+{
+    if (!loading_rom_active || emu_is_rom_loading())
+        return false;
+
+    loading_rom_active = false;
+    gui_dialog_in_use = false;
+    bool success = emu_finish_rom_loading();
+
+    if (success)
+        success = finish_loading_rom();
+    else
+    {
+        std::string message("Error loading ROM:\n");
+        message += loading_rom_path;
+        gui_set_error_message(message.c_str());
+
+        emu_get_core()->GetMedia()->HardReset();
+        gui_action_reset();
+    }
+
+    return success;
+}
+
+static bool finish_loading_rom(void)
 {
     if (!emu_get_core()->GetMedia()->IsBiosLoaded())
     {
@@ -316,7 +347,7 @@ static void finish_loading_rom(void)
 
         emu_get_core()->GetMedia()->HardReset();
         gui_action_reset();
-        return;
+        return false;
     }
 
     gui_debug_reset();
@@ -338,6 +369,8 @@ static void finish_loading_rom(void)
 
     if (!emu_is_empty())
         application_update_title_with_rom(emu_get_core()->GetMedia()->GetFileName());
+
+    return true;
 }
 
 void gui_load_bios(const char* path)
@@ -636,23 +669,7 @@ static void show_loading_popup(void)
 
     if (!emu_is_rom_loading())
     {
-        loading_rom_active = false;
-        gui_dialog_in_use = false;
-        bool success = emu_finish_rom_loading();
-
-        if (success)
-        {
-            finish_loading_rom();
-        }
-        else
-        {
-            std::string message("Error loading ROM:\n");
-            message += loading_rom_path;
-            gui_set_error_message(message.c_str());
-
-            emu_get_core()->GetMedia()->HardReset();
-            gui_action_reset();
-        }
+        gui_finish_loading_rom();
         return;
     }
 

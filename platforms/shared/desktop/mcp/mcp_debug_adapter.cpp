@@ -1775,7 +1775,7 @@ json DebugAdapter::GetSprite(int index, const std::string& format)
     return result;
 }
 
-json DebugAdapter::LoadMedia(const std::string& file_path)
+json DebugAdapter::StartLoadMedia(const std::string& file_path)
 {
     json result;
 
@@ -1786,7 +1786,33 @@ json DebugAdapter::LoadMedia(const std::string& file_path)
         return result;
     }
 
-    gui_load_rom(file_path.c_str());
+    if (!gui_load_rom(file_path.c_str()))
+    {
+        result["error"] = "Another media load is already in progress";
+        Log("[MCP] LoadMedia failed: load already in progress");
+        return result;
+    }
+
+    result["file_path"] = file_path;
+
+    return result;
+}
+
+bool DebugAdapter::IsMediaLoading() const
+{
+    return gui_is_rom_loading() && emu_is_rom_loading();
+}
+
+json DebugAdapter::FinishLoadMedia(const std::string& file_path)
+{
+    json result;
+
+    if (gui_is_rom_loading() && !gui_finish_loading_rom())
+    {
+        result["error"] = "Failed to load media file";
+        Log("[MCP] LoadMedia failed: %s", file_path.c_str());
+        return result;
+    }
 
     if (!m_core || !m_core->GetMedia()->IsReady())
     {
@@ -1801,8 +1827,6 @@ json DebugAdapter::LoadMedia(const std::string& file_path)
 
     Media::GLYNX_Media_Type type = m_core->GetMedia()->GetType();
     result["media_type"] = (type == Media::MEDIA_HOMEBREW) ? "Homebrew" : "Lynx";
-
-    config_push_recent_media(file_path);
 
     return result;
 }
