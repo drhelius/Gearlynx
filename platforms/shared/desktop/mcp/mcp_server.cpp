@@ -787,7 +787,7 @@ void McpServer::HandleToolsList(const json& request)
     tools.push_back({
         {"name", "load_media"},
         {"title", "Load ROM"},
-        {"description", "Load ROM media (.lnx .lyx .o .zip), auto-load .sym/.lbl/.noi symbols, reset emulator."},
+        {"description", "Load ROM media (.lnx .lyx .o .zip), auto-load .sym/.elf/.lbl/.noi symbols, reset emulator."},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -819,7 +819,7 @@ void McpServer::HandleToolsList(const json& request)
     tools.push_back({
         {"name", "load_symbols"},
         {"title", "Load Symbols"},
-        {"description", "Load debug symbols (.sym ADDRESS LABEL; also supported labels); append to symbol table."},
+        {"description", "Load debug symbols (.sym ADDRESS LABEL, llvm-nm text, llvm-mos ELF, and other supported labels); append to symbol table."},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {

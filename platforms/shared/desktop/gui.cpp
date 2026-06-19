@@ -354,9 +354,19 @@ static bool finish_loading_rom(void)
 
     std::string str(loading_rom_path);
     str = str.substr(0, str.find_last_of("."));
-    if (!gui_debug_load_symbols_file((str + ".sym").c_str()))
-        if (!gui_debug_load_symbols_file((str + ".lbl").c_str()))
-            gui_debug_load_symbols_file((str + ".noi").c_str());
+    std::string elf_str(loading_rom_path);
+    elf_str += ".elf";
+    std::string base_elf_str(str + ".elf");
+
+    bool symbols_loaded = gui_debug_load_symbols_file((str + ".sym").c_str());
+    if (!symbols_loaded)
+        symbols_loaded = gui_debug_load_symbols_file(base_elf_str.c_str());
+    if (!symbols_loaded && (elf_str != base_elf_str))
+        symbols_loaded = gui_debug_load_symbols_file(elf_str.c_str());
+    if (!symbols_loaded)
+        symbols_loaded = gui_debug_load_symbols_file((str + ".lbl").c_str());
+    if (!symbols_loaded)
+        gui_debug_load_symbols_file((str + ".noi").c_str());
 
     gui_debug_auto_load_settings();
 
