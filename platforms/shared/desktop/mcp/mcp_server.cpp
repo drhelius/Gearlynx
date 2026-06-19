@@ -278,9 +278,17 @@ void McpServer::HandleToolsList(const json& request)
     tools.push_back({
         {"name", "debug_step_frame"},
         {"title", "Step Frame"},
-        {"description", "Run one Atari Lynx video frame to next VBlank."},
+        {"description", "Run one or more Atari Lynx video frames to VBlank."},
         {"inputSchema", {
             {"type", "object"},
+            {"properties", {
+                {"frames", {
+                    {"type", "integer"},
+                    {"description", "Number of frames to step. Default 1."},
+                    {"minimum", 1},
+                    {"maximum", 1000}
+                }}
+            }},
             {"additionalProperties", false}
         }}
     });
@@ -929,6 +937,51 @@ void McpServer::HandleToolsList(const json& request)
         }}
     });
 
+    tools.push_back({
+        {"name", "controller_macro"},
+        {"title", "Controller Macro"},
+        {"description", "Run a frame-based controller macro. Commands are tap, press, release, and wait."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"commands", {
+                    {"type", "array"},
+                    {"description", "Ordered macro commands, e.g. [{\"tap\":\"pause\"},{\"wait\":30},{\"press\":\"right\"},{\"wait\":60},{\"release\":\"right\"}]."},
+                    {"minItems", 1},
+                    {"items", {
+                        {"type", "object"},
+                        {"properties", {
+                            {"tap", {
+                                {"type", "string"},
+                                {"description", "Tap button for one frame."},
+                                {"enum", json::array({"up", "down", "left", "right", "a", "b", "option1", "option2", "pause"})}
+                            }},
+                            {"press", {
+                                {"type", "string"},
+                                {"description", "Press and hold button."},
+                                {"enum", json::array({"up", "down", "left", "right", "a", "b", "option1", "option2", "pause"})}
+                            }},
+                            {"release", {
+                                {"type", "string"},
+                                {"description", "Release button."},
+                                {"enum", json::array({"up", "down", "left", "right", "a", "b", "option1", "option2", "pause"})}
+                            }},
+                            {"wait", {
+                                {"type", "integer"},
+                                {"description", "Frames to wait."},
+                                {"minimum", 1},
+                                {"maximum", 1000}
+                            }}
+                        }},
+                        {"additionalProperties", false}
+                    }}
+                }}
+            }},
+            {"required", json::array({"commands"})},
+            {"additionalProperties", false}
+        }}
+    });
+
     // Disassembler tools
     tools.push_back({
         {"name", "debug_run_to_cursor"},
@@ -1498,8 +1551,13 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     }
     else if (normalizedTool == "debug_step_frame")
     {
-        m_debugAdapter.StepFrame();
-        return {{"success", true}};
+        int frames = arguments.value("frames", 1);
+
+        if (frames < 1 || frames > 1000)
+            return {{"error", "Invalid frames value (must be 1-1000)"}};
+
+        m_debugAdapter.StepFrame(frames);
+        return {{"success", true}, {"frames", frames}};
     }
     else if (normalizedTool == "debug_reset")
     {
@@ -1956,6 +2014,10 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         std::string button = arguments["button"];
         std::string action = arguments["action"];
         return m_debugAdapter.ControllerButton(button, action);
+    }
+    else if (normalizedTool == "controller_macro")
+    {
+        return {{"error", "controller_macro must be handled by the MCP manager"}};
     }
     // Disassembler operations
     else if (normalizedTool == "debug_run_to_cursor")
