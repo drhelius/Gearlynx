@@ -222,6 +222,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
 
+    u32 loaded_rom_size = m_rom_size;
     m_rom = new u8[m_rom_size];
     memcpy(m_rom, buffer, m_rom_size);
 
@@ -229,6 +230,16 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
     Log("ROM CRC32: %08X", m_crc);
 
     GatherInfoFromDB();
+
+    if (m_rom_size > loaded_rom_size)
+    {
+        Debug("ROM buffer too small (%d bytes) for database size (%d bytes), padding with 0xFF", loaded_rom_size, m_rom_size);
+        u8* padded = new u8[m_rom_size];
+        memcpy(padded, m_rom, loaded_rom_size);
+        memset(padded + loaded_rom_size, 0xFF, m_rom_size - loaded_rom_size);
+        SafeDeleteArray(m_rom);
+        m_rom = padded;
+    }
 
     if (m_type == MEDIA_LYNX)
     {
