@@ -246,6 +246,19 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
         SetupBanks();
 
         u32 required_size = m_bank_size[0] + m_bank_size[1];
+
+        if (m_audin)
+        {
+            u32 bank1_rom_size = m_bank_page_size[1] * 256;
+            u32 bank0a_offset = m_bank_size[0] + bank1_rom_size;
+            u32 bank1a_offset = bank0a_offset + m_bank_size[0];
+
+            if (m_bank_data_a[0] != NULL)
+                required_size = MAX(required_size, bank0a_offset + m_bank_size[0]);
+            if (m_bank_data_a[1] != NULL)
+                required_size = MAX(required_size, bank1a_offset + m_bank_size[1]);
+        }
+
         if (required_size > m_rom_size)
         {
             Debug("ROM buffer too small (%d bytes) for banks (%d bytes), padding with 0xFF", m_rom_size, required_size);
