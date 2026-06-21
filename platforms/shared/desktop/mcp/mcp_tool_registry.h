@@ -42,6 +42,7 @@ public:
     json GetCategoryNames() const;
     json GetDirectTools() const;
     json GetToolsInCategory(const std::string& category) const;
+    json GetToolInfo(const std::string& tool_name) const;
     std::string GetCategoryTitle(const std::string& category) const;
     std::string GetCategoryDescription(const std::string& category) const;
     int GetCategoryToolCount(const std::string& category) const;
@@ -65,7 +66,9 @@ private:
     bool HasToolInCategory(const std::string& category, bool include_direct) const;
     bool HasRoutedToolInCategory(const std::string& category) const;
     int CountToolsInCategory(const std::string& category, bool include_direct) const;
-    json ToolToRouterJson(const json& tool) const;
+    json ToolToSummaryJson(const json& tool) const;
+    json ToolToSearchJson(const json& tool) const;
+    json ToolToInfoJson(const json& tool) const;
 
 private:
     json m_tools;
