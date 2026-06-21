@@ -621,15 +621,37 @@ static void menu_video(void)
 
         ImGui::MenuItem("Show FPS", "", &config_video.fps);
 
-        if (ImGui::MenuItem("Vertical Sync", "", &config_video.sync))
+        if (ImGui::BeginMenu("Vertical Sync"))
         {
-            display_set_vsync(config_video.sync);
-
-            if (config_video.sync)
+            ImGui::PushItemWidth(240.0f);
+#if defined(_WIN32)
+            if (ImGui::Combo("##sync_mode", &config_video.sync_mode, "Disabled\0Fixed (60 Hz, 120 Hz, 240 Hz)\0Variable Refresh Rate (VRR)\0\0"))
+#else
+            if (ImGui::Combo("##sync_mode", &config_video.sync_mode, "Disabled\0Fixed (60 Hz, 120 Hz, 240 Hz)\0\0"))
+#endif
             {
-                config_audio.sync = true;
-                config_emulator.ffwd = false;
+                if (config_video.sync_mode != config_VideoSync_Disabled)
+                {
+                    config_audio.sync = true;
+                    config_emulator.ffwd = false;
+                }
+
+                display_use_vsync_if_enabled();
             }
+            ImGui::PopItemWidth();
+
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("Disabled: do not synchronize presentation to the monitor.");
+                ImGui::Text("Fixed: use normal VSync for 60 Hz, 120 Hz, and 240 Hz displays.");
+                ImGui::Text("VRR: present at the Lynx frame rate.");
+                ImGui::Text("VRR requires fullscreen, a VRR display, and G-SYNC,");
+                ImGui::Text("FreeSync, or Adaptive Sync enabled in your monitor and GPU driver settings.");
+                ImGui::EndTooltip();
+            }
+
+            ImGui::EndMenu();
         }
 
         ImGui::Separator();
