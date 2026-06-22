@@ -702,7 +702,7 @@ json McpServer::BuildToolList()
     tools.push_back({
         {"name", "get_cart_status"},
         {"title", "Get Cartridge Status"},
-        {"description", "Read cartridge status: address generation, bank 0/1, AUDIN."},
+        {"description", "Read cartridge status: address generation, banks, AUDIN."},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}

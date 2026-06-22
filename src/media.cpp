@@ -31,8 +31,12 @@
 Media::Media()
 {
     InitPointer(m_rom);
-    InitPointer(m_bank_data[0]);
-    InitPointer(m_bank_data[1]);
+    for (int i = 0; i < CART_BANK_COUNT; i++)
+    {
+        InitPointer(m_cart_bank_data[i]);
+        InitPointer(m_cart_bank_ram[i]);
+    }
+    InitPointer(m_persistent_ram);
     InitPointer(m_nvram);
     InitPointer(m_eeprom_instance);
     InitPointer(m_decrypt_buffer_a);
@@ -48,6 +52,7 @@ Media::Media()
 
 Media::~Media()
 {
+    ReleaseCartBankRAM();
     SafeDeleteArray(m_rom);
     SafeDeleteArray(m_nvram);
     SafeDelete(m_eeprom_instance);
@@ -81,6 +86,7 @@ void Media::Reset()
 
 void Media::HardReset()
 {
+    ReleaseCartBankRAM();
     SafeDeleteArray(m_rom);
     m_rom_size = 0;
     m_ready = false;
@@ -91,26 +97,19 @@ void Media::HardReset()
     m_file_extension[0] = 0;
     m_header_name[0] = 0;
     m_header_manufacturer[0] = 0;
-    InitPointer(m_bank_data[0]);
-    InitPointer(m_bank_data[1]);
-    InitPointer(m_bank_data_a[0]);
-    InitPointer(m_bank_data_a[1]);
-    m_bank_size[0] = 0;
-    m_bank_size[1] = 0;
-    m_bank_mask[0] = 0;
-    m_bank_mask[1] = 0;
+    ClearCartBanks();
     m_bank_page_size[0] = 0;
     m_bank_page_size[1] = 0;
     m_address_shift = 0;
-    m_address_shift_bits[0] = 0;
-    m_address_shift_bits[1] = 0;
     m_page_offset = 0;
-    m_page_offset_mask[0] = 0;
-    m_page_offset_mask[1] = 0;
+    memset(m_lnx2_bank, 0, sizeof(m_lnx2_bank));
+    m_required_rom_size = 0;
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
-    m_bank1_is_ram = false;
     m_nvram_enabled = false;
+    m_is_lnx2 = false;
+    m_missing_header = false;
+    m_save_memory_dirty = false;
     m_rotation = GLYNX_ROTATION_AUTO;
     m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = GLYNX_EEPROM_NONE;
@@ -121,6 +120,193 @@ void Media::HardReset()
     m_homebrew_size = 0;
     m_epyx_headerless = 0;
     m_crc = 0;
+}
+
+void Media::ReleaseCartBankRAM()
+{
+    for (int i = 0; i < CART_BANK_COUNT; i++)
+    {
+        SafeDeleteArray(m_cart_bank_ram[i]);
+    }
+
+    SafeDeleteArray(m_persistent_ram);
+    m_persistent_ram_size = 0;
+}
+
+void Media::ClearCartBanks()
+{
+    for (int i = 0; i < CART_BANK_COUNT; i++)
+    {
+        InitPointer(m_cart_bank_data[i]);
+        InitPointer(m_cart_bank_ram[i]);
+        m_cart_bank_size[i] = 0;
+        m_cart_bank_mask[i] = 0;
+        m_cart_bank_block_size[i] = 0;
+        m_cart_bank_block_count[i] = 0;
+        m_cart_bank_type[i] = GLYNX_CART_BANK_UNUSED;
+        m_address_shift_bits[i] = 0;
+        m_page_offset_mask[i] = 0;
+    }
+}
+
+void Media::SetupCartBank(int bank, GLYNX_Cartridge_Bank_Type type, u32 block_size, u32 block_count, u8* data)
+{
+    if (bank < 0 || bank >= CART_BANK_COUNT || type == GLYNX_CART_BANK_UNUSED || block_size == 0 || block_count == 0)
+        return;
+
+    u32 total_size = block_size * block_count;
+    m_cart_bank_type[bank] = type;
+    m_cart_bank_size[bank] = total_size;
+    m_cart_bank_mask[bank] = total_size - 1;
+    m_cart_bank_block_size[bank] = block_size;
+    m_cart_bank_block_count[bank] = block_count;
+
+    u32 shift = 0;
+    u32 ps = block_size;
+    while (ps >>= 1)
+        shift++;
+
+    m_address_shift_bits[bank] = shift;
+    m_page_offset_mask[bank] = (1u << shift) - 1;
+
+    m_cart_bank_data[bank] = data;
+
+    Debug("%s: Type: %d, Block size: %d, Blocks: %d, Total size: %d bytes", GetCartBankName(bank), type, block_size, block_count, total_size);
+    Debug("%s: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X", GetCartBankName(bank), m_address_shift_bits[bank], m_page_offset_mask[bank], m_cart_bank_mask[bank]);
+}
+
+u32 Media::SetupClassicBanks()
+{
+    u32 required_size = 0;
+
+    u16 bank0_page_size = (u16)m_bank_page_size[0];
+    if (bank0_page_size > 0)
+    {
+        u32 size = bank0_page_size * 256;
+        SetupCartBank(CART_BANK_0, GLYNX_CART_BANK_ROM, bank0_page_size, 256, (m_rom_size >= size) ? m_rom : NULL);
+        required_size = MAX(required_size, size);
+    }
+    else
+    {
+        Debug("Unknown page size for bank0");
+    }
+
+    u16 bank1_page_size = (u16)m_bank_page_size[1];
+    if (bank1_page_size > 0)
+    {
+        u32 offset = m_cart_bank_size[CART_BANK_0];
+        u32 size = bank1_page_size * 256;
+        SetupCartBank(CART_BANK_1, GLYNX_CART_BANK_ROM, bank1_page_size, 256, (m_rom_size >= offset + size) ? (m_rom + offset) : NULL);
+        required_size = MAX(required_size, offset + size);
+    }
+    else if (m_nvram_enabled)
+    {
+        SetupCartBank(CART_BANK_1, GLYNX_CART_BANK_RAM_PERSISTENT, 32, NVRAM_SIZE / 32, m_nvram);
+        m_cart_bank_data[CART_BANK_1] = m_nvram;
+        SafeDeleteArray(m_cart_bank_ram[CART_BANK_1]);
+        required_size = MAX(required_size, m_cart_bank_size[CART_BANK_0] + m_cart_bank_size[CART_BANK_1]);
+        Debug("Using 8KB NVRAM for bank1");
+    }
+    else
+    {
+        Debug("Bank1 not available (no ROM data, no NVRAM)");
+    }
+
+    if (m_audin)
+    {
+        u32 bank1_rom_size = bank1_page_size * 256;
+        u32 offset = m_cart_bank_size[CART_BANK_0] + bank1_rom_size;
+
+        if (m_cart_bank_size[CART_BANK_0] > 0 && m_rom_size > offset)
+        {
+            u32 size = m_cart_bank_size[CART_BANK_0];
+            SetupCartBank(CART_BANK_0_A, GLYNX_CART_BANK_ROM, m_cart_bank_block_size[CART_BANK_0], 256, (m_rom_size >= offset + size) ? (m_rom + offset) : NULL);
+            required_size = MAX(required_size, offset + m_cart_bank_size[CART_BANK_0_A]);
+        }
+
+        offset += m_cart_bank_size[CART_BANK_0];
+        if (bank1_page_size > 0 && m_rom_size > offset)
+        {
+            u32 size = bank1_page_size * 256;
+            SetupCartBank(CART_BANK_1_A, GLYNX_CART_BANK_ROM, bank1_page_size, 256, (m_rom_size >= offset + size) ? (m_rom + offset) : NULL);
+            required_size = MAX(required_size, offset + m_cart_bank_size[CART_BANK_1_A]);
+        }
+    }
+
+    return required_size;
+}
+
+u32 Media::SetupLynx2Banks()
+{
+    u32 offset = 0;
+    u32 persistent_offset = 0;
+
+    for (int i = 0; i < CART_BANK_COUNT; i++)
+    {
+        u8 descriptor = m_lnx2_bank[i];
+        GLYNX_Cartridge_Bank_Type type = (GLYNX_Cartridge_Bank_Type)(descriptor >> 6);
+
+        if (type != GLYNX_CART_BANK_RAM_PERSISTENT)
+            continue;
+
+        u32 block_count = 2u << ((descriptor >> 3) & 0x07);
+        u32 block_size = 16u << (descriptor & 0x07);
+        m_persistent_ram_size += block_size * block_count;
+    }
+
+    if (m_persistent_ram_size > 0)
+    {
+        m_persistent_ram = new u8[m_persistent_ram_size];
+        memset(m_persistent_ram, 0xFF, m_persistent_ram_size);
+    }
+
+    for (int i = 0; i < CART_BANK_COUNT; i++)
+    {
+        u8 descriptor = m_lnx2_bank[i];
+        GLYNX_Cartridge_Bank_Type type = (GLYNX_Cartridge_Bank_Type)(descriptor >> 6);
+
+        if (type == GLYNX_CART_BANK_UNUSED)
+            continue;
+
+        u32 block_count = 2u << ((descriptor >> 3) & 0x07);
+        u32 block_size = 16u << (descriptor & 0x07);
+        u32 size = block_size * block_count;
+        u8* rom_data = (m_rom_size >= offset + size) ? (m_rom + offset) : NULL;
+        u8* data = rom_data;
+
+        if (type == GLYNX_CART_BANK_RAM)
+        {
+            m_cart_bank_ram[i] = new u8[size];
+            if (rom_data != NULL)
+                memcpy(m_cart_bank_ram[i], rom_data, size);
+            else
+                memset(m_cart_bank_ram[i], 0xFF, size);
+            data = m_cart_bank_ram[i];
+        }
+        else if (type == GLYNX_CART_BANK_RAM_PERSISTENT)
+        {
+            data = m_persistent_ram + persistent_offset;
+            if (rom_data != NULL)
+                memcpy(data, rom_data, size);
+            persistent_offset += size;
+        }
+
+        SetupCartBank(i, type, block_size, block_count, data);
+        offset += size;
+    }
+
+    return offset;
+}
+
+void Media::SetupBanks()
+{
+    ReleaseCartBankRAM();
+    ClearCartBanks();
+
+    if (m_is_lnx2)
+        m_required_rom_size = SetupLynx2Banks();
+    else
+        m_required_rom_size = SetupClassicBanks();
 }
 
 bool Media::LoadFromFile(const char* path)
@@ -200,7 +386,13 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     m_rom_size = size;
 
-    if ((m_rom_size > 0x40) && GatherLynxHeader(buffer))
+    if ((m_rom_size > 0x40) && GatherLynx2Header(buffer))
+    {
+        m_rom_size -= 0x40;
+        buffer += 0x40;
+        m_type = MEDIA_LYNX;
+    }
+    else if ((m_rom_size > 0x40) && GatherLynxHeader(buffer))
     {
         m_rom_size -= 0x40;
         buffer += 0x40;
@@ -245,19 +437,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
     {
         SetupBanks();
 
-        u32 required_size = m_bank_size[0] + m_bank_size[1];
-
-        if (m_audin)
-        {
-            u32 bank1_rom_size = m_bank_page_size[1] * 256;
-            u32 bank0a_offset = m_bank_size[0] + bank1_rom_size;
-            u32 bank1a_offset = bank0a_offset + m_bank_size[0];
-
-            if (m_bank_data_a[0] != NULL)
-                required_size = MAX(required_size, bank0a_offset + m_bank_size[0]);
-            if (m_bank_data_a[1] != NULL)
-                required_size = MAX(required_size, bank1a_offset + m_bank_size[1]);
-        }
+        u32 required_size = m_required_rom_size;
 
         if (required_size > m_rom_size)
         {
@@ -268,18 +448,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
             SafeDeleteArray(m_rom);
             m_rom = padded;
             m_rom_size = required_size;
-
-            // Update bank data pointers to the new buffer
-            m_bank_data[0] = m_rom;
-            if (m_bank_size[1] > 0 && !m_bank1_is_ram)
-                m_bank_data[1] = m_rom + m_bank_size[0];
-            if (m_audin)
-            {
-                if (m_bank_data_a[0] != NULL)
-                    m_bank_data_a[0] = m_rom + m_bank_size[0] + (m_bank_page_size[1] * 256);
-                if (m_bank_data_a[1] != NULL)
-                    m_bank_data_a[1] = m_rom + m_bank_size[0] + (m_bank_page_size[1] * 256) + m_bank_size[0];
-            }
+            SetupBanks();
         }
     }
 
@@ -426,7 +595,11 @@ void Media::GatherInfoFromDB()
             m_is_in_game_database = true;
             Log("ROM found in database: %s. CRC: %08X", k_game_database[i].title, m_crc);
 
-            if (m_rom_size == k_game_database[i].file_size)
+            if (m_is_lnx2)
+            {
+                Debug("Skipping database media overrides for LNX2 ROM");
+            }
+            else if (m_rom_size == k_game_database[i].file_size)
             {
                 Debug("ROM size matches database: %d bytes", m_rom_size);
             }
@@ -437,45 +610,48 @@ void Media::GatherInfoFromDB()
                 m_rom_size = k_game_database[i].file_size;
             }
 
-            if (k_game_database[i].bank0_page_size != 0)
+            if (!m_is_lnx2 && k_game_database[i].bank0_page_size != 0)
             {
                 Debug("Forcing bank0 page size to database value: %d", k_game_database[i].bank0_page_size);
                 m_bank_page_size[0] = k_game_database[i].bank0_page_size;
             }
 
-            Debug("Forcing bank1 page size to database value: %d", k_game_database[i].bank1_page_size);
-            m_bank_page_size[1] = k_game_database[i].bank1_page_size;
+            if (!m_is_lnx2)
+            {
+                Debug("Forcing bank1 page size to database value: %d", k_game_database[i].bank1_page_size);
+                m_bank_page_size[1] = k_game_database[i].bank1_page_size;
+            }
 
-            if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
+            if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT))
             {
                 Debug("Forcing rotation to database value: Rotate LEFT");
                 m_rotation = GLYNX_ROTATION_LEFT;
             }
-            else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT)
+            else if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT))
             {
                 Debug("Forcing rotation to database value: Rotate RIGHT");
                 m_rotation = GLYNX_ROTATION_RIGHT;
             }
 
-            if (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN)
+            if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN))
             {
                 Debug("Forcing AUDIN to database value: TRUE");
                 m_audin = true;
             }
 
-            if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46)
+            if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46))
             {
                 Debug("Forcing EEPROM to database value: 93C46");
                 m_eeprom = GLYNX_EEPROM_93C46;
             }
 
-            if (k_game_database[i].flags & GLYNX_DB_FLAG_NVRAM_8KB)
+            if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_NVRAM_8KB))
             {
                 Debug("Enabling 8KB NVRAM in bank1");
                 m_nvram_enabled = true;
             }
 
-            if (k_game_database[i].console_type != GLYNX_CONSOLE_AUTO)
+            if (!m_is_lnx2 && k_game_database[i].console_type != GLYNX_CONSOLE_AUTO)
             {
                 Debug("Forcing console type to database value: %s", k_game_database[i].console_type == GLYNX_CONSOLE_MODEL_I ? "Lynx I" : "Lynx II");
                 m_console_type = k_game_database[i].console_type;
@@ -552,6 +728,68 @@ bool Media::GatherLynxHeader(const u8* buffer)
     return true;
 }
 
+bool Media::GatherLynx2Header(const u8* buffer)
+{
+    const u8* p = buffer;
+    GLYNX_Cartridge_Header_LNX2 header;
+
+    memset(&header, 0, sizeof(header));
+
+    if (p[0] != 'L' || p[1] != 'N' || p[2] != 'X' || p[3] != '2')
+        return false;
+
+    Debug("LNX2 Header found");
+
+    memcpy(header.magic, p, 4);
+    p += 4;
+
+    for (int i = 0; i < CART_BANK_COUNT; i++)
+    {
+        header.bank[i] = *p;
+        m_lnx2_bank[i] = header.bank[i];
+        p++;
+    }
+
+    header.version = read_u16_le(p);
+    p += 2;
+
+    if (header.version != 1)
+    {
+        Log("Invalid LNX2 header version: %d", header.version);
+        return false;
+    }
+
+    memcpy(header.name, p, 32);
+    header.name[31] = 0;
+    p += 32;
+
+    memcpy(header.manufacturer, p, 16);
+    header.manufacturer[15] = 0;
+    p += 16;
+
+    header.rotation = *p;
+    p++;
+
+    header.flags = *p;
+    p++;
+
+    header.eeprom = *p;
+
+    m_is_lnx2 = true;
+    m_rotation = ReadHeaderRotation(header.rotation);
+    m_audin = ((m_lnx2_bank[CART_BANK_0_A] >> 6) != GLYNX_CART_BANK_UNUSED) || ((m_lnx2_bank[CART_BANK_1_A] >> 6) != GLYNX_CART_BANK_UNUSED);
+    m_eeprom = ReadHeaderEEPROM(header.eeprom);
+    if (header.flags & 0x01)
+        m_console_type = GLYNX_CONSOLE_MODEL_II;
+
+    strncpy(m_header_name, header.name, 31);
+    m_header_name[31] = 0;
+    strncpy(m_header_manufacturer, header.manufacturer, 15);
+    m_header_manufacturer[15] = 0;
+
+    return true;
+}
+
 bool Media::GatherBS93Header(const u8* buffer)
 {
     const u8* p = buffer;
@@ -595,6 +833,7 @@ void Media::DefaultLynxHeader()
 {
     Log("Using default header values");
 
+    m_missing_header = true;
     m_bank_page_size[0] = (m_rom_size + 255) >> 8;
     m_bank_page_size[1] = 0;
     m_rotation = GLYNX_ROTATION_AUTO;
@@ -605,14 +844,14 @@ void Media::DefaultLynxHeader()
 
 int Media::DetectEpyxHeaderless()
 {
-    if (m_bank_data[0] == NULL || m_bank_size[0] < (u32)EPYX_HEADER_OLD)
+    if (m_cart_bank_data[CART_BANK_0] == NULL || m_cart_bank_size[CART_BANK_0] < (u32)EPYX_HEADER_OLD)
         return 0;
 
     int headerless = EPYX_HEADER_OLD;
 
     for (int i = 0; i < EPYX_HEADER_OLD; i++)
     {
-        u8 data = m_bank_data[0][i & m_bank_mask[0]];
+        u8 data = m_cart_bank_data[CART_BANK_0][i & m_cart_bank_mask[CART_BANK_0]];
 
         if (data != 0x00)
         {
@@ -639,116 +878,6 @@ int Media::DetectEpyxHeaderless()
     }
 
     return headerless;
-}
-
-void Media::SetupBanks()
-{
-    // Setup Bank0 (always ROM)
-    u16 bank0_page_size = m_bank_page_size[0];
-
-    if (bank0_page_size == 0)
-    {
-        Debug("Unknown page size for bank0");
-        InitPointer(m_bank_data[0]);
-        m_bank_size[0] = 0;
-        m_address_shift_bits[0] = 0;
-        m_page_offset_mask[0] = 0;
-        m_bank_mask[0] = 0;
-    }
-    else
-    {
-        u32 total_size = bank0_page_size * 256;
-        m_bank_size[0] = total_size;
-        m_bank_data[0] = m_rom;
-
-        u32 shift = 0;
-        u32 ps = bank0_page_size;
-        while (ps >>= 1)
-            shift++;
-
-        m_address_shift_bits[0] = shift;
-        m_page_offset_mask[0] = (1u << shift) - 1;
-        m_bank_mask[0] = total_size - 1;
-
-        Debug("Bank0: Page size: %d, Total size: %d bytes", bank0_page_size, total_size);
-        Debug("Bank0: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
-              m_address_shift_bits[0], m_page_offset_mask[0], m_bank_mask[0]);
-    }
-
-    // Setup Bank1
-    u16 bank1_page_size = m_bank_page_size[1];
-
-    if (bank1_page_size > 0)
-    {
-        // Bank1 contains ROM data
-        u32 total_size = bank1_page_size * 256;
-        m_bank_size[1] = total_size;
-        m_bank_data[1] = (m_rom_size > m_bank_size[0]) ? (m_rom + m_bank_size[0]) : NULL;
-
-        u32 shift = 0;
-        u32 ps = bank1_page_size;
-        while (ps >>= 1)
-            shift++;
-
-        m_address_shift_bits[1] = shift;
-        m_page_offset_mask[1] = (1u << shift) - 1;
-        m_bank_mask[1] = total_size - 1;
-
-        Debug("Bank1: Page size: %d, Total size: %d bytes", bank1_page_size, total_size);
-        Debug("Bank1: Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
-              m_address_shift_bits[1], m_page_offset_mask[1], m_bank_mask[1]);
-    }
-    else if (m_nvram_enabled)
-    {
-        // Bank1 is 8KB NVRAM (EOTB uses 32-byte blocks)
-        Debug("Using 8KB NVRAM for bank1");
-
-        m_bank_data[1] = m_nvram;
-        m_bank_size[1] = NVRAM_SIZE;
-        m_address_shift_bits[1] = 5;
-        m_page_offset_mask[1] = 0x1F;
-        m_bank_mask[1] = NVRAM_SIZE - 1;
-        m_bank1_is_ram = true;
-
-        Debug("Bank1 NVRAM: Size: %d bytes, Address shift bits: %d, Page offset mask: 0x%X, Bank mask: 0x%X",
-              m_bank_size[1], m_address_shift_bits[1], m_page_offset_mask[1], m_bank_mask[1]);
-    }
-    else
-    {
-        // Bank1 is not available (reads return 0xFF, writes are ignored)
-        Debug("Bank1 not available (no ROM data, no NVRAM)");
-
-        InitPointer(m_bank_data[1]);
-        m_bank_size[1] = 0;
-        m_address_shift_bits[1] = 0;
-        m_page_offset_mask[1] = 0;
-        m_bank_mask[1] = 0;
-    }
-
-    // For AUDIN carts, setup alternative banks (Bank0A, Bank1A)
-    if (m_audin)
-    {
-        // Calculate ROM offset for Bank0A
-        // Use m_bank_page_size[1] to get actual ROM Bank1 size
-        // When Bank1 has no ROM (page_size == 0), there is no Bank1 data in ROM
-        u32 bank1_rom_size = m_bank_page_size[1] * 256;
-        u32 offset = m_bank_size[0] + bank1_rom_size;
-
-        // Bank0A starts after Bank1 ROM data
-        if (m_rom_size > offset)
-        {
-            m_bank_data_a[0] = m_rom + offset;
-            Debug("Bank0A: Offset: 0x%X", offset);
-        }
-
-        // Bank1A starts after Bank0A (same size as Bank0)
-        offset += m_bank_size[0];
-        if (m_rom_size > offset)
-        {
-            m_bank_data_a[1] = m_rom + offset;
-            Debug("Bank1A: Offset: 0x%X", offset);
-        }
-    }
 }
 
 void Media::GatherDataFromPath(const char* path)
@@ -912,20 +1041,22 @@ bool Media::IsValidFile(const char* path)
 void Media::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
     if (m_eeprom != GLYNX_EEPROM_NONE)
         m_eeprom_instance->SaveState(stream);
 }
 
-void Media::LoadState(std::istream& stream)
+void Media::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, version);
     if (m_eeprom != GLYNX_EEPROM_NONE)
         m_eeprom_instance->LoadState(stream);
+    if (m_persistent_ram_size > 0)
+        m_save_memory_dirty = true;
 }
 
-void Media::Serialize(StateSerializer& s)
+void Media::Serialize(StateSerializer& s, int version)
 {
     G_SERIALIZE(s, m_address_shift);
     G_SERIALIZE(s, m_page_offset);
@@ -933,9 +1064,17 @@ void Media::Serialize(StateSerializer& s)
     G_SERIALIZE(s, m_shift_register_bit);
     G_SERIALIZE(s, m_audin_value);
 
-    if (m_bank1_is_ram && m_bank_data[1] != NULL && m_bank_size[1] > 0)
+    if (version >= 15)
     {
-        G_SERIALIZE_ARRAY(s, m_bank_data[1], m_bank_size[1]);
+        for (int i = 0; i < CART_BANK_COUNT; i++)
+        {
+            if (IsCartBankWritable(i) && m_cart_bank_data[i] != NULL && m_cart_bank_size[i] > 0)
+                G_SERIALIZE_ARRAY(s, m_cart_bank_data[i], m_cart_bank_size[i]);
+        }
+    }
+    else if (IsCartBankWritable(CART_BANK_1) && m_cart_bank_data[CART_BANK_1] != NULL && m_cart_bank_size[CART_BANK_1] > 0)
+    {
+        G_SERIALIZE_ARRAY(s, m_cart_bank_data[CART_BANK_1], m_cart_bank_size[CART_BANK_1]);
     }
 }
 
@@ -1078,7 +1217,7 @@ int Media::DecryptEpyxLoader(u8* output, int max_size)
     if (m_type != MEDIA_EPYX_HEADERLESS || m_epyx_headerless == 0)
         return 0;
 
-    if (m_bank_data[0] == NULL || m_bank_size[0] == 0)
+    if (m_cart_bank_data[CART_BANK_0] == NULL || m_cart_bank_size[CART_BANK_0] == 0)
         return 0;
 
     Debug("Decrypting EPYX loader...");
@@ -1089,7 +1228,7 @@ int Media::DecryptEpyxLoader(u8* output, int max_size)
     int read_offset = m_epyx_headerless;
 
     // First byte is block count (inverted)
-    encrypted[0] = m_bank_data[0][read_offset & m_bank_mask[0]];
+    encrypted[0] = m_cart_bank_data[CART_BANK_0][read_offset & m_cart_bank_mask[CART_BANK_0]];
     int block_count = 256 - encrypted[0];
 
     Debug("EPYX loader: %d encrypted blocks", block_count);
@@ -1104,7 +1243,7 @@ int Media::DecryptEpyxLoader(u8* output, int max_size)
     int encrypted_size = 1 + (EPYX_DECRYPT_BLOCK_SIZE * block_count);
     for (int i = 1; i < encrypted_size; i++)
     {
-        encrypted[i] = m_bank_data[0][(read_offset + i) & m_bank_mask[0]];
+        encrypted[i] = m_cart_bank_data[CART_BANK_0][(read_offset + i) & m_cart_bank_mask[CART_BANK_0]];
     }
 
     // Decrypt the frame
@@ -1130,16 +1269,7 @@ void Media::ClearSaveMemoryDirty()
 {
     if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
         m_eeprom_instance->ClearDirty();
-}
-
-u8* Media::GetNVRAM()
-{
-    return m_nvram;
-}
-
-bool Media::IsNVRAMEnabled()
-{
-    return m_nvram_enabled;
+    m_save_memory_dirty = false;
 }
 
 bool Media::SaveRam(std::ostream& file)

@@ -33,6 +33,23 @@ static int mem_edit_select = -1;
 static int current_mem_edit = 0;
 static char set_value_buffer[5] = {0};
 
+static int memory_editor_cart_bank(int editor)
+{
+    switch (editor)
+    {
+        case MEMORY_EDITOR_BANK0:
+            return Media::CART_BANK_0;
+        case MEMORY_EDITOR_BANK0A:
+            return Media::CART_BANK_0_A;
+        case MEMORY_EDITOR_BANK1:
+            return Media::CART_BANK_1;
+        case MEMORY_EDITOR_BANK1A:
+            return Media::CART_BANK_1_A;
+        default:
+            return -1;
+    }
+}
+
 static void memory_editor_menu(void);
 static void draw_tabs(void);
 
@@ -76,22 +93,13 @@ void gui_debug_memory_reset(void)
     mem_edit[MEMORY_EDITOR_RAM].Reset("RAM", ram, 0x10000);
     mem_edit[MEMORY_EDITOR_ZERO_PAGE].Reset("ZP", ram, 0x100);
     mem_edit[MEMORY_EDITOR_STACK].Reset("STACK", ram + 0x100, 0x100, 0x100);
-    if (media->GetBankSize(0) > 0)
-        mem_edit[MEMORY_EDITOR_BANK0].Reset("BANK0", media->GetBankData(0), media->GetBankSize(0));
-    else
-        mem_edit[MEMORY_EDITOR_BANK0].Reset("BANK0", NULL, 0);
-    if (media->GetBankDataA(0) != NULL && media->GetBankSize(0) > 0)
-        mem_edit[MEMORY_EDITOR_BANK0A].Reset("BANK0A", media->GetBankDataA(0), media->GetBankSize(0));
-    else
-        mem_edit[MEMORY_EDITOR_BANK0A].Reset("BANK0A", NULL, 0);
-    if (media->GetBankSize(1) > 0)
-        mem_edit[MEMORY_EDITOR_BANK1].Reset("BANK1", media->GetBankData(1), media->GetBankSize(1));
-    else
-        mem_edit[MEMORY_EDITOR_BANK1].Reset("BANK1", NULL, 0);
-    if (media->GetBankDataA(1) != NULL && media->GetBankSize(1) > 0)
-        mem_edit[MEMORY_EDITOR_BANK1A].Reset("BANK1A", media->GetBankDataA(1), media->GetBankSize(1));
-    else
-        mem_edit[MEMORY_EDITOR_BANK1A].Reset("BANK1A", NULL, 0);
+    for (int editor = MEMORY_EDITOR_BANK0; editor <= MEMORY_EDITOR_BANK1A; editor++)
+    {
+        int bank = memory_editor_cart_bank(editor);
+        u8* data = media->GetCartBankData(bank);
+        u32 size = media->GetCartBankSize(bank);
+        mem_edit[editor].Reset(media->GetCartBankName(bank), data, size);
+    }
     mem_edit[MEMORY_EDITOR_BIOS].Reset("BIOS", media->GetBIOS(), 0x200, 0xFE00);
     if (eeprom->IsAvailable())
         mem_edit[MEMORY_EDITOR_EEPROM].Reset("EEPROM", eeprom->GetData(), eeprom->GetSize());
@@ -223,13 +231,8 @@ static void draw_tabs(void)
 
     for (int i = 0; i < MEMORY_EDITOR_MAX; i++)
     {
-        if (i == MEMORY_EDITOR_BANK0 && media->GetBankSize(0) == 0)
-            continue;
-        if (i == MEMORY_EDITOR_BANK0A && (media->GetBankDataA(0) == NULL || media->GetBankSize(0) == 0))
-            continue;
-        if (i == MEMORY_EDITOR_BANK1 && media->GetBankSize(1) == 0)
-            continue;
-        if (i == MEMORY_EDITOR_BANK1A && (media->GetBankDataA(1) == NULL || media->GetBankSize(1) == 0))
+        int bank = memory_editor_cart_bank(i);
+        if (bank >= 0 && (media->GetCartBankData(bank) == NULL || media->GetCartBankSize(bank) == 0))
             continue;
         if (i == MEMORY_EDITOR_EEPROM && !eeprom->IsAvailable())
             continue;

@@ -46,6 +46,49 @@ static std::string get_file_name_from_path(const std::string& path)
     return path.substr(position + 1);
 }
 
+static const char* cart_bank_type_name(GLYNX_Cartridge_Bank_Type type)
+{
+    switch (type)
+    {
+        case GLYNX_CART_BANK_ROM:
+            return "ROM";
+        case GLYNX_CART_BANK_RAM:
+            return "RAM";
+        case GLYNX_CART_BANK_RAM_PERSISTENT:
+            return "RAM+SAVE";
+        default:
+            return "UNUSED";
+    }
+}
+
+static bool cart_bank_available(Media* media, int bank)
+{
+    return media->GetCartBankData(bank) != NULL && media->GetCartBankSize(bank) > 0;
+}
+
+static json make_cart_bank_json(Media* media, int bank, std::ostringstream& ss)
+{
+    json result;
+    result["index"] = bank;
+    result["name"] = media->GetCartBankName(bank);
+    result["type"] = cart_bank_type_name(media->GetCartBankType(bank));
+    result["writable"] = media->IsCartBankWritable(bank);
+    result["persistent"] = media->IsCartBankPersistent(bank);
+    result["size"] = media->GetCartBankSize(bank);
+    result["size_kb"] = media->GetCartBankSize(bank) / 1024;
+    result["block_size"] = media->GetCartBankBlockSize(bank);
+    result["block_count"] = media->GetCartBankBlockCount(bank);
+
+    if (cart_bank_available(media, bank))
+    {
+        ss << std::setw(2) << (int)media->PeekCartBank(bank);
+        result["peek_value"] = ss.str();
+        ss.str("");
+    }
+
+    return result;
+}
+
 struct DisassemblerBookmark
 {
     u16 address;
@@ -457,27 +500,27 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
             info.cpu_offset = 0x0100;
             break;
         case MEMORY_EDITOR_BANK0:
-            info.name = "BANK0";
-            info.data = media->GetBankData(0);
-            info.size = media->GetBankSize(0);
+            info.name = media->GetCartBankName(Media::CART_BANK_0);
+            info.data = media->GetCartBankData(Media::CART_BANK_0);
+            info.size = media->GetCartBankSize(Media::CART_BANK_0);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK0A:
-            info.name = "BANK0A";
-            info.data = media->GetBankDataA(0);
-            info.size = IsValidPointer(media->GetBankDataA(0)) ? media->GetBankSize(0) : 0;
+            info.name = media->GetCartBankName(Media::CART_BANK_0_A);
+            info.data = media->GetCartBankData(Media::CART_BANK_0_A);
+            info.size = media->GetCartBankSize(Media::CART_BANK_0_A);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK1:
-            info.name = "BANK1";
-            info.data = media->GetBankData(1);
-            info.size = media->GetBankSize(1);
+            info.name = media->GetCartBankName(Media::CART_BANK_1);
+            info.data = media->GetCartBankData(Media::CART_BANK_1);
+            info.size = media->GetCartBankSize(Media::CART_BANK_1);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK1A:
-            info.name = "BANK1A";
-            info.data = media->GetBankDataA(1);
-            info.size = IsValidPointer(media->GetBankDataA(1)) ? media->GetBankSize(1) : 0;
+            info.name = media->GetCartBankName(Media::CART_BANK_1_A);
+            info.data = media->GetCartBankData(Media::CART_BANK_1_A);
+            info.size = media->GetCartBankSize(Media::CART_BANK_1_A);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BIOS:
@@ -593,11 +636,22 @@ json DebugAdapter::GetMediaInfo()
 
     // Header data
     json header;
+    header["format"] = media->GetFormatName();
     header["name"] = media->GetHeaderName();
     header["manufacturer"] = media->GetHeaderManufacturer();
     header["bank0_page_size"] = media->GetHeaderBank0PageSize();
     header["bank1_page_size"] = media->GetHeaderBank1PageSize();
     info["header"] = header;
+
+    json banks = json::array();
+    std::ostringstream bank_ss;
+    bank_ss << std::hex << std::uppercase << std::setfill('0');
+    for (int bank = 0; bank < Media::CART_BANK_COUNT; bank++)
+    {
+        if (cart_bank_available(media, bank))
+            banks.push_back(make_cart_bank_json(media, bank, bank_ss));
+    }
+    info["cart_banks"] = banks;
 
     if (type == Media::MEDIA_HOMEBREW)
     {
@@ -1441,42 +1495,27 @@ json DebugAdapter::GetCartStatus()
     }
     result["address_generation"] = address_gen;
 
-    // Bank 0
-    json bank0;
-    if (ready && media->GetBankSize(0) > 0)
+    json banks = json::array();
+    for (int bank = 0; bank < Media::CART_BANK_COUNT; bank++)
     {
-        bank0["size_kb"] = media->GetBankSize(0) / 1024;
-        bank0["type"] = "ROM";
-        ss << std::setw(2) << (int)media->PeekBank0();
-        bank0["peek_value"] = ss.str();
-        ss.str("");
-        if (IsValidPointer(media->GetBankDataA(0)))
-        {
-            ss << std::setw(2) << (int)media->PeekBank0A();
-            bank0["peek_value_a"] = ss.str();
-            ss.str("");
-        }
+        if (cart_bank_available(media, bank))
+            banks.push_back(make_cart_bank_json(media, bank, ss));
     }
-    result["bank0"] = bank0;
+    result["banks"] = banks;
 
-    // Bank 1
-    json bank1;
-    if (ready && media->GetBankSize(1) > 0)
+    if (cart_bank_available(media, Media::CART_BANK_0))
     {
-        bank1["size_kb"] = media->GetBankSize(1) / 1024;
-        bank1["type"] = media->IsBank1RAM() ? "RAM" : "ROM";
-
-        ss << std::setw(2) << (int)media->PeekBank1();
-        bank1["peek_value"] = ss.str();
-        ss.str("");
-        if (IsValidPointer(media->GetBankDataA(1)))
-        {
-            ss << std::setw(2) << (int)media->PeekBank1A();
-            bank1["peek_value_a"] = ss.str();
-            ss.str("");
-        }
+        result["bank0"] = make_cart_bank_json(media, Media::CART_BANK_0, ss);
+        if (cart_bank_available(media, Media::CART_BANK_0_A))
+            result["bank0"]["peek_value_a"] = make_cart_bank_json(media, Media::CART_BANK_0_A, ss)["peek_value"];
     }
-    result["bank1"] = bank1;
+
+    if (cart_bank_available(media, Media::CART_BANK_1))
+    {
+        result["bank1"] = make_cart_bank_json(media, Media::CART_BANK_1, ss);
+        if (cart_bank_available(media, Media::CART_BANK_1_A))
+            result["bank1"]["peek_value_a"] = make_cart_bank_json(media, Media::CART_BANK_1_A, ss)["peek_value"];
+    }
 
     // AUDIN
     json audin;

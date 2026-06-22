@@ -689,7 +689,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
     m_suzy->LoadState(stream, header.version);
     m_audio->LoadState(stream, header.version);
     m_input->LoadState(stream);
-    m_media->LoadState(stream);
+    m_media->LoadState(stream, header.version);
 
     return true;
 }

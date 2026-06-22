@@ -27,6 +27,50 @@
 #include "config.h"
 #include "emu.h"
 
+static const char* cart_bank_type_name(GLYNX_Cartridge_Bank_Type type)
+{
+    switch (type)
+    {
+        case GLYNX_CART_BANK_ROM:
+            return "ROM";
+        case GLYNX_CART_BANK_RAM:
+            return "RAM";
+        case GLYNX_CART_BANK_RAM_PERSISTENT:
+            return "RAM+SAVE";
+        default:
+            return "UNUSED";
+    }
+}
+
+static void draw_cart_bank(Media* media, int bank, bool ready)
+{
+    if (!ready || media->GetCartBankData(bank) == NULL || media->GetCartBankSize(bank) == 0)
+        return;
+
+    ImGui::TextColored(magenta, "%s", media->GetCartBankName(bank));
+    ImGui::Separator();
+
+    ImGui::TextColored(violet, "SIZE          "); ImGui::SameLine();
+    ImGui::Text("%d KB", media->GetCartBankSize(bank) / 1024);
+
+    ImGui::TextColored(violet, "TYPE          "); ImGui::SameLine();
+    ImGui::TextColored(media->IsCartBankWritable(bank) ? yellow : blue, "%s", cart_bank_type_name(media->GetCartBankType(bank)));
+
+    ImGui::TextColored(violet, "WRITABLE      "); ImGui::SameLine();
+    if (media->IsCartBankWritable(bank))
+        ImGui::TextColored(green, "YES");
+    else
+        ImGui::TextColored(gray, "NO");
+
+    ImGui::TextColored(violet, "BLOCKS        "); ImGui::SameLine();
+    ImGui::Text("%d x %d", media->GetCartBankBlockCount(bank), media->GetCartBankBlockSize(bank));
+
+    ImGui::TextColored(violet, "PEEK VALUE    "); ImGui::SameLine();
+    ImGui::Text("$%02X", media->PeekCartBank(bank));
+
+    ImGui::NewLine();
+}
+
 void gui_debug_window_cart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
@@ -81,70 +125,8 @@ void gui_debug_window_cart(void)
 
     ImGui::NewLine();
 
-    // Bank 0
-    ImGui::TextColored(magenta, "BANK 0");
-    ImGui::Separator();
-
-    ImGui::TextColored(violet, "SIZE          "); ImGui::SameLine();
-    if (ready && media->GetBankSize(0) > 0)
-        ImGui::Text("%d KB", media->GetBankSize(0) / 1024);
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::TextColored(violet, "PEEK VALUE    "); ImGui::SameLine();
-    if (ready && media->GetBankSize(0) > 0)
-        ImGui::Text("$%02X", media->PeekBank0());
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::TextColored(violet, "PEEK VALUE (A)"); ImGui::SameLine();
-    if (ready && media->GetBankDataA(0) != NULL && media->GetBankSize(0) > 0)
-        ImGui::Text("$%02X", media->PeekBank0A());
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::NewLine();
-
-    // Bank 1
-    ImGui::TextColored(magenta, "BANK 1");
-    ImGui::Separator();
-
-    ImGui::TextColored(violet, "SIZE          "); ImGui::SameLine();
-    if (ready && media->GetBankSize(1) > 0)
-        ImGui::Text("%d KB", media->GetBankSize(1) / 1024);
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::TextColored(violet, "TYPE          "); ImGui::SameLine();
-    if (ready && media->GetBankSize(1) > 0)
-    {
-        if (media->IsBank1RAM())
-            ImGui::TextColored(yellow, "RAM");
-        else
-            ImGui::TextColored(blue, "ROM");
-    }
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::TextColored(violet, "WRITABLE      "); ImGui::SameLine();
-    if (ready && media->GetBankSize(1) > 0 && media->IsBank1RAM())
-        ImGui::TextColored(green, "YES");
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::TextColored(violet, "PEEK VALUE    "); ImGui::SameLine();
-    if (ready && media->GetBankSize(1) > 0)
-        ImGui::Text("$%02X", media->PeekBank1());
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::TextColored(violet, "PEEK VALUE (A)"); ImGui::SameLine();
-    if (ready && media->GetBankDataA(1) != NULL && media->GetBankSize(1) > 0)
-        ImGui::Text("$%02X", media->PeekBank1A());
-    else
-        ImGui::TextColored(gray, "N/A");
-
-    ImGui::NewLine();
+    for (int bank = 0; bank < Media::CART_BANK_COUNT; bank++)
+        draw_cart_bank(media, bank, ready);
 
     // AUDIN
     ImGui::TextColored(magenta, "AUDIN");

@@ -94,6 +94,20 @@ INLINE u16 Media::GetHeaderBank1PageSize()
     return (u16)m_bank_page_size[1];
 }
 
+INLINE const char* Media::GetFormatName()
+{
+    if (m_type == MEDIA_EPYX_HEADERLESS)
+        return "EPYX headerless";
+    else if (m_type == MEDIA_HOMEBREW)
+        return "BS93";
+    else if (m_is_lnx2)
+        return "LNX2";
+    else if (m_missing_header)
+        return "Missing header";
+
+    return "LYNX";
+}
+
 INLINE u8* Media::GetROM()
 {
     return m_rom;
@@ -149,11 +163,6 @@ INLINE u16 Media::GetHomebrewBootAddress()
     return m_homebrew_boot_address;
 }
 
-INLINE int Media::GetEpyxHeaderless()
-{
-    return m_epyx_headerless;
-}
-
 INLINE bool Media::GetAudin()
 {
     return m_audin;
@@ -189,32 +198,67 @@ INLINE bool Media::GetShiftRegisterBit()
     return m_shift_register_bit;
 }
 
-INLINE u32 Media::GetBankSize(int bank)
+INLINE u8* Media::GetCartBankData(int bank)
 {
-    if (bank < 0 || bank > 1)
-        return 0;
-    return m_bank_size[bank];
+    if (bank < 0 || bank >= CART_BANK_COUNT)
+        return NULL;
+    return m_cart_bank_data[bank];
 }
 
-INLINE u32 Media::GetBankMask(int bank)
+INLINE u32 Media::GetCartBankSize(int bank)
 {
-    if (bank < 0 || bank > 1)
+    if (bank < 0 || bank >= CART_BANK_COUNT)
         return 0;
-    return m_bank_mask[bank];
+    return m_cart_bank_size[bank];
 }
 
-INLINE u32 Media::GetAddressShiftBits(int bank)
+INLINE u32 Media::GetCartBankBlockSize(int bank)
 {
-    if (bank < 0 || bank > 1)
+    if (bank < 0 || bank >= CART_BANK_COUNT)
         return 0;
-    return m_address_shift_bits[bank];
+    return m_cart_bank_block_size[bank];
 }
 
-INLINE u32 Media::GetPageOffsetMask(int bank)
+INLINE u32 Media::GetCartBankBlockCount(int bank)
 {
-    if (bank < 0 || bank > 1)
+    if (bank < 0 || bank >= CART_BANK_COUNT)
         return 0;
-    return m_page_offset_mask[bank];
+    return m_cart_bank_block_count[bank];
+}
+
+INLINE GLYNX_Cartridge_Bank_Type Media::GetCartBankType(int bank)
+{
+    if (bank < 0 || bank >= CART_BANK_COUNT)
+        return GLYNX_CART_BANK_UNUSED;
+    return m_cart_bank_type[bank];
+}
+
+INLINE bool Media::IsCartBankWritable(int bank)
+{
+    GLYNX_Cartridge_Bank_Type type = GetCartBankType(bank);
+    return (type == GLYNX_CART_BANK_RAM || type == GLYNX_CART_BANK_RAM_PERSISTENT);
+}
+
+INLINE bool Media::IsCartBankPersistent(int bank)
+{
+    return GetCartBankType(bank) == GLYNX_CART_BANK_RAM_PERSISTENT;
+}
+
+INLINE const char* Media::GetCartBankName(int bank)
+{
+    switch (bank)
+    {
+        case CART_BANK_0:
+            return "BANK0";
+        case CART_BANK_0_A:
+            return "BANK0A";
+        case CART_BANK_1:
+            return "BANK1";
+        case CART_BANK_1_A:
+            return "BANK1A";
+        default:
+            return "BANK";
+    }
 }
 
 INLINE void Media::ShiftRegisterStrobe(bool strobe)
@@ -253,159 +297,123 @@ INLINE void Media::AdvanceCounter()
     }
 }
 
-INLINE u32 Media::GetBankAddress(int bank)
+INLINE u32 Media::GetCartBankAddress(int bank)
 {
+    if (bank < 0 || bank >= CART_BANK_COUNT)
+        return 0;
+
     u32 address = (m_address_shift << m_address_shift_bits[bank]) | (m_page_offset & m_page_offset_mask[bank]);
-    return address & m_bank_mask[bank];
+    return address & m_cart_bank_mask[bank];
+}
+
+INLINE u8 Media::ReadCartBank(int bank)
+{
+    if (m_cart_bank_data[bank] == NULL || m_cart_bank_size[bank] == 0)
+        return 0xFF;
+
+    u8 data = m_cart_bank_data[bank][GetCartBankAddress(bank)];
+    AdvanceCounter();
+    return data;
+}
+
+INLINE u8 Media::PeekCartBank(int bank)
+{
+    if (m_cart_bank_data[bank] == NULL || m_cart_bank_size[bank] == 0)
+        return 0xFF;
+
+    return m_cart_bank_data[bank][GetCartBankAddress(bank)];
+}
+
+INLINE void Media::WriteCartBank(int bank, u8 value)
+{
+    if (!IsCartBankWritable(bank) || m_cart_bank_data[bank] == NULL || m_cart_bank_size[bank] == 0)
+    {
+        AdvanceCounter();
+        return;
+    }
+
+    m_cart_bank_data[bank][GetCartBankAddress(bank)] = value;
+    if (IsCartBankPersistent(bank))
+        m_save_memory_dirty = true;
+    AdvanceCounter();
 }
 
 INLINE u8 Media::ReadBank0()
 {
-    if(m_bank_data[0] == NULL || m_bank_size[0] == 0)
-        return 0xFF;
-
-    u8 data = m_bank_data[0][GetBankAddress(0)];
-    AdvanceCounter();
-    return data;
+    return ReadCartBank(CART_BANK_0);
 }
 
 INLINE u8 Media::ReadBank1()
 {
-    if (m_bank_data[1] == NULL || m_bank_size[1] == 0)
-        return 0xFF;
-
-    u8 data = m_bank_data[1][GetBankAddress(1)];
-    AdvanceCounter();
-    return data;
+    return ReadCartBank(CART_BANK_1);
 }
 
 INLINE u8 Media::PeekBank0()
 {
-    if (m_bank_data[0] == NULL || m_bank_size[0] == 0)
-        return 0xFF;
-
-    return m_bank_data[0][GetBankAddress(0)];
+    return PeekCartBank(CART_BANK_0);
 }
 
 INLINE u8 Media::PeekBank1()
 {
-    if (m_bank_data[1] == NULL || m_bank_size[1] == 0)
-        return 0xFF;
-
-    return m_bank_data[1][GetBankAddress(1)];
+    return PeekCartBank(CART_BANK_1);
 }
 
 INLINE void Media::WriteBank0(u8 value)
 {
-    UNUSED(value);
-    // Bank0 is ROM, writes are ignored but counter still advances
-    // This is used by games for EEPROM clocking
-    AdvanceCounter();
+    WriteCartBank(CART_BANK_0, value);
 }
 
 INLINE void Media::WriteBank1(u8 value)
 {
-    // If bank1 is not RAM (NVRAM), ignore writes but still advance the counter
-    if (!m_bank1_is_ram || m_bank_data[1] == NULL || m_bank_size[1] == 0)
-    {
-        AdvanceCounter();
-        return;
-    }
-
-    m_bank_data[1][GetBankAddress(1)] = value;
-    AdvanceCounter();
+    WriteCartBank(CART_BANK_1, value);
 }
 
 INLINE u8 Media::ReadBank0A()
 {
-    if (m_bank_data_a[0] == NULL || m_bank_size[0] == 0)
+    if (m_cart_bank_data[CART_BANK_0_A] == NULL || m_cart_bank_size[CART_BANK_0_A] == 0)
         return ReadBank0();
 
-    u8 data = m_bank_data_a[0][GetBankAddress(0)];
-    AdvanceCounter();
-    return data;
+    return ReadCartBank(CART_BANK_0_A);
 }
 
 INLINE u8 Media::ReadBank1A()
 {
-    if (m_bank_data_a[1] == NULL || m_bank_size[1] == 0)
+    if (m_cart_bank_data[CART_BANK_1_A] == NULL || m_cart_bank_size[CART_BANK_1_A] == 0)
         return ReadBank1();
 
-    u8 data = m_bank_data_a[1][GetBankAddress(1)];
-    AdvanceCounter();
-    return data;
+    return ReadCartBank(CART_BANK_1_A);
 }
 
 INLINE u8 Media::PeekBank0A()
 {
-    if (m_bank_data_a[0] == NULL || m_bank_size[0] == 0)
+    if (m_cart_bank_data[CART_BANK_0_A] == NULL || m_cart_bank_size[CART_BANK_0_A] == 0)
         return PeekBank0();
 
-    return m_bank_data_a[0][GetBankAddress(0)];
+    return PeekCartBank(CART_BANK_0_A);
 }
 
 INLINE u8 Media::PeekBank1A()
 {
-    if (m_bank_data_a[1] == NULL || m_bank_size[1] == 0)
+    if (m_cart_bank_data[CART_BANK_1_A] == NULL || m_cart_bank_size[CART_BANK_1_A] == 0)
         return PeekBank1();
 
-    return m_bank_data_a[1][GetBankAddress(1)];
+    return PeekCartBank(CART_BANK_1_A);
 }
 
 INLINE void Media::WriteBank0A(u8 value)
 {
-    UNUSED(value);
-    // Bank0A is ROM, writes are ignored but counter still advances
-    // This is used by games for EEPROM clocking
-    AdvanceCounter();
+    if (m_cart_bank_data[CART_BANK_0_A] == NULL || m_cart_bank_size[CART_BANK_0_A] == 0)
+        WriteBank0(value);
+    else
+        WriteCartBank(CART_BANK_0_A, value);
 }
 
 INLINE void Media::WriteBank1A(u8 value)
 {
-    if (m_bank_data_a[1] == NULL || m_bank_size[1] == 0)
-    {
+    if (m_cart_bank_data[CART_BANK_1_A] == NULL || m_cart_bank_size[CART_BANK_1_A] == 0)
         WriteBank1(value);
-        return;
-    }
-
-    // If bank1 is not RAM (NVRAM), ignore writes but still advance the counter
-    if (!m_bank1_is_ram)
-    {
-        AdvanceCounter();
-        return;
-    }
-
-    m_bank_data_a[1][GetBankAddress(1)] = value;
-    AdvanceCounter();
-}
-
-INLINE u8* Media::GetBankData(int bank)
-{
-    if (bank < 0 || bank > 1)
-        return NULL;
-    return m_bank_data[bank];
-}
-
-INLINE u8* Media::GetBankDataA(int bank)
-{
-    if (bank < 0 || bank > 1)
-        return NULL;
-    return m_bank_data_a[bank];
-}
-
-INLINE u8* Media::GetBank1Data()
-{
-    return m_bank_data[1];
-}
-
-INLINE u32 Media::GetBank1Size()
-{
-    return m_bank_size[1];
-}
-
-INLINE bool Media::IsBank1RAM()
-{
-    return m_bank1_is_ram;
+    else
+        WriteCartBank(CART_BANK_1_A, value);
 }
 
 INLINE EEPROM* Media::GetEEPROMInstance()
@@ -420,6 +428,8 @@ INLINE u8* Media::GetSaveMemoryPointer()
         return m_eeprom_instance->GetData();
     else if (m_nvram_enabled)
         return m_nvram;
+    else if (m_persistent_ram_size > 0)
+        return m_persistent_ram;
 
     return NULL;
 }
@@ -431,18 +441,10 @@ INLINE s32 Media::GetSaveMemorySize()
         return m_eeprom_instance->GetSize();
     else if (m_nvram_enabled)
         return NVRAM_SIZE;
+    else if (m_persistent_ram_size > 0)
+        return (s32)m_persistent_ram_size;
 
     return 0;
-}
-
-INLINE bool Media::IsSaveMemoryDirty()
-{
-    // EEPROM has priority over NVRAM
-    if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
-        return m_eeprom_instance->IsDirty();
-
-    // NVRAM is always considered dirty if enabled (no dirty tracking for NVRAM)
-    return m_nvram_enabled;
 }
 
 #endif /* MEDIA_INLINE_H */

@@ -116,6 +116,28 @@ struct GLYNX_Cartridge_Header
     u8 reserved[3];
 };
 
+struct GLYNX_Cartridge_Header_LNX2
+{
+    u8 magic[4];
+    u8 bank[4];
+    u16 version;
+    char name[32];
+    char manufacturer[16];
+    u8 rotation;
+    u8 flags;
+    u8 eeprom;
+    u8 reserved;
+    u8 custom[2];
+};
+
+enum GLYNX_Cartridge_Bank_Type
+{
+    GLYNX_CART_BANK_UNUSED = 0,
+    GLYNX_CART_BANK_RAM_PERSISTENT = 1,
+    GLYNX_CART_BANK_RAM = 2,
+    GLYNX_CART_BANK_ROM = 3
+};
+
 struct GLYNX_BS93_Header
 {
     u8 magic[2];
