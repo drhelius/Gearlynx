@@ -84,7 +84,7 @@ INLINE u8 Mikey::Read(u16 address)
             return 0x00;
         case MIKEY_AUDIN:         // 0xFD86
         {
-            u8 ret = 0x00;
+            u8 ret = 0x80;
             DebugMikey("Reading AUDIN: %02X", ret);
             return ret;
         }
