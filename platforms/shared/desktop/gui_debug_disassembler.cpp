@@ -20,6 +20,11 @@
 #define GUI_DEBUG_DISASSEMBLER_IMPORT
 #include "gui_debug_disassembler.h"
 
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <vector>
+
 #include "imgui.h"
 #include "fonts/IconsMaterialDesign.h"
 #include "gearlynx.h"
@@ -56,6 +61,15 @@ struct SymbolEntry
     bool is_fixed;
 };
 
+struct ElfSection
+{
+    u32 type;
+    u32 offset;
+    u32 size;
+    u32 link;
+    u32 entry_size;
+};
+
 static bool symbols_dirty = true;
 static bool show_auto_symbols = false;
 static DebugSymbol** fixed_symbols = NULL;
@@ -87,6 +101,15 @@ static void prepare_drawable_lines(void);
 static void draw_disassembly(void);
 static void draw_context_menu(DisassemblerLine* line);
 static void add_symbol(const char* line);
+static void add_fixed_symbol(u16 address, const char* symbol);
+static bool load_llvm_mos_elf_symbols(const char* file_path);
+static bool parse_symbol_address(const std::string& address_string, u16* address);
+static bool parse_symbol_address_u32(const std::string& address_string, u32* address);
+static bool is_nm_symbol_type(char type);
+static bool is_symbol_name_visible(const std::string& symbol);
+static bool file_range_valid(size_t file_size, size_t offset, size_t size);
+static bool read_elf_section(const std::vector<u8>& data, size_t section_header_offset, ElfSection* section);
+static const char* get_elf_string(const std::vector<u8>& data, size_t string_offset, size_t string_size, u32 name_offset);
 static void add_breakpoint();
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
@@ -161,10 +184,21 @@ void gui_debug_reset_disassembler_bookmarks(void)
 bool gui_debug_load_symbols_file(const char* file_path)
 {
     std::ifstream file;
-    open_ifstream_utf8(file, file_path, std::ios::in);
+    open_ifstream_utf8(file, file_path, std::ios::in | std::ios::binary);
 
     if (file.is_open())
     {
+        char magic[4] = { 0, 0, 0, 0 };
+        file.read(magic, sizeof(magic));
+        if ((file.gcount() == 4) && (magic[0] == 0x7F) && (magic[1] == 'E') && (magic[2] == 'L') && (magic[3] == 'F'))
+        {
+            file.close();
+            return load_llvm_mos_elf_symbols(file_path);
+        }
+
+        file.clear();
+        file.seekg(0, std::ios::beg);
+
         Log("Loading symbol file %s", file_path);
 
         std::string line;
@@ -177,7 +211,7 @@ bool gui_debug_load_symbols_file(const char* file_path)
                 line = line.substr(0, comment);
             line = line.erase(0, line.find_first_not_of(" \t\r\n"));
             line = line.erase(line.find_last_not_of(" \t\r\n") + 1);
-            while (line[0] == ' ')
+            while (!line.empty() && (line[0] == ' '))
                 line = line.substr(1);
 
             // if (line.find("Bank") == 0)
@@ -570,6 +604,9 @@ static void prepare_drawable_lines(void)
     M6502::M6502_State* proc_state = processor->GetState();
     Memory::Memory_State* mem_state = memory->GetState();
     u16 pc = proc_state->PC.GetValue();
+    u16 hit_address = 0;
+    bool breakpoint_hit = processor->GetBreakpointHitAddress(&hit_address);
+    u16 focus_address = breakpoint_hit ? hit_address : pc;
 
     disassembler_lines.clear();
     pc_pos = 0;
@@ -663,7 +700,10 @@ static void prepare_drawable_lines(void)
                 }
             }
 
-            if ((u16)i == pc)
+            if (breakpoint_hit && hit_address == i)
+                line.is_breakpoint = true;
+
+            if ((u16)i == focus_address)
                 pc_pos = (int)disassembler_lines.size();
 
             if (goto_address_requested && (i <= goto_address_target))
@@ -769,7 +809,7 @@ static void draw_disassembly(void)
                 else if (line.record->subroutine && !ImGui::IsItemHovered())
                 {
                     enable_bg_color = true;
-                    bg_color = dark_gray;
+                    bg_color = (config_emulator.theme == config_Theme_Light) ? black : dark_gray;
                 }
 
                 if (enable_bg_color)
@@ -783,7 +823,7 @@ static void draw_disassembly(void)
 
                 ImVec4 color_segment = line.is_breakpoint ? red : magenta;
                 ImVec4 color_addr = line.is_breakpoint ? red : cyan;
-                ImVec4 color_mem = line.is_breakpoint ? red : mid_gray;
+                ImVec4 color_mem = line.is_breakpoint ? red : (config_emulator.theme == config_Theme_Light ? gray : mid_gray);
 
                 if (config_debug.dis_show_segment)
                 {
@@ -831,7 +871,8 @@ static void draw_disassembly(void)
                 bool is_ret = is_return_instruction(line.record->opcodes[0]);
                 if (is_ret)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Separator, dark_green);
+                    ImVec4 separator_color = (config_emulator.theme == config_Theme_Light) ? black : dark_green;
+                    ImGui::PushStyleColor(ImGuiCol_Separator, separator_color);
                     ImGui::Separator();
                     ImGui::PopStyleColor();
                 }
@@ -879,11 +920,239 @@ static void draw_context_menu(DisassemblerLine* line)
     ImGui::PushFont(gui_default_font);
 }
 
+static void add_fixed_symbol(u16 address, const char* symbol)
+{
+    if (!IsValidPointer(symbol) || (symbol[0] == 0))
+        return;
+
+    DebugSymbol* existing = fixed_symbols[address];
+    if (IsValidPointer(existing))
+    {
+        for (size_t i = 0; i < fixed_symbol_list.size(); i++)
+        {
+            if (fixed_symbol_list[i].symbol == existing)
+            {
+                fixed_symbol_list.erase(fixed_symbol_list.begin() + i);
+                break;
+            }
+        }
+        SafeDelete(fixed_symbols[address]);
+    }
+
+    DebugSymbol* new_symbol = new DebugSymbol;
+    new_symbol->address = address;
+    snprintf(new_symbol->text, 64, "%s", symbol);
+
+    fixed_symbols[address] = new_symbol;
+
+    SymbolEntry entry;
+    entry.symbol = new_symbol;
+    entry.is_fixed = true;
+    fixed_symbol_list.push_back(entry);
+    symbols_dirty = true;
+}
+
+static bool parse_symbol_address_u32(const std::string& address_string, u32* address)
+{
+    if (address_string.empty())
+        return false;
+
+    return parse_hex_with_prefix(address_string, address);
+}
+
+static bool parse_symbol_address(const std::string& address_string, u16* address)
+{
+    u32 address32 = 0;
+    if (!parse_symbol_address_u32(address_string, &address32) || (address32 > 0xFFFF))
+        return false;
+
+    *address = (u16)address32;
+    return true;
+}
+
+static bool is_nm_symbol_type(char type)
+{
+    switch (type)
+    {
+        case 'T':
+        case 't':
+        case 'D':
+        case 'd':
+        case 'B':
+        case 'b':
+        case 'R':
+        case 'r':
+        case 'A':
+        case 'a':
+        case 'S':
+        case 's':
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool is_symbol_name_visible(const std::string& symbol)
+{
+    if (symbol.empty() || (symbol[0] == '$'))
+        return false;
+
+    if ((symbol.length() > 4) && (symbol.rfind("__rc", 0) == 0))
+    {
+        for (size_t i = 4; i < symbol.length(); i++)
+        {
+            if ((symbol[i] < '0') || (symbol[i] > '9'))
+                return true;
+        }
+        return false;
+    }
+
+    return true;
+}
+
+static bool file_range_valid(size_t file_size, size_t offset, size_t size)
+{
+    return (offset <= file_size) && (size <= (file_size - offset));
+}
+
+static bool read_elf_section(const std::vector<u8>& data, size_t section_header_offset, ElfSection* section)
+{
+    if (!file_range_valid(data.size(), section_header_offset, 40))
+        return false;
+
+    const u8* header = &data[section_header_offset];
+    section->type = read_u32_le(header + 4);
+    section->offset = read_u32_le(header + 16);
+    section->size = read_u32_le(header + 20);
+    section->link = read_u32_le(header + 24);
+    section->entry_size = read_u32_le(header + 36);
+    return true;
+}
+
+static const char* get_elf_string(const std::vector<u8>& data, size_t string_offset, size_t string_size, u32 name_offset)
+{
+    if (name_offset >= string_size)
+        return NULL;
+
+    size_t offset = string_offset + name_offset;
+    if (!file_range_valid(data.size(), offset, 1))
+        return NULL;
+
+    size_t end = string_offset + string_size;
+    for (size_t i = offset; i < end; i++)
+    {
+        if (data[i] == 0)
+            return (const char*)&data[offset];
+    }
+
+    return NULL;
+}
+
+static bool load_llvm_mos_elf_symbols(const char* file_path)
+{
+    std::ifstream file;
+    open_ifstream_utf8(file, file_path, std::ios::in | std::ios::binary);
+
+    if (!file.is_open())
+        return false;
+
+    file.seekg(0, std::ios::end);
+    std::streamoff file_size = file.tellg();
+    if (file_size <= 0)
+        return false;
+
+    std::vector<u8> data((size_t)file_size);
+    file.seekg(0, std::ios::beg);
+    file.read((char*)&data[0], (std::streamsize)file_size);
+    if (!file)
+        return false;
+
+    if (data.size() < 52)
+        return false;
+
+    if ((data[0] != 0x7F) || (data[1] != 'E') || (data[2] != 'L') || (data[3] != 'F'))
+        return false;
+    if ((data[4] != 1) || (data[5] != 1))
+        return false;
+
+    u16 machine = read_u16_le(&data[18]);
+    if (machine != 0x1966)
+        return false;
+
+    u32 section_header_offset = read_u32_le(&data[32]);
+    u16 section_header_size = read_u16_le(&data[46]);
+    u16 section_count = read_u16_le(&data[48]);
+    if ((section_header_offset == 0) || (section_header_size < 40) || (section_count == 0))
+        return false;
+    if (!file_range_valid(data.size(), section_header_offset, (size_t)section_header_size * section_count))
+        return false;
+
+    Log("Loading llvm-mos ELF symbols %s", file_path);
+
+    std::vector<ElfSection> sections(section_count);
+    for (u16 i = 0; i < section_count; i++)
+    {
+        if (!read_elf_section(data, (size_t)section_header_offset + ((size_t)section_header_size * i), &sections[i]))
+            return false;
+    }
+
+    int symbols_loaded = 0;
+
+    for (u16 section_index = 0; section_index < section_count; section_index++)
+    {
+        ElfSection& symbols = sections[section_index];
+        if ((symbols.type != 2) && (symbols.type != 11))
+            continue;
+
+        if ((symbols.link >= section_count) || (symbols.entry_size < 16))
+            continue;
+        if (!file_range_valid(data.size(), symbols.offset, symbols.size))
+            continue;
+
+        ElfSection& strings = sections[symbols.link];
+        if (!file_range_valid(data.size(), strings.offset, strings.size))
+            continue;
+
+        u32 symbol_count = symbols.size / symbols.entry_size;
+        for (u32 i = 0; i < symbol_count; i++)
+        {
+            size_t symbol_offset = symbols.offset + ((size_t)i * symbols.entry_size);
+            if (!file_range_valid(data.size(), symbol_offset, 16))
+                continue;
+
+            const u8* elf_symbol = &data[symbol_offset];
+            u32 name_offset = read_u32_le(elf_symbol);
+            u32 value = read_u32_le(elf_symbol + 4);
+            u8 type = elf_symbol[12] & 0x0F;
+            u16 section = read_u16_le(elf_symbol + 14);
+
+            if ((name_offset == 0) || (section == 0) || (value > 0xFFFF))
+                continue;
+            if ((type != 0) && (type != 1) && (type != 2))
+                continue;
+
+            const char* name = get_elf_string(data, strings.offset, strings.size, name_offset);
+            if (!IsValidPointer(name))
+                continue;
+
+            std::string symbol(name);
+            if (!is_symbol_name_visible(symbol))
+                continue;
+
+            add_fixed_symbol((u16)value, symbol.c_str());
+            symbols_loaded++;
+        }
+    }
+
+    Debug("Loaded %d llvm-mos ELF symbols", symbols_loaded);
+    UNUSED(symbols_loaded);
+    return true;
+}
+
 static void add_symbol(const char* line)
 {
     Debug("Loading symbol %s", line);
 
-    DebugSymbol s;
     std::string str(line);
 
     // Clean up the string
@@ -917,7 +1186,6 @@ static void add_symbol(const char* line)
     // Need at least 2 tokens (address and symbol) for valid format
     if (tokens.size() >= 2)
     {
-        std::string bank_str = "0";
         std::string addr_str;
         std::string symbol;
 
@@ -926,6 +1194,18 @@ static void add_symbol(const char* line)
         {
             // cc65 VICE label file
             // al <address> <symbolname>
+
+            addr_str = tokens[1];
+
+            if (tokens[2][0] == '.')
+                symbol = tokens[2].substr(1);
+            else
+                symbol = tokens[2];
+        }
+        else if ((tokens.size() >= 3) && (tokens[0] == "add_label"))
+        {
+            // llvm-mos vicelbl output
+            // add_label <address> <symbolname>
 
             addr_str = tokens[1];
 
@@ -945,6 +1225,18 @@ static void add_symbol(const char* line)
                 addr_str = tokens[2].substr(1);
             else
                 addr_str = tokens[2];
+        }
+        else if ((tokens.size() >= 3) && (tokens[1].length() == 1) && is_nm_symbol_type(tokens[1][0]))
+        {
+            // llvm-nm output
+            // <address> <type> <symbolname>
+
+            u32 address32 = 0;
+            if (parse_symbol_address_u32(tokens[0], &address32) && (address32 <= 0xFFFF) && is_symbol_name_visible(tokens[2]))
+            {
+                addr_str = tokens[0];
+                symbol = tokens[2];
+            }
         }
         else if ((tokens.size() == 3))
         {
@@ -986,38 +1278,8 @@ static void add_symbol(const char* line)
 
         // Parse address
         u16 address_value = 0;
-        if (parse_hex_string(addr_str.c_str(), addr_str.length(), &address_value))
-        {
-            s.address = address_value;
-            snprintf(s.text, 64, "%s", symbol.c_str());
-
-            // Store the symbol
-            DebugSymbol* existing = fixed_symbols[s.address];
-            if (IsValidPointer(existing))
-            {
-                for (size_t i = 0; i < fixed_symbol_list.size(); i++)
-                {
-                    if (fixed_symbol_list[i].symbol == existing)
-                    {
-                        fixed_symbol_list.erase(fixed_symbol_list.begin() + i);
-                        break;
-                    }
-                }
-                SafeDelete(fixed_symbols[s.address]);
-            }
-
-            DebugSymbol* new_symbol = new DebugSymbol;
-            new_symbol->address = s.address;
-            snprintf(new_symbol->text, 64, "%s", s.text);
-
-            fixed_symbols[s.address] = new_symbol;
-
-            SymbolEntry entry;
-            entry.symbol = new_symbol;
-            entry.is_fixed = true;
-            fixed_symbol_list.push_back(entry);
-            symbols_dirty = true;
-        }
+        if (parse_symbol_address(addr_str, &address_value))
+            add_fixed_symbol(address_value, symbol.c_str());
     }
 }
 
@@ -1154,7 +1416,7 @@ static void replace_symbols(DisassemblerLine* line, const char* jump_color, cons
     if (gui_debug_resolve_symbol(line->record, instr, color, original_color, &resolved_name, &resolved_address))
     {
         snprintf(line->name_enhanced, 64, "%s", instr.c_str());
-        snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white, c_cyan, resolved_address);
+        snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white.c_str(), c_cyan.c_str(), resolved_address);
         return;
     }
 
@@ -1190,7 +1452,7 @@ static void replace_symbols(DisassemblerLine* line, const char* jump_color, cons
         if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
         {
             snprintf(line->name_enhanced, 64, "%s", instr.c_str());
-            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", auto_color, auto_symbol_text, c_white, c_cyan, lookup_address);
+            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", auto_color, auto_symbol_text, c_white.c_str(), c_cyan.c_str(), lookup_address);
         }
     }
 }
@@ -1205,7 +1467,7 @@ static void replace_labels(DisassemblerLine* line, const char* color, const char
     {
         snprintf(line->name_enhanced, 64, "%s", instr.c_str());
         if (line->tooltip[0] == 0)
-            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white, c_cyan, resolved_address);
+            snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white.c_str(), c_cyan.c_str(), resolved_address);
     }
 }
 
@@ -1449,6 +1711,27 @@ static void disassembler_menu(void)
                 snprintf(irq, 32, "Break on IRQ %d", i);
                 ImGui::MenuItem(irq, 0, &emu_debug_irq_breakpoints[i]);
             }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("BRK #n"))
+        {
+            ImGui::MenuItem("Pause on BRK #n", NULL, &config_debug.pause_on_brk);
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("#n");
+            ImGui::SameLine();
+            u8 brk_value = (u8)(config_debug.pause_on_brk_value & 0xFF);
+            u8 step = 1;
+            u8 step_fast = 16;
+            ImGui::PushItemWidth(80.0f);
+            if (ImGui::InputScalar("##brk_value", ImGuiDataType_U8, &brk_value, &step, &step_fast, "%02X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
+                config_debug.pause_on_brk_value = brk_value;
+            ImGui::PopItemWidth();
+
+            ImGui::MenuItem("Trigger IRQ", NULL, &config_debug.pause_on_brk_trigger_irq);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("When disabled, matching BRK #n pauses and runs as NOP");
             ImGui::EndMenu();
         }
 

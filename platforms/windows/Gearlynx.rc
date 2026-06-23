@@ -1,0 +1,4 @@
+// Gearlynx.rc - Windows resource file
+
+// Application icon (lowest ordinal value = default app icon)
+1 ICON "Gearlynx.ico"

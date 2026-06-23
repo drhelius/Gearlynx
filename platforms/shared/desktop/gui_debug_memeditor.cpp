@@ -608,7 +608,7 @@ void MemEditor::DrawCursors()
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(all_text).x 
     - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
 
-    ImVec4 color = ImVec4(0.1f,0.9f,0.9f,1.0f);
+    ImVec4 color = cyan;
 
     ImGui::TextColored(color, "REGION:");
     ImGui::SameLine();
@@ -1846,7 +1846,32 @@ void MemEditor::SaveToBinaryFile(const char* file_path)
 
     if (file)
     {
-        fwrite(m_mem_data, 1, size, file);
+        size_t bytes = (size_t)size;
+        if (fwrite(m_mem_data, 1, bytes, file) != bytes)
+        {
+            fclose(file);
+            return;
+        }
+        fclose(file);
+    }
+}
+
+void MemEditor::LoadFromBinaryFile(const char* file_path)
+{
+    if (!IsValidPointer(m_mem_data) || m_mem_size <= 0 || m_mem_word <= 0)
+        return;
+
+    int size = m_mem_size * m_mem_word;
+
+    FILE* file = fopen_utf8(file_path, "rb");
+    if (file)
+    {
+        size_t bytes = (size_t)size;
+        if (fread(m_mem_data, 1, bytes, file) != bytes)
+        {
+            fclose(file);
+            return;
+        }
         fclose(file);
     }
 }

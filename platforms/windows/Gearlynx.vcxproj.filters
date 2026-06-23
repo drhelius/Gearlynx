@@ -27,55 +27,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\shared\desktop\imgui\fonts\IconsMaterialDesign.h">
-      <Filter>desktop\imgui\fonts</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\fonts\MaterialIcons.h">
-      <Filter>desktop\imgui\fonts</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\fonts\RobotoMedium.h">
-      <Filter>desktop\imgui\fonts</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imconfig.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_opengl3.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_opengl3_loader.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui_impl_sdl3.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imgui_internal.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\implot.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\implot_internal.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imstb_rectpack.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imstb_textedit.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\imgui\imstb_truetype.h">
-      <Filter>desktop\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\mINI\ini.h">
-      <Filter>desktop\mini</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\stb\stb_image_write.h">
-      <Filter>desktop\stb</Filter>
-    </ClInclude>
-
     <ClInclude Include="..\shared\desktop\application.h">
       <Filter>desktop</Filter>
     </ClInclude>
@@ -179,6 +130,15 @@
       <Filter>desktop</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\desktop\ogl_renderer.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\ogl_shader_program.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\ogl_shader_chain.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\desktop\shader_preset.h">
       <Filter>desktop</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\desktop\display.h">
@@ -328,38 +288,25 @@
     <ClInclude Include="..\shared\desktop\single_instance.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\dependencies\miniz\miniz.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\fonts\IconsMaterialDesign.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\fonts\MaterialIcons.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\fonts\RobotoMedium.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imconfig.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_impl_sdl3.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imgui_internal.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\implot.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\implot_internal.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\shared\dependencies\imgui\imstb_truetype.h" />
+    <ClInclude Include="..\shared\dependencies\mINI\ini.h" />
+    <ClInclude Include="..\shared\dependencies\stb\stb_image_write.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\shared\desktop\imgui\imgui.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_demo.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_draw.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_impl_opengl3.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_impl_sdl3.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_tables.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\imgui_widgets.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\implot.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\implot_demo.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\imgui\implot_items.cpp">
-      <Filter>desktop\imgui</Filter>
-    </ClCompile>
     <ClCompile Include="..\shared\desktop\application.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
@@ -447,6 +394,15 @@
     <ClCompile Include="..\shared\desktop\ogl_renderer.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
+    <ClCompile Include="..\shared\desktop\ogl_shader_program.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\ogl_shader_chain.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\shader_preset.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
     <ClCompile Include="..\shared\desktop\display.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
@@ -504,11 +460,31 @@
     <ClCompile Include="..\shared\desktop\mcp\mcp_debug_adapter.cpp">
       <Filter>desktop\mcp</Filter>
     </ClCompile>
+    <ClCompile Include="..\shared\desktop\mcp\mcp_tool_registry.cpp">
+      <Filter>desktop\mcp</Filter>
+    </ClCompile>
     <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp">
       <Filter>desktop\mcp</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\single_instance.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
+    <ClCompile Include="..\shared\dependencies\miniz\miniz.c" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_impl_sdl3.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\implot.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\implot_demo.cpp" />
+    <ClCompile Include="..\shared\dependencies\imgui\implot_items.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Gearlynx.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Gearlynx.ico" />
   </ItemGroup>
 </Project>

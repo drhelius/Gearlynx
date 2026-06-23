@@ -36,29 +36,20 @@ static int seek_age = -1;
 
 static int slot_at(int age);
 static int get_target_capacity(void);
+static bool ensure_storage(void);
+static void release_storage(void);
 static void refresh_capacity(void);
 static void truncate_to_seek_position(void);
 
 bool rewind_init(void)
 {
-    buffer = new (std::nothrow) u8[(size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE];
-    if (!IsValidPointer(buffer))
-    {
-        Log("Rewind: failed to allocate %zu bytes",
-            (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE);
-        return false;
-    }
-
-    Log("Rewind: allocated %.1f MB ring buffer",
-        (double)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE / (1024.0 * 1024.0));
-
     rewind_reset();
     return true;
 }
 
 void rewind_destroy(void)
 {
-    SafeDeleteArray(buffer);
+    release_storage();
     capacity = 0;
     count = 0;
     head = 0;
@@ -76,6 +67,15 @@ void rewind_reset(void)
     seek_age = -1;
     for (int i = 0; i < REWIND_MAX_SNAPSHOTS; i++)
         sizes[i] = 0;
+
+    if (!config_rewind.enabled || emu_is_empty())
+    {
+        release_storage();
+        return;
+    }
+
+    refresh_capacity();
+    ensure_storage();
 }
 
 void rewind_push(void)
@@ -154,7 +154,7 @@ int rewind_get_snapshot_count(void)
 
 size_t rewind_get_memory_usage(void)
 {
-    return (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE;
+    return IsValidPointer(buffer) ? (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE : 0;
 }
 
 bool rewind_seek(int age)
@@ -210,6 +210,38 @@ static int get_target_capacity(void)
         target = REWIND_MAX_SNAPSHOTS;
 
     return target;
+}
+
+static bool ensure_storage(void)
+{
+    if (!config_rewind.enabled)
+    {
+        release_storage();
+        return false;
+    }
+
+    if (IsValidPointer(buffer))
+        return true;
+
+    size_t target_size = (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE;
+    u8* new_buffer = new (std::nothrow) u8[target_size];
+    if (!IsValidPointer(new_buffer))
+    {
+        Log("Rewind: failed to allocate %zu bytes", target_size);
+        return false;
+    }
+
+    buffer = new_buffer;
+
+    Log("Rewind: allocated %.1f MB ring buffer",
+        (double)target_size / (1024.0 * 1024.0));
+
+    return true;
+}
+
+static void release_storage(void)
+{
+    SafeDeleteArray(buffer);
 }
 
 static void refresh_capacity(void)

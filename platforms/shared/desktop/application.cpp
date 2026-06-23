@@ -70,18 +70,18 @@ extern "C" void macos_set_native_fullscreen(void* nswindow, bool enter);
 extern "C" void macos_refocus_window(void* nswindow);
 #endif
 
-int application_init(const char* rom_file, const char* symbol_file, bool force_fullscreen, bool force_windowed, int mcp_mode, int mcp_tcp_port, int debug_monitor_port)
+int application_init(const ApplicationParams& params)
 {
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Desktop App", GLYNX_TITLE, GLYNX_VERSION);
 
     application_show_menu = true;
 
-    if (force_fullscreen)
+    if (params.force_fullscreen)
     {
         config_emulator.fullscreen = true;
     }
-    else if (force_windowed)
+    else if (params.force_windowed)
     {
         config_emulator.fullscreen = false;
     }
@@ -125,32 +125,43 @@ int application_init(const char* rom_file, const char* symbol_file, bool force_f
     if (config_emulator.fullscreen)
         application_trigger_fullscreen(true);
 
-    if (IsValidPointer(rom_file) && (strlen(rom_file) > 0))
+    bool rom_file_argument = IsValidPointer(params.rom_file) && (strlen(params.rom_file) > 0);
+    bool symbol_file_argument = IsValidPointer(params.symbol_file) && (strlen(params.symbol_file) > 0);
+
+    if (rom_file_argument)
     {
-        Log("Rom file argument: %s", rom_file);
-        gui_load_rom(rom_file);
+        Log("Rom file argument: %s", params.rom_file);
+        if (symbol_file_argument)
+            Log("Symbol file argument: %s", params.symbol_file);
+        gui_load_rom(params.rom_file, params.symbol_file);
     }
 
-    if (IsValidPointer(symbol_file) && (strlen(symbol_file) > 0))
+    if (!rom_file_argument && symbol_file_argument)
     {
-        Log("Symbol file argument: %s", symbol_file);
+        Log("Symbol file argument: %s", params.symbol_file);
         gui_debug_reset_symbols();
-        gui_debug_load_symbols_file(symbol_file);
+        gui_debug_load_symbols_file(params.symbol_file);
     }
 
-    if (mcp_mode >= 0)
+    if (params.mcp_mode >= 0)
     {
-        Log("Auto-starting MCP server (mode: %s, port: %d)...", mcp_mode == 0 ? "stdio" : "http", mcp_tcp_port);
+        const char* mcp_http_address = params.mcp_http_address.empty() ? "127.0.0.1" : params.mcp_http_address.c_str();
+        if (params.mcp_mode == 0)
+            Log("Auto-starting MCP server (mode: stdio)...");
+        else
+            Log("Auto-starting MCP server (mode: http, address: %s, port: %d)...", mcp_http_address, params.mcp_tcp_port);
         config_debug.debug = true;
-        emu_mcp_set_transport(mcp_mode, mcp_tcp_port);
+        emu_mcp_set_transport(params.mcp_mode, params.mcp_tcp_port, mcp_http_address);
         emu_mcp_start();
     }
 
-    if (debug_monitor_port > 0)
+    if (params.debug_monitor_port > 0)
     {
         config_debug.debug = true;
-        emu_debug_monitor_start(debug_monitor_port);
+        emu_debug_monitor_start(params.debug_monitor_port);
     }
+
+    application_refocus_window();
 
     return 0;
 }
@@ -234,6 +245,7 @@ void application_trigger_fullscreen(bool fullscreen)
         SDL_SetWindowFullscreen(application_sdl_window, false);
         SDL_ERROR("SDL_SetWindowFullscreen");
     }
+    config_emulator.fullscreen = fullscreen;
 #endif
 
     mouse_last_motion_time = SDL_GetTicks();
@@ -367,7 +379,7 @@ static bool sdl_init(void)
     }
 #endif
 
-    display_set_vsync(config_video.sync);
+    display_use_vsync_if_enabled();
     display_check_mixed_refresh_rates();
 
     SDL_SetWindowMinimumSize(application_sdl_window, (int)(500 * content_scale), (int)(300 * content_scale));
@@ -426,8 +438,8 @@ static void handle_single_instance(void)
     if (single_instance_get_pending_load(s_pending_rom_path, sizeof(s_pending_rom_path), s_pending_symbol_path, sizeof(s_pending_symbol_path)))
     {
         if (s_pending_rom_path[0] != '\0')
-            gui_load_rom(s_pending_rom_path);
-        if (s_pending_symbol_path[0] != '\0')
+            gui_load_rom(s_pending_rom_path, s_pending_symbol_path);
+        else if (s_pending_symbol_path[0] != '\0')
         {
             gui_debug_reset_symbols();
             gui_debug_load_symbols_file(s_pending_symbol_path);
@@ -494,14 +506,14 @@ static void sdl_events_app(const SDL_Event* event)
         }
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
         {
-            display_set_vsync(config_video.sync);
+            display_use_vsync_if_enabled();
             if (config_emulator.pause_when_inactive && !paused_when_focus_lost)
                 emu_resume();
             break;
         }
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         {
-            display_set_vsync(false);
+            display_disable_vsync();
             if (config_emulator.pause_when_inactive)
             {
                 paused_when_focus_lost = emu_is_paused();
@@ -516,7 +528,7 @@ static void sdl_events_app(const SDL_Event* event)
             {
                 current_display_id = new_display;
                 display_check_mixed_refresh_rates();
-                if (config_video.sync && !display_is_vsync_forced_off())
+                if (config_video.sync_mode != config_VideoSync_Disabled && !display_is_vsync_forced_off())
                     display_recreate_gl_context();
                 else
                 {

@@ -90,9 +90,9 @@ INLINE u8 Mikey::Read(u16 address)
         }
         case MIKEY_SYSCTL1:       // 0xFD87
             DebugMikey("Reading write-only SYSCTL1: FF");
-            return 0xFF;
+            return 0x80;
         case MIKEY_MIKEYHREV:     // 0xFD88
-            return 0x01;
+            return m_is_lynx2 ? 0x02 : 0x01;
         case MIKEY_MIKEYSREV:     // 0xFD89
             DebugMikey("Reading write-only MIKEYSREV: FF");
             return 0xFF;
@@ -202,6 +202,9 @@ INLINE u8 Mikey::Read(u16 address)
         case MIKEY_MTEST2:        // 0xFD9E
             DebugMikey("Reading MTEST2 (unused): FF");
             return 0xFF;
+        case 0xFD98:              // Undocumented
+            DebugMikey("Reading undocumented register 0xFD98: FD");
+            return 0xFD;
         default:
             //assert(false && "Unhandled Mikey Read Address");
             DebugMikey("Register READ called with unknown address: %04X", address);
@@ -755,6 +758,9 @@ inline u8 Mikey::ReadAudioExtra(u16 address)
 {
     assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
 
+    if (!m_is_lynx2)
+        return 0xFD;
+
     switch (address)
     {
     case MIKEY_ATTEN_A:       // 0xFD40
@@ -778,6 +784,9 @@ inline u8 Mikey::ReadAudioExtra(u16 address)
 inline void Mikey::WriteAudioExtra(u16 address, u8 value)
 {
     assert(address >= MIKEY_ATTEN_A && address <= MIKEY_MSTEREO);
+
+    if (!m_is_lynx2)
+        return;
 
 #ifndef GLYNX_DISABLE_VGMRECORDER
     if (m_audio->IsVgmRecording())

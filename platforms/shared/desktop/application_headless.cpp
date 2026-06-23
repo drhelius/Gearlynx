@@ -35,12 +35,12 @@ static void headless_signal_handler(int sig)
     headless_running = false;
 }
 
-int application_headless_init(const char* rom_file, const char* symbol_file, int mcp_mode, int mcp_tcp_port, int debug_monitor_port)
+int application_headless_init(const ApplicationParams& params)
 {
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Headless Mode", GLYNX_TITLE, GLYNX_VERSION);
 
-    if (mcp_mode < 0 && debug_monitor_port <= 0)
+    if (params.mcp_mode < 0 && params.debug_monitor_port <= 0)
     {
         Error("Headless mode requires --mcp-stdio, --mcp-http, or --debug-monitor");
         return 1;
@@ -63,7 +63,7 @@ int application_headless_init(const char* rom_file, const char* symbol_file, int
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
 
-    if (debug_monitor_port <= 0)
+    if (params.debug_monitor_port <= 0)
         emu_audio_mute(true);
 
     gui_debug_init();
@@ -74,29 +74,38 @@ int application_headless_init(const char* rom_file, const char* symbol_file, int
         emu_load_bios(config_emulator.bios_path.c_str());
     }
 
-    if (IsValidPointer(rom_file) && (strlen(rom_file) > 0))
+    bool rom_file_argument = IsValidPointer(params.rom_file) && (strlen(params.rom_file) > 0);
+    bool symbol_file_argument = IsValidPointer(params.symbol_file) && (strlen(params.symbol_file) > 0);
+
+    if (rom_file_argument)
     {
-        Log("Rom file argument: %s", rom_file);
-        gui_load_rom(rom_file);
+        Log("Rom file argument: %s", params.rom_file);
+        if (symbol_file_argument)
+            Log("Symbol file argument: %s", params.symbol_file);
+        gui_load_rom(params.rom_file, params.symbol_file);
     }
 
-    if (IsValidPointer(symbol_file) && (strlen(symbol_file) > 0))
+    if (!rom_file_argument && symbol_file_argument)
     {
-        Log("Symbol file argument: %s", symbol_file);
+        Log("Symbol file argument: %s", params.symbol_file);
         gui_debug_reset_symbols();
-        gui_debug_load_symbols_file(symbol_file);
+        gui_debug_load_symbols_file(params.symbol_file);
     }
 
-    if (mcp_mode >= 0)
+    if (params.mcp_mode >= 0)
     {
-        Log("Starting MCP server (mode: %s, port: %d)...", mcp_mode == 0 ? "stdio" : "http", mcp_tcp_port);
-        emu_mcp_set_transport(mcp_mode, mcp_tcp_port);
+        const char* mcp_http_address = params.mcp_http_address.empty() ? "127.0.0.1" : params.mcp_http_address.c_str();
+        if (params.mcp_mode == 0)
+            Log("Starting MCP server (mode: stdio)...");
+        else
+            Log("Starting MCP server (mode: http, address: %s, port: %d)...", mcp_http_address, params.mcp_tcp_port);
+        emu_mcp_set_transport(params.mcp_mode, params.mcp_tcp_port, mcp_http_address);
         emu_mcp_start();
     }
 
-    if (debug_monitor_port > 0)
+    if (params.debug_monitor_port > 0)
     {
-        emu_debug_monitor_start(debug_monitor_port);
+        emu_debug_monitor_start(params.debug_monitor_port);
     }
 
     signal(SIGINT, headless_signal_handler);
@@ -121,6 +130,7 @@ void application_headless_mainloop(void)
         Uint64 frame_start = SDL_GetPerformanceCounter();
 
         emu_update();
+        gui_finish_loading_rom();
 
         if (!emu_mcp_is_running() && !emu_debug_monitor_is_running())
         {

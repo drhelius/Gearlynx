@@ -79,7 +79,7 @@ public:
     void StepInto();
     void StepOver();
     void StepOut();
-    void StepFrame();
+    void StepFrame(int frames = 1);
     void Reset();
     json GetDebugStatus();
     json RunToAddress(u16 address);
@@ -122,7 +122,10 @@ public:
 
     // Media and state management
     json GetMediaInfo();
-    json LoadMedia(const std::string& file_path);
+    json ListRecentMedia();
+    json StartLoadMedia(const std::string& file_path);
+    bool IsMediaLoading() const;
+    json FinishLoadMedia(const std::string& file_path);
     json LoadBios(const std::string& file_path);
     json ListSaveStateSlots();
     json SelectSaveStateSlot(int slot);

@@ -27,6 +27,13 @@ override_dh_install:
 		debian/gearlynx/usr/lib/gearlynx/mcp/resources/hardware/
 	install -m644 platforms/shared/desktop/mcp/resources/hardware/toc.json \
 		debian/gearlynx/usr/lib/gearlynx/mcp/resources/hardware/toc.json
+	install -dm755 debian/gearlynx/usr/lib/gearlynx/shaders
+	install -m644 platforms/shared/desktop/shaders/*.gshader \
+		debian/gearlynx/usr/lib/gearlynx/shaders/
+	install -m644 platforms/shared/desktop/shaders/*.glsl \
+		debian/gearlynx/usr/lib/gearlynx/shaders/
+	install -m644 platforms/shared/desktop/shaders/README.md \
+		debian/gearlynx/usr/lib/gearlynx/shaders/
 	install -dm755 debian/gearlynx/usr/games
 	ln -s ../lib/gearlynx/gearlynx debian/gearlynx/usr/games/gearlynx
 

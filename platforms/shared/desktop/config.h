@@ -32,9 +32,29 @@
     #define EXTERN extern
 #endif
 
-static const int config_version = 2;
+static const int config_version = 4;
 static const int config_max_recent_roms = 10;
 static const int config_memory_editor_count = 9;
+
+enum config_ShaderMode
+{
+    config_ShaderMode_PixelPerfect = 0,
+    config_ShaderMode_External = 1
+};
+
+enum config_Theme
+{
+    config_Theme_Light = 0,
+    config_Theme_Dark = 1,
+    config_Theme_Count = 2
+};
+
+enum config_VideoSync
+{
+    config_VideoSync_Disabled = 0,
+    config_VideoSync_Fixed = 1,
+    config_VideoSync_VRR = 2
+};
 
 struct config_Emulator
 {
@@ -42,6 +62,7 @@ struct config_Emulator
     bool fullscreen = false;
     int fullscreen_mode = 0;
     bool always_show_menu = false;
+    int theme = config_Theme_Dark;
     bool paused = false;
     int save_slot = 0;
     bool start_paused = false;
@@ -63,6 +84,7 @@ struct config_Emulator
     int window_height = 600;
     bool status_messages = false;
     int mcp_tcp_port = 7777;
+    std::string mcp_http_address = "127.0.0.1";
     int console_type = 0;
 };
 
@@ -73,15 +95,17 @@ struct config_Video
     int ratio = 0;
     int rotation = 0;
     bool fps = false;
-    bool bilinear = false;
-    bool sync = true;
-    bool ghosting = true;
-    float ghosting_intensity = 0.70f;
-    int ghosting_history = 3;
-    int scanlines_type = 2;
-    float scanlines_intensity = 0.65f;
-    float background_color[3] = {0.1f, 0.1f, 0.1f};
-    float background_color_debugger[3] = {0.2f, 0.2f, 0.2f};
+    int sync_mode = config_VideoSync_Disabled;
+    float background_color[config_Theme_Count][3] = {
+        {128.0f / 255.0f, 128.0f / 255.0f, 128.0f / 255.0f},
+        {0.1f, 0.1f, 0.1f}
+    };
+    float background_color_debugger[config_Theme_Count][3] = {
+        {160.0f / 255.0f, 160.0f / 255.0f, 160.0f / 255.0f},
+        {0.2f, 0.2f, 0.2f}
+    };
+    int shader_mode = config_ShaderMode_PixelPerfect;
+    std::string shader_preset_path;
 };
 
 struct config_Audio
@@ -223,6 +247,9 @@ struct config_Debug
     bool dis_replace_labels = true;
     int dis_look_ahead_count = 20;
     bool step_skip_interrupts = false;
+    bool pause_on_brk = false;
+    int pause_on_brk_value = 0x42;
+    bool pause_on_brk_trigger_irq = false;
     int font_size = 0;
     int scale = 2;
     bool multi_viewport = false;
@@ -254,7 +281,10 @@ EXTERN void config_destroy(void);
 EXTERN void config_read(void);
 EXTERN void config_write(void);
 EXTERN void config_load_defaults(void);
+EXTERN void config_push_recent_media(const std::string& path);
 EXTERN void config_update_hotkey_string(config_Hotkey* hotkey);
+EXTERN bool config_read_shader_parameter(const char* preset_file, const char* parameter_name, float* value);
+EXTERN void config_write_shader_parameter(const char* preset_file, const char* parameter_name, float value);
 
 #undef CONFIG_IMPORT
 #undef EXTERN

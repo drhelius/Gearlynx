@@ -90,7 +90,7 @@ Atari Lynx hardware documentation is available in the [references/](references/)
 load_media → get_media_info → get_6502_status → get_screenshot
 ```
 
-Start every session by loading the ROM, confirming it loaded correctly, then checking CPU state and taking a screenshot to understand the current game state. If a `.sym`, `.lbl`, or `.noi` file exists alongside the ROM, symbols are loaded automatically.
+Start every session by loading the ROM, confirming it loaded correctly, then checking CPU state and taking a screenshot to understand the current game state. If a `.sym`, `.elf`, `.lbl`, or `.noi` file exists alongside the ROM, symbols are loaded automatically.
 
 Load additional symbols with `load_symbols` or add individual labels with `add_symbol`.
 

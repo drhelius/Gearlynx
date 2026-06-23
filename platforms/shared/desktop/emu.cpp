@@ -19,6 +19,9 @@
 #define EMU_IMPORT
 #include "emu.h"
 
+#include <thread>
+#include <atomic>
+#include <string.h>
 #include "gearlynx.h"
 #include "mikey.h"
 #include "lcd_screen.h"
@@ -47,6 +50,19 @@ static Uint64 rewind_last_counter = 0;
 static double rewind_pop_accumulator = 0.0;
 static DebugMonitorServer* debug_monitor;
 static FramebufferServer* fb_server;
+
+enum Loading_State
+{
+    Loading_State_None = 0,
+    Loading_State_Loading,
+    Loading_State_Finished
+};
+
+static std::atomic<int> loading_state(Loading_State_None);
+static std::thread loading_thread;
+static bool loading_thread_active = false;
+static bool loading_result;
+static char loading_file_path[4096];
 
 static void save_ram(void);
 static void load_ram(void);
@@ -105,6 +121,7 @@ bool emu_init(void)
     emu_debug_command = Debug_Command_None;
     emu_debug_pc_changed = false;
     emu_debug_step_frames_pending = 0;
+    emu_frame_counter = 0;
     for (int i = 0; i < 8; i++)
         emu_debug_irq_breakpoints[i] = false;
 
@@ -121,6 +138,13 @@ bool emu_init(void)
 
 void emu_destroy(void)
 {
+    if (loading_thread_active)
+    {
+        loading_thread.join();
+        loading_thread_active = false;
+    }
+    loading_state.store(Loading_State_None);
+
     save_ram();
     rewind_destroy();
     SafeDelete(fb_server);
@@ -160,6 +184,67 @@ bool emu_load_rom(const char* file_path)
     return true;
 }
 
+static void load_rom_thread_func(void)
+{
+    loading_result = core->LoadROM(loading_file_path);
+    loading_state.store(Loading_State_Finished);
+}
+
+void emu_load_rom_async(const char* file_path)
+{
+    if (loading_state.load() != Loading_State_None)
+        return;
+
+    emu_debug_command = Debug_Command_None;
+    reset_buffers();
+    reset_debug();
+    emu_audio_reset();
+
+    save_ram();
+
+    strncpy(loading_file_path, file_path, sizeof(loading_file_path) - 1);
+    loading_file_path[sizeof(loading_file_path) - 1] = '\0';
+    loading_result = false;
+    loading_state.store(Loading_State_Loading);
+    if (loading_thread_active)
+        loading_thread.join();
+    loading_thread = std::thread(load_rom_thread_func);
+    loading_thread_active = true;
+}
+
+bool emu_is_rom_loading(void)
+{
+    return loading_state.load() == Loading_State_Loading;
+}
+
+bool emu_finish_rom_loading(void)
+{
+    if (loading_state.load() != Loading_State_Finished)
+        return false;
+
+    if (loading_thread_active)
+    {
+        loading_thread.join();
+        loading_thread_active = false;
+    }
+
+    loading_state.store(Loading_State_None);
+
+    if (!loading_result)
+        return false;
+
+    load_ram();
+
+    if (config_debug.debug && (config_debug.dis_look_ahead_count > 0))
+        core->GetM6502()->DisassembleAhead(config_debug.dis_look_ahead_count);
+
+    update_savestates_data();
+
+    rewind_reset();
+
+    return true;
+}
+
 void emu_render_current_frame(void)
 {
     LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
@@ -172,6 +257,9 @@ void emu_render_current_frame(void)
 
     lcd_screen->SetBuffer(emu_frame_buffer);
     lcd_screen->EndFrame(core->GetMedia()->GetRotation());
+
+    if (config_debug.debug)
+        update_debug();
 }
 
 void emu_reset_rewind_timing(void)
@@ -184,11 +272,15 @@ void emu_update(void)
     emu_mcp_pump_commands();
     emu_debug_monitor_pump_commands();
 
+    if (loading_state.load() != Loading_State_None)
+        return;
+
     if (emu_is_empty())
         return;
 
     int sampleCount = 0;
     bool frame_executed = false;
+    bool frame_completed = false;
 
     if (rewind_is_active())
     {
@@ -223,6 +315,9 @@ void emu_update(void)
         debug_run.stop_on_run_to_breakpoint = true;
 
         debug_run.skip_interrupts_on_step = config_debug.step_skip_interrupts && (emu_debug_command == Debug_Command_Step);
+        debug_run.stop_on_brk = config_debug.pause_on_brk && !emu_debug_disable_breakpoints;
+        debug_run.brk_value = (u8)(config_debug.pause_on_brk_value & 0xFF);
+        debug_run.brk_trigger_irq = config_debug.pause_on_brk_trigger_irq;
 
         debug_run.stop_on_irq = 0;
         for (int i = 0; i < 8; i++)
@@ -235,10 +330,14 @@ void emu_update(void)
 
         if (executed)
         {
+            Debug_Command debug_command = emu_debug_command;
             rewind_commit_seek();
             emu_debug_monitor_notify_resumed();
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
             frame_executed = true;
+
+            if (!breakpoint_hit && (debug_command == Debug_Command_StepFrame || debug_command == Debug_Command_Continue))
+                frame_completed = true;
         }
 
         if (breakpoint_hit || emu_debug_command == Debug_Command_StepFrame || emu_debug_command == Debug_Command_Step)
@@ -280,11 +379,16 @@ void emu_update(void)
             rewind_commit_seek();
             core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
             frame_executed = true;
+            frame_completed = true;
         }
     }
 
     if (frame_executed)
+    {
+        if (frame_completed)
+            emu_frame_counter++;
         rewind_push();
+    }
 
     if ((sampleCount > 0) && !core->IsPaused())
     {
@@ -572,6 +676,8 @@ void emu_load_state_file(const char* file_path)
 
 void update_savestates_data(void)
 {
+    emu_savestates_generation++;
+
     if (emu_is_empty())
         return;
 
@@ -611,6 +717,8 @@ void emu_get_info(char* info, int buffer_size)
         const char* filename = media->GetFileName();
         u32 crc = media->GetCRC();
         int rom_size = media->GetROMSize();
+        const char* is_in_database = media->IsInGameDatabase() ? "YES" : "NO";
+        const char* format = media->GetFormatName();
         const char* header_name = media->GetHeaderName();
         const char* header_manufacturer = media->GetHeaderManufacturer();
         u16 bank0_page_size = media->GetHeaderBank0PageSize();
@@ -660,6 +768,8 @@ void emu_get_info(char* info, int buffer_size)
         snprintf(info, buffer_size,
             "File Name: %s\n"
             "CRC: %08X\n"
+            "Internal DB: %s\n"
+            "Format: %s\n"
             "ROM Size: %d bytes (%d KB)\n"
             "Screen: %dx%d\n"
             "Header Name: %s\n"
@@ -669,7 +779,7 @@ void emu_get_info(char* info, int buffer_size)
             "Rotation: %s\n"
             "AUDIN: %s\n"
             "EEPROM: %s%s",
-            filename, crc, rom_size, rom_size / 1024,
+            filename, crc, is_in_database, format, rom_size, rom_size / 1024,
             runtime.screen_width, runtime.screen_height,
             header_name[0] ? header_name : "(none)",
             header_manufacturer[0] ? header_manufacturer : "(none)",
@@ -736,8 +846,16 @@ void emu_debug_step_out(void)
 
 void emu_debug_step_frame(void)
 {
+    emu_debug_step_frames(1);
+}
+
+void emu_debug_step_frames(int frames)
+{
+    if (frames < 1)
+        frames = 1;
+
     core->Pause(false);
-    emu_debug_step_frames_pending++;
+    emu_debug_step_frames_pending += frames;
     emu_debug_command = Debug_Command_StepFrame;
 }
 
@@ -1753,10 +1871,10 @@ bool emu_is_vgm_recording(void)
     return core->GetAudio()->IsVgmRecording();
 }
 
-void emu_mcp_set_transport(int mode, int tcp_port)
+void emu_mcp_set_transport(int mode, int tcp_port, const char* tcp_address)
 {
     if (mcp_manager)
-        mcp_manager->SetTransportMode((McpTransportMode)mode, tcp_port);
+    mcp_manager->SetTransportMode((McpTransportMode)mode, tcp_port, tcp_address);
 }
 
 void emu_mcp_start(void)

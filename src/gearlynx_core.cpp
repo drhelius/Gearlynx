@@ -227,7 +227,7 @@ void GearlynxCore::SaveRam()
 
 void GearlynxCore::SaveRam(const char* path, bool full_path)
 {
-    if (m_media->IsReady() && m_media->IsSaveMemoryDirty())
+    if (m_media->IsReady() && m_media->GetSaveMemorySize() > 0)
     {
         using namespace std;
         string final_path;
@@ -237,8 +237,7 @@ void GearlynxCore::SaveRam(const char* path, bool full_path)
             final_path = path;
             if (!full_path)
             {
-                final_path += "/";
-                final_path += m_media->GetFileName();
+                append_path_component(final_path, m_media->GetFileName());
             }
         }
         else
@@ -255,7 +254,23 @@ void GearlynxCore::SaveRam(const char* path, bool full_path)
 
         ofstream file;
         open_ofstream_utf8(file, final_path.c_str(), ios::out | ios::binary);
-        m_media->SaveRam(file);
+
+        if (!file.is_open())
+        {
+            Error("Failed to open RAM file for writing: %s", final_path.c_str());
+            return;
+        }
+
+        bool ram_saved = m_media->SaveRam(file);
+        file.close();
+
+        if (!ram_saved || !file.good())
+        {
+            Error("Failed to write RAM file: %s", final_path.c_str());
+            return;
+        }
+
+        m_media->ClearSaveMemoryDirty();
 
         Debug("RAM saved");
     }
@@ -268,7 +283,7 @@ void GearlynxCore::LoadRam()
 
 void GearlynxCore::LoadRam(const char* path, bool full_path)
 {
-    if (m_media->IsReady())
+    if (m_media->IsReady() && m_media->GetSaveMemorySize() > 0)
     {
         using namespace std;
         string final_path;
@@ -278,8 +293,7 @@ void GearlynxCore::LoadRam(const char* path, bool full_path)
             final_path = path;
             if (!full_path)
             {
-                final_path += "/";
-                final_path += m_media->GetFileName();
+                append_path_component(final_path, m_media->GetFileName());
             }
         }
         else
@@ -323,7 +337,19 @@ void GearlynxCore::LoadRam(const char* path, bool full_path)
 std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
 {
     if (index < 0)
-        return path;
+    {
+        if (IsValidPointer(path))
+            return path;
+
+        using namespace std;
+        string full_path = m_media->GetFilePath();
+        string::size_type dot_index = full_path.rfind('.');
+
+        if (dot_index != string::npos)
+            full_path.replace(dot_index + 1, full_path.length() - dot_index - 1, "state");
+
+        return full_path;
+    }
 
     using namespace std;
     string full_path;
@@ -331,8 +357,7 @@ std::string GearlynxCore::GetSaveStatePath(const char* path, int index)
     if (IsValidPointer(path))
     {
         full_path = path;
-        full_path += "/";
-        full_path += m_media->GetFileName();
+        append_path_component(full_path, m_media->GetFileName());
     }
     else
         full_path = m_media->GetFilePath();
@@ -359,13 +384,30 @@ bool GearlynxCore::SaveState(const char* path, int index, bool screenshot)
     ofstream stream;
     open_ofstream_utf8(stream, full_path.c_str(), ios::out | ios::binary);
 
-    size_t size;
-    bool ret = SaveState(stream, size, screenshot);
-    if (ret)
-        Log("Saved state to %s", full_path.c_str());
-    else
-        Error("Failed to save state to %s", full_path.c_str());
-    return ret;
+    if (!stream.is_open())
+    {
+        Error("Failed to open save state file for writing: %s", full_path.c_str());
+        return false;
+    }
+
+    size_t size = 0;
+    if (!SaveState(stream, size, screenshot))
+    {
+        stream.close();
+        Error("Failed to save state to file: %s", full_path.c_str());
+        return false;
+    }
+
+    stream.close();
+
+    if (!stream.good())
+    {
+        Error("Failed to write save state file: %s", full_path.c_str());
+        return false;
+    }
+
+    Log("Saved state to %s", full_path.c_str());
+    return true;
 }
 
 bool GearlynxCore::SaveState(u8* buffer, size_t& size, bool screenshot)
@@ -397,6 +439,12 @@ bool GearlynxCore::SaveState(u8* buffer, size_t& size, bool screenshot)
         if (!SaveState(direct_stream, size, screenshot))
         {
             Error("Failed to save state to buffer");
+            return false;
+        }
+
+        if (!direct_stream.good())
+        {
+            Error("Failed to save state to buffer: output buffer is too small");
             return false;
         }
 
@@ -557,7 +605,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
         return false;
     }
 
-    GLYNX_SaveState_Header_Libretro header;
+    GLYNX_SaveState_Header_Libretro header = {};
 #if !defined(__LIBRETRO__)
     bool is_desktop_savestate = false;
 #endif
@@ -566,7 +614,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
     size_t size = static_cast<size_t>(stream.tellg());
 
     // Try desktop header first (larger, contains all info)
-    GLYNX_SaveState_Header desktop_header;
+    GLYNX_SaveState_Header desktop_header = {};
     if (size >= sizeof(desktop_header))
     {
         stream.seekg(size - sizeof(desktop_header), ios::beg);
@@ -584,7 +632,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
     }
 
     // Fallback to libretro header
-    if (header.magic != GLYNX_SAVESTATE_MAGIC)
+    if ((header.magic != GLYNX_SAVESTATE_MAGIC) && (size >= sizeof(header)))
     {
         stream.seekg(size - sizeof(header), ios::beg);
         stream.read(reinterpret_cast<char*> (&header), sizeof(header));
@@ -641,7 +689,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
     m_suzy->LoadState(stream, header.version);
     m_audio->LoadState(stream, header.version);
     m_input->LoadState(stream);
-    m_media->LoadState(stream);
+    m_media->LoadState(stream, header.version);
 
     return true;
 }
@@ -667,9 +715,37 @@ bool GearlynxCore::GetSaveStateHeader(int index, const char* path, GLYNX_SaveSta
     size_t savestate_size = static_cast<size_t>(stream.tellg());
     stream.seekg(0, ios::beg);
 
+    if (savestate_size < sizeof(GLYNX_SaveState_Header))
+    {
+        Error("Invalid save state file size: %zu", savestate_size);
+        stream.close();
+        return false;
+    }
+
     stream.seekg(savestate_size - sizeof(GLYNX_SaveState_Header), ios::beg);
     stream.read(reinterpret_cast<char*> (header), sizeof(GLYNX_SaveState_Header));
     stream.seekg(0, ios::beg);
+
+    if (stream.fail())
+    {
+        Error("Failed to read save state header from %s", full_path.c_str());
+        stream.close();
+        return false;
+    }
+
+    stream.close();
+
+    if (header->magic != GLYNX_SAVESTATE_MAGIC)
+    {
+        Error("Invalid save state magic: 0x%08x", header->magic);
+        return false;
+    }
+
+    if (header->size != savestate_size)
+    {
+        Error("Invalid save state size: %d", header->size);
+        return false;
+    }
 
     return true;
 }
@@ -698,7 +774,13 @@ bool GearlynxCore::GetSaveStateScreenshot(int index, const char* path, GLYNX_Sav
     }
 
     GLYNX_SaveState_Header header;
-    GetSaveStateHeader(index, path, &header);
+
+    if (!GetSaveStateHeader(index, path, &header))
+    {
+        Error("Invalid save state header");
+        stream.close();
+        return false;
+    }
 
     if (header.screenshot_size == 0)
     {
@@ -710,6 +792,13 @@ bool GearlynxCore::GetSaveStateScreenshot(int index, const char* path, GLYNX_Sav
     if (screenshot->size < header.screenshot_size)
     {
         Error("Invalid screenshot buffer size %d < %d", screenshot->size, header.screenshot_size);
+        stream.close();
+        return false;
+    }
+
+    if (header.size < (sizeof(header) + header.screenshot_size))
+    {
+        Error("Invalid screenshot size: %d", header.screenshot_size);
         stream.close();
         return false;
     }

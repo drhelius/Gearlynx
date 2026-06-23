@@ -558,6 +558,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
     case SUZY_SPRGO:       // 0xFC91
         DebugSuzy("Setting SPRGO to %02X (was %02X)", value, m_state.SPRGO);
         m_state.SPRGO = value;
+        m_state.sprsys_stopsprites = false;
         if ((value & 0x01) && IS_SET_BIT(m_state.SUZYBUSEN, 0))
             SpritesGo();
         break;
@@ -869,6 +870,7 @@ INLINE void Suzy::StepBlitterPhase()
 #endif
 
             m_state.SPRDLINE.value = RamReadWord(m_state.TMPADR.value);
+            m_state.PROCADR.value = m_state.SPRDLINE.value;
             m_state.TMPADR.value += 2;
             m_state.HPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
             m_state.TMPADR.value += 2;
@@ -996,6 +998,7 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.SPRDOFF.value = sprdoff;
             m_state.TMPADR.value = (u16)(line_address + 1);
             m_state.SPRDLINE.value = (u16)(line_address + (u16)sprdoff);
+            m_state.PROCADR.value = (sprdoff > 1) ? m_state.TMPADR.value : m_state.SPRDLINE.value;
 
             if (sprdoff <= 1)
             {
@@ -1075,7 +1078,10 @@ INLINE void Suzy::StepBlitterPhase()
                 done = DrawSpriteLinePackedStep(m_state.SPRDLINE.value, dx, bpp, type, collide, collision_id);
 
             if (done)
+            {
+                m_state.PROCADR.value = m_state.SPRDLINE.value;
                 m_state.fsm_phase = SUZY_PHASE_ROW_END;
+            }
 
             break;
         }
@@ -1423,6 +1429,7 @@ INLINE void Suzy::DrawSprite()
     bool vertical_stretch = m_state.sprsys_vstrech;
 
     m_state.SPRDLINE.value = RamReadWord(m_state.TMPADR.value);
+    m_state.PROCADR.value = m_state.SPRDLINE.value;
     m_state.TMPADR.value += 2;
     m_state.HPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
@@ -1546,6 +1553,7 @@ INLINE void Suzy::DrawSprite()
         u16 next_ptr = (u16)(line_address + (u16)sprdoff);
 
         m_state.SPRDLINE.value = next_ptr;
+        m_state.PROCADR.value = next_ptr;
 
         if (sprdoff <= 1)
         {
@@ -1706,6 +1714,8 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
             }
         }
     }
+
+    m_state.PROCADR.value = data_end;
 }
 
 INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
@@ -1734,7 +1744,10 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
             {
                 u32 pi = ShiftRegisterGetBits(bpp, data_end);
                 if (pi == SHIFTREG_EOF)
+                {
+                    m_state.PROCADR.value = data_end;
                     return;
+                }
 
                 u8 pen = m_state.pen_map[pi & 0x0F];
                 AddPackedPixelTicks();
@@ -1767,7 +1780,10 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
         {
             u32 pixel_index = ShiftRegisterGetBits(bpp, data_end);
             if (pixel_index == SHIFTREG_EOF)
+            {
+                m_state.PROCADR.value = data_end;
                 return;
+            }
 
             u8 pen = m_state.pen_map[pixel_index & 0x0F];
 
@@ -1800,6 +1816,8 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
             }
         }
     }
+
+    m_state.PROCADR.value = data_end;
 }
 
 INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id)
@@ -1949,6 +1967,7 @@ INLINE void Suzy::RamWrite(u16 address, u8 value)
 INLINE void Suzy::ShiftRegisterReset(u16 address)
 {
     m_state.shift_register_address = address;
+    m_state.PROCADR.value = address;
     m_state.shift_register_current = RamRead(address);
     m_state.shift_register_bit = 7;
     m_state.sprite_cycles += k_suzy_ram_read_ticks;  // initial sprite data byte
@@ -1976,6 +1995,7 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
         if (m_state.shift_register_bit < 0)
         {
             m_state.shift_register_address++;
+            m_state.PROCADR.value = m_state.shift_register_address;
             m_state.shift_register_current = RamRead(m_state.shift_register_address);
             m_state.shift_register_bit = 7;
             m_state.sprite_cycles += k_suzy_ram_read_ticks;  // next sprite data byte

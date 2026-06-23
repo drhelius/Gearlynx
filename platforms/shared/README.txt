@@ -100,8 +100,9 @@ Debugging Features:
     debug menu. You must restart the emulator for the change to take effect.
     Once enabled, you can drag debugger windows outside the main window
   - Debug Symbols: The emulator automatically tries to load a symbol file
-    (.sym, .lbl, .noi) when loading a ROM. It supports cc65 (VICE label file),
-    lyxass (EQU) and mads (lab and hea) file formats
+    (.sym, .elf, .lbl, .noi) when loading a ROM. It supports cc65 (VICE label
+    file), lyxass (EQU), mads (lab and hea), llvm-nm, llvm-mos ELF and vicelbl
+    label formats
 
 MCP Server:
   - Gearlynx includes a Model Context Protocol (MCP) server that enables
@@ -123,6 +124,7 @@ Command Line Usage:
     -w, --windowed           Start in windowed mode with menu visible
         --mcp-stdio          Auto-start MCP server with stdio transport
         --mcp-http           Auto-start MCP server with HTTP transport
+        --mcp-no-router      Expose all MCP tools directly
         --mcp-http-port N    HTTP port for MCP server (default: 7777)
     -v, --version            Display version information
     -h, --help               Display this help message

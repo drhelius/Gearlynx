@@ -112,6 +112,9 @@
     <ClInclude Include="..\shared\desktop\license.h" />
     <ClInclude Include="..\shared\dependencies\mINI\ini.h" />
     <ClInclude Include="..\shared\desktop\ogl_renderer.h" />
+    <ClInclude Include="..\shared\desktop\ogl_shader_program.h" />
+    <ClInclude Include="..\shared\desktop\ogl_shader_chain.h" />
+    <ClInclude Include="..\shared\desktop\shader_preset.h" />
     <ClInclude Include="..\shared\desktop\display.h" />
     <ClInclude Include="..\shared\desktop\gamepad.h" />
     <ClInclude Include="..\shared\desktop\sound_queue.h" />
@@ -203,12 +206,22 @@
     </ClCompile>
     <ClCompile Include="..\shared\desktop\main.cpp" />
     <ClCompile Include="..\shared\desktop\ogl_renderer.cpp" />
+    <ClCompile Include="..\shared\desktop\ogl_shader_program.cpp" />
+    <ClCompile Include="..\shared\desktop\ogl_shader_chain.cpp" />
+    <ClCompile Include="..\shared\desktop\shader_preset.cpp" />
     <ClCompile Include="..\shared\desktop\display.cpp" />
     <ClCompile Include="..\shared\desktop\gamepad.cpp" />
     <ClCompile Include="..\shared\desktop\sound_queue.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_debug_adapter.cpp" />
+    <ClCompile Include="..\shared\desktop\mcp\mcp_tool_registry.cpp" />
     <ClCompile Include="..\shared\desktop\mcp\mcp_server.cpp" />
     <ClCompile Include="..\shared\desktop\single_instance.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Gearlynx.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Gearlynx.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -219,7 +232,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <PlatformToolSet>v143</PlatformToolSet>
+    <PlatformToolSet>v145</PlatformToolSet>
     <OutputDirectory>release\</OutputDirectory>
     <ATLMinimizesCRunTimeLibraryUsage>false</ATLMinimizesCRunTimeLibraryUsage>
     <CharacterSet>NotSet</CharacterSet>
@@ -228,7 +241,7 @@
     <PrimaryOutput>Gearlynx</PrimaryOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
-    <PlatformToolSet>v143</PlatformToolSet>
+    <PlatformToolSet>v145</PlatformToolSet>
     <OutputDirectory>release\</OutputDirectory>
     <ATLMinimizesCRunTimeLibraryUsage>false</ATLMinimizesCRunTimeLibraryUsage>
     <CharacterSet>NotSet</CharacterSet>
@@ -237,7 +250,7 @@
     <PrimaryOutput>Gearlynx</PrimaryOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <PlatformToolSet>v143</PlatformToolSet>
+    <PlatformToolSet>v145</PlatformToolSet>
     <OutputDirectory>debug\</OutputDirectory>
     <ATLMinimizesCRunTimeLibraryUsage>false</ATLMinimizesCRunTimeLibraryUsage>
     <CharacterSet>NotSet</CharacterSet>
@@ -246,7 +259,7 @@
     <PrimaryOutput>Gearlynx</PrimaryOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
-    <PlatformToolSet>v143</PlatformToolSet>
+    <PlatformToolSet>v145</PlatformToolSet>
     <OutputDirectory>debug\</OutputDirectory>
     <ATLMinimizesCRunTimeLibraryUsage>false</ATLMinimizesCRunTimeLibraryUsage>
     <CharacterSet>NotSet</CharacterSet>

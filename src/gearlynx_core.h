@@ -45,6 +45,9 @@ public:
         bool stop_on_run_to_breakpoint;
         u8 stop_on_irq;
         bool skip_interrupts_on_step;
+        bool stop_on_brk;
+        u8 brk_value;
+        bool brk_trigger_irq;
     };
 
 public:

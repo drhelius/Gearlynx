@@ -102,9 +102,11 @@ public:
     void DisassembleAhead(u16 start_address, int count, int depth);
     void SetResetValue(int value);
     void EnableBreakpoints(bool enable, u8 irqs);
+    void SetDebugBRK(bool enable, u8 value, bool trigger_irq);
     void SetSkipIRQOnStep(bool skip);
     bool BreakpointHit();
     bool RunToBreakpointHit();
+    bool GetBreakpointHitAddress(u16* address);
     void ResetBreakpoints();
     bool AddBreakpoint(char* text, bool read, bool write, bool execute);
     bool AddBreakpoint(u16 address);
@@ -134,10 +136,16 @@ private:
     u8 m_breakpoints_irq_enabled;
     bool m_cpu_breakpoint_hit;
     bool m_memory_breakpoint_hit;
+    bool m_debug_brk_breakpoint_hit;
+    bool m_breakpoint_hit_address_valid;
+    u16 m_breakpoint_hit_address;
     bool m_run_to_breakpoint_hit;
     std::vector<GLYNX_Breakpoint> m_breakpoints;
     GLYNX_Breakpoint m_run_to_breakpoint;
     bool m_run_to_breakpoint_requested;
+    bool m_debug_brk_enabled;
+    u8 m_debug_brk_value;
+    bool m_debug_brk_trigger_irq;
     bool m_skip_irq_on_step;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_disassembler_call_stack_size;
@@ -150,6 +158,7 @@ private:
 private:
     void HandleIRQ();
     void CheckIRQs();
+    void SetBreakpointHitAddress(u16 address);
 
     void CheckBreakpoints();
     void PushCallStack(u16 src, u16 dest, u16 back);

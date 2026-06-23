@@ -36,6 +36,59 @@
 #include <vector>
 #include <algorithm>
 
+static std::string get_file_name_from_path(const std::string& path)
+{
+    size_t position = path.find_last_of("/\\");
+
+    if (position == std::string::npos)
+        return path;
+
+    return path.substr(position + 1);
+}
+
+static const char* cart_bank_type_name(GLYNX_Cartridge_Bank_Type type)
+{
+    switch (type)
+    {
+        case GLYNX_CART_BANK_ROM:
+            return "ROM";
+        case GLYNX_CART_BANK_RAM:
+            return "RAM";
+        case GLYNX_CART_BANK_RAM_PERSISTENT:
+            return "RAM+SAVE";
+        default:
+            return "UNUSED";
+    }
+}
+
+static bool cart_bank_available(Media* media, int bank)
+{
+    return media->GetCartBankData(bank) != NULL && media->GetCartBankSize(bank) > 0;
+}
+
+static json make_cart_bank_json(Media* media, int bank, std::ostringstream& ss)
+{
+    json result;
+    result["index"] = bank;
+    result["name"] = media->GetCartBankName(bank);
+    result["type"] = cart_bank_type_name(media->GetCartBankType(bank));
+    result["writable"] = media->IsCartBankWritable(bank);
+    result["persistent"] = media->IsCartBankPersistent(bank);
+    result["size"] = media->GetCartBankSize(bank);
+    result["size_kb"] = media->GetCartBankSize(bank) / 1024;
+    result["block_size"] = media->GetCartBankBlockSize(bank);
+    result["block_count"] = media->GetCartBankBlockCount(bank);
+
+    if (cart_bank_available(media, bank))
+    {
+        ss << std::setw(2) << (int)media->PeekCartBank(bank);
+        result["peek_value"] = ss.str();
+        ss.str("");
+    }
+
+    return result;
+}
+
 struct DisassemblerBookmark
 {
     u16 address;
@@ -101,9 +154,9 @@ void DebugAdapter::StepOut()
     emu_debug_step_out();
 }
 
-void DebugAdapter::StepFrame()
+void DebugAdapter::StepFrame(int frames)
 {
-    emu_debug_step_frame();
+    emu_debug_step_frames(frames);
 }
 
 void DebugAdapter::Reset()
@@ -447,27 +500,27 @@ MemoryAreaInfo DebugAdapter::GetMemoryAreaInfo(int area)
             info.cpu_offset = 0x0100;
             break;
         case MEMORY_EDITOR_BANK0:
-            info.name = "BANK0";
-            info.data = media->GetBankData(0);
-            info.size = media->GetBankSize(0);
+            info.name = media->GetCartBankName(Media::CART_BANK_0);
+            info.data = media->GetCartBankData(Media::CART_BANK_0);
+            info.size = media->GetCartBankSize(Media::CART_BANK_0);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK0A:
-            info.name = "BANK0A";
-            info.data = media->GetBankDataA(0);
-            info.size = IsValidPointer(media->GetBankDataA(0)) ? media->GetBankSize(0) : 0;
+            info.name = media->GetCartBankName(Media::CART_BANK_0_A);
+            info.data = media->GetCartBankData(Media::CART_BANK_0_A);
+            info.size = media->GetCartBankSize(Media::CART_BANK_0_A);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK1:
-            info.name = "BANK1";
-            info.data = media->GetBankData(1);
-            info.size = media->GetBankSize(1);
+            info.name = media->GetCartBankName(Media::CART_BANK_1);
+            info.data = media->GetCartBankData(Media::CART_BANK_1);
+            info.size = media->GetCartBankSize(Media::CART_BANK_1);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BANK1A:
-            info.name = "BANK1A";
-            info.data = media->GetBankDataA(1);
-            info.size = IsValidPointer(media->GetBankDataA(1)) ? media->GetBankSize(1) : 0;
+            info.name = media->GetCartBankName(Media::CART_BANK_1_A);
+            info.data = media->GetCartBankData(Media::CART_BANK_1_A);
+            info.size = media->GetCartBankSize(Media::CART_BANK_1_A);
             info.cpu_offset = 0x0000;
             break;
         case MEMORY_EDITOR_BIOS:
@@ -583,11 +636,22 @@ json DebugAdapter::GetMediaInfo()
 
     // Header data
     json header;
+    header["format"] = media->GetFormatName();
     header["name"] = media->GetHeaderName();
     header["manufacturer"] = media->GetHeaderManufacturer();
     header["bank0_page_size"] = media->GetHeaderBank0PageSize();
     header["bank1_page_size"] = media->GetHeaderBank1PageSize();
     info["header"] = header;
+
+    json banks = json::array();
+    std::ostringstream bank_ss;
+    bank_ss << std::hex << std::uppercase << std::setfill('0');
+    for (int bank = 0; bank < Media::CART_BANK_COUNT; bank++)
+    {
+        if (cart_bank_available(media, bank))
+            banks.push_back(make_cart_bank_json(media, bank, bank_ss));
+    }
+    info["cart_banks"] = banks;
 
     if (type == Media::MEDIA_HOMEBREW)
     {
@@ -597,6 +661,31 @@ json DebugAdapter::GetMediaInfo()
     }
 
     return info;
+}
+
+json DebugAdapter::ListRecentMedia()
+{
+    json result;
+    json recent_media = json::array();
+
+    for (int index = 0; index < config_max_recent_roms; index++)
+    {
+        const std::string& path = config_emulator.recent_roms[index];
+
+        if (path.empty())
+            continue;
+
+        json entry;
+        entry["index"] = index;
+        entry["file_path"] = path;
+        entry["file_name"] = get_file_name_from_path(path);
+        recent_media.push_back(entry);
+    }
+
+    result["count"] = recent_media.size();
+    result["recent_media"] = recent_media;
+
+    return result;
 }
 
 json DebugAdapter::Get6502Status()
@@ -819,10 +908,11 @@ json DebugAdapter::GetMikeyRegisters(u16 address)
         return result;
     }
 
-    if (address != 0xFFFF && registers.size() == 1)
-        return registers[0];
+    json result;
+    result["fields"] = json::array({"name", "address", "value"});
+    result["registers"] = registers;
 
-    return registers;
+    return result;
 }
 
 json DebugAdapter::WriteMikeyRegister(u16 address, u8 value)
@@ -918,33 +1008,12 @@ json DebugAdapter::GetMikeyTimers(int timer)
 
         // Register addresses and values
         u16 base_addr = 0xFD00 + (t * 4);
-        ss << std::setw(4) << base_addr;
-        timer_obj["backup_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)timer_data->backup;
-        timer_obj["backup"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 1);
-        timer_obj["control_a_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)timer_data->control_a;
-        timer_obj["control_a"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 2);
-        timer_obj["counter_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)timer_data->counter;
-        timer_obj["counter"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 3);
-        timer_obj["control_b_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)timer_data->control_b;
-        timer_obj["control_b"] = ss.str();
-        ss.str("");
+        json registers = json::array();
+        AddRegister(registers, ss, "backup", base_addr, timer_data->backup, 0xFFFF);
+        AddRegister(registers, ss, "control_a", base_addr + 1, timer_data->control_a, 0xFFFF);
+        AddRegister(registers, ss, "counter", base_addr + 2, timer_data->counter, 0xFFFF);
+        AddRegister(registers, ss, "control_b", base_addr + 3, timer_data->control_b, 0xFFFF);
+        timer_obj["registers"] = registers;
 
         // Status flags
         timer_obj["enabled"] = enabled;
@@ -984,9 +1053,15 @@ json DebugAdapter::GetMikeyTimers(int timer)
 
     json result;
     if (timer == -1)
+    {
+        result["fields"] = json::array({"name", "address", "value"});
         result["timers"] = timers;
+    }
     else
+    {
         result = timers[0];
+        result["fields"] = json::array({"name", "address", "value"});
+    }
 
     return result;
 }
@@ -1035,68 +1110,17 @@ json DebugAdapter::GetMikeyAudio(int channel)
 
         // Register addresses and values
         u16 base_addr = 0xFD20 + (c * 8);
-        ss << std::setw(4) << base_addr;
-        channel_obj["volume_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->volume;
-        channel_obj["volume"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 1);
-        channel_obj["feedback_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->feedback;
-        channel_obj["feedback"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 2);
-        channel_obj["output_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)(u8)channel_data->output;
-        channel_obj["output"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 3);
-        channel_obj["lfsr_low_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->lfsr_low;
-        channel_obj["lfsr_low"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 4);
-        channel_obj["backup_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->backup;
-        channel_obj["backup"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 5);
-        channel_obj["control_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->control;
-        channel_obj["control"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 6);
-        channel_obj["counter_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->counter;
-        channel_obj["counter"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (base_addr + 7);
-        channel_obj["other_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)channel_data->other;
-        channel_obj["other"] = ss.str();
-        ss.str("");
-
-        ss << std::setw(4) << (0xFD40 + c);
-        channel_obj["atten_addr"] = ss.str();
-        ss.str("");
-        ss << std::setw(2) << (int)ch_atten;
-        channel_obj["atten"] = ss.str();
-        ss.str("");
+        json registers = json::array();
+        AddRegister(registers, ss, "volume", base_addr, channel_data->volume, 0xFFFF);
+        AddRegister(registers, ss, "feedback", base_addr + 1, channel_data->feedback, 0xFFFF);
+        AddRegister(registers, ss, "output", base_addr + 2, (u8)channel_data->output, 0xFFFF);
+        AddRegister(registers, ss, "lfsr_low", base_addr + 3, channel_data->lfsr_low, 0xFFFF);
+        AddRegister(registers, ss, "backup", base_addr + 4, channel_data->backup, 0xFFFF);
+        AddRegister(registers, ss, "control", base_addr + 5, channel_data->control, 0xFFFF);
+        AddRegister(registers, ss, "counter", base_addr + 6, channel_data->counter, 0xFFFF);
+        AddRegister(registers, ss, "other", base_addr + 7, channel_data->other, 0xFFFF);
+        AddRegister(registers, ss, "atten", 0xFD40 + c, ch_atten, 0xFFFF);
+        channel_obj["registers"] = registers;
 
         // Status flags
         channel_obj["enabled"] = enabled;
@@ -1161,12 +1185,14 @@ json DebugAdapter::GetMikeyAudio(int channel)
     json result;
     if (channel == -1)
     {
+        result["fields"] = json::array({"name", "address", "value"});
         result["channels"] = channels;
         result["stereo"] = stereo;
     }
     else
     {
         result = channels[0];
+        result["fields"] = json::array({"name", "address", "value"});
         result["stereo"] = stereo;
     }
 
@@ -1262,10 +1288,11 @@ json DebugAdapter::GetSuzyRegisters(u16 address)
         return result;
     }
 
-    if (address != 0xFFFF && registers.size() == 1)
-        return registers[0];
+    json result;
+    result["fields"] = json::array({"name", "address", "value"});
+    result["registers"] = registers;
 
-    return registers;
+    return result;
 }
 
 json DebugAdapter::WriteSuzyRegister(u16 address, u8 value)
@@ -1404,44 +1431,17 @@ json DebugAdapter::GetCartStatus()
         address_gen["strobe"] = media->GetShiftRegisterStrobe();
         address_gen["shift_bit"] = media->GetShiftRegisterBit();
     }
-    result["address_generation"] = address_gen;
+    if (ready)
+        result["address_generation"] = address_gen;
 
-    // Bank 0
-    json bank0;
-    if (ready && media->GetBankSize(0) > 0)
+    json banks = json::array();
+    for (int bank = 0; bank < Media::CART_BANK_COUNT; bank++)
     {
-        bank0["size_kb"] = media->GetBankSize(0) / 1024;
-        bank0["type"] = "ROM";
-        ss << std::setw(2) << (int)media->PeekBank0();
-        bank0["peek_value"] = ss.str();
-        ss.str("");
-        if (IsValidPointer(media->GetBankDataA(0)))
-        {
-            ss << std::setw(2) << (int)media->PeekBank0A();
-            bank0["peek_value_a"] = ss.str();
-            ss.str("");
-        }
+        if (cart_bank_available(media, bank))
+            banks.push_back(make_cart_bank_json(media, bank, ss));
     }
-    result["bank0"] = bank0;
-
-    // Bank 1
-    json bank1;
-    if (ready && media->GetBankSize(1) > 0)
-    {
-        bank1["size_kb"] = media->GetBankSize(1) / 1024;
-        bank1["type"] = media->IsBank1RAM() ? "RAM" : "ROM";
-
-        ss << std::setw(2) << (int)media->PeekBank1();
-        bank1["peek_value"] = ss.str();
-        ss.str("");
-        if (IsValidPointer(media->GetBankDataA(1)))
-        {
-            ss << std::setw(2) << (int)media->PeekBank1A();
-            bank1["peek_value_a"] = ss.str();
-            ss.str("");
-        }
-    }
-    result["bank1"] = bank1;
+    if (!banks.empty())
+        result["banks"] = banks;
 
     // AUDIN
     json audin;
@@ -1453,7 +1453,8 @@ json DebugAdapter::GetCartStatus()
             audin["value"] = media->GetAudinValue();
         }
     }
-    result["audin"] = audin;
+    if (ready)
+        result["audin"] = audin;
 
     return result;
 }
@@ -1481,7 +1482,8 @@ json DebugAdapter::GetEepromStatus()
         info["size_bytes"] = eeprom->GetSize();
         info["mode"] = (type & GLYNX_EEPROM_8BIT) ? "8-bit" : "16-bit";
     }
-    result["info"] = info;
+    if (available)
+        result["info"] = info;
 
     // State
     json state;
@@ -1490,7 +1492,8 @@ json DebugAdapter::GetEepromStatus()
         state["dirty"] = eeprom->IsDirty();
         state["output_bit"] = eeprom->OutputBit();
     }
-    result["state"] = state;
+    if (available)
+        result["state"] = state;
 
     // IO Pins
     json io_pins;
@@ -1740,7 +1743,7 @@ json DebugAdapter::GetSprite(int index, const std::string& format)
     return result;
 }
 
-json DebugAdapter::LoadMedia(const std::string& file_path)
+json DebugAdapter::StartLoadMedia(const std::string& file_path)
 {
     json result;
 
@@ -1751,7 +1754,33 @@ json DebugAdapter::LoadMedia(const std::string& file_path)
         return result;
     }
 
-    gui_load_rom(file_path.c_str());
+    if (!gui_load_rom(file_path.c_str()))
+    {
+        result["error"] = "Another media load is already in progress";
+        Log("[MCP] LoadMedia failed: load already in progress");
+        return result;
+    }
+
+    result["file_path"] = file_path;
+
+    return result;
+}
+
+bool DebugAdapter::IsMediaLoading() const
+{
+    return gui_is_rom_loading() && emu_is_rom_loading();
+}
+
+json DebugAdapter::FinishLoadMedia(const std::string& file_path)
+{
+    json result;
+
+    if (gui_is_rom_loading() && !gui_finish_loading_rom())
+    {
+        result["error"] = "Failed to load media file";
+        Log("[MCP] LoadMedia failed: %s", file_path.c_str());
+        return result;
+    }
 
     if (!m_core || !m_core->GetMedia()->IsReady())
     {
@@ -1833,12 +1862,12 @@ json DebugAdapter::ListSaveStateSlots()
 {
     json result;
     json slots = json::array();
+    json empty_slots = json::array();
 
     for (int i = 0; i < 5; i++)
     {
         json slot;
         slot["slot"] = i + 1;
-        slot["selected"] = (config_emulator.save_slot == i);
 
         if (emu_savestates[i].rom_name[0] != 0)
         {
@@ -1850,17 +1879,18 @@ json DebugAdapter::ListSaveStateSlots()
 
             if (emu_savestates[i].emu_build[0] != 0)
                 slot["emu_build"] = emu_savestates[i].emu_build;
+
+            slots.push_back(slot);
         }
         else
         {
-            slot["empty"] = true;
+            empty_slots.push_back(i + 1);
         }
-
-        slots.push_back(slot);
     }
 
-    result["slots"] = slots;
     result["current_slot"] = config_emulator.save_slot + 1;
+    result["empty_slots"] = empty_slots;
+    result["slots"] = slots;
 
     return result;
 }
@@ -2037,7 +2067,6 @@ json DebugAdapter::RunToAddress(u16 address)
 
     result["success"] = true;
     result["address"] = address;
-    result["message"] = "Running to address";
 
     return result;
 }
@@ -2584,16 +2613,15 @@ json DebugAdapter::GetMemorySelection(int area)
         start_ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << start;
         end_ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << end;
 
+        result["selected"] = true;
         result["start"] = start_ss.str();
         result["end"] = end_ss.str();
         result["size"] = end - start + 1;
     }
     else
     {
-        result["start"] = NULL;
-        result["end"] = NULL;
+        result["selected"] = false;
         result["size"] = 0;
-        result["note"] = "No selection";
     }
 
     return result;
@@ -2619,7 +2647,6 @@ json DebugAdapter::MemorySearchCapture(int area)
 
     result["success"] = true;
     result["area"] = area;
-    result["message"] = "Memory snapshot captured";
 
     return result;
 }
@@ -2691,6 +2718,7 @@ json DebugAdapter::MemorySearch(int area, const std::string& op, const std::stri
 
     result["area"] = area;
     result["count"] = count;
+    result["fields"] = json::array({"address", "value", "previous"});
     result["results"] = json::array();
 
     if (count > 0 && IsValidPointer(results_ptr))
@@ -2702,21 +2730,20 @@ json DebugAdapter::MemorySearch(int area, const std::string& op, const std::stri
         for (int i = 0; i < max_results; i++)
         {
             MemEditor::Search& search = (*results)[i];
-            json item;
+            json item = json::array();
 
             std::ostringstream addr_ss;
             addr_ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << search.address;
 
-            item["address"] = addr_ss.str();
-            item["value"] = search.value;
-            item["previous"] = search.prev_value;
+            item.push_back(addr_ss.str());
+            item.push_back(search.value);
+            item.push_back(search.prev_value);
 
             result["results"].push_back(item);
         }
 
         if (count > 1000)
         {
-            result["note"] = "Results limited to first 1000 matches";
             result["total_matches"] = count;
         }
     }
@@ -2751,22 +2778,19 @@ json DebugAdapter::MemoryFindBytes(int area, const std::string& hex_bytes)
 
     result["area"] = area;
     result["count"] = count;
-    result["results"] = json::array();
+    result["addresses"] = json::array();
 
     int max_results = MIN(count, 100);
 
     for (int i = 0; i < max_results; i++)
     {
-        json item;
         std::ostringstream addr_ss;
         addr_ss << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << addresses[i];
-        item["address"] = addr_ss.str();
-        result["results"].push_back(item);
+        result["addresses"].push_back(addr_ss.str());
     }
 
     if (count > 100)
     {
-        result["note"] = "Results limited to first 100 matches";
         result["total_matches"] = count;
     }
 
@@ -2843,19 +2867,14 @@ json DebugAdapter::GetLcdStatus()
             pixel["next_color_rgb444"] = ss.str();
             ss.str("");
         }
+
+        result["pixel"] = pixel;
     }
-    else
-    {
-        pixel["count"] = "N/A (VBLANK)";
-        pixel["next_at_cycle"] = "N/A (VBLANK)";
-        pixel["cycles_until_next"] = "N/A (VBLANK)";
-    }
-    result["pixel"] = pixel;
 
     // Video DMA
-    json dma;
     if (!is_vblank)
     {
+        json dma;
         bool dma_active = lcd_state->dma_burst_count < k_dma_bursts_per_line;
 
         ss << std::setw(4) << lcd_state->dma_current_src_addr;
@@ -2871,15 +2890,9 @@ json DebugAdapter::GetLcdStatus()
             dma["cycles_until_next"] = 0;
         else
             dma["cycles_until_next"] = "N/A";
+
+        result["dma"] = dma;
     }
-    else
-    {
-        dma["source_address"] = "N/A (VBLANK)";
-        dma["burst_count"] = "N/A (VBLANK)";
-        dma["next_at_cycle"] = "N/A (VBLANK)";
-        dma["cycles_until_next"] = "N/A (VBLANK)";
-    }
-    result["dma"] = dma;
 
     return result;
 }
@@ -2889,13 +2902,13 @@ void DebugAdapter::AddRegister(json& registers, std::ostringstream& ss, const ch
     if (filter_address != 0xFFFF && filter_address != addr)
         return;
 
-    json reg;
-    reg["name"] = name;
+    json reg = json::array();
+    reg.push_back(name);
     ss << std::setw(4) << addr;
-    reg["address"] = ss.str();
+    reg.push_back(ss.str());
     ss.str("");
     ss << std::setw(2) << (int)value;
-    reg["value"] = ss.str();
+    reg.push_back(ss.str());
     ss.str("");
     registers.push_back(reg);
 }
@@ -2905,13 +2918,13 @@ void DebugAdapter::AddRegister16(json& registers, std::ostringstream& ss, const 
     if (filter_address != 0xFFFF && filter_address != addr && filter_address != (u16)(addr + 1))
         return;
 
-    json reg;
-    reg["name"] = name;
+    json reg = json::array();
+    reg.push_back(name);
     ss << std::setw(4) << addr;
-    reg["address"] = ss.str();
+    reg.push_back(ss.str());
     ss.str("");
     ss << std::setw(4) << value;
-    reg["value"] = ss.str();
+    reg.push_back(ss.str());
     ss.str("");
     registers.push_back(reg);
 }

@@ -26,6 +26,8 @@
 
 #define CONFIG_IMPORT
 #include "config.h"
+#include "shader_preset.h"
+#include "utils.h"
 
 static bool check_portable(void);
 static int read_int(const char* group, const char* key, int default_value);
@@ -39,6 +41,9 @@ static void write_string(const char* group, const char* key, const std::string& 
 static config_Hotkey read_hotkey(const char* group, const char* key, config_Hotkey default_value);
 static void write_hotkey(const char* group, const char* key, config_Hotkey hotkey);
 static config_Hotkey make_hotkey(SDL_Scancode key, SDL_Keymod mod);
+static std::string shader_preset_section_name(const char* preset_file);
+static bool parse_float_string(const std::string& value, float* result);
+static void sync_shader_preset_parameter_defaults(void);
 static void set_defaults(void);
 
 static void set_defaults(void)
@@ -149,6 +154,29 @@ void config_load_defaults(void)
     config_write();
 }
 
+void config_push_recent_media(const std::string& path)
+{
+    if (path.empty())
+        return;
+
+    int slot = 0;
+    for (slot = 0; slot < config_max_recent_roms; slot++)
+    {
+        if (config_emulator.recent_roms[slot].compare(path) == 0)
+            break;
+    }
+
+    if (slot >= config_max_recent_roms)
+        slot = config_max_recent_roms - 1;
+
+    for (int index = slot; index > 0; index--)
+    {
+        config_emulator.recent_roms[index] = config_emulator.recent_roms[index - 1];
+    }
+
+    config_emulator.recent_roms[0] = path;
+}
+
 void config_read(void)
 {
     if (!config_ini_file->read(config_ini_data))
@@ -159,12 +187,15 @@ void config_read(void)
 
     int file_version = read_int("General", "Version", 0);
 
-    if (file_version < config_version)
+    if (file_version < 2)
     {
         Log("Settings version %d is outdated (current: %d). Using defaults.", file_version, config_version);
         config_write();
         return;
     }
+
+    if (file_version < config_version)
+        Log("Migrating settings version %d to %d", file_version, config_version);
 
     Log("Loading settings from %s (version %d)", config_emu_file_path, file_version);
 
@@ -222,6 +253,10 @@ void config_read(void)
     config_debug.dis_replace_labels = read_bool("Debug", "DisReplaceLabels", true);
     config_debug.dis_look_ahead_count = read_int("Debug", "DisLookAheadCount", 20);
     config_debug.step_skip_interrupts = read_bool("Debug", "StepSkipInterrupts", false);
+    config_debug.pause_on_brk = read_bool("Debug", "PauseOnBRK", false);
+    config_debug.pause_on_brk_value = read_int("Debug", "PauseOnBRKValue", 0x42);
+    config_debug.pause_on_brk_value = CLAMP(config_debug.pause_on_brk_value, 0, 0xFF);
+    config_debug.pause_on_brk_trigger_irq = read_bool("Debug", "PauseOnBRKTriggerIRQ", false);
     config_debug.font_size = read_int("Debug", "FontSize", 0);
     if (config_debug.font_size < 0 || config_debug.font_size > 3)
         config_debug.font_size = 0;
@@ -244,8 +279,11 @@ void config_read(void)
     config_emulator.fullscreen = read_bool("Emulator", "FullScreen", false);
     config_emulator.fullscreen_mode = read_int("Emulator", "FullScreenMode", 0);
     config_emulator.always_show_menu = read_bool("Emulator", "AlwaysShowMenu", false);
+    config_emulator.theme = read_int("Emulator", "Theme", config_Theme_Dark);
+    config_emulator.theme = CLAMP(config_emulator.theme, config_Theme_Light, config_Theme_Dark);
     config_emulator.ffwd_speed = read_int("Emulator", "FFWD", 1);
     config_emulator.save_slot = read_int("Emulator", "SaveSlot", 0);
+    config_emulator.save_slot = CLAMP(config_emulator.save_slot, 0, 4);
     config_emulator.fast_sprite_rendering = read_bool("Emulator", "FastSpriteRendering", false);
     config_emulator.start_paused = read_bool("Emulator", "StartPaused", false);
     config_emulator.pause_when_inactive = read_bool("Emulator", "PauseWhenInactive", true);
@@ -261,6 +299,9 @@ void config_read(void)
     config_emulator.window_height = read_int("Emulator", "WindowHeight", 600);
     config_emulator.status_messages = read_bool("Emulator", "StatusMessages", false);
     config_emulator.mcp_tcp_port = read_int("Emulator", "MCPTCPPort", 7777);
+    config_emulator.mcp_http_address = read_string("Emulator", "MCPHTTPAddress");
+    if (config_emulator.mcp_http_address.empty())
+        config_emulator.mcp_http_address = "127.0.0.1";
     config_emulator.console_type = read_int("Emulator", "ConsoleType", 0);
 
     if (config_emulator.savefiles_path.empty())
@@ -289,20 +330,34 @@ void config_read(void)
     config_video.ratio = read_int("Video", "AspectRatio", 0);
     config_video.rotation = read_int("Video", "Rotation", 0);
     config_video.fps = read_bool("Video", "FPS", false);
-    config_video.bilinear = read_bool("Video", "Bilinear", false);
-    config_video.sync = read_bool("Video", "Sync", true);
-    config_video.ghosting = read_bool("Video", "Ghosting", true);
-    config_video.ghosting_intensity = read_float("Video", "GhostingIntensity", 0.70f);
-    config_video.ghosting_history = read_int("Video", "GhostingHistory", 3);
-    config_video.ghosting_history = CLAMP(config_video.ghosting_history, 2, 8);
-    config_video.scanlines_type = read_int("Video", "ScanlinesType", 2);
-    config_video.scanlines_intensity = read_float("Video", "ScanlinesPower", 0.65f);
-    config_video.background_color[0] = read_float("Video", "BackgroundColorR", 0.1f);
-    config_video.background_color[1] = read_float("Video", "BackgroundColorG", 0.1f);
-    config_video.background_color[2] = read_float("Video", "BackgroundColorB", 0.1f);
-    config_video.background_color_debugger[0] = read_float("Video", "BackgroundColorDebuggerR", 0.2f);
-    config_video.background_color_debugger[1] = read_float("Video", "BackgroundColorDebuggerG", 0.2f);
-    config_video.background_color_debugger[2] = read_float("Video", "BackgroundColorDebuggerB", 0.2f);
+    config_video.shader_mode = read_int("Video", "ShaderMode", config_ShaderMode_PixelPerfect);
+    config_video.shader_mode = CLAMP(config_video.shader_mode, config_ShaderMode_PixelPerfect, config_ShaderMode_External);
+    config_video.shader_preset_path = read_string("Video", "ShaderPresetFile");
+    config_video.sync_mode = read_int("Video", "SyncMode", -1);
+    if ((file_version < config_version) || (config_video.sync_mode < config_VideoSync_Disabled) || (config_video.sync_mode > config_VideoSync_VRR))
+    {
+        bool sync = read_bool("Video", "Sync", true);
+        bool vrr = read_bool("Video", "VRR", false);
+        config_video.sync_mode = sync ? (vrr ? config_VideoSync_VRR : config_VideoSync_Fixed) : config_VideoSync_Disabled;
+    }
+    else
+        config_video.sync_mode = CLAMP(config_video.sync_mode, config_VideoSync_Disabled, config_VideoSync_VRR);
+#if !defined(_WIN32)
+    if (config_video.sync_mode == config_VideoSync_VRR)
+    config_video.sync_mode = config_VideoSync_Fixed;
+#endif
+    config_video.background_color[config_Theme_Dark][0] = read_float("Video", "BackgroundColorR", 0.1f);
+    config_video.background_color[config_Theme_Dark][1] = read_float("Video", "BackgroundColorG", 0.1f);
+    config_video.background_color[config_Theme_Dark][2] = read_float("Video", "BackgroundColorB", 0.1f);
+    config_video.background_color_debugger[config_Theme_Dark][0] = read_float("Video", "BackgroundColorDebuggerR", 0.2f);
+    config_video.background_color_debugger[config_Theme_Dark][1] = read_float("Video", "BackgroundColorDebuggerG", 0.2f);
+    config_video.background_color_debugger[config_Theme_Dark][2] = read_float("Video", "BackgroundColorDebuggerB", 0.2f);
+    config_video.background_color[config_Theme_Light][0] = read_float("Video", "BackgroundColorLightR", 128.0f / 255.0f);
+    config_video.background_color[config_Theme_Light][1] = read_float("Video", "BackgroundColorLightG", 128.0f / 255.0f);
+    config_video.background_color[config_Theme_Light][2] = read_float("Video", "BackgroundColorLightB", 128.0f / 255.0f);
+    config_video.background_color_debugger[config_Theme_Light][0] = read_float("Video", "BackgroundColorDebuggerLightR", 160.0f / 255.0f);
+    config_video.background_color_debugger[config_Theme_Light][1] = read_float("Video", "BackgroundColorDebuggerLightG", 160.0f / 255.0f);
+    config_video.background_color_debugger[config_Theme_Light][2] = read_float("Video", "BackgroundColorDebuggerLightB", 160.0f / 255.0f);
 
     config_audio.enable = read_bool("Audio", "Enable", true);
     config_audio.sync = read_bool("Audio", "Sync", true);
@@ -381,6 +436,8 @@ void config_read(void)
     config_hotkeys[config_HotkeyIndex_SelectSlot5] = read_hotkey("Hotkeys", "SelectSlot5", make_hotkey(SDL_SCANCODE_5, SDL_KMOD_CTRL));
     config_hotkeys[config_HotkeyIndex_Mute] = read_hotkey("Hotkeys", "Mute", make_hotkey(SDL_SCANCODE_U, SDL_KMOD_CTRL));
 
+    sync_shader_preset_parameter_defaults();
+
     Debug("Settings loaded");
 }
 
@@ -443,6 +500,9 @@ void config_write(void)
     write_bool("Debug", "DisReplaceLabels", config_debug.dis_replace_labels);
     write_int("Debug", "DisLookAheadCount", config_debug.dis_look_ahead_count);
     write_bool("Debug", "StepSkipInterrupts", config_debug.step_skip_interrupts);
+    write_bool("Debug", "PauseOnBRK", config_debug.pause_on_brk);
+    write_int("Debug", "PauseOnBRKValue", config_debug.pause_on_brk_value);
+    write_bool("Debug", "PauseOnBRKTriggerIRQ", config_debug.pause_on_brk_trigger_irq);
     write_int("Debug", "FontSize", config_debug.font_size);
     write_int("Debug", "Scale", config_debug.scale);
     write_bool("Debug", "MultiViewport", config_debug.multi_viewport);
@@ -463,6 +523,7 @@ void config_write(void)
     write_bool("Emulator", "FullScreen", config_emulator.fullscreen);
     write_int("Emulator", "FullScreenMode", config_emulator.fullscreen_mode);
     write_bool("Emulator", "AlwaysShowMenu", config_emulator.always_show_menu);
+    write_int("Emulator", "Theme", config_emulator.theme);
     write_int("Emulator", "FFWD", config_emulator.ffwd_speed);
     write_int("Emulator", "SaveSlot", config_emulator.save_slot);
     write_bool("Emulator", "FastSpriteRendering", config_emulator.fast_sprite_rendering);
@@ -480,6 +541,7 @@ void config_write(void)
     write_int("Emulator", "WindowHeight", config_emulator.window_height);
     write_bool("Emulator", "StatusMessages", config_emulator.status_messages);
     write_int("Emulator", "MCPTCPPort", config_emulator.mcp_tcp_port);
+    write_string("Emulator", "MCPHTTPAddress", config_emulator.mcp_http_address);
     write_int("Emulator", "ConsoleType", config_emulator.console_type);
 
     for (int i = 0; i < config_max_recent_roms; i++)
@@ -493,19 +555,22 @@ void config_write(void)
     write_int("Video", "AspectRatio", config_video.ratio);
     write_int("Video", "Rotation", config_video.rotation);
     write_bool("Video", "FPS", config_video.fps);
-    write_bool("Video", "Bilinear", config_video.bilinear);
-    write_bool("Video", "Sync", config_video.sync);
-    write_bool("Video", "Ghosting", config_video.ghosting);
-    write_float("Video", "GhostingIntensity", config_video.ghosting_intensity);
-    write_int("Video", "GhostingHistory", config_video.ghosting_history);
-    write_int("Video", "ScanlinesType", config_video.scanlines_type);
-    write_float("Video", "ScanlinesPower", config_video.scanlines_intensity);
-    write_float("Video", "BackgroundColorR", config_video.background_color[0]);
-    write_float("Video", "BackgroundColorG", config_video.background_color[1]);
-    write_float("Video", "BackgroundColorB", config_video.background_color[2]);
-    write_float("Video", "BackgroundColorDebuggerR", config_video.background_color_debugger[0]);
-    write_float("Video", "BackgroundColorDebuggerG", config_video.background_color_debugger[1]);
-    write_float("Video", "BackgroundColorDebuggerB", config_video.background_color_debugger[2]);
+    write_int("Video", "ShaderMode", config_video.shader_mode);
+    write_string("Video", "ShaderPresetFile", get_filename(config_video.shader_preset_path.c_str()));
+    sync_shader_preset_parameter_defaults();
+    write_int("Video", "SyncMode", config_video.sync_mode);
+    write_float("Video", "BackgroundColorR", config_video.background_color[config_Theme_Dark][0]);
+    write_float("Video", "BackgroundColorG", config_video.background_color[config_Theme_Dark][1]);
+    write_float("Video", "BackgroundColorB", config_video.background_color[config_Theme_Dark][2]);
+    write_float("Video", "BackgroundColorDebuggerR", config_video.background_color_debugger[config_Theme_Dark][0]);
+    write_float("Video", "BackgroundColorDebuggerG", config_video.background_color_debugger[config_Theme_Dark][1]);
+    write_float("Video", "BackgroundColorDebuggerB", config_video.background_color_debugger[config_Theme_Dark][2]);
+    write_float("Video", "BackgroundColorLightR", config_video.background_color[config_Theme_Light][0]);
+    write_float("Video", "BackgroundColorLightG", config_video.background_color[config_Theme_Light][1]);
+    write_float("Video", "BackgroundColorLightB", config_video.background_color[config_Theme_Light][2]);
+    write_float("Video", "BackgroundColorDebuggerLightR", config_video.background_color_debugger[config_Theme_Light][0]);
+    write_float("Video", "BackgroundColorDebuggerLightG", config_video.background_color_debugger[config_Theme_Light][1]);
+    write_float("Video", "BackgroundColorDebuggerLightB", config_video.background_color_debugger[config_Theme_Light][2]);
 
     write_bool("Audio", "Enable", config_audio.enable);
     write_bool("Audio", "Sync", config_audio.sync);
@@ -725,6 +790,78 @@ static void write_hotkey(const char* group, const char* key, config_Hotkey hotke
 
     write_int(group, scancode_key.c_str(), hotkey.key);
     write_int(group, mod_key.c_str(), hotkey.mod);
+}
+
+static std::string shader_preset_section_name(const char* preset_file)
+{
+    return std::string("ShaderPreset.") + get_filename(preset_file);
+}
+
+static bool parse_float_string(const std::string& value, float* result)
+{
+    if (value.empty() || !result)
+        return false;
+
+    char* end = NULL;
+    float parsed = strtof(value.c_str(), &end);
+    if (end == value.c_str())
+        return false;
+
+    *result = parsed;
+    return true;
+}
+
+bool config_read_shader_parameter(const char* preset_file, const char* parameter_name, float* value)
+{
+    if (!preset_file || preset_file[0] == '\0' || !parameter_name || parameter_name[0] == '\0' || !value)
+        return false;
+
+    std::string section = shader_preset_section_name(preset_file);
+    if (!config_ini_data.has(section))
+        return false;
+
+    mINI::INIMap<std::string> parameters = config_ini_data.get(section);
+    if (!parameters.has(parameter_name))
+        return false;
+
+    return parse_float_string(parameters.get(parameter_name), value);
+}
+
+void config_write_shader_parameter(const char* preset_file, const char* parameter_name, float value)
+{
+    if (!preset_file || preset_file[0] == '\0' || !parameter_name || parameter_name[0] == '\0')
+        return;
+
+    std::string section = shader_preset_section_name(preset_file);
+    write_float(section.c_str(), parameter_name, value);
+}
+
+static void sync_shader_preset_parameter_defaults(void)
+{
+    ShaderPresetInfo presets[SHADER_PRESET_MAX_DISCOVERED];
+    int preset_count = shader_preset_scan_bundled(presets, SHADER_PRESET_MAX_DISCOVERED);
+
+    for (int i = 0; i < preset_count; i++)
+    {
+        ShaderPreset preset;
+        char error[512];
+        if (!shader_preset_load(presets[i].path, &preset, error, sizeof(error)))
+            continue;
+
+        char preset_file[SHADER_PRESET_MAX_PATH];
+        if (!shader_preset_get_config_path(preset.preset_path, preset_file, sizeof(preset_file)))
+            continue;
+
+        std::string section = shader_preset_section_name(preset_file);
+        for (int j = 0; j < preset.parameter_count; j++)
+        {
+            ShaderPresetParameter* parameter = &preset.parameters[j];
+            if (config_ini_data[section].has(parameter->name))
+                continue;
+
+            write_float(section.c_str(), parameter->name, parameter->default_value);
+        }
+    }
 }
 
 static config_Hotkey make_hotkey(SDL_Scancode key, SDL_Keymod mod)

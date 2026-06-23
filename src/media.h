@@ -33,6 +33,15 @@ class EEPROM;
 class Media
 {
 public:
+    enum GLYNX_Cart_Bank
+    {
+        CART_BANK_0 = 0,
+        CART_BANK_0_A = 1,
+        CART_BANK_1 = 2,
+        CART_BANK_1_A = 3,
+        CART_BANK_COUNT = 4
+    };
+
     enum GLYNX_Media_Type
     {
         MEDIA_LYNX = 0,
@@ -53,6 +62,7 @@ public:
     bool IsBiosValid();
     int GetROMSize();
     u32 GetCRC();
+    bool IsInGameDatabase();
     void ForceRotation(GLYNX_Rotation rotation);
     GLYNX_Rotation GetRotation();
     void ForceConsoleType(GLYNX_Console_Type type);
@@ -61,7 +71,6 @@ public:
     GLYNX_Media_Type GetType();
     bool GetAudin();
     u16 GetHomebrewBootAddress();
-    int GetEpyxHeaderless();
     int DecryptEpyxLoader(u8* output, int max_size);
     const char* GetFilePath();
     const char* GetFileDirectory();
@@ -71,6 +80,7 @@ public:
     const char* GetHeaderManufacturer();
     u16 GetHeaderBank0PageSize();
     u16 GetHeaderBank1PageSize();
+    const char* GetFormatName();
     bool LoadFromFile(const char* path);
     bool LoadFromBuffer(const u8* buffer, int size, const char* path);
     GLYNX_Bios_State LoadBios(const char* path);
@@ -89,42 +99,48 @@ public:
     void ShiftRegisterStrobe(bool strobe);
     void ShiftRegisterBit(bool bit);
     void AdvanceCounter();
-    u32 GetBankAddress(int bank);
+    u32 GetCartBankAddress(int bank);
     void SetAudinValue(bool value);
     bool GetAudinValue();
     u16 GetCounterValue();
     u32 GetAddressShift();
     bool GetShiftRegisterStrobe();
     bool GetShiftRegisterBit();
-    u32 GetBankSize(int bank);
-    u32 GetBankMask(int bank);
-    u32 GetAddressShiftBits(int bank);
-    u32 GetPageOffsetMask(int bank);
-    u8* GetBankData(int bank);
-    u8* GetBankDataA(int bank);
-    u8* GetBank1Data();
-    u32 GetBank1Size();
-    bool IsBank1RAM();
+    u8 ReadCartBank(int bank);
+    u8 PeekCartBank(int bank);
+    void WriteCartBank(int bank, u8 value);
+    u8* GetCartBankData(int bank);
+    u32 GetCartBankSize(int bank);
+    u32 GetCartBankBlockSize(int bank);
+    u32 GetCartBankBlockCount(int bank);
+    GLYNX_Cartridge_Bank_Type GetCartBankType(int bank);
+    bool IsCartBankWritable(int bank);
+    bool IsCartBankPersistent(int bank);
+    const char* GetCartBankName(int bank);
     EEPROM* GetEEPROMInstance();
     u8* GetSaveMemoryPointer();
     s32 GetSaveMemorySize();
-    bool IsSaveMemoryDirty();
-    u8* GetNVRAM();
-    bool IsNVRAMEnabled();
-    void SaveRam(std::ostream& file);
+    void ClearSaveMemoryDirty();
+    bool SaveRam(std::ostream& file);
     bool LoadRam(std::istream& file, s32 file_size);
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
-    void Serialize(StateSerializer& s);
+    void Serialize(StateSerializer& s, int version);
     bool LoadFromZipFile(const u8* buffer, int size);
     void GatherInfoFromDB();
     bool GatherLynxHeader(const u8* buffer);
+    bool GatherLynx2Header(const u8* buffer);
     bool GatherBS93Header(const u8* buffer);
     void DefaultLynxHeader();
     int DetectEpyxHeaderless();
     void SetupBanks();
+    void ReleaseCartBankRAM();
+    void ClearCartBanks();
+    void SetupCartBank(int bank, GLYNX_Cartridge_Bank_Type type, u32 block_size, u32 block_count, u8* data);
+    u32 SetupClassicBanks();
+    u32 SetupLynx2Banks();
     void GatherDataFromPath(const char* path);
     GLYNX_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_EEPROM ReadHeaderEEPROM(u8 eeprom);
@@ -135,7 +151,6 @@ private:
     void DecryptMontgomery(u8* L, const u8* M, const u8* N, const u8* modulus, int length);
     int DecryptBlock(int accumulator, u8* result, const u8* encrypted, int length);
     int DecryptFrame(u8* result, const u8* encrypted, int length);
-    void ClearSaveMemoryDirty();
 
 private:
     u8* m_rom;
@@ -144,25 +159,35 @@ private:
     bool m_is_bios_loaded;
     bool m_is_bios_valid;
     bool m_ready;
+    bool m_is_in_game_database;
     char m_file_path[512];
     char m_file_directory[512];
     char m_file_name[512];
     char m_file_extension[512];
     char m_header_name[32];
     char m_header_manufacturer[16];
-    u8* m_bank_data[2];
-    u8* m_bank_data_a[2];
-    u32 m_bank_size[2];
-    u32 m_bank_mask[2];
+    u8* m_cart_bank_data[CART_BANK_COUNT];
+    u8* m_cart_bank_ram[CART_BANK_COUNT];
+    u8* m_persistent_ram;
+    u32 m_persistent_ram_size;
+    u32 m_cart_bank_size[CART_BANK_COUNT];
+    u32 m_cart_bank_mask[CART_BANK_COUNT];
+    u32 m_cart_bank_block_size[CART_BANK_COUNT];
+    u32 m_cart_bank_block_count[CART_BANK_COUNT];
+    GLYNX_Cartridge_Bank_Type m_cart_bank_type[CART_BANK_COUNT];
     u32 m_bank_page_size[2];
     u32 m_address_shift;
-    u32 m_address_shift_bits[2];
+    u32 m_address_shift_bits[CART_BANK_COUNT];
     u32 m_page_offset;
-    u32 m_page_offset_mask[2];
+    u32 m_page_offset_mask[CART_BANK_COUNT];
+    u8 m_lnx2_bank[CART_BANK_COUNT];
+    u32 m_required_rom_size;
     bool m_shift_register_strobe;
     bool m_shift_register_bit;
-    bool m_bank1_is_ram;
     bool m_nvram_enabled;
+    bool m_is_lnx2;
+    bool m_missing_header;
+    bool m_save_memory_dirty;
     u8* m_nvram;
     GLYNX_Rotation m_rotation;
     GLYNX_Rotation m_forced_rotation;
