@@ -103,6 +103,25 @@ int main(int argc, char* argv[])
                         app_params.mcp_http_address = "127.0.0.1";
                 }
             }
+            else if (strcmp(argv[i], "--debug-monitor") == 0)
+            {
+                app_params.debug_monitor_port = 6502;
+            }
+            else if (strcmp(argv[i], "--debug-monitor-port") == 0)
+            {
+                if (i + 1 < argc)
+                {
+                    int port = atoi(argv[++i]);
+                    if (port <= 0 || port > 65534)
+                    {
+                        printf("Invalid debug monitor port: %d\n", port);
+                    }
+                    else
+                    {
+                        app_params.debug_monitor_port = port;
+                    }
+                }
+            }
             else
             {
                 printf("Unknown option: %s\n", argv[i]);
@@ -115,7 +134,9 @@ int main(int argc, char* argv[])
     int non_option_count = 0;
     for (int i = 1; i < argc; i++)
     {
-        if ((strcmp(argv[i], "--mcp-http-port") == 0) || (strcmp(argv[i], "--mcp-http-address") == 0))
+        if ((strcmp(argv[i], "--mcp-http-port") == 0) ||
+            (strcmp(argv[i], "--mcp-http-address") == 0) ||
+            (strcmp(argv[i], "--debug-monitor-port") == 0))
         {
             if (i + 1 < argc)
                 i++;
@@ -128,9 +149,9 @@ int main(int argc, char* argv[])
                 app_params.rom_file = argv[i];
             else if (non_option_count == 1)
                 app_params.symbol_file = argv[i];
-            
+
             non_option_count++;
-            
+
             if (non_option_count > 2)
             {
                 show_usage = true;
@@ -158,7 +179,9 @@ int main(int argc, char* argv[])
         printf("      --mcp-no-router   Expose all MCP tools directly\n");
         printf("      --mcp-http-address A HTTP bind address (default: 127.0.0.1)\n");
         printf("      --mcp-http-port N HTTP port for MCP server (default: 7777)\n");
-        printf("      --headless        Run without GUI (requires --mcp-stdio or --mcp-http)\n");
+        printf("      --debug-monitor       Start debug monitor TCP server (default port: 6502)\n");
+        printf("      --debug-monitor-port N Debug monitor port, 1-65534 (default: 6502)\n");
+        printf("      --headless        Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)\n");
         printf("  -v, --version         Display version information\n");
         printf("  -h, --help            Display this help message\n");
         return ret;

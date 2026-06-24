@@ -155,6 +155,12 @@ int application_init(const ApplicationParams& params)
         emu_mcp_start();
     }
 
+    if (params.debug_monitor_port > 0)
+    {
+        config_debug.debug = true;
+        emu_debug_monitor_start(params.debug_monitor_port);
+    }
+
     application_refocus_window();
 
     return 0;

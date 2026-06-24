@@ -44,6 +44,8 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/mcp/mcp_debug_adapter.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_tool_registry.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_server.cpp \
+    $(DESKTOP_SRC_DIR)/vscode/debug_monitor_server.cpp \
+    $(DESKTOP_SRC_DIR)/vscode/framebuffer_server.cpp \
     $(DESKTOP_SRC_DIR)/ogl_renderer.cpp \
     $(DESKTOP_SRC_DIR)/ogl_shader_program.cpp \
     $(DESKTOP_SRC_DIR)/ogl_shader_chain.cpp \

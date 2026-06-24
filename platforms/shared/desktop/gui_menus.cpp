@@ -69,7 +69,7 @@ static void menu_audio(void);
 static void menu_debug(void);
 static void menu_about(void);
 static void draw_background_color_menu(const char* label, int theme);
-static void draw_mcp_status(void);
+static void draw_server_status(void);
 static void file_dialogs(void);
 static void keyboard_configuration_item(const char* text, SDL_Scancode* key);
 static void gamepad_configuration_item(const char* text, int* button);
@@ -114,7 +114,7 @@ void gui_main_menu(void)
         menu_audio();
         menu_debug();
         menu_about();
-        draw_mcp_status();
+        draw_server_status();
 
         gui_main_menu_height = (int)ImGui::GetWindowSize().y;
 
@@ -1319,31 +1319,56 @@ static void menu_about(void)
     }
 }
 
-static void draw_mcp_status(void)
+static void draw_server_status(void)
 {
-    if (!emu_mcp_is_running())
+    bool mcp_running = emu_mcp_is_running();
+    bool debug_monitor_running = emu_debug_monitor_is_running();
+
+    if (!mcp_running && !debug_monitor_running)
         return;
 
-    char status[128];
-    ImVec4 color(0.10f, 0.90f, 0.10f, 1.0f);
+    char mcp_status[128];
+    char debug_monitor_status[64];
+    bool show_mcp_status = false;
+    bool show_debug_monitor_status = false;
+    ImVec4 mcp_color(0.10f, 0.90f, 0.10f, 1.0f);
+    ImVec4 debug_monitor_color(0.20f, 0.70f, 1.0f, 1.0f);
 
-    int transport_mode = emu_mcp_get_transport_mode();
-    if (transport_mode == 0)
+    if (mcp_running)
     {
-        snprintf(status, sizeof(status), "MCP: STDIO");
-        color = ImVec4(0.90f, 0.70f, 0.10f, 1.0f);
+        int transport_mode = emu_mcp_get_transport_mode();
+        if (transport_mode == 0)
+        {
+            snprintf(mcp_status, sizeof(mcp_status), "MCP: STDIO");
+            mcp_color = ImVec4(0.90f, 0.70f, 0.10f, 1.0f);
+            show_mcp_status = true;
+        }
+        else if (transport_mode == 1)
+        {
+            snprintf(mcp_status, sizeof(mcp_status), "MCP: HTTP (%s:%d)", config_emulator.mcp_http_address.c_str(), config_emulator.mcp_tcp_port);
+            show_mcp_status = true;
+        }
     }
-    else if (transport_mode == 1)
+
+    if (debug_monitor_running)
     {
-        snprintf(status, sizeof(status), "MCP: HTTP (%s:%d)", config_emulator.mcp_http_address.c_str(), config_emulator.mcp_tcp_port);
-    }
-    else
-    {
-        return;
+        snprintf(debug_monitor_status, sizeof(debug_monitor_status), "DEBUG: TCP (%s:%d)", emu_debug_monitor_get_address(), emu_debug_monitor_get_port());
+        show_debug_monitor_status = true;
     }
 
     ImGuiStyle& style = ImGui::GetStyle();
-    float text_width = ImGui::CalcTextSize(status).x;
+    float spacing = style.ItemSpacing.x * 2.0f;
+    float text_width = 0.0f;
+
+    if (show_mcp_status)
+        text_width += ImGui::CalcTextSize(mcp_status).x;
+    if (show_debug_monitor_status)
+    {
+        if (text_width > 0.0f)
+            text_width += spacing;
+        text_width += ImGui::CalcTextSize(debug_monitor_status).x;
+    }
+
     float status_x = ImGui::GetWindowWidth() - text_width - style.ItemSpacing.x - 10.0f;
     float cursor_x = ImGui::GetCursorPosX();
 
@@ -1352,7 +1377,16 @@ static void draw_mcp_status(void)
 
     ImGui::SameLine(status_x);
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(color, "%s", status);
+
+    if (show_mcp_status)
+        ImGui::TextColored(mcp_color, "%s", mcp_status);
+
+    if (show_debug_monitor_status)
+    {
+        if (show_mcp_status)
+            ImGui::SameLine(0.0f, spacing);
+        ImGui::TextColored(debug_monitor_color, "%s", debug_monitor_status);
+    }
 }
 
 static void file_dialogs(void)

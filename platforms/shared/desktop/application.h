@@ -32,6 +32,7 @@ struct ApplicationParams
     int mcp_mode = -1;
     int mcp_tcp_port = 7777;
     std::string mcp_http_address = "127.0.0.1";
+    int debug_monitor_port = -1;
 };
 
 #ifdef APPLICATION_IMPORT

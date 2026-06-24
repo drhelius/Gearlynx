@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM64">
@@ -66,6 +66,9 @@
     <ClInclude Include="..\shared\desktop\backers.h" />
     <ClInclude Include="..\shared\desktop\config.h" />
     <ClInclude Include="..\shared\desktop\console_utils.h" />
+    <ClInclude Include="..\shared\desktop\vscode\debug_monitor_server.h" />
+    <ClInclude Include="..\shared\desktop\vscode\framebuffer_server.h" />
+    <ClInclude Include="..\shared\desktop\socket_types.h" />
     <ClInclude Include="..\shared\desktop\emu.h" />
     <ClInclude Include="..\shared\desktop\gui.h" />
     <ClInclude Include="..\shared\desktop\gui_actions.h" />
@@ -147,6 +150,8 @@
     <ClCompile Include="..\shared\desktop\application_headless.cpp" />
     <ClCompile Include="..\shared\desktop\events.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />
+    <ClCompile Include="..\shared\desktop\vscode\debug_monitor_server.cpp" />
+    <ClCompile Include="..\shared\desktop\vscode\framebuffer_server.cpp" />
     <ClCompile Include="..\shared\desktop\emu.cpp" />
     <ClCompile Include="..\shared\desktop\gui.cpp" />
     <ClCompile Include="..\shared\desktop\gui_actions.cpp" />

@@ -153,7 +153,9 @@ Options:
       --mcp-no-router      Expose all MCP tools directly
       --mcp-http-address A HTTP bind address (default: 127.0.0.1)
       --mcp-http-port N    HTTP port for MCP server (default: 7777)
-      --headless           Run without GUI (requires --mcp-stdio or --mcp-http)
+      --debug-monitor      Start debug monitor TCP server (default port: 6502)
+      --debug-monitor-port N Debug monitor port (default: 6502)
+      --headless           Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)
   -v, --version            Display version information
   -h, --help               Display this help message
 ```
@@ -163,6 +165,13 @@ Options:
 Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, rewind and more. HTTP transport binds to `127.0.0.1` by default, validates `Host` and browser `Origin` values against the configured endpoint, and can require bearer-token auth with the `GEARLYNX_MCP_HTTP_TOKEN` environment variable.
 
 For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
+
+### VS Code Extension
+
+A source-level debugger for VS Code -- **LynxDebug** -- lives in its own repository:
+[BrianPeek/gearlynx-vscode](https://github.com/BrianPeek/gearlynx-vscode). It drives
+Gearlynx over the debug-monitor protocol (`--debug-monitor`). The wire contract is
+documented in [VSCODE_PROTOCOL_README.md](VSCODE_PROTOCOL_README.md).
 
 ### Agent Skills
 

@@ -30,6 +30,8 @@
 #include "rewind.h"
 #include "events.h"
 #include "mcp/mcp_manager.h"
+#include "vscode/debug_monitor_server.h"
+#include "vscode/framebuffer_server.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #if defined(_WIN32)
@@ -46,6 +48,8 @@ static u16 input_active_directions = 0;
 static const int k_frame_buffer_size = 256 * 256 * 4;
 static Uint64 rewind_last_counter = 0;
 static double rewind_pop_accumulator = 0.0;
+static DebugMonitorServer* debug_monitor;
+static FramebufferServer* fb_server;
 
 enum Loading_State
 {
@@ -121,10 +125,13 @@ bool emu_init(void)
     for (int i = 0; i < 8; i++)
         emu_debug_irq_breakpoints[i] = false;
 
+    rewind_init();
+
     mcp_manager = new McpManager();
     mcp_manager->Init(core);
 
-    rewind_init();
+    debug_monitor = new DebugMonitorServer();
+    debug_monitor->Init(core);
 
     return true;
 }
@@ -140,6 +147,8 @@ void emu_destroy(void)
 
     save_ram();
     rewind_destroy();
+    SafeDelete(fb_server);
+    SafeDelete(debug_monitor);
     SafeDelete(mcp_manager);
     SafeDeleteArray(audio_buffer);
     sound_queue_destroy();
@@ -236,31 +245,10 @@ bool emu_finish_rom_loading(void)
     return true;
 }
 
-void emu_render_current_frame(void)
-{
-    LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
-
-    if (!core->GetMedia()->IsBiosLoaded())
-    {
-        lcd_screen->RenderNoBiosScreen(emu_frame_buffer);
-        return;
-    }
-
-    lcd_screen->SetBuffer(emu_frame_buffer);
-    lcd_screen->EndFrame(core->GetMedia()->GetRotation());
-
-    if (config_debug.debug)
-        update_debug();
-}
-
-void emu_reset_rewind_timing(void)
-{
-    reset_rewind_timing();
-}
-
 void emu_update(void)
 {
     emu_mcp_pump_commands();
+    emu_debug_monitor_pump_commands();
 
     if (loading_state.load() != Loading_State_None)
         return;
@@ -322,6 +310,7 @@ void emu_update(void)
         {
             Debug_Command debug_command = emu_debug_command;
             rewind_commit_seek();
+            emu_debug_monitor_notify_resumed();
             breakpoint_hit = core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount, &debug_run);
             frame_executed = true;
 
@@ -351,6 +340,12 @@ void emu_update(void)
         }
         else if (emu_debug_command != Debug_Command_Continue)
             emu_debug_command = Debug_Command_None;
+
+        if (emu_debug_command == Debug_Command_None && executed)
+        {
+            u16 pc = core->GetM6502()->GetState()->PC.GetValue();
+            emu_debug_monitor_notify_stopped(breakpoint_hit, pc);
+        }
 
         if (executed)
             update_debug();
@@ -383,6 +378,8 @@ void emu_update(void)
         memset(audio_buffer, 0, silence_count * sizeof(s16));
         sound_queue_write(audio_buffer, silence_count, false);
     }
+
+    emu_debug_monitor_push_frame();
 }
 
 static void reset_rewind_timing(void)
@@ -1911,4 +1908,104 @@ void emu_mcp_pump_commands(void)
 {
     if (mcp_manager && mcp_manager->IsRunning())
         mcp_manager->PumpCommands(core);
+}
+
+void emu_debug_monitor_start(int port)
+{
+    if (debug_monitor)
+    {
+        if (debug_monitor->IsRunning())
+            debug_monitor->Stop();
+
+        SafeDelete(debug_monitor);
+        debug_monitor = new DebugMonitorServer(port);
+        debug_monitor->Init(core);
+        if (!debug_monitor->Start())
+        {
+            SafeDelete(debug_monitor);
+            return;
+        }
+
+        // Start framebuffer stream server on port+1
+        SafeDelete(fb_server);
+        fb_server = new FramebufferServer(port + 1);
+        if (!fb_server->Start())
+        {
+            Error("[DebugMonitor] Failed to start framebuffer stream on port %d", port + 1);
+            SafeDelete(fb_server);
+        }
+    }
+}
+
+void emu_debug_monitor_stop(void)
+{
+    if (fb_server)
+        fb_server->Stop();
+    if (debug_monitor)
+        debug_monitor->Stop();
+}
+
+bool emu_debug_monitor_is_running(void)
+{
+    return debug_monitor && debug_monitor->IsRunning();
+}
+
+int emu_debug_monitor_get_port(void)
+{
+    return debug_monitor ? debug_monitor->GetPort() : 0;
+}
+
+const char* emu_debug_monitor_get_address(void)
+{
+    return debug_monitor ? debug_monitor->GetAddress() : "";
+}
+
+void emu_debug_monitor_pump_commands(void)
+{
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->PumpCommands();
+}
+
+void emu_debug_monitor_notify_resumed(void)
+{
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->NotifyResumed();
+}
+
+void emu_debug_monitor_notify_stopped(bool breakpoint_hit, u16 pc)
+{
+    if (debug_monitor && debug_monitor->IsRunning())
+        debug_monitor->NotifyStopped(breakpoint_hit ? DM_STOP_BREAKPOINT : DM_STOP_STEP, pc);
+}
+
+void emu_debug_monitor_push_frame(void)
+{
+    if (fb_server && fb_server->IsRunning())
+    {
+        GLYNX_Runtime_Info runtime;
+        emu_get_runtime(runtime);
+        fb_server->PushFrame(emu_frame_buffer, runtime.screen_width, runtime.screen_height, runtime.screen_width);
+    }
+}
+
+void emu_render_current_frame(void)
+{
+    LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
+
+    if (!core->GetMedia()->IsBiosLoaded())
+    {
+        lcd_screen->RenderNoBiosScreen(emu_frame_buffer);
+        return;
+    }
+
+    lcd_screen->SetBuffer(emu_frame_buffer);
+    lcd_screen->EndFrame(core->GetMedia()->GetRotation());
+
+    if (config_debug.debug)
+        update_debug();
+}
+
+void emu_reset_rewind_timing(void)
+{
+    reset_rewind_timing();
 }
