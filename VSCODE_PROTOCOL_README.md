@@ -27,7 +27,7 @@ The debug servers are started from the desktop app's argument parser
 | Flag | Description |
 |------|-------------|
 | `--debug-monitor` | Start the debug-monitor TCP server (default port `6502`). |
-| `--debug-monitor-port N` | Set the debug-monitor port. |
+| `--debug-monitor-port N` | Set the debug-monitor port (`1`-`65534`; port `N + 1` is used for the framebuffer stream). |
 | `--headless` | Run without the GUI window. Requires one of `--mcp-stdio`, `--mcp-http`, or `--debug-monitor`. |
 
 When the debug monitor is enabled on port `P`, the **framebuffer stream** server

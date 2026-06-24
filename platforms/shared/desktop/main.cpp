@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
                 if (i + 1 < argc)
                 {
                     int port = atoi(argv[++i]);
-                    if (port <= 0 || port > 65535)
+                    if (port <= 0 || port > 65534)
                     {
                         printf("Invalid debug monitor port: %d\n", port);
                     }
@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
         printf("      --mcp-http-address A HTTP bind address (default: 127.0.0.1)\n");
         printf("      --mcp-http-port N HTTP port for MCP server (default: 7777)\n");
         printf("      --debug-monitor       Start debug monitor TCP server (default port: 6502)\n");
-        printf("      --debug-monitor-port N Debug monitor port (default: 6502)\n");
+        printf("      --debug-monitor-port N Debug monitor port, 1-65534 (default: 6502)\n");
         printf("      --headless        Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)\n");
         printf("  -v, --version         Display version information\n");
         printf("  -h, --help            Display this help message\n");

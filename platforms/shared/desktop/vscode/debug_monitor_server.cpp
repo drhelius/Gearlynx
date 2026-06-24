@@ -18,6 +18,7 @@
  */
 
 #include "debug_monitor_server.h"
+#include "common.h"
 #include "emu.h"
 #include "config.h"
 #include "rewind.h"
@@ -52,21 +53,28 @@ void DebugMonitorServer::Init(GearlynxCore* core)
     m_debug_adapter = new DebugAdapter(core);
 }
 
-void DebugMonitorServer::Start()
+bool DebugMonitorServer::Start()
 {
     if (m_running.load())
-        return;
+        return true;
 
 #ifdef _WIN32
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        Error("[DebugMonitor] Failed to initialize Winsock");
+        return false;
+    }
 #endif
 
     m_server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (m_server_socket == GLYNX_INVALID_SOCKET)
     {
         Error("[DebugMonitor] Failed to create socket");
-        return;
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return false;
     }
 
     const char* auth_token = getenv(DM_AUTH_ENV);
@@ -89,7 +97,10 @@ void DebugMonitorServer::Start()
         Error("[DebugMonitor] Failed to bind to port %d", m_port);
         GLYNX_SOCKET_CLOSE(m_server_socket);
         m_server_socket = GLYNX_INVALID_SOCKET;
-        return;
+    #ifdef _WIN32
+        WSACleanup();
+    #endif
+        return false;
     }
 
     if (listen(m_server_socket, 1) < 0)
@@ -97,11 +108,15 @@ void DebugMonitorServer::Start()
         Error("[DebugMonitor] Failed to listen on socket");
         GLYNX_SOCKET_CLOSE(m_server_socket);
         m_server_socket = GLYNX_INVALID_SOCKET;
-        return;
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return false;
     }
 
     m_in_queue.Clear();
     m_out_queue.Reset();
+    m_recv_buffer.clear();
     m_running.store(true);
 
     Log("[DebugMonitor] Listening on 127.0.0.1:%d", m_port);
@@ -110,6 +125,8 @@ void DebugMonitorServer::Start()
 
     m_accept_thread = std::thread(&DebugMonitorServer::AcceptLoop, this);
     m_send_thread = std::thread(&DebugMonitorServer::SendLoop, this);
+
+    return true;
 }
 
 void DebugMonitorServer::Stop()
@@ -226,6 +243,8 @@ void DebugMonitorServer::RecvLoop()
         my_socket = m_client_socket;
     }
 
+    m_recv_buffer.clear();
+
     while (m_running.load() && m_client_connected.load())
     {
         std::string json_str;
@@ -287,6 +306,8 @@ void DebugMonitorServer::RecvLoop()
             m_client_connected.store(false);
         }
     }
+
+    m_recv_buffer.clear();
 }
 
 void DebugMonitorServer::SendLoop()
@@ -320,32 +341,26 @@ void DebugMonitorServer::SendLoop()
 
 bool DebugMonitorServer::RecvMessage(glynx_socket_t sock, std::string& out_json)
 {
-    // Read headers until \r\n\r\n
-    std::string header_buf;
-    char c;
-    int consecutive_newlines = 0;
+    size_t header_end = m_recv_buffer.find("\r\n\r\n");
 
-    while (true)
+    while (header_end == std::string::npos)
     {
-        int r = ::recv(sock, &c, 1, 0);
+        if (m_recv_buffer.size() >= DM_MAX_HEADER_SIZE)
+            return false;
+
+        char buffer[1024];
+        size_t room = DM_MAX_HEADER_SIZE - m_recv_buffer.size();
+        int bytes_to_read = (room < sizeof(buffer)) ? (int)room : (int)sizeof(buffer);
+        int r = ::recv(sock, buffer, bytes_to_read, 0);
         if (r <= 0)
             return false;
 
-        header_buf += c;
-
-        if (header_buf.size() > 8192)
-            return false;
-
-        if (c == '\n')
-            consecutive_newlines++;
-        else if (c != '\r')
-            consecutive_newlines = 0;
-
-        if (consecutive_newlines >= 2)
-            break;
+        m_recv_buffer.append(buffer, r);
+        header_end = m_recv_buffer.find("\r\n\r\n");
     }
 
-    // Parse Content-Length
+    size_t header_size = header_end + 4;
+    std::string header_buf = m_recv_buffer.substr(0, header_size);
     int content_length = 0;
     size_t cl_pos = header_buf.find("Content-Length:");
     if (cl_pos == std::string::npos)
@@ -371,16 +386,21 @@ bool DebugMonitorServer::RecvMessage(glynx_socket_t sock, std::string& out_json)
     if (content_length <= 0 || content_length > DM_MAX_MESSAGE_SIZE)
         return false;
 
-    // Read body
-    out_json.resize(content_length);
-    int total_read = 0;
-    while (total_read < content_length)
+    size_t message_size = header_size + (size_t)content_length;
+    while (m_recv_buffer.size() < message_size)
     {
-        int r = ::recv(sock, &out_json[total_read], content_length - total_read, 0);
+        char buffer[4096];
+        size_t remaining = message_size - m_recv_buffer.size();
+        int bytes_to_read = (remaining < sizeof(buffer)) ? (int)remaining : (int)sizeof(buffer);
+        int r = ::recv(sock, buffer, bytes_to_read, 0);
         if (r <= 0)
             return false;
-        total_read += r;
+
+        m_recv_buffer.append(buffer, r);
     }
+
+    out_json.assign(m_recv_buffer.data() + header_size, content_length);
+    m_recv_buffer.erase(0, message_size);
 
     return true;
 }

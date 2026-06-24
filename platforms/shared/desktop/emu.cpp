@@ -1915,12 +1915,20 @@ void emu_debug_monitor_start(int port)
         SafeDelete(debug_monitor);
         debug_monitor = new DebugMonitorServer(port);
         debug_monitor->Init(core);
-        debug_monitor->Start();
+        if (!debug_monitor->Start())
+        {
+            SafeDelete(debug_monitor);
+            return;
+        }
 
         // Start framebuffer stream server on port+1
         SafeDelete(fb_server);
         fb_server = new FramebufferServer(port + 1);
-        fb_server->Start();
+        if (!fb_server->Start())
+        {
+            Error("[DebugMonitor] Failed to start framebuffer stream on port %d", port + 1);
+            SafeDelete(fb_server);
+        }
     }
 }
 

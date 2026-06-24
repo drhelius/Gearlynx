@@ -38,6 +38,7 @@ using json = nlohmann::json;
 // request/response/event JSON format. The LynxDebug client negotiates this via
 // the "handshake" command on connect and warns on mismatch. See VSCODE_PROTOCOL_README.md.
 #define DM_PROTOCOL_VERSION 1
+#define DM_MAX_HEADER_SIZE 8192
 #define DM_MAX_MESSAGE_SIZE (4 * 1024 * 1024)
 #define DM_MAX_IN_QUEUE 1024
 #define DM_MAX_OUT_QUEUE 1024
@@ -171,7 +172,7 @@ public:
     ~DebugMonitorServer();
 
     void Init(GearlynxCore* core);
-    void Start();
+    bool Start();
     void Stop();
     bool IsRunning() const;
     int GetPort() const;
@@ -243,6 +244,7 @@ private:
 
     glynx_socket_t m_server_socket;
     glynx_socket_t m_client_socket;
+    std::string m_recv_buffer;
     std::mutex m_client_mutex;
     std::atomic<u32> m_connection_id;
 

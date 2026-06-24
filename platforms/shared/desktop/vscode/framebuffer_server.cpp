@@ -41,21 +41,28 @@ FramebufferServer::~FramebufferServer()
     delete[] m_frame_buffer;
 }
 
-void FramebufferServer::Start()
+bool FramebufferServer::Start()
 {
     if (m_running.load())
-        return;
+        return true;
 
 #ifdef _WIN32
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        Error("[FramebufferStream] Failed to initialize Winsock");
+        return false;
+    }
 #endif
 
     m_server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (m_server_socket == GLYNX_INVALID_SOCKET)
     {
         Error("[FramebufferStream] Failed to create socket");
-        return;
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return false;
     }
 
     int opt = 1;
@@ -72,7 +79,10 @@ void FramebufferServer::Start()
         Error("[FramebufferStream] Failed to bind to port %d", m_port);
         GLYNX_SOCKET_CLOSE(m_server_socket);
         m_server_socket = GLYNX_INVALID_SOCKET;
-        return;
+    #ifdef _WIN32
+        WSACleanup();
+    #endif
+        return false;
     }
 
     if (listen(m_server_socket, 1) < 0)
@@ -80,13 +90,18 @@ void FramebufferServer::Start()
         Error("[FramebufferStream] Failed to listen");
         GLYNX_SOCKET_CLOSE(m_server_socket);
         m_server_socket = GLYNX_INVALID_SOCKET;
-        return;
+    #ifdef _WIN32
+        WSACleanup();
+    #endif
+        return false;
     }
 
     m_running.store(true);
     Log("[FramebufferStream] Listening on 127.0.0.1:%d", m_port);
 
     m_accept_thread = std::thread(&FramebufferServer::AcceptLoop, this);
+
+    return true;
 }
 
 void FramebufferServer::Stop()

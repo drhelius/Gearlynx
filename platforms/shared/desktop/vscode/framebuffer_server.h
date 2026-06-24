@@ -36,7 +36,7 @@ public:
     FramebufferServer(int port = 6503);
     ~FramebufferServer();
 
-    void Start();
+    bool Start();
     void Stop();
     bool IsRunning() const;
     int GetPort() const;
