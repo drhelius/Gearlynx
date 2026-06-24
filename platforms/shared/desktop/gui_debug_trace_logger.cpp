@@ -160,7 +160,7 @@ static void trace_logger_menu(void)
         }
 
         if (ImGui::MenuItem("Debug Output", "", &config_debug.debug_output_enabled))
-            emu_get_core()->GetMikey()->SetDebugOutputEnabled(config_debug.debug_output_enabled);
+            emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();

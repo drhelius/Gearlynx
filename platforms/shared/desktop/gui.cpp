@@ -104,14 +104,15 @@ bool gui_init(void)
 
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
-    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
+    emu_set_fast_sprite_rendering(config_emulator.fast_sprite_rendering);
+    emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
     emu_audio_mute(!config_audio.enable);
     emu_audio_set_master_volume(config_audio.master_volume);
     emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
     for (int i = 0; i < 4; i++)
         emu_audio_set_volume(i, config_audio.volume[i]);
 
-    emu_get_core()->GetMikey()->SetDebugOutputEnabled(config_debug.debug_output_enabled);
+    emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
     emu_set_disassembler_syntax(config_debug.dis_syntax);
 
     strncpy_fit(gui_savefiles_path, config_emulator.savefiles_path.c_str(), sizeof(gui_savefiles_path));
@@ -298,7 +299,7 @@ bool gui_load_rom(const char* path, const char* symbol_path)
 
     config_push_recent_media(path);
     emu_resume();
-    emu_get_core()->GetSuzy()->SetFastSpriteRendering(config_emulator.fast_sprite_rendering);
+    emu_set_fast_sprite_rendering(config_emulator.fast_sprite_rendering);
 
     strncpy(loading_rom_path, path, sizeof(loading_rom_path) - 1);
     loading_rom_path[sizeof(loading_rom_path) - 1] = '\0';

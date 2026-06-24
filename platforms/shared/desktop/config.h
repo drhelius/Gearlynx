@@ -213,6 +213,8 @@ struct config_Debug
     bool show_suzy_regs = false;
     bool show_suzy_math_regs = false;
     bool show_scb_viewer = false;
+    int sprite_bounding_box_mode = GLYNX_SPRITE_BOUNDING_BOX_DISABLED;
+    int sprite_bounding_box_pen = 1;
     int scb_viewer_address = 0x0000;
     bool scb_viewer_auto = true;
     int scb_viewer_mode = 1;

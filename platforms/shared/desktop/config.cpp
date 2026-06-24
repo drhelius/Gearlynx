@@ -219,6 +219,10 @@ void config_read(void)
     config_debug.show_suzy_regs = read_bool("Debug", "SuzyRegs", false);
     config_debug.show_suzy_math_regs = read_bool("Debug", "SuzyMathRegs", false);
     config_debug.show_scb_viewer = read_bool("Debug", "SCBViewer", false);
+    config_debug.sprite_bounding_box_mode = read_int("Debug", "SpriteBoundingBoxMode", GLYNX_SPRITE_BOUNDING_BOX_DISABLED);
+    config_debug.sprite_bounding_box_mode = CLAMP(config_debug.sprite_bounding_box_mode, GLYNX_SPRITE_BOUNDING_BOX_DISABLED, GLYNX_SPRITE_BOUNDING_BOX_SPRCOLL_BIT_7);
+    config_debug.sprite_bounding_box_pen = read_int("Debug", "SpriteBoundingBoxPen", 1);
+    config_debug.sprite_bounding_box_pen = CLAMP(config_debug.sprite_bounding_box_pen, 0, 15);
     config_debug.scb_viewer_address = read_int("Debug", "SCBViewerAddress", 0x0000);
     config_debug.scb_viewer_auto = read_bool("Debug", "SCBViewerAuto", true);
     config_debug.scb_viewer_mode = read_int("Debug", "SCBViewerMode", 1);
@@ -467,6 +471,8 @@ void config_write(void)
     write_bool("Debug", "SuzyRegs", config_debug.show_suzy_regs);
     write_bool("Debug", "SuzyMathRegs", config_debug.show_suzy_math_regs);
     write_bool("Debug", "SCBViewer", config_debug.show_scb_viewer);
+    write_int("Debug", "SpriteBoundingBoxMode", config_debug.sprite_bounding_box_mode);
+    write_int("Debug", "SpriteBoundingBoxPen", config_debug.sprite_bounding_box_pen);
     write_int("Debug", "SCBViewerAddress", config_debug.scb_viewer_address);
     write_bool("Debug", "SCBViewerAuto", config_debug.scb_viewer_auto);
     write_int("Debug", "SCBViewerMode", config_debug.scb_viewer_mode);

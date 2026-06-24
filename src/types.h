@@ -111,6 +111,13 @@ enum GLYNX_Rotation
     GLYNX_ROTATION_DISABLED = 3
 };
 
+enum GLYNX_Sprite_Bounding_Box_Mode
+{
+    GLYNX_SPRITE_BOUNDING_BOX_DISABLED = 0,
+    GLYNX_SPRITE_BOUNDING_BOX_ALL = 1,
+    GLYNX_SPRITE_BOUNDING_BOX_SPRCOLL_BIT_7 = 2
+};
+
 struct GLYNX_Cartridge_Header
 {
     u8 magic[4];
