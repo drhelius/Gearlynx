@@ -29,8 +29,8 @@
 #include <string>
 #include "json.hpp"
 #include "gearlynx.h"
-#include "mcp/mcp_debug_adapter.h"
-#include "socket_types.h"
+#include "../mcp/mcp_debug_adapter.h"
+#include "../socket_types.h"
 
 using json = nlohmann::json;
 

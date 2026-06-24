@@ -24,8 +24,8 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include "../socket_types.h"
 #include "common.h"
-#include "socket_types.h"
 
 #define FB_MAX_DIMENSION GLYNX_SCREEN_WIDTH
 #define FB_MAX_FRAME_SIZE (FB_MAX_DIMENSION * FB_MAX_DIMENSION * 4)
