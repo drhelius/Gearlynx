@@ -43,6 +43,7 @@ using json = nlohmann::json;
 #define DM_MAX_IN_QUEUE 1024
 #define DM_MAX_OUT_QUEUE 1024
 #define DM_AUTH_ENV "GEARLYNX_DEBUG_MONITOR_TOKEN"
+#define DM_BIND_ADDRESS "127.0.0.1"
 
 enum DebugMonitorStopReason
 {
@@ -176,6 +177,7 @@ public:
     void Stop();
     bool IsRunning() const;
     int GetPort() const;
+    const char* GetAddress() const;
 
     // Called from emu thread each frame
     void PumpCommands();

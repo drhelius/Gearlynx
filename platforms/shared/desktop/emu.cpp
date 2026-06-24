@@ -1950,6 +1950,11 @@ int emu_debug_monitor_get_port(void)
     return debug_monitor ? debug_monitor->GetPort() : 0;
 }
 
+const char* emu_debug_monitor_get_address(void)
+{
+    return debug_monitor ? debug_monitor->GetAddress() : "";
+}
+
 void emu_debug_monitor_pump_commands(void)
 {
     if (debug_monitor && debug_monitor->IsRunning())

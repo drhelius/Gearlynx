@@ -119,7 +119,7 @@ bool DebugMonitorServer::Start()
     m_recv_buffer.clear();
     m_running.store(true);
 
-    Log("[DebugMonitor] Listening on 127.0.0.1:%d", m_port);
+    Log("[DebugMonitor] Listening on %s:%d", GetAddress(), m_port);
     if (!m_auth_token.empty())
         Log("[DebugMonitor] Token authentication enabled from %s", DM_AUTH_ENV);
 
@@ -178,6 +178,11 @@ bool DebugMonitorServer::IsRunning() const
 int DebugMonitorServer::GetPort() const
 {
     return m_port;
+}
+
+const char* DebugMonitorServer::GetAddress() const
+{
+    return DM_BIND_ADDRESS;
 }
 
 // ---- Network threads ----

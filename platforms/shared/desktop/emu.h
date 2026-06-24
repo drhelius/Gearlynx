@@ -161,6 +161,7 @@ EXTERN void emu_debug_monitor_start(int port);
 EXTERN void emu_debug_monitor_stop(void);
 EXTERN bool emu_debug_monitor_is_running(void);
 EXTERN int emu_debug_monitor_get_port(void);
+EXTERN const char* emu_debug_monitor_get_address(void);
 EXTERN void emu_debug_monitor_pump_commands(void);
 EXTERN void emu_debug_monitor_notify_resumed(void);
 EXTERN void emu_debug_monitor_notify_stopped(bool breakpoint_hit, u16 pc);
