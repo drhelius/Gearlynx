@@ -207,6 +207,7 @@ private:
     void PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record, u8 opcode, u16 address);
     void SetDisassemblerOperandText(GLYNX_Disassembler_Record* record, const char* text);
     void SetDisassemblerOperand(GLYNX_Disassembler_Record* record, u16 address, bool is_zp, const char* text);
+    void FormatDisassemblerDataBytes(char* text, size_t text_size, const u8* bytes, u8 size);
     void InvalidateOverlappingRecords(u16 address, u8 opcode_size);
 
     void Serialize(StateSerializer& s);

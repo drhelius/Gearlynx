@@ -623,13 +623,13 @@ INLINE void M6502::SetDisassemblerOperand(GLYNX_Disassembler_Record* record, u16
     SetDisassemblerOperandText(record, text);
 }
 
-static inline void m6502_format_data_bytes(char* text, size_t text_size, GLYNX_Disassembler_Syntax syntax, const u8* bytes, u8 size)
+INLINE void M6502::FormatDisassemblerDataBytes(char* text, size_t text_size, const u8* bytes, u8 size)
 {
     const char* directive = ".byte";
 
-    if (syntax == GLYNX_Disassembler_Syntax_LYXASS)
+    if (m_disassembler_syntax == GLYNX_Disassembler_Syntax_LYXASS)
         directive = ".db";
-    else if (syntax == GLYNX_Disassembler_Syntax_MADS)
+    else if (m_disassembler_syntax == GLYNX_Disassembler_Syntax_MADS)
         directive = "dta";
 
     int pos = snprintf(text, text_size, "{n}%s ", directive);
@@ -812,7 +812,7 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
             if (m_disassembler_syntax == GLYNX_Disassembler_Syntax_Gearlynx)
                 snprintf(record->name, 64, "%s", format);
             else
-                m6502_format_data_bytes(record->name, sizeof(record->name), m_disassembler_syntax, record->opcodes, opcode_size);
+                FormatDisassemblerDataBytes(record->name, sizeof(record->name), record->opcodes, opcode_size);
             break;
         }
         default:
