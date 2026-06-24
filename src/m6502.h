@@ -114,6 +114,8 @@ public:
     void RemoveBreakpoint(u16 address);
     bool IsBreakpoint(u16 address);
     std::vector<GLYNX_Breakpoint>* GetBreakpoints();
+    void SetDisassemblerSyntax(GLYNX_Disassembler_Syntax syntax);
+    GLYNX_Disassembler_Syntax GetDisassemblerSyntax() const;
     void ClearDisassemblerCallStack();
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
     void CheckMemoryBreakpoints(u16 address, bool read);
@@ -149,6 +151,7 @@ private:
     bool m_skip_irq_on_step;
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_disassembler_call_stack_size;
+    GLYNX_Disassembler_Syntax m_disassembler_syntax;
     int m_reset_value;
     bool m_stream_open;
     u16 m_prev_opcode_address;
@@ -202,6 +205,8 @@ private:
     u16 AbsoluteIndexedIndirectAddressing();
 
     void PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record, u8 opcode, u16 address);
+    void SetDisassemblerOperandText(GLYNX_Disassembler_Record* record, const char* text);
+    void SetDisassemblerOperand(GLYNX_Disassembler_Record* record, u16 address, bool is_zp, const char* text);
     void InvalidateOverlappingRecords(u16 address, u8 opcode_size);
 
     void Serialize(StateSerializer& s);

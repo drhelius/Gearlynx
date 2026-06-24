@@ -81,6 +81,15 @@ enum GLYNX_Pixel_Format
     GLYNX_PIXEL_RGBA8888,
 };
 
+enum GLYNX_Disassembler_Syntax
+{
+    GLYNX_Disassembler_Syntax_Gearlynx = 0,
+    GLYNX_Disassembler_Syntax_CC65,
+    GLYNX_Disassembler_Syntax_LYXASS,
+    GLYNX_Disassembler_Syntax_MADS,
+    GLYNX_Disassembler_Syntax_Count
+};
+
 enum GLYNX_Keys
 {
     GLYNX_KEY_A         = 0x0001,
@@ -203,6 +212,8 @@ struct GLYNX_Disassembler_Record
     bool has_operand_address;
     u16 operand_address;
     bool operand_is_zp;
+    int operand_offset;
+    int operand_length;
     char auto_symbol[64];
 };
 

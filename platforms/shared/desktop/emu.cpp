@@ -853,6 +853,16 @@ void emu_debug_continue(void)
     emu_debug_command = Debug_Command_Continue;
 }
 
+void emu_set_disassembler_syntax(int syntax)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (IsValidPointer(core))
+        core->GetM6502()->SetDisassemblerSyntax((GLYNX_Disassembler_Syntax)syntax);
+#else
+    UNUSED(syntax);
+#endif
+}
+
 void emu_save_screenshot(const char* file_path)
 {
     if (!core->GetMedia()->IsReady())

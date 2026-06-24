@@ -112,6 +112,7 @@ bool gui_init(void)
         emu_audio_set_volume(i, config_audio.volume[i]);
 
     emu_get_core()->GetMikey()->SetDebugOutputEnabled(config_debug.debug_output_enabled);
+    emu_set_disassembler_syntax(config_debug.dis_syntax);
 
     strncpy_fit(gui_savefiles_path, config_emulator.savefiles_path.c_str(), sizeof(gui_savefiles_path));
     strncpy_fit(gui_savestates_path, config_emulator.savestates_path.c_str(), sizeof(gui_savestates_path));

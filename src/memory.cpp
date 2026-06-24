@@ -117,6 +117,11 @@ GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 address)
         record->jump_bank = 0;
         record->subroutine = false;
         record->irq = 0;
+        record->has_operand_address = false;
+        record->operand_address = 0;
+        record->operand_is_zp = false;
+        record->operand_offset = 0;
+        record->operand_length = 0;
         record->auto_symbol[0] = 0;
         m_disassembler[address] = record;
     }

@@ -60,6 +60,7 @@ M6502::M6502(Bus* bus)
     m_debug_brk_trigger_irq = false;
     m_skip_irq_on_step = false;
     m_disassembler_call_stack_size = 0;
+    m_disassembler_syntax = GLYNX_Disassembler_Syntax_Gearlynx;
     m_reset_value = -1;
     m_prev_opcode_address = 0xFFFF;
     m_stream_open = false;
@@ -146,6 +147,19 @@ M6502::M6502_State* M6502::GetState()
 void M6502::SetResetValue(int value)
 {
     m_reset_value = value;
+}
+
+void M6502::SetDisassemblerSyntax(GLYNX_Disassembler_Syntax syntax)
+{
+    if (syntax < GLYNX_Disassembler_Syntax_Gearlynx || syntax >= GLYNX_Disassembler_Syntax_Count)
+        syntax = GLYNX_Disassembler_Syntax_Gearlynx;
+
+    m_disassembler_syntax = syntax;
+}
+
+GLYNX_Disassembler_Syntax M6502::GetDisassemblerSyntax() const
+{
+    return m_disassembler_syntax;
 }
 
 void M6502::EnableBreakpoints(bool enable, u8 irqs)
