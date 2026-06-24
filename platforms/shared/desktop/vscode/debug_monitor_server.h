@@ -36,7 +36,7 @@ using json = nlohmann::json;
 
 // Debug-monitor wire protocol version. Bump on any breaking change to the
 // request/response/event JSON format. The LynxDebug client negotiates this via
-// the "handshake" command on connect and warns on mismatch. See PROTOCOL.md.
+// the "handshake" command on connect and warns on mismatch. See README_VSCODE_PROTOCOL.md.
 #define DM_PROTOCOL_VERSION 1
 #define DM_MAX_MESSAGE_SIZE (4 * 1024 * 1024)
 

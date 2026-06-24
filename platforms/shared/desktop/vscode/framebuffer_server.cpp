@@ -22,22 +22,6 @@
 #include <SDL3/SDL.h>
 #include <cstring>
 
-bool FramebufferServer::SendAll(glynx_socket_t client, const u8* data, int size)
-{
-    int total_sent = 0;
-
-    while (total_sent < size)
-    {
-        int sent = ::send(client, (const char*)(data + total_sent), size - total_sent, 0);
-        if (sent <= 0)
-            return false;
-
-        total_sent += sent;
-    }
-
-    return true;
-}
-
 FramebufferServer::FramebufferServer(int port)
 {
     m_port = port;
@@ -289,5 +273,21 @@ void FramebufferServer::ClientLoop(glynx_socket_t client)
             m_client_connected.store(false);
         }
     }
+}
+
+bool FramebufferServer::SendAll(glynx_socket_t client, const u8* data, int size)
+{
+    int total_sent = 0;
+
+    while (total_sent < size)
+    {
+        int sent = ::send(client, (const char*)(data + total_sent), size - total_sent, 0);
+        if (sent <= 0)
+            return false;
+
+        total_sent += sent;
+    }
+
+    return true;
 }
 

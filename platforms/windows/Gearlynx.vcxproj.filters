@@ -25,6 +25,9 @@
     <Filter Include="desktop\mcp">
       <UniqueIdentifier>{a3b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="desktop\vscode">
+      <UniqueIdentifier>{c4d5e6f7-a8b9-4c0d-8e1f-2a3b4c5d6e7f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\shared\desktop\application.h">
@@ -150,11 +153,11 @@
     <ClInclude Include="..\shared\desktop\sound_queue.h">
       <Filter>desktop</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\debug_monitor_server.h">
-      <Filter>desktop</Filter>
+    <ClInclude Include="..\shared\desktop\vscode\debug_monitor_server.h">
+      <Filter>desktop\vscode</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\framebuffer_server.h">
-      <Filter>desktop</Filter>
+    <ClInclude Include="..\shared\desktop\vscode\framebuffer_server.h">
+      <Filter>desktop\vscode</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\desktop\socket_types.h">
       <Filter>desktop</Filter>
@@ -421,11 +424,11 @@
     <ClCompile Include="..\shared\desktop\sound_queue.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
-    <ClCompile Include="..\shared\desktop\debug_monitor_server.cpp">
-      <Filter>desktop</Filter>
+    <ClCompile Include="..\shared\desktop\vscode\debug_monitor_server.cpp">
+      <Filter>desktop\vscode</Filter>
     </ClCompile>
-    <ClCompile Include="..\shared\desktop\framebuffer_server.cpp">
-      <Filter>desktop</Filter>
+    <ClCompile Include="..\shared\desktop\vscode\framebuffer_server.cpp">
+      <Filter>desktop\vscode</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\audio.cpp">
       <Filter>core</Filter>

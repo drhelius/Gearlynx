@@ -23,144 +23,6 @@
 #include "rewind.h"
 #include <cstring>
 
-bool DebugMonitorServer::JsonReadU32(const json& params, const char* name, u32* value) const
-{
-    if (!IsValidPointer(value) || !params.contains(name))
-        return false;
-
-    const json& item = params[name];
-    u64 raw_value = 0;
-
-    if (item.is_number_unsigned())
-    {
-        raw_value = item.get<u64>();
-    }
-    else if (item.is_number_integer())
-    {
-        s64 signed_value = item.get<s64>();
-        if (signed_value < 0)
-            return false;
-        raw_value = (u64)signed_value;
-    }
-    else
-    {
-        return false;
-    }
-
-    if (raw_value > 0xFFFFFFFFULL)
-        return false;
-
-    *value = (u32)raw_value;
-    return true;
-}
-
-bool DebugMonitorServer::JsonReadS64(const json& params, const char* name, s64* value) const
-{
-    if (!IsValidPointer(value) || !params.contains(name))
-        return false;
-
-    const json& item = params[name];
-
-    if (item.is_number_integer())
-    {
-        *value = item.get<s64>();
-    }
-    else if (item.is_number_unsigned())
-    {
-        u64 unsigned_value = item.get<u64>();
-        if (unsigned_value > 0x7FFFFFFFFFFFFFFFULL)
-            return false;
-        *value = (s64)unsigned_value;
-    }
-    else
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool DebugMonitorServer::JsonReadS32Range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value) const
-{
-    if (!IsValidPointer(value) || !params.contains(name))
-        return false;
-
-    const json& item = params[name];
-    s64 raw_value = 0;
-
-    if (item.is_number_integer())
-    {
-        raw_value = item.get<s64>();
-    }
-    else if (item.is_number_unsigned())
-    {
-        u64 unsigned_value = item.get<u64>();
-        if (unsigned_value > 0x7FFFFFFFULL)
-            return false;
-        raw_value = (s64)unsigned_value;
-    }
-    else
-    {
-        return false;
-    }
-
-    if (raw_value < min_value || raw_value > max_value)
-        return false;
-
-    *value = (s32)raw_value;
-    return true;
-}
-
-bool DebugMonitorServer::JsonReadU16(const json& params, const char* name, u16* value) const
-{
-    u32 raw_value = 0;
-
-    if (!IsValidPointer(value) || !JsonReadU32(params, name, &raw_value) || raw_value > 0xFFFF)
-        return false;
-
-    *value = (u16)raw_value;
-    return true;
-}
-
-bool DebugMonitorServer::JsonReadString(const json& params, const char* name, std::string* value) const
-{
-    if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_string())
-        return false;
-
-    *value = params[name].get<std::string>();
-    return true;
-}
-
-bool DebugMonitorServer::JsonReadBool(const json& params, const char* name, bool* value) const
-{
-    if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_boolean())
-        return false;
-
-    *value = params[name].get<bool>();
-    return true;
-}
-
-const char* DebugMonitorServer::GetStopReasonName(DebugMonitorStopReason reason) const
-{
-    switch (reason)
-    {
-        case DM_STOP_NONE:
-            return "none";
-        case DM_STOP_ENTRY:
-            return "entry";
-        case DM_STOP_BREAKPOINT:
-            return "breakpoint";
-        case DM_STOP_STEP:
-            return "step";
-        case DM_STOP_PAUSE:
-            return "pause";
-        case DM_STOP_RUN_TO:
-            return "run_to";
-        default:
-            return "unknown";
-    }
-}
-
 DebugMonitorServer::DebugMonitorServer(int port)
 {
     m_core = NULL;
@@ -597,6 +459,146 @@ void DebugMonitorServer::EnqueueEvent(const std::string& event, const json& data
         msg->data["data"] = data;
     msg->connection_id = m_connection_id.load();
     m_out_queue.Push(msg);
+}
+
+// ---- Helpers ----
+
+bool DebugMonitorServer::JsonReadU32(const json& params, const char* name, u32* value) const
+{
+    if (!IsValidPointer(value) || !params.contains(name))
+        return false;
+
+    const json& item = params[name];
+    u64 raw_value = 0;
+
+    if (item.is_number_unsigned())
+    {
+        raw_value = item.get<u64>();
+    }
+    else if (item.is_number_integer())
+    {
+        s64 signed_value = item.get<s64>();
+        if (signed_value < 0)
+            return false;
+        raw_value = (u64)signed_value;
+    }
+    else
+    {
+        return false;
+    }
+
+    if (raw_value > 0xFFFFFFFFULL)
+        return false;
+
+    *value = (u32)raw_value;
+    return true;
+}
+
+bool DebugMonitorServer::JsonReadS64(const json& params, const char* name, s64* value) const
+{
+    if (!IsValidPointer(value) || !params.contains(name))
+        return false;
+
+    const json& item = params[name];
+
+    if (item.is_number_integer())
+    {
+        *value = item.get<s64>();
+    }
+    else if (item.is_number_unsigned())
+    {
+        u64 unsigned_value = item.get<u64>();
+        if (unsigned_value > 0x7FFFFFFFFFFFFFFFULL)
+            return false;
+        *value = (s64)unsigned_value;
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool DebugMonitorServer::JsonReadS32Range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value) const
+{
+    if (!IsValidPointer(value) || !params.contains(name))
+        return false;
+
+    const json& item = params[name];
+    s64 raw_value = 0;
+
+    if (item.is_number_integer())
+    {
+        raw_value = item.get<s64>();
+    }
+    else if (item.is_number_unsigned())
+    {
+        u64 unsigned_value = item.get<u64>();
+        if (unsigned_value > 0x7FFFFFFFULL)
+            return false;
+        raw_value = (s64)unsigned_value;
+    }
+    else
+    {
+        return false;
+    }
+
+    if (raw_value < min_value || raw_value > max_value)
+        return false;
+
+    *value = (s32)raw_value;
+    return true;
+}
+
+bool DebugMonitorServer::JsonReadU16(const json& params, const char* name, u16* value) const
+{
+    u32 raw_value = 0;
+
+    if (!IsValidPointer(value) || !JsonReadU32(params, name, &raw_value) || raw_value > 0xFFFF)
+        return false;
+
+    *value = (u16)raw_value;
+    return true;
+}
+
+bool DebugMonitorServer::JsonReadString(const json& params, const char* name, std::string* value) const
+{
+    if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_string())
+        return false;
+
+    *value = params[name].get<std::string>();
+    return true;
+}
+
+bool DebugMonitorServer::JsonReadBool(const json& params, const char* name, bool* value) const
+{
+    if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_boolean())
+        return false;
+
+    *value = params[name].get<bool>();
+    return true;
+}
+
+const char* DebugMonitorServer::GetStopReasonName(DebugMonitorStopReason reason) const
+{
+    switch (reason)
+    {
+        case DM_STOP_NONE:
+            return "none";
+        case DM_STOP_ENTRY:
+            return "entry";
+        case DM_STOP_BREAKPOINT:
+            return "breakpoint";
+        case DM_STOP_STEP:
+            return "step";
+        case DM_STOP_PAUSE:
+            return "pause";
+        case DM_STOP_RUN_TO:
+            return "run_to";
+        default:
+            return "unknown";
+    }
 }
 
 // ---- Command dispatch ----

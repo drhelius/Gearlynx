@@ -9,7 +9,7 @@ request/response/event format, and the framebuffer stream format.
 
 The debug-monitor protocol is versioned by a single integer,
 `DM_PROTOCOL_VERSION`, defined in
-`platforms/shared/desktop/debug_monitor_server.h`. The current version is **1**.
+`platforms/shared/desktop/vscode/debug_monitor_server.h`. The current version is **1**.
 
 Bump this version on any **breaking** change to the request/response/event JSON
 format (renamed/removed fields, changed semantics). Purely additive changes
@@ -131,7 +131,7 @@ Response:
 ## Framebuffer stream
 
 A separate raw-binary TCP server (debug-monitor port `+ 1`) streams frames at
-display rate (`platforms/shared/desktop/framebuffer_server.cpp`).
+display rate (`platforms/shared/desktop/vscode/framebuffer_server.cpp`).
 
 Per frame, the server sends an 8-byte little-endian header followed by the pixel
 payload:

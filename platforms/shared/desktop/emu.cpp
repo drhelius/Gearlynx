@@ -30,8 +30,8 @@
 #include "rewind.h"
 #include "events.h"
 #include "mcp/mcp_manager.h"
-#include "debug_monitor_server.h"
-#include "framebuffer_server.h"
+#include "vscode/debug_monitor_server.h"
+#include "vscode/framebuffer_server.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #if defined(_WIN32)
