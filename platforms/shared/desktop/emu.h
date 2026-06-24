@@ -154,9 +154,6 @@ EXTERN void emu_mcp_stop(void);
 EXTERN bool emu_mcp_is_running(void);
 EXTERN int emu_mcp_get_transport_mode(void);
 EXTERN void emu_mcp_pump_commands(void);
-EXTERN void emu_render_current_frame(void);
-EXTERN void emu_reset_rewind_timing(void);
-
 EXTERN void emu_debug_monitor_start(int port);
 EXTERN void emu_debug_monitor_stop(void);
 EXTERN bool emu_debug_monitor_is_running(void);
@@ -166,6 +163,8 @@ EXTERN void emu_debug_monitor_pump_commands(void);
 EXTERN void emu_debug_monitor_notify_resumed(void);
 EXTERN void emu_debug_monitor_notify_stopped(bool breakpoint_hit, u16 pc);
 EXTERN void emu_debug_monitor_push_frame(void);
+EXTERN void emu_render_current_frame(void);
+EXTERN void emu_reset_rewind_timing(void);
 
 #undef EMU_IMPORT
 #undef EXTERN

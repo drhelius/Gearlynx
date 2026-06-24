@@ -125,10 +125,10 @@ bool emu_init(void)
     for (int i = 0; i < 8; i++)
         emu_debug_irq_breakpoints[i] = false;
 
+    rewind_init();
+
     mcp_manager = new McpManager();
     mcp_manager->Init(core);
-
-    rewind_init();
 
     debug_monitor = new DebugMonitorServer();
     debug_monitor->Init(core);
@@ -243,28 +243,6 @@ bool emu_finish_rom_loading(void)
     rewind_reset();
 
     return true;
-}
-
-void emu_render_current_frame(void)
-{
-    LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
-
-    if (!core->GetMedia()->IsBiosLoaded())
-    {
-        lcd_screen->RenderNoBiosScreen(emu_frame_buffer);
-        return;
-    }
-
-    lcd_screen->SetBuffer(emu_frame_buffer);
-    lcd_screen->EndFrame(core->GetMedia()->GetRotation());
-
-    if (config_debug.debug)
-        update_debug();
-}
-
-void emu_reset_rewind_timing(void)
-{
-    reset_rewind_timing();
 }
 
 void emu_update(void)
@@ -1981,4 +1959,26 @@ void emu_debug_monitor_push_frame(void)
         emu_get_runtime(runtime);
         fb_server->PushFrame(emu_frame_buffer, runtime.screen_width, runtime.screen_height, runtime.screen_width);
     }
+}
+
+void emu_render_current_frame(void)
+{
+    LcdScreen* lcd_screen = core->GetMikey()->GetLcdScreen();
+
+    if (!core->GetMedia()->IsBiosLoaded())
+    {
+        lcd_screen->RenderNoBiosScreen(emu_frame_buffer);
+        return;
+    }
+
+    lcd_screen->SetBuffer(emu_frame_buffer);
+    lcd_screen->EndFrame(core->GetMedia()->GetRotation());
+
+    if (config_debug.debug)
+        update_debug();
+}
+
+void emu_reset_rewind_timing(void)
+{
+    reset_rewind_timing();
 }
