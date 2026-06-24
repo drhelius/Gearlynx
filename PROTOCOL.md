@@ -77,7 +77,9 @@ Unsolicited state-change notifications use `id: 0` and an `event` field:
 { "id": 0, "event": "stopped", "data": { "reason": "breakpoint", "pc": 512 } }
 ```
 
-Emitted events: `stopped`, `resumed`, `terminated`.
+Emitted events: `stopped`, `resumed`, `terminated`. Each event also carries a
+monotonically increasing `seq` field in its `data` (sequence counter), in
+addition to the event-specific fields shown above.
 
 ### Commands
 
