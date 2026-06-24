@@ -22,7 +22,6 @@
 #include "../emu.h"
 #include "../config.h"
 #include "../rewind.h"
-#include <cstdlib>
 #include <cstring>
 
 DebugMonitorServer::DebugMonitorServer(int port)
@@ -77,12 +76,6 @@ bool DebugMonitorServer::Start()
         return false;
     }
 
-    const char* auth_token = getenv(DM_AUTH_ENV);
-    if (auth_token && auth_token[0])
-        m_auth_token = auth_token;
-    else
-        m_auth_token.clear();
-
     int opt = 1;
     setsockopt(m_server_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
 
@@ -120,8 +113,6 @@ bool DebugMonitorServer::Start()
     m_running.store(true);
 
     Log("[DebugMonitor] Listening on %s:%d", GetAddress(), m_port);
-    if (!m_auth_token.empty())
-        Log("[DebugMonitor] Token authentication enabled from %s", DM_AUTH_ENV);
 
     m_accept_thread = std::thread(&DebugMonitorServer::AcceptLoop, this);
     m_send_thread = std::thread(&DebugMonitorServer::SendLoop, this);
@@ -283,12 +274,6 @@ void DebugMonitorServer::RecvLoop()
         if (cmd.empty())
         {
             EnqueueResponse(id, false, {{"error", "missing cmd field"}});
-            continue;
-        }
-
-        if (!ValidateAuthToken(msg))
-        {
-            EnqueueResponse(id, false, {{"error", "unauthorized"}});
             continue;
         }
 
@@ -520,33 +505,17 @@ bool DebugMonitorServer::ConfigureClientSocket(glynx_socket_t client)
 
 #ifdef _WIN32
     DWORD timeout = 10000;
-    if (setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0)
-        return false;
     if (setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout)) < 0)
         return false;
 #else
     struct timeval timeout;
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
-    if (setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-        return false;
     if (setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
         return false;
 #endif
 
     return true;
-}
-
-bool DebugMonitorServer::ValidateAuthToken(const json& params) const
-{
-    if (m_auth_token.empty())
-        return true;
-
-    std::string token;
-    if (!JsonReadString(params, "token", &token))
-        return false;
-
-    return token == m_auth_token;
 }
 
 bool DebugMonitorServer::JsonReadU32(const json& params, const char* name, u32* value) const

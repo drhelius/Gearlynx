@@ -46,10 +46,9 @@ Gearlynx --debug-monitor --debug-monitor-port 6502 --headless game.lnx
 - **Framing:** each message is `Content-Length: <n>\r\n\r\n` followed by `<n>`
   bytes of UTF-8 JSON (the same framing the Debug Adapter Protocol uses).
 - **Message size:** frames larger than 4 MiB are rejected.
-- **Optional auth:** if `GEARLYNX_DEBUG_MONITOR_TOKEN` is set, each request must
-  include a top-level `token` field with the same value.
-- **Timeouts:** accepted debug-monitor client sockets use 10 second receive/send
-  timeouts.
+- **Timeouts:** accepted debug-monitor client sockets use a 10 second send
+  timeout. Idle receive waits are allowed so a paused debug session can stay
+  connected.
 - `TCP_NODELAY` is set on both ends.
 
 ### Requests
@@ -57,13 +56,11 @@ Gearlynx --debug-monitor --debug-monitor-port 6502 --headless game.lnx
 A request is a JSON object:
 
 ```json
-{ "id": 12, "cmd": "registers_get", "token": "optional-token", "...": "command-specific params" }
+{ "id": 12, "cmd": "registers_get", "...": "command-specific params" }
 ```
 
 - `id` (integer) -- client-assigned, echoed back in the response.
 - `cmd` (string) -- the command name.
-- `token` (string, optional) -- required only when
-  `GEARLYNX_DEBUG_MONITOR_TOKEN` is set in the emulator environment.
 - Any additional keys are command parameters.
 
 ### Responses
