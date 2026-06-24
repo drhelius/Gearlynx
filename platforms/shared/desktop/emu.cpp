@@ -557,6 +557,23 @@ void emu_force_console_type(int console_type)
     core->GetMedia()->ForceConsoleType((GLYNX_Console_Type)console_type);
 }
 
+void emu_set_fast_sprite_rendering(bool enabled)
+{
+    core->GetSuzy()->SetFastSpriteRendering(enabled);
+}
+
+void emu_set_sprite_bounding_box(int mode, int pen)
+{
+    int mode_index = CLAMP(mode, GLYNX_SPRITE_BOUNDING_BOX_DISABLED, GLYNX_SPRITE_BOUNDING_BOX_SPRCOLL_BIT_7);
+    int pen_index = CLAMP(pen, 0, 15);
+    core->GetSuzy()->SetSpriteBoundingBox((GLYNX_Sprite_Bounding_Box_Mode)mode_index, (u8)pen_index);
+}
+
+void emu_set_debug_output(bool enabled)
+{
+    core->GetMikey()->SetDebugOutputEnabled(enabled);
+}
+
 void emu_audio_mute(bool mute)
 {
     audio_enabled = !mute;
@@ -848,6 +865,16 @@ void emu_debug_continue(void)
 {
     core->Pause(false);
     emu_debug_command = Debug_Command_Continue;
+}
+
+void emu_set_disassembler_syntax(int syntax)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (IsValidPointer(core))
+        core->GetM6502()->SetDisassemblerSyntax((GLYNX_Disassembler_Syntax)syntax);
+#else
+    UNUSED(syntax);
+#endif
 }
 
 void emu_save_screenshot(const char* file_path)

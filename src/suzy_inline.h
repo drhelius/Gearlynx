@@ -810,6 +810,7 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.sprite_cycles += 5 * k_suzy_ram_read_ticks;
             m_state.fred = 0;
             m_state.everon = false;
+            BeginSpriteBoundingBox();
 
             if (IS_SET_BIT(m_state.SPRCTL1, 2))
             {
@@ -1194,6 +1195,8 @@ INLINE void Suzy::StepBlitterPhase()
                 RamWrite(colpos, depository);
             }
 
+            DrawSpriteBoundingBox();
+
             m_state.fsm_phase = SUZY_PHASE_SCB_NEXT;
             break;
         }
@@ -1369,6 +1372,7 @@ INLINE void Suzy::DrawSprite()
     m_state.SCBNEXT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
     m_state.sprite_cycles += 5 * k_suzy_ram_read_ticks;  // 5 bytes from SCB header
+    BeginSpriteBoundingBox();
 
     if (IS_SET_BIT(m_state.SPRCTL1, 2))
     {
@@ -1666,6 +1670,136 @@ INLINE void Suzy::DrawSprite()
         depository = m_state.everon ? UNSET_BIT(depository, 7) : SET_BIT(depository, 7);
         RamWrite(colpos, depository);
     }
+
+    DrawSpriteBoundingBox();
+}
+
+INLINE void Suzy::BeginSpriteBoundingBox()
+{
+    if (unlikely(m_sprite_bounding_box_mode != GLYNX_SPRITE_BOUNDING_BOX_DISABLED))
+    {
+        m_sprite_bounding_box_active = 
+                (m_sprite_bounding_box_mode == GLYNX_SPRITE_BOUNDING_BOX_ALL) || 
+                ((m_sprite_bounding_box_mode == GLYNX_SPRITE_BOUNDING_BOX_SPRCOLL_BIT_7) && IS_SET_BIT(m_state.SPRCOLL, 7));
+        m_sprite_bounding_box_valid = false;
+        m_sprite_bounding_box_min_x = 0x7FFFFFFF;
+        m_sprite_bounding_box_min_y = 0x7FFFFFFF;
+        m_sprite_bounding_box_max_x = -0x7FFFFFFF;
+        m_sprite_bounding_box_max_y = -0x7FFFFFFF;
+    }
+}
+
+INLINE void Suzy::DrawSpriteBoundingBox()
+{
+    if (!m_sprite_bounding_box_active || !m_sprite_bounding_box_valid)
+        return;
+
+    u8 color = m_sprite_bounding_box_pen;
+    u8 color_left = (u8)(color << 4);
+    u8 color_byte = (u8)(color_left | color);
+    const s32 bytes_per_line = GLYNX_SCREEN_WIDTH / 2;
+
+    s32 x0 = m_sprite_bounding_box_min_x;
+    s32 x1 = m_sprite_bounding_box_max_x;
+    s32 y0 = m_sprite_bounding_box_min_y;
+    s32 y1 = m_sprite_bounding_box_max_y;
+
+    u16 row_addr = (u16)(m_state.VIDBAS.value + (u16)(y0 * bytes_per_line));
+    s32 x = x0;
+
+    // Top edge: align to a full byte before writing pixel pairs.
+    if ((x & 1) != 0)
+    {
+        u16 addr = (u16)(row_addr + (u16)(x >> 1));
+        RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
+        x++;
+    }
+
+    // Top edge: write two pixels per byte while possible.
+    for (; x + 1 <= x1; x += 2)
+    {
+        u16 addr = (u16)(row_addr + (u16)(x >> 1));
+        RamWrite(addr, color_byte);
+    }
+
+    // Top edge: preserve the untouched right nibble on odd widths.
+    if (x <= x1)
+    {
+        u16 addr = (u16)(row_addr + (u16)(x >> 1));
+        RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
+    }
+
+    // Bottom edge: skip duplicate work for one-line boxes.
+    if (y0 != y1)
+    {
+        row_addr = (u16)(m_state.VIDBAS.value + (u16)(y1 * bytes_per_line));
+        x = x0;
+
+        // Bottom edge: align to a full byte before writing pixel pairs.
+        if ((x & 1) != 0)
+        {
+            u16 addr = (u16)(row_addr + (u16)(x >> 1));
+            RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
+            x++;
+        }
+
+        // Bottom edge: write two pixels per byte while possible.
+        for (; x + 1 <= x1; x += 2)
+        {
+            u16 addr = (u16)(row_addr + (u16)(x >> 1));
+            RamWrite(addr, color_byte);
+        }
+
+        // Bottom edge: preserve the untouched right nibble on odd widths.
+        if (x <= x1)
+        {
+            u16 addr = (u16)(row_addr + (u16)(x >> 1));
+            RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
+        }
+    }
+
+    // Vertical edges: top/bottom already cover boxes up to two lines tall.
+    if (y1 <= y0 + 1)
+        return;
+
+    bool left_is_left = ((x0 & 1) == 0);
+    bool right_is_left = ((x1 & 1) == 0);
+    u16 left_byte = (u16)(x0 >> 1);
+    u16 right_byte = (u16)(x1 >> 1);
+
+    // Middle rows: draw only the left and right edges.
+    for (s32 y = y0 + 1; y < y1; y++)
+    {
+        row_addr = (u16)(m_state.VIDBAS.value + (u16)(y * bytes_per_line));
+
+        u16 addr = (u16)(row_addr + left_byte);
+        // Narrow boxes can have both vertical edges in the same byte.
+        if (right_byte == left_byte)
+        {
+            if (x0 == x1)
+            {
+                if (left_is_left)
+                    RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
+                else
+                    RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
+            }
+            else
+                RamWrite(addr, color_byte);
+
+            continue;
+        }
+
+        if (left_is_left)
+            RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
+        else
+            RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
+
+        addr = (u16)(row_addr + right_byte);
+        if (right_is_left)
+            RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
+        else
+            RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
+    }
 }
 
 INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
@@ -1826,6 +1960,15 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
         return;
     if ((u32)y >= (u32)GLYNX_SCREEN_HEIGHT)
         return;
+
+    if (unlikely(m_sprite_bounding_box_active))
+    {
+        m_sprite_bounding_box_valid = true;
+        m_sprite_bounding_box_min_x = MIN(m_sprite_bounding_box_min_x, x);
+        m_sprite_bounding_box_min_y = MIN(m_sprite_bounding_box_min_y, y);
+        m_sprite_bounding_box_max_x = MAX(m_sprite_bounding_box_max_x, x);
+        m_sprite_bounding_box_max_y = MAX(m_sprite_bounding_box_max_y, y);
+    }
 
     m_state.everon = true;
     bool transparent = false;

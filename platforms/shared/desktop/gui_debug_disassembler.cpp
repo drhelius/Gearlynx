@@ -61,6 +61,12 @@ struct SymbolEntry
     bool is_fixed;
 };
 
+struct AssemblerLabelDefinition
+{
+    char name[64];
+    u16 address;
+};
+
 struct ElfSection
 {
     u32 type;
@@ -114,7 +120,14 @@ static void add_breakpoint();
 static void request_goto_address(u16 addr);
 static bool is_return_instruction(u8 opcode);
 static void replace_symbols(DisassemblerLine* line, const char* jump_color, const char* operand_color, const char* auto_color, const char* original_color);
-static void replace_labels(DisassemblerLine* line, const char* color, const char* original_color);
+static bool replace_labels(DisassemblerLine* line, const char* color, const char* original_color);
+static bool collect_assembler_symbol_definition(DisassemblerLine* line, std::vector<AssemblerLabelDefinition>& definitions);
+static bool collect_assembler_label_definition(DisassemblerLine* line, std::vector<AssemblerLabelDefinition>& definitions);
+static void add_assembler_definition(std::vector<AssemblerLabelDefinition>& definitions, const char* name, u16 address);
+static void add_assembler_label_definition(std::vector<AssemblerLabelDefinition>& definitions, const char* label, u16 address);
+static bool symbol_label_is_exported(const char* name, u16 address);
+static void write_assembler_header(FILE* file);
+static void write_assembler_label_definitions(FILE* file, const std::vector<AssemblerLabelDefinition>& definitions);
 static void draw_instruction_name(DisassemblerLine* line, bool is_pc);
 static void disassembler_menu(void);
 static void add_bookmark_popup(void);
@@ -125,6 +138,7 @@ static bool symbol_sort_address_asc(const SymbolEntry& a, const SymbolEntry& b);
 static bool symbol_sort_address_desc(const SymbolEntry& a, const SymbolEntry& b);
 static bool symbol_sort_name_asc(const SymbolEntry& a, const SymbolEntry& b);
 static bool symbol_sort_name_desc(const SymbolEntry& a, const SymbolEntry& b);
+static bool disassembler_uses_assembler_syntax(void);
 
 void gui_debug_disassembler_init(void)
 {
@@ -1311,32 +1325,87 @@ static bool is_return_instruction(u8 opcode)
     }
 }
 
-static bool replace_address_in_string(std::string& instr, u16 address, bool is_zp, const char* replacement_text)
+static bool replace_operand_in_string(GLYNX_Disassembler_Record* record, std::string& instr, const char* replacement_text)
 {
-    const char* format = is_zp ? "$%02X" : "$%04X";
-    const char* indirect_format = is_zp ? "$(%02X" : "$(%04X";
-    int replace_len = is_zp ? 3 : 5;
-    int indirect_replace_len = is_zp ? 4 : 6;
+    if (record->operand_length <= 0)
+        return false;
 
-    char address_str[8];
-    snprintf(address_str, 8, format, address);
-    size_t pos = instr.find(address_str);
-    if (pos != std::string::npos)
+    if ((record->operand_offset < 0) || ((record->operand_offset + record->operand_length) > (int)instr.length()))
+        return false;
+
+    instr.replace(record->operand_offset, record->operand_length, replacement_text);
+    return true;
+}
+
+static void add_assembler_definition(std::vector<AssemblerLabelDefinition>& definitions, const char* name, u16 address)
+{
+    if (name == NULL)
+        return;
+
+    for (size_t i = 0; i < definitions.size(); i++)
     {
-        instr.replace(pos, replace_len, replacement_text);
-        return true;
+        if (definitions[i].address == address && strcmp(definitions[i].name, name) == 0)
+            return;
     }
 
-    snprintf(address_str, 8, indirect_format, address);
-    pos = instr.find(address_str);
-    if (pos != std::string::npos)
+    AssemblerLabelDefinition definition;
+    strncpy_fit(definition.name, name, sizeof(definition.name));
+    definition.address = address;
+    definitions.push_back(definition);
+}
+
+static void add_assembler_label_definition(std::vector<AssemblerLabelDefinition>& definitions, const char* label, u16 address)
+{
+    if (label == NULL)
+        return;
+
+    char name[64];
+    snprintf(name, sizeof(name), "%s_%04X", label, address);
+    add_assembler_definition(definitions, name, address);
+}
+
+static bool symbol_label_is_exported(const char* name, u16 address)
+{
+    if (name == NULL)
+        return false;
+
+    for (size_t i = 0; i < disassembler_lines.size(); i++)
     {
-        std::string indirect_replacement = std::string("(") + replacement_text;
-        instr.replace(pos, indirect_replace_len, indirect_replacement);
-        return true;
+        DisassemblerLine& line = disassembler_lines[i];
+        if (line.symbol && line.address == address && strcmp(line.symbol->text, name) == 0)
+            return true;
     }
 
     return false;
+}
+
+static void write_assembler_header(FILE* file)
+{
+    switch (config_debug.dis_syntax)
+    {
+        case GLYNX_Disassembler_Syntax_CC65:
+            fprintf(file, ".setcpu \"65C02\"\n\n");
+            break;
+        case GLYNX_Disassembler_Syntax_MADS:
+            fprintf(file, "    opt c+\n\n");
+            break;
+        default:
+            break;
+    }
+}
+
+static void write_assembler_label_definitions(FILE* file, const std::vector<AssemblerLabelDefinition>& definitions)
+{
+    for (size_t i = 0; i < definitions.size(); i++)
+    {
+        if (config_debug.dis_syntax == GLYNX_Disassembler_Syntax_LYXASS)
+            fprintf(file, "%s EQU $%04X\n", definitions[i].name, definitions[i].address);
+        else
+            fprintf(file, "%s = $%04X\n", definitions[i].name, definitions[i].address);
+    }
+
+    if (!definitions.empty())
+        fprintf(file, "\n");
 }
 
 static bool get_record_operand(GLYNX_Disassembler_Record* record, u16* out_address, bool* out_is_zp)
@@ -1368,7 +1437,7 @@ bool gui_debug_resolve_symbol(GLYNX_Disassembler_Record* record, std::string& in
     if (IsValidPointer(symbol))
     {
         std::string replacement = std::string(color) + symbol->text + original_color;
-        if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
+        if (replace_operand_in_string(record, instr, replacement.c_str()))
         {
             if (out_name) *out_name = symbol->text;
             if (out_address) *out_address = lookup_address;
@@ -1390,10 +1459,10 @@ bool gui_debug_resolve_label(GLYNX_Disassembler_Record* record, std::string& ins
         {
             if (k_debug_labels[i].address == lookup_address)
             {
-                char label_address[6];
-                snprintf(label_address, 6, "$%04X", lookup_address);
+                char label_address[5];
+                snprintf(label_address, 5, "%04X", lookup_address);
                 std::string replacement = std::string(color) + k_debug_labels[i].label + "_" + label_address + original_color;
-                if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
+                if (replace_operand_in_string(record, instr, replacement.c_str()))
                 {
                     if (out_name) *out_name = k_debug_labels[i].label;
                     if (out_address) *out_address = lookup_address;
@@ -1449,7 +1518,7 @@ static void replace_symbols(DisassemblerLine* line, const char* jump_color, cons
     if (auto_symbol_text != NULL)
     {
         std::string replacement = std::string(auto_color) + auto_symbol_text + original_color;
-        if (replace_address_in_string(instr, lookup_address, is_zp, replacement.c_str()))
+        if (replace_operand_in_string(line->record, instr, replacement.c_str()))
         {
             snprintf(line->name_enhanced, 64, "%s", instr.c_str());
             snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", auto_color, auto_symbol_text, c_white.c_str(), c_cyan.c_str(), lookup_address);
@@ -1457,7 +1526,74 @@ static void replace_symbols(DisassemblerLine* line, const char* jump_color, cons
     }
 }
 
-static void replace_labels(DisassemblerLine* line, const char* color, const char* original_color)
+static bool collect_assembler_symbol_definition(DisassemblerLine* line, std::vector<AssemblerLabelDefinition>& definitions)
+{
+    std::string instr = line->record->name;
+    const char* resolved_name = NULL;
+    u16 resolved_address = 0;
+
+    if (gui_debug_resolve_symbol(line->record, instr, "", "", &resolved_name, &resolved_address))
+    {
+        if (!symbol_label_is_exported(resolved_name, resolved_address))
+            add_assembler_definition(definitions, resolved_name, resolved_address);
+        return true;
+    }
+
+    if (!config_debug.dis_show_auto_symbols)
+        return false;
+
+    if (!line->record->jump)
+        return false;
+
+    u16 lookup_address = 0;
+    bool is_zp = false;
+
+    if (!get_record_operand(line->record, &lookup_address, &is_zp))
+        return false;
+
+    DebugSymbol* dynamic_symbol = dynamic_symbols[lookup_address];
+    const char* auto_symbol_text = NULL;
+
+    if (IsValidPointer(dynamic_symbol))
+    {
+        auto_symbol_text = dynamic_symbol->text;
+    }
+    else
+    {
+        GLYNX_Disassembler_Record* target = emu_get_core()->GetMemory()->GetDisassemblerRecord(lookup_address);
+        if (IsValidPointer(target) && target->auto_symbol[0] != 0)
+            auto_symbol_text = target->auto_symbol;
+    }
+
+    if (auto_symbol_text != NULL)
+    {
+        if (replace_operand_in_string(line->record, instr, auto_symbol_text))
+        {
+            if (!symbol_label_is_exported(auto_symbol_text, lookup_address))
+                add_assembler_definition(definitions, auto_symbol_text, lookup_address);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool collect_assembler_label_definition(DisassemblerLine* line, std::vector<AssemblerLabelDefinition>& definitions)
+{
+    std::string instr = line->record->name;
+    const char* resolved_name = NULL;
+    u16 resolved_address = 0;
+
+    if (gui_debug_resolve_label(line->record, instr, "", "", &resolved_name, &resolved_address))
+    {
+        add_assembler_label_definition(definitions, resolved_name, resolved_address);
+        return true;
+    }
+
+    return false;
+}
+
+static bool replace_labels(DisassemblerLine* line, const char* color, const char* original_color)
 {
     std::string instr = line->record->name;
     const char* resolved_name = NULL;
@@ -1468,7 +1604,10 @@ static void replace_labels(DisassemblerLine* line, const char* color, const char
         snprintf(line->name_enhanced, 64, "%s", instr.c_str());
         if (line->tooltip[0] == 0)
             snprintf(line->tooltip, 128, "%s%s%s = %s$%04X", color, resolved_name, c_white.c_str(), c_cyan.c_str(), resolved_address);
+        return true;
     }
+
+    return false;
 }
 
 static void draw_instruction_name(DisassemblerLine* line, bool is_pc)
@@ -1555,6 +1694,26 @@ static void disassembler_menu(void)
         ImGui::MenuItem("Opcodes", NULL, &config_debug.dis_show_mem);
         ImGui::MenuItem("Symbols", NULL, &config_debug.dis_show_symbols);
         ImGui::MenuItem("Segment", NULL, &config_debug.dis_show_segment);
+
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Syntax"))
+        {
+            static const char* syntax_names[GLYNX_Disassembler_Syntax_Count] = { "Gearlynx", "cc65", "lyxass", "mads" };
+
+            for (int i = 0; i < GLYNX_Disassembler_Syntax_Count; i++)
+            {
+                if (ImGui::MenuItem(syntax_names[i], NULL, config_debug.dis_syntax == i))
+                {
+                    config_debug.dis_syntax = i;
+                    emu_set_disassembler_syntax(i);
+                }
+            }
+
+            ImGui::Separator();
+            ImGui::TextDisabled("Reload ROM to apply");
+            ImGui::EndMenu();
+        }
 
         ImGui::Separator();
 
@@ -2335,6 +2494,10 @@ static void save_full_disassembler(FILE* file)
 {
     Memory* memory = emu_get_core()->GetMemory();
     GLYNX_Disassembler_Record** records = memory->GetAllDisassemblerRecords();
+    bool assembler_syntax = disassembler_uses_assembler_syntax();
+
+    if (assembler_syntax)
+        write_assembler_header(file);
 
     for (int i = 0; i < 0x200000; i++)
     {
@@ -2358,7 +2521,10 @@ static void save_full_disassembler(FILE* file)
                 spaces[i] = ' ';
             spaces[offset] = 0;
 
-            fprintf(file, "%06X:    %s%s;%s\n", i, name, spaces, record->bytes);
+            if (assembler_syntax)
+                fprintf(file, "    %s%s; %06X: %s\n", name, spaces, i, record->bytes);
+            else
+                fprintf(file, "%06X:    %s%s;%s\n", i, name, spaces, record->bytes);
 
             if (is_return_instruction(record->opcodes[0]))
                 fprintf(file, "\n");
@@ -2369,6 +2535,30 @@ static void save_full_disassembler(FILE* file)
 static void save_current_disassembler(FILE* file)
 {
     int total_lines = (int)disassembler_lines.size();
+    bool assembler_syntax = disassembler_uses_assembler_syntax();
+    std::vector<AssemblerLabelDefinition> definitions;
+
+    if (assembler_syntax)
+    {
+        write_assembler_header(file);
+
+        if (config_debug.dis_replace_symbols || config_debug.dis_replace_labels)
+        {
+            for (int i = 0; i < total_lines; i++)
+            {
+                DisassemblerLine line = disassembler_lines[i];
+                if (!line.symbol)
+                {
+                    if (config_debug.dis_replace_symbols)
+                        collect_assembler_symbol_definition(&line, definitions);
+                    if (config_debug.dis_replace_labels)
+                        collect_assembler_label_definition(&line, definitions);
+                }
+            }
+
+            write_assembler_label_definitions(file, definitions);
+        }
+    }
 
     for (int i = 0; i < total_lines; i++)
     {
@@ -2380,12 +2570,15 @@ static void save_current_disassembler(FILE* file)
             continue;
         }
 
-        fprintf(file, "  ");
+        if (!assembler_syntax)
+        {
+            fprintf(file, "  ");
 
-        if (config_debug.dis_show_segment)
-            fprintf(file, "%s ", line.record->segment);
+            if (config_debug.dis_show_segment)
+                fprintf(file, "%s ", line.record->segment);
 
-        fprintf(file, " %04X ", line.address);
+            fprintf(file, " %04X ", line.address);
+        }
 
         if (config_debug.dis_replace_symbols)
         {
@@ -2401,9 +2594,7 @@ static void save_current_disassembler(FILE* file)
         snprintf(instr, sizeof(instr), "%s", line.name_enhanced);
         RemoveColorFromString(instr);
 
-        fprintf(file, "   %s ", instr);
-
-        if (config_debug.dis_show_mem)
+        if (assembler_syntax)
         {
             int len = (int)strlen(instr);
             char spaces[39];
@@ -2414,7 +2605,33 @@ static void save_current_disassembler(FILE* file)
                 spaces[i] = ' ';
             spaces[offset] = 0;
 
-            fprintf(file, "%s;%s", spaces, line.record->bytes);
+            fprintf(file, "    %s%s", instr, spaces);
+
+            if (config_debug.dis_show_mem)
+            {
+                fprintf(file, "; ");
+                if (config_debug.dis_show_segment)
+                    fprintf(file, "%s ", line.record->segment);
+                fprintf(file, "%04X %s", line.address, line.record->bytes);
+            }
+        }
+        else
+        {
+            fprintf(file, "   %s ", instr);
+
+            if (config_debug.dis_show_mem)
+            {
+                int len = (int)strlen(instr);
+                char spaces[39];
+                int offset = 38 - len;
+                if (offset < 0)
+                    offset = 0;
+                for (int i = 0; (i < offset) && (i < 38); i++)
+                    spaces[i] = ' ';
+                spaces[offset] = 0;
+
+                fprintf(file, "%s;%s", spaces, line.record->bytes);
+            }
         }
 
         fprintf(file, "\n");
@@ -2444,4 +2661,11 @@ static bool symbol_sort_name_asc(const SymbolEntry& a, const SymbolEntry& b)
 static bool symbol_sort_name_desc(const SymbolEntry& a, const SymbolEntry& b)
 {
     return strcmp(a.symbol->text, b.symbol->text) > 0;
+}
+
+static bool disassembler_uses_assembler_syntax(void)
+{
+    return config_debug.dis_syntax == GLYNX_Disassembler_Syntax_CC65 ||
+        config_debug.dis_syntax == GLYNX_Disassembler_Syntax_LYXASS ||
+        config_debug.dis_syntax == GLYNX_Disassembler_Syntax_MADS;
 }
