@@ -454,6 +454,7 @@ void DebugMonitorServer::EnqueueEvent(const std::string& event, const json& data
 
 json DebugMonitorServer::ExecuteCommand(const std::string& cmd, const json& params)
 {
+    if (cmd == "handshake")         return HandleHandshake();
     if (cmd == "registers_get")     return HandleRegistersGet();
     if (cmd == "registers_set")     return HandleRegistersSet(params);
     if (cmd == "memory_get")        return HandleMemoryGet(params);
@@ -483,6 +484,14 @@ json DebugMonitorServer::ExecuteCommand(const std::string& cmd, const json& para
 }
 
 // ---- Command handlers ----
+
+json DebugMonitorServer::HandleHandshake()
+{
+    return {
+        {"protocolVersion", DM_PROTOCOL_VERSION},
+        {"emulatorVersion", GLYNX_VERSION}
+    };
+}
 
 json DebugMonitorServer::HandleRegistersGet()
 {

@@ -163,6 +163,13 @@ Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/int
 
 For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
 
+### VSCode Extension
+
+A source-level debugger for VSCode -- **LynxDebug** -- lives in its own repository:
+[BrianPeek/gearlynx-vscode](https://github.com/BrianPeek/gearlynx-vscode). It drives
+Gearlynx over the debug-monitor protocol (`--debug-monitor`). The wire contract is
+documented in [PROTOCOL.md](PROTOCOL.md).
+
 ### Agent Skills
 
 Gearlynx provides [Agent Skills](https://agentskills.io/) that teach AI assistants how to effectively use the emulator for specific tasks:

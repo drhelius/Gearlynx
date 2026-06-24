@@ -51,6 +51,11 @@
 
 using json = nlohmann::json;
 
+// Debug-monitor wire protocol version. Bump on any breaking change to the
+// request/response/event JSON format. The LynxDebug client negotiates this via
+// the "handshake" command on connect and warns on mismatch. See PROTOCOL.md.
+#define DM_PROTOCOL_VERSION 1
+
 enum DebugMonitorStopReason
 {
     DM_STOP_NONE = 0,
@@ -193,6 +198,7 @@ private:
     json ExecuteCommand(const std::string& cmd, const json& params);
 
     // Command handlers
+    json HandleHandshake();
     json HandleRegistersGet();
     json HandleRegistersSet(const json& params);
     json HandleMemoryGet(const json& params);
