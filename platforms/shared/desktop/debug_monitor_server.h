@@ -30,24 +30,7 @@
 #include "json.hpp"
 #include "gearlynx.h"
 #include "mcp/mcp_debug_adapter.h"
-
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    #pragma comment(lib, "ws2_32.lib")
-    typedef SOCKET dm_socket_t;
-    #define DM_INVALID_SOCKET INVALID_SOCKET
-    #define DM_SOCKET_CLOSE(s) closesocket(s)
-#else
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <netinet/tcp.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    typedef int dm_socket_t;
-    #define DM_INVALID_SOCKET -1
-    #define DM_SOCKET_CLOSE(s) ::close(s)
-#endif
+#include "socket_types.h"
 
 using json = nlohmann::json;
 
@@ -193,8 +176,16 @@ private:
     void RecvLoop();
     void SendLoop();
 
-    bool RecvMessage(dm_socket_t sock, std::string& out_json);
-    bool SendMessage(dm_socket_t sock, const std::string& json_str);
+    bool JsonReadU32(const json& params, const char* name, u32* value) const;
+    bool JsonReadS64(const json& params, const char* name, s64* value) const;
+    bool JsonReadS32Range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value) const;
+    bool JsonReadU16(const json& params, const char* name, u16* value) const;
+    bool JsonReadString(const json& params, const char* name, std::string* value) const;
+    bool JsonReadBool(const json& params, const char* name, bool* value) const;
+    const char* GetStopReasonName(DebugMonitorStopReason reason) const;
+
+    bool RecvMessage(glynx_socket_t sock, std::string& out_json);
+    bool SendMessage(glynx_socket_t sock, const std::string& json_str);
 
     json ExecuteCommand(const std::string& cmd, const json& params);
 
@@ -234,8 +225,8 @@ private:
     DebugMonitorInQueue m_in_queue;
     DebugMonitorOutQueue m_out_queue;
 
-    dm_socket_t m_server_socket;
-    dm_socket_t m_client_socket;
+    glynx_socket_t m_server_socket;
+    glynx_socket_t m_client_socket;
     std::mutex m_client_mutex;
     std::atomic<u32> m_connection_id;
 

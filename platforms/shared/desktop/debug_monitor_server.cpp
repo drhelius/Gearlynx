@@ -23,11 +23,7 @@
 #include "rewind.h"
 #include <cstring>
 
-static const char* k_stop_reason_names[] = {
-    "none", "entry", "breakpoint", "step", "pause", "run_to"
-};
-
-static bool json_read_u32(const json& params, const char* name, u32* value)
+bool DebugMonitorServer::JsonReadU32(const json& params, const char* name, u32* value) const
 {
     if (!IsValidPointer(value) || !params.contains(name))
         return false;
@@ -58,7 +54,7 @@ static bool json_read_u32(const json& params, const char* name, u32* value)
     return true;
 }
 
-static bool json_read_s64(const json& params, const char* name, s64* value)
+bool DebugMonitorServer::JsonReadS64(const json& params, const char* name, s64* value) const
 {
     if (!IsValidPointer(value) || !params.contains(name))
         return false;
@@ -84,7 +80,7 @@ static bool json_read_s64(const json& params, const char* name, s64* value)
     return true;
 }
 
-static bool json_read_s32_range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value)
+bool DebugMonitorServer::JsonReadS32Range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value) const
 {
     if (!IsValidPointer(value) || !params.contains(name))
         return false;
@@ -115,18 +111,18 @@ static bool json_read_s32_range(const json& params, const char* name, s32 min_va
     return true;
 }
 
-static bool json_read_u16(const json& params, const char* name, u16* value)
+bool DebugMonitorServer::JsonReadU16(const json& params, const char* name, u16* value) const
 {
     u32 raw_value = 0;
 
-    if (!IsValidPointer(value) || !json_read_u32(params, name, &raw_value) || raw_value > 0xFFFF)
+    if (!IsValidPointer(value) || !JsonReadU32(params, name, &raw_value) || raw_value > 0xFFFF)
         return false;
 
     *value = (u16)raw_value;
     return true;
 }
 
-static bool json_read_string(const json& params, const char* name, std::string* value)
+bool DebugMonitorServer::JsonReadString(const json& params, const char* name, std::string* value) const
 {
     if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_string())
         return false;
@@ -135,7 +131,7 @@ static bool json_read_string(const json& params, const char* name, std::string* 
     return true;
 }
 
-static bool json_read_bool(const json& params, const char* name, bool* value)
+bool DebugMonitorServer::JsonReadBool(const json& params, const char* name, bool* value) const
 {
     if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_boolean())
         return false;
@@ -144,12 +140,33 @@ static bool json_read_bool(const json& params, const char* name, bool* value)
     return true;
 }
 
+const char* DebugMonitorServer::GetStopReasonName(DebugMonitorStopReason reason) const
+{
+    switch (reason)
+    {
+        case DM_STOP_NONE:
+            return "none";
+        case DM_STOP_ENTRY:
+            return "entry";
+        case DM_STOP_BREAKPOINT:
+            return "breakpoint";
+        case DM_STOP_STEP:
+            return "step";
+        case DM_STOP_PAUSE:
+            return "pause";
+        case DM_STOP_RUN_TO:
+            return "run_to";
+        default:
+            return "unknown";
+    }
+}
+
 DebugMonitorServer::DebugMonitorServer(int port)
 {
     m_core = NULL;
     m_debug_adapter = NULL;
-    m_server_socket = DM_INVALID_SOCKET;
-    m_client_socket = DM_INVALID_SOCKET;
+    m_server_socket = GLYNX_INVALID_SOCKET;
+    m_client_socket = GLYNX_INVALID_SOCKET;
     m_connection_id.store(0);
     m_running.store(false);
     m_client_connected.store(false);
@@ -183,7 +200,7 @@ void DebugMonitorServer::Start()
 #endif
 
     m_server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (m_server_socket == DM_INVALID_SOCKET)
+    if (m_server_socket == GLYNX_INVALID_SOCKET)
     {
         Error("[DebugMonitor] Failed to create socket");
         return;
@@ -201,16 +218,16 @@ void DebugMonitorServer::Start()
     if (bind(m_server_socket, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
         Error("[DebugMonitor] Failed to bind to port %d", m_port);
-        DM_SOCKET_CLOSE(m_server_socket);
-        m_server_socket = DM_INVALID_SOCKET;
+        GLYNX_SOCKET_CLOSE(m_server_socket);
+        m_server_socket = GLYNX_INVALID_SOCKET;
         return;
     }
 
     if (listen(m_server_socket, 1) < 0)
     {
         Error("[DebugMonitor] Failed to listen on socket");
-        DM_SOCKET_CLOSE(m_server_socket);
-        m_server_socket = DM_INVALID_SOCKET;
+        GLYNX_SOCKET_CLOSE(m_server_socket);
+        m_server_socket = GLYNX_INVALID_SOCKET;
         return;
     }
 
@@ -234,17 +251,17 @@ void DebugMonitorServer::Stop()
 
     {
         std::lock_guard<std::mutex> lock(m_client_mutex);
-        if (m_client_socket != DM_INVALID_SOCKET)
+        if (m_client_socket != GLYNX_INVALID_SOCKET)
         {
-            DM_SOCKET_CLOSE(m_client_socket);
-            m_client_socket = DM_INVALID_SOCKET;
+            GLYNX_SOCKET_CLOSE(m_client_socket);
+            m_client_socket = GLYNX_INVALID_SOCKET;
         }
     }
 
-    if (m_server_socket != DM_INVALID_SOCKET)
+    if (m_server_socket != GLYNX_INVALID_SOCKET)
     {
-        DM_SOCKET_CLOSE(m_server_socket);
-        m_server_socket = DM_INVALID_SOCKET;
+        GLYNX_SOCKET_CLOSE(m_server_socket);
+        m_server_socket = GLYNX_INVALID_SOCKET;
     }
 
     if (m_accept_thread.joinable())
@@ -282,10 +299,10 @@ void DebugMonitorServer::AcceptLoop()
     while (m_running.load())
     {
         struct sockaddr_in client_addr;
-        socklen_t client_len = sizeof(client_addr);
-        dm_socket_t client = accept(m_server_socket, (struct sockaddr*)&client_addr, &client_len);
+        glynx_socket_len_t client_len = sizeof(client_addr);
+        glynx_socket_t client = accept(m_server_socket, (struct sockaddr*)&client_addr, &client_len);
 
-        if (client == DM_INVALID_SOCKET)
+        if (client == GLYNX_INVALID_SOCKET)
         {
             if (!m_running.load())
                 break;
@@ -296,11 +313,11 @@ void DebugMonitorServer::AcceptLoop()
         // Close previous client under lock, then join outside to avoid deadlock
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
-            if (m_client_socket != DM_INVALID_SOCKET)
+            if (m_client_socket != GLYNX_INVALID_SOCKET)
             {
                 Log("[DebugMonitor] Closing previous client connection");
-                DM_SOCKET_CLOSE(m_client_socket);
-                m_client_socket = DM_INVALID_SOCKET;
+                GLYNX_SOCKET_CLOSE(m_client_socket);
+                m_client_socket = GLYNX_INVALID_SOCKET;
                 m_client_connected.store(false);
             }
         }
@@ -327,7 +344,7 @@ void DebugMonitorServer::AcceptLoop()
 void DebugMonitorServer::RecvLoop()
 {
     u32 my_connection_id;
-    dm_socket_t my_socket;
+    glynx_socket_t my_socket;
 
     {
         std::lock_guard<std::mutex> lock(m_client_mutex);
@@ -352,14 +369,14 @@ void DebugMonitorServer::RecvLoop()
         }
 
         s64 id = 0;
-        if (msg.contains("id") && !json_read_s64(msg, "id", &id))
+        if (msg.contains("id") && !JsonReadS64(msg, "id", &id))
         {
             EnqueueResponse(0, false, {{"error", "invalid id field"}});
             continue;
         }
 
         std::string cmd;
-        if (!json_read_string(msg, "cmd", &cmd))
+        if (!JsonReadString(msg, "cmd", &cmd))
         {
             EnqueueResponse(id, false, {{"error", "missing or invalid cmd field"}});
             continue;
@@ -382,10 +399,10 @@ void DebugMonitorServer::RecvLoop()
         std::lock_guard<std::mutex> lock(m_client_mutex);
         if (m_connection_id == my_connection_id)
         {
-            if (m_client_socket != DM_INVALID_SOCKET)
+            if (m_client_socket != GLYNX_INVALID_SOCKET)
             {
-                DM_SOCKET_CLOSE(m_client_socket);
-                m_client_socket = DM_INVALID_SOCKET;
+                GLYNX_SOCKET_CLOSE(m_client_socket);
+                m_client_socket = GLYNX_INVALID_SOCKET;
             }
             m_client_connected.store(false);
         }
@@ -421,7 +438,7 @@ void DebugMonitorServer::SendLoop()
 
 // ---- Content-Length framed message I/O ----
 
-bool DebugMonitorServer::RecvMessage(dm_socket_t sock, std::string& out_json)
+bool DebugMonitorServer::RecvMessage(glynx_socket_t sock, std::string& out_json)
 {
     // Read headers until \r\n\r\n
     std::string header_buf;
@@ -485,7 +502,7 @@ bool DebugMonitorServer::RecvMessage(dm_socket_t sock, std::string& out_json)
     return true;
 }
 
-bool DebugMonitorServer::SendMessage(dm_socket_t sock, const std::string& json_str)
+bool DebugMonitorServer::SendMessage(glynx_socket_t sock, const std::string& json_str)
 {
     std::string frame = "Content-Length: " + std::to_string(json_str.size()) + "\r\n\r\n" + json_str;
 
@@ -534,11 +551,8 @@ void DebugMonitorServer::NotifyStopped(DebugMonitorStopReason reason, u16 pc)
     m_stop_pc = pc;
     m_event_seq++;
 
-    const char* reason_str = (reason >= 0 && reason <= DM_STOP_RUN_TO)
-        ? k_stop_reason_names[reason] : "unknown";
-
     EnqueueEvent("stopped", {
-        {"reason", reason_str},
+        {"reason", GetStopReasonName(reason)},
         {"pc", pc},
         {"seq", m_event_seq}
     });
@@ -648,7 +662,7 @@ json DebugMonitorServer::HandleRegistersSet(const json& params)
     std::string name;
     u32 value = 0;
 
-    if (!json_read_string(params, "name", &name) || !json_read_u32(params, "value", &value))
+    if (!JsonReadString(params, "name", &name) || !JsonReadU32(params, "value", &value))
         return {{"error", "missing or invalid name/value"}};
 
     if (name != "PC" && name != "A" && name != "X" && name != "Y" && name != "S" && name != "P")
@@ -664,11 +678,11 @@ json DebugMonitorServer::HandleMemoryGet(const json& params)
     u32 offset = 0;
     s32 size = 0;
 
-    if (!json_read_s32_range(params, "area", 0, MEMORY_EDITOR_MAX - 1, &area))
+    if (!JsonReadS32Range(params, "area", 0, MEMORY_EDITOR_MAX - 1, &area))
         return {{"error", "missing or invalid area"}};
-    if (!json_read_u32(params, "offset", &offset))
+    if (!JsonReadU32(params, "offset", &offset))
         return {{"error", "missing or invalid offset"}};
-    if (!json_read_s32_range(params, "size", 1, 0x10000, &size))
+    if (!JsonReadS32Range(params, "size", 1, 0x10000, &size))
         return {{"error", "missing or invalid size"}};
 
     std::vector<u8> data = m_debug_adapter->ReadMemoryArea(area, offset, size);
@@ -692,11 +706,11 @@ json DebugMonitorServer::HandleMemorySet(const json& params)
     u32 offset = 0;
     std::string hex;
 
-    if (!json_read_s32_range(params, "area", 0, MEMORY_EDITOR_MAX - 1, &area))
+    if (!JsonReadS32Range(params, "area", 0, MEMORY_EDITOR_MAX - 1, &area))
         return {{"error", "missing or invalid area"}};
-    if (!json_read_u32(params, "offset", &offset))
+    if (!JsonReadU32(params, "offset", &offset))
         return {{"error", "missing or invalid offset"}};
-    if (!json_read_string(params, "hex", &hex))
+    if (!JsonReadString(params, "hex", &hex))
         return {{"error", "missing or invalid hex"}};
 
     if (hex.size() % 2 != 0)
@@ -724,9 +738,9 @@ json DebugMonitorServer::HandleBreakpointSet(const json& params)
     u16 address = 0;
     std::string type;
 
-    if (!json_read_u16(params, "address", &address))
+    if (!JsonReadU16(params, "address", &address))
         return {{"error", "missing or invalid address"}};
-    if (!json_read_string(params, "type", &type))
+    if (!JsonReadString(params, "type", &type))
         return {{"error", "missing or invalid type"}};
 
     if (type != "read" && type != "write" && type != "exec" && type != "all")
@@ -745,9 +759,9 @@ json DebugMonitorServer::HandleBreakpointDelete(const json& params)
     u16 address = 0;
     u16 end_address = 0;
 
-    if (!json_read_u16(params, "address", &address))
+    if (!JsonReadU16(params, "address", &address))
         return {{"error", "missing or invalid address"}};
-    if (params.contains("end_address") && !json_read_u16(params, "end_address", &end_address))
+    if (params.contains("end_address") && !JsonReadU16(params, "end_address", &end_address))
         return {{"error", "invalid end_address"}};
 
     m_debug_adapter->ClearBreakpointByAddress(address, end_address);
@@ -775,43 +789,43 @@ json DebugMonitorServer::HandleBreakpointList()
 
 json DebugMonitorServer::HandleContinue()
 {
-    emu_debug_continue();
+    m_debug_adapter->Resume();
     return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandlePause()
 {
-    emu_debug_break();
+    m_debug_adapter->Pause();
     return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandleStepIn()
 {
-    emu_debug_step_into();
+    m_debug_adapter->StepInto();
     return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandleStepOver()
 {
-    emu_debug_step_over();
+    m_debug_adapter->StepOver();
     return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandleStepOut()
 {
-    emu_debug_step_out();
+    m_debug_adapter->StepOut();
     return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandleStepFrame()
 {
-    emu_debug_step_frame();
+    m_debug_adapter->StepFrame();
     return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandleReset()
 {
-    emu_reset();
+    m_debug_adapter->Reset();
     return {{"ok", true}};
 }
 
@@ -829,8 +843,7 @@ json DebugMonitorServer::HandleStatus()
         {"empty", empty},
         {"pc", state->PC.GetValue()},
         {"run_state", m_run_state == DM_STATE_RUNNING ? "running" : "stopped"},
-        {"stop_reason", (m_stop_reason >= 0 && m_stop_reason <= DM_STOP_RUN_TO)
-            ? k_stop_reason_names[m_stop_reason] : "none"}
+        {"stop_reason", GetStopReasonName(m_stop_reason)}
     };
 }
 
@@ -839,9 +852,9 @@ json DebugMonitorServer::HandleDisassemblyGet(const json& params)
     u16 start = 0;
     u16 end = 0;
 
-    if (!json_read_u16(params, "start", &start))
+    if (!JsonReadU16(params, "start", &start))
         return {{"error", "missing or invalid start"}};
-    if (!json_read_u16(params, "end", &end))
+    if (!JsonReadU16(params, "end", &end))
         return {{"error", "missing or invalid end"}};
     if (start > end)
         return {{"error", "start must be <= end"}};
@@ -867,7 +880,7 @@ json DebugMonitorServer::HandleLoadRom(const json& params)
 {
     std::string path;
 
-    if (!json_read_string(params, "path", &path))
+    if (!JsonReadString(params, "path", &path))
         return {{"error", "missing or invalid path"}};
 
     if (path.empty())
@@ -924,7 +937,7 @@ json DebugMonitorServer::HandleControllerButton(const json& params)
     std::string button;
     std::string action;
 
-    if (!json_read_string(params, "button", &button) || !json_read_string(params, "action", &action))
+    if (!JsonReadString(params, "button", &button) || !JsonReadString(params, "action", &action))
         return {{"error", "missing or invalid button/action"}};
 
     if (button.empty() || action.empty())
@@ -939,11 +952,11 @@ json DebugMonitorServer::HandleTraceLogSet(const json& params)
     u32 flags = 0xFF;
     bool debug_output = false;
 
-    if (params.contains("enabled") && !json_read_bool(params, "enabled", &enabled))
+    if (params.contains("enabled") && !JsonReadBool(params, "enabled", &enabled))
         return {{"error", "invalid enabled"}};
-    if (params.contains("flags") && !json_read_u32(params, "flags", &flags))
+    if (params.contains("flags") && !JsonReadU32(params, "flags", &flags))
         return {{"error", "invalid flags"}};
-    if (params.contains("debug_output") && !json_read_bool(params, "debug_output", &debug_output))
+    if (params.contains("debug_output") && !JsonReadBool(params, "debug_output", &debug_output))
         return {{"error", "invalid debug_output"}};
 
     return m_debug_adapter->SetTraceLog(enabled, flags, debug_output);
@@ -957,7 +970,7 @@ json DebugMonitorServer::HandleTraceLogGet(const json& params)
     if (params.contains("start"))
     {
         s32 start_value = 0;
-        if (!json_read_s32_range(params, "start", -1, 1000000000, &start_value))
+        if (!JsonReadS32Range(params, "start", -1, 1000000000, &start_value))
             return {{"error", "invalid start"}};
         start = start_value;
     }
@@ -965,7 +978,7 @@ json DebugMonitorServer::HandleTraceLogGet(const json& params)
     if (params.contains("count"))
     {
         s32 count_value = 0;
-        if (!json_read_s32_range(params, "count", 1, 10000, &count_value))
+        if (!JsonReadS32Range(params, "count", 1, 10000, &count_value))
             return {{"error", "invalid count"}};
         count = count_value;
     }

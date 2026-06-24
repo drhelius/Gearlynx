@@ -31,26 +31,12 @@
 #include <cstdlib>
 #include <cstring>
 #include "log.h"
+#include "../socket_types.h"
 
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    #pragma comment(lib, "ws2_32.lib")
-    typedef SOCKET socket_t;
-    typedef int socket_len_t;
-    #define INVALID_SOCKET_VALUE INVALID_SOCKET
-    #define SOCKET_CLOSE(s) closesocket(s)
-#else
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    #include <fcntl.h>
-    typedef int socket_t;
-    typedef socklen_t socket_len_t;
-    #define INVALID_SOCKET_VALUE -1
-    #define SOCKET_CLOSE(s) ::close(s)
-#endif
+typedef glynx_socket_t socket_t;
+typedef glynx_socket_len_t socket_len_t;
+#define INVALID_SOCKET_VALUE GLYNX_INVALID_SOCKET
+#define SOCKET_CLOSE(s) GLYNX_SOCKET_CLOSE(s)
 
 class McpTransportInterface
 {

@@ -68,6 +68,7 @@
     <ClInclude Include="..\shared\desktop\console_utils.h" />
     <ClInclude Include="..\shared\desktop\debug_monitor_server.h" />
     <ClInclude Include="..\shared\desktop\framebuffer_server.h" />
+    <ClInclude Include="..\shared\desktop\socket_types.h" />
     <ClInclude Include="..\shared\desktop\emu.h" />
     <ClInclude Include="..\shared\desktop\gui.h" />
     <ClInclude Include="..\shared\desktop\gui_actions.h" />

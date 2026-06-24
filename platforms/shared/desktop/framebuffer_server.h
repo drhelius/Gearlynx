@@ -24,23 +24,7 @@
 #include <atomic>
 #include <mutex>
 #include "common.h"
-
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    typedef SOCKET fb_socket_t;
-    #define FB_INVALID_SOCKET INVALID_SOCKET
-    #define FB_SOCKET_CLOSE(s) closesocket(s)
-#else
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <netinet/tcp.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    typedef int fb_socket_t;
-    #define FB_INVALID_SOCKET -1
-    #define FB_SOCKET_CLOSE(s) ::close(s)
-#endif
+#include "socket_types.h"
 
 class FramebufferServer
 {
@@ -58,11 +42,12 @@ public:
 
 private:
     void AcceptLoop();
-    void ClientLoop(fb_socket_t client);
+    void ClientLoop(glynx_socket_t client);
+    bool SendAll(glynx_socket_t client, const u8* data, int size);
 
     int m_port;
-    fb_socket_t m_server_socket;
-    fb_socket_t m_client_socket;
+    glynx_socket_t m_server_socket;
+    glynx_socket_t m_client_socket;
     std::mutex m_client_mutex;
     std::thread m_accept_thread;
     std::thread m_client_thread;

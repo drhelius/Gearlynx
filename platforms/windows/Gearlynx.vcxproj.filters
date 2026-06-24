@@ -156,6 +156,9 @@
     <ClInclude Include="..\shared\desktop\framebuffer_server.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\socket_types.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
     <ClInclude Include="..\shared\desktop\utils.h">
       <Filter>desktop</Filter>
     </ClInclude>

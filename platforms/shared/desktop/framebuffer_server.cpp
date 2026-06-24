@@ -22,7 +22,7 @@
 #include <SDL3/SDL.h>
 #include <cstring>
 
-static bool send_all(fb_socket_t client, const u8* data, int size)
+bool FramebufferServer::SendAll(glynx_socket_t client, const u8* data, int size)
 {
     int total_sent = 0;
 
@@ -41,8 +41,8 @@ static bool send_all(fb_socket_t client, const u8* data, int size)
 FramebufferServer::FramebufferServer(int port)
 {
     m_port = port;
-    m_server_socket = FB_INVALID_SOCKET;
-    m_client_socket = FB_INVALID_SOCKET;
+    m_server_socket = GLYNX_INVALID_SOCKET;
+    m_client_socket = GLYNX_INVALID_SOCKET;
     m_running.store(false);
     m_client_connected.store(false);
     m_frame_buffer = NULL;
@@ -69,7 +69,7 @@ void FramebufferServer::Start()
 #endif
 
     m_server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (m_server_socket == FB_INVALID_SOCKET)
+    if (m_server_socket == GLYNX_INVALID_SOCKET)
     {
         Error("[FramebufferStream] Failed to create socket");
         return;
@@ -87,16 +87,16 @@ void FramebufferServer::Start()
     if (bind(m_server_socket, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
         Error("[FramebufferStream] Failed to bind to port %d", m_port);
-        FB_SOCKET_CLOSE(m_server_socket);
-        m_server_socket = FB_INVALID_SOCKET;
+        GLYNX_SOCKET_CLOSE(m_server_socket);
+        m_server_socket = GLYNX_INVALID_SOCKET;
         return;
     }
 
     if (listen(m_server_socket, 1) < 0)
     {
         Error("[FramebufferStream] Failed to listen");
-        FB_SOCKET_CLOSE(m_server_socket);
-        m_server_socket = FB_INVALID_SOCKET;
+        GLYNX_SOCKET_CLOSE(m_server_socket);
+        m_server_socket = GLYNX_INVALID_SOCKET;
         return;
     }
 
@@ -116,17 +116,17 @@ void FramebufferServer::Stop()
 
     {
         std::lock_guard<std::mutex> lock(m_client_mutex);
-        if (m_client_socket != FB_INVALID_SOCKET)
+        if (m_client_socket != GLYNX_INVALID_SOCKET)
         {
-            FB_SOCKET_CLOSE(m_client_socket);
-            m_client_socket = FB_INVALID_SOCKET;
+            GLYNX_SOCKET_CLOSE(m_client_socket);
+            m_client_socket = GLYNX_INVALID_SOCKET;
         }
     }
 
-    if (m_server_socket != FB_INVALID_SOCKET)
+    if (m_server_socket != GLYNX_INVALID_SOCKET)
     {
-        FB_SOCKET_CLOSE(m_server_socket);
-        m_server_socket = FB_INVALID_SOCKET;
+        GLYNX_SOCKET_CLOSE(m_server_socket);
+        m_server_socket = GLYNX_INVALID_SOCKET;
     }
 
     if (m_accept_thread.joinable())
@@ -181,10 +181,10 @@ void FramebufferServer::AcceptLoop()
     while (m_running.load())
     {
         struct sockaddr_in client_addr;
-        socklen_t client_len = sizeof(client_addr);
-        fb_socket_t client = accept(m_server_socket, (struct sockaddr*)&client_addr, &client_len);
+        glynx_socket_len_t client_len = sizeof(client_addr);
+        glynx_socket_t client = accept(m_server_socket, (struct sockaddr*)&client_addr, &client_len);
 
-        if (client == FB_INVALID_SOCKET)
+        if (client == GLYNX_INVALID_SOCKET)
         {
             if (!m_running.load())
                 break;
@@ -194,10 +194,10 @@ void FramebufferServer::AcceptLoop()
         // Close previous client under lock, then join outside to avoid deadlock
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
-            if (m_client_socket != FB_INVALID_SOCKET)
+            if (m_client_socket != GLYNX_INVALID_SOCKET)
             {
-                FB_SOCKET_CLOSE(m_client_socket);
-                m_client_socket = FB_INVALID_SOCKET;
+                GLYNX_SOCKET_CLOSE(m_client_socket);
+                m_client_socket = GLYNX_INVALID_SOCKET;
                 m_client_connected.store(false);
             }
         }
@@ -212,7 +212,7 @@ void FramebufferServer::AcceptLoop()
     }
 }
 
-void FramebufferServer::ClientLoop(fb_socket_t client)
+void FramebufferServer::ClientLoop(glynx_socket_t client)
 {
     u8* send_buffer = NULL;
     int send_buffer_size = 0;
@@ -265,13 +265,13 @@ void FramebufferServer::ClientLoop(fb_socket_t client)
         header[6] = (u8)((size >> 16) & 0xFF);
         header[7] = (u8)((size >> 24) & 0xFF);
 
-        if (!send_all(client, header, 8))
+        if (!SendAll(client, header, 8))
         {
             Log("[FramebufferStream] Send header failed, client disconnected");
             break;
         }
 
-        if (!send_all(client, send_buffer, size))
+        if (!SendAll(client, send_buffer, size))
         {
             Log("[FramebufferStream] Send pixels failed, client disconnected");
             break;
@@ -284,8 +284,8 @@ void FramebufferServer::ClientLoop(fb_socket_t client)
         std::lock_guard<std::mutex> lock(m_client_mutex);
         if (m_client_socket == client)
         {
-            FB_SOCKET_CLOSE(m_client_socket);
-            m_client_socket = FB_INVALID_SOCKET;
+            GLYNX_SOCKET_CLOSE(m_client_socket);
+            m_client_socket = GLYNX_INVALID_SOCKET;
             m_client_connected.store(false);
         }
     }
