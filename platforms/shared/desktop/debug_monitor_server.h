@@ -55,6 +55,7 @@ using json = nlohmann::json;
 // request/response/event JSON format. The LynxDebug client negotiates this via
 // the "handshake" command on connect and warns on mismatch. See PROTOCOL.md.
 #define DM_PROTOCOL_VERSION 1
+#define DM_MAX_MESSAGE_SIZE (4 * 1024 * 1024)
 
 enum DebugMonitorStopReason
 {

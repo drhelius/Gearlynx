@@ -22,6 +22,22 @@
 #include <SDL3/SDL.h>
 #include <cstring>
 
+static bool send_all(fb_socket_t client, const u8* data, int size)
+{
+    int total_sent = 0;
+
+    while (total_sent < size)
+    {
+        int sent = ::send(client, (const char*)(data + total_sent), size - total_sent, 0);
+        if (sent <= 0)
+            return false;
+
+        total_sent += sent;
+    }
+
+    return true;
+}
+
 FramebufferServer::FramebufferServer(int port)
 {
     m_port = port;
@@ -170,7 +186,8 @@ void FramebufferServer::AcceptLoop()
 
         if (client == FB_INVALID_SOCKET)
         {
-            if (!m_running.load()) break;
+            if (!m_running.load())
+                break;
             continue;
         }
 
@@ -197,6 +214,9 @@ void FramebufferServer::AcceptLoop()
 
 void FramebufferServer::ClientLoop(fb_socket_t client)
 {
+    u8* send_buffer = NULL;
+    int send_buffer_size = 0;
+
     {
         std::lock_guard<std::mutex> lock(m_client_mutex);
         m_client_socket = client;
@@ -215,45 +235,50 @@ void FramebufferServer::ClientLoop(fb_socket_t client)
 
         m_frame_ready.store(false);
 
+        int w = 0;
+        int h = 0;
+        int size = 0;
+
         {
             std::lock_guard<std::mutex> lock(m_frame_mutex);
-            int w = m_frame_width;
-            int h = m_frame_height;
-            int size = m_frame_size;
+            w = m_frame_width;
+            h = m_frame_height;
+            size = m_frame_size;
 
-            u8 header[8];
-            header[0] = (u8)(w & 0xFF);
-            header[1] = (u8)((w >> 8) & 0xFF);
-            header[2] = (u8)(h & 0xFF);
-            header[3] = (u8)((h >> 8) & 0xFF);
-            header[4] = (u8)(size & 0xFF);
-            header[5] = (u8)((size >> 8) & 0xFF);
-            header[6] = (u8)((size >> 16) & 0xFF);
-            header[7] = (u8)((size >> 24) & 0xFF);
-
-            int sent = ::send(client, (const char*)header, 8, 0);
-            if (sent != 8)
+            if (send_buffer_size < size)
             {
-                Log("[FramebufferStream] Send header failed, client disconnected");
-                break;
+                delete[] send_buffer;
+                send_buffer = new u8[size];
+                send_buffer_size = size;
             }
 
-            int total_sent = 0;
-            while (total_sent < size)
-            {
-                int remain = size - total_sent;
-                int chunk = remain < 65536 ? remain : 65536;
-                sent = ::send(client, (const char*)(m_frame_buffer + total_sent), chunk, 0);
-                if (sent <= 0) break;
-                total_sent += sent;
-            }
-            if (total_sent < size)
-            {
-                Log("[FramebufferStream] Send pixels failed, client disconnected");
-                break;
-            }
+            memcpy(send_buffer, m_frame_buffer, size);
+        }
+
+        u8 header[8];
+        header[0] = (u8)(w & 0xFF);
+        header[1] = (u8)((w >> 8) & 0xFF);
+        header[2] = (u8)(h & 0xFF);
+        header[3] = (u8)((h >> 8) & 0xFF);
+        header[4] = (u8)(size & 0xFF);
+        header[5] = (u8)((size >> 8) & 0xFF);
+        header[6] = (u8)((size >> 16) & 0xFF);
+        header[7] = (u8)((size >> 24) & 0xFF);
+
+        if (!send_all(client, header, 8))
+        {
+            Log("[FramebufferStream] Send header failed, client disconnected");
+            break;
+        }
+
+        if (!send_all(client, send_buffer, size))
+        {
+            Log("[FramebufferStream] Send pixels failed, client disconnected");
+            break;
         }
     }
+
+    delete[] send_buffer;
 
     {
         std::lock_guard<std::mutex> lock(m_client_mutex);

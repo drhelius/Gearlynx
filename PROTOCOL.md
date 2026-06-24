@@ -1,7 +1,7 @@
 # Gearlynx Debug-Monitor Protocol
 
 This document describes the wire contract between Gearlynx and external debug
-clients (notably the [LynxDebug VSCode extension](https://github.com/BrianPeek/gearlynx-vscode)).
+clients (notably the [LynxDebug VS Code extension](https://github.com/BrianPeek/gearlynx-vscode)).
 It covers the command-line surface that enables the servers, the debug-monitor
 request/response/event format, and the framebuffer stream format.
 
@@ -45,6 +45,7 @@ Gearlynx --debug-monitor --debug-monitor-port 6502 --headless game.lnx
   connection replaces any previous one.
 - **Framing:** each message is `Content-Length: <n>\r\n\r\n` followed by `<n>`
   bytes of UTF-8 JSON (the same framing the Debug Adapter Protocol uses).
+- **Message size:** frames larger than 4 MiB are rejected.
 - `TCP_NODELAY` is set on both ends.
 
 ### Requests

@@ -23,7 +23,6 @@
 #include "application_headless.h"
 #include "config.h"
 #include "console_utils.h"
-#include "emu.h"
 
 extern bool g_mcp_stdio_mode;
 extern bool g_mcp_router_disabled;

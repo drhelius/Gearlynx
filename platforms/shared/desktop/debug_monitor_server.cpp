@@ -27,6 +27,123 @@ static const char* k_stop_reason_names[] = {
     "none", "entry", "breakpoint", "step", "pause", "run_to"
 };
 
+static bool json_read_u32(const json& params, const char* name, u32* value)
+{
+    if (!IsValidPointer(value) || !params.contains(name))
+        return false;
+
+    const json& item = params[name];
+    u64 raw_value = 0;
+
+    if (item.is_number_unsigned())
+    {
+        raw_value = item.get<u64>();
+    }
+    else if (item.is_number_integer())
+    {
+        s64 signed_value = item.get<s64>();
+        if (signed_value < 0)
+            return false;
+        raw_value = (u64)signed_value;
+    }
+    else
+    {
+        return false;
+    }
+
+    if (raw_value > 0xFFFFFFFFULL)
+        return false;
+
+    *value = (u32)raw_value;
+    return true;
+}
+
+static bool json_read_s64(const json& params, const char* name, s64* value)
+{
+    if (!IsValidPointer(value) || !params.contains(name))
+        return false;
+
+    const json& item = params[name];
+
+    if (item.is_number_integer())
+    {
+        *value = item.get<s64>();
+    }
+    else if (item.is_number_unsigned())
+    {
+        u64 unsigned_value = item.get<u64>();
+        if (unsigned_value > 0x7FFFFFFFFFFFFFFFULL)
+            return false;
+        *value = (s64)unsigned_value;
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static bool json_read_s32_range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value)
+{
+    if (!IsValidPointer(value) || !params.contains(name))
+        return false;
+
+    const json& item = params[name];
+    s64 raw_value = 0;
+
+    if (item.is_number_integer())
+    {
+        raw_value = item.get<s64>();
+    }
+    else if (item.is_number_unsigned())
+    {
+        u64 unsigned_value = item.get<u64>();
+        if (unsigned_value > 0x7FFFFFFFULL)
+            return false;
+        raw_value = (s64)unsigned_value;
+    }
+    else
+    {
+        return false;
+    }
+
+    if (raw_value < min_value || raw_value > max_value)
+        return false;
+
+    *value = (s32)raw_value;
+    return true;
+}
+
+static bool json_read_u16(const json& params, const char* name, u16* value)
+{
+    u32 raw_value = 0;
+
+    if (!IsValidPointer(value) || !json_read_u32(params, name, &raw_value) || raw_value > 0xFFFF)
+        return false;
+
+    *value = (u16)raw_value;
+    return true;
+}
+
+static bool json_read_string(const json& params, const char* name, std::string* value)
+{
+    if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_string())
+        return false;
+
+    *value = params[name].get<std::string>();
+    return true;
+}
+
+static bool json_read_bool(const json& params, const char* name, bool* value)
+{
+    if (!IsValidPointer(value) || !params.contains(name) || !params[name].is_boolean())
+        return false;
+
+    *value = params[name].get<bool>();
+    return true;
+}
+
 DebugMonitorServer::DebugMonitorServer(int port)
 {
     m_core = NULL;
@@ -234,8 +351,19 @@ void DebugMonitorServer::RecvLoop()
             continue;
         }
 
-        int64_t id = msg.value("id", (int64_t)0);
-        std::string cmd = msg.value("cmd", "");
+        s64 id = 0;
+        if (msg.contains("id") && !json_read_s64(msg, "id", &id))
+        {
+            EnqueueResponse(0, false, {{"error", "invalid id field"}});
+            continue;
+        }
+
+        std::string cmd;
+        if (!json_read_string(msg, "cmd", &cmd))
+        {
+            EnqueueResponse(id, false, {{"error", "missing or invalid cmd field"}});
+            continue;
+        }
 
         if (cmd.empty())
         {
@@ -330,10 +458,17 @@ bool DebugMonitorServer::RecvMessage(dm_socket_t sock, std::string& out_json)
     {
         const char* p = header_buf.c_str() + cl_pos + 15;
         while (*p == ' ' || *p == '\t') p++;
-        content_length = atoi(p);
+
+        while (*p >= '0' && *p <= '9')
+        {
+            content_length = (content_length * 10) + (*p - '0');
+            if (content_length > DM_MAX_MESSAGE_SIZE)
+                return false;
+            p++;
+        }
     }
 
-    if (content_length <= 0)
+    if (content_length <= 0 || content_length > DM_MAX_MESSAGE_SIZE)
         return false;
 
     // Read body
@@ -510,21 +645,31 @@ json DebugMonitorServer::HandleRegistersGet()
 
 json DebugMonitorServer::HandleRegistersSet(const json& params)
 {
-    if (params.contains("name") && params.contains("value"))
-    {
-        std::string name = params["name"];
-        u32 value = params["value"];
-        m_debug_adapter->SetRegister(name, value);
-        return {{"ok", true}};
-    }
-    return {{"error", "missing name or value"}};
+    std::string name;
+    u32 value = 0;
+
+    if (!json_read_string(params, "name", &name) || !json_read_u32(params, "value", &value))
+        return {{"error", "missing or invalid name/value"}};
+
+    if (name != "PC" && name != "A" && name != "X" && name != "Y" && name != "S" && name != "P")
+        return {{"error", "invalid register name"}};
+
+    m_debug_adapter->SetRegister(name, value);
+    return {{"ok", true}};
 }
 
 json DebugMonitorServer::HandleMemoryGet(const json& params)
 {
-    int area = params.value("area", 0);
-    u32 offset = params.value("offset", (u32)0);
-    int size = params.value("size", 256);
+    s32 area = 0;
+    u32 offset = 0;
+    s32 size = 0;
+
+    if (!json_read_s32_range(params, "area", 0, MEMORY_EDITOR_MAX - 1, &area))
+        return {{"error", "missing or invalid area"}};
+    if (!json_read_u32(params, "offset", &offset))
+        return {{"error", "missing or invalid offset"}};
+    if (!json_read_s32_range(params, "size", 1, 0x10000, &size))
+        return {{"error", "missing or invalid size"}};
 
     std::vector<u8> data = m_debug_adapter->ReadMemoryArea(area, offset, size);
 
@@ -543,12 +688,22 @@ json DebugMonitorServer::HandleMemoryGet(const json& params)
 
 json DebugMonitorServer::HandleMemorySet(const json& params)
 {
-    int area = params.value("area", 0);
-    u32 offset = params.value("offset", (u32)0);
-    std::string hex = params.value("hex", "");
+    s32 area = 0;
+    u32 offset = 0;
+    std::string hex;
+
+    if (!json_read_s32_range(params, "area", 0, MEMORY_EDITOR_MAX - 1, &area))
+        return {{"error", "missing or invalid area"}};
+    if (!json_read_u32(params, "offset", &offset))
+        return {{"error", "missing or invalid offset"}};
+    if (!json_read_string(params, "hex", &hex))
+        return {{"error", "missing or invalid hex"}};
 
     if (hex.size() % 2 != 0)
         return {{"error", "hex string must have even length"}};
+
+    if (hex.size() > 0x20000)
+        return {{"error", "hex string too large"}};
 
     std::vector<u8> data;
     data.reserve(hex.size() / 2);
@@ -566,8 +721,16 @@ json DebugMonitorServer::HandleMemorySet(const json& params)
 
 json DebugMonitorServer::HandleBreakpointSet(const json& params)
 {
-    u16 address = params.value("address", (u16)0);
-    std::string type = params.value("type", "exec");
+    u16 address = 0;
+    std::string type;
+
+    if (!json_read_u16(params, "address", &address))
+        return {{"error", "missing or invalid address"}};
+    if (!json_read_string(params, "type", &type))
+        return {{"error", "missing or invalid type"}};
+
+    if (type != "read" && type != "write" && type != "exec" && type != "all")
+        return {{"error", "invalid breakpoint type"}};
 
     bool read = (type == "read" || type == "all");
     bool write = (type == "write" || type == "all");
@@ -579,8 +742,14 @@ json DebugMonitorServer::HandleBreakpointSet(const json& params)
 
 json DebugMonitorServer::HandleBreakpointDelete(const json& params)
 {
-    u16 address = params.value("address", (u16)0);
-    u16 end_address = params.value("end_address", (u16)0);
+    u16 address = 0;
+    u16 end_address = 0;
+
+    if (!json_read_u16(params, "address", &address))
+        return {{"error", "missing or invalid address"}};
+    if (params.contains("end_address") && !json_read_u16(params, "end_address", &end_address))
+        return {{"error", "invalid end_address"}};
+
     m_debug_adapter->ClearBreakpointByAddress(address, end_address);
     return {{"ok", true}};
 }
@@ -589,7 +758,7 @@ json DebugMonitorServer::HandleBreakpointList()
 {
     std::vector<BreakpointInfo> bps = m_debug_adapter->ListBreakpoints();
     json arr = json::array();
-    for (const auto& bp : bps)
+    for (const BreakpointInfo& bp : bps)
     {
         arr.push_back({
             {"address1", bp.address1},
@@ -667,12 +836,19 @@ json DebugMonitorServer::HandleStatus()
 
 json DebugMonitorServer::HandleDisassemblyGet(const json& params)
 {
-    u16 start = params.value("start", (u16)0);
-    u16 end = params.value("end", (u16)0);
+    u16 start = 0;
+    u16 end = 0;
+
+    if (!json_read_u16(params, "start", &start))
+        return {{"error", "missing or invalid start"}};
+    if (!json_read_u16(params, "end", &end))
+        return {{"error", "missing or invalid end"}};
+    if (start > end)
+        return {{"error", "start must be <= end"}};
 
     std::vector<DisasmLine> lines = m_debug_adapter->GetDisassembly(start, end, true);
     json arr = json::array();
-    for (const auto& line : lines)
+    for (const DisasmLine& line : lines)
     {
         arr.push_back({
             {"address", line.address},
@@ -689,7 +865,11 @@ json DebugMonitorServer::HandleDisassemblyGet(const json& params)
 
 json DebugMonitorServer::HandleLoadRom(const json& params)
 {
-    std::string path = params.value("path", "");
+    std::string path;
+
+    if (!json_read_string(params, "path", &path))
+        return {{"error", "missing or invalid path"}};
+
     if (path.empty())
         return {{"error", "missing path"}};
 
@@ -706,13 +886,13 @@ json DebugMonitorServer::HandleMemoryAreas()
 {
     std::vector<MemoryAreaInfo> areas = m_debug_adapter->ListMemoryAreas();
     json arr = json::array();
-    for (const auto& a : areas)
+    for (const MemoryAreaInfo& area : areas)
     {
         arr.push_back({
-            {"id", a.id},
-            {"name", a.name},
-            {"size", a.size},
-            {"cpu_offset", a.cpu_offset}
+            {"id", area.id},
+            {"name", area.name},
+            {"size", area.size},
+            {"cpu_offset", area.cpu_offset}
         });
     }
     return {{"areas", arr}};
@@ -741,8 +921,11 @@ json DebugMonitorServer::HandleHardwareStatus()
 
 json DebugMonitorServer::HandleControllerButton(const json& params)
 {
-    std::string button = params.value("button", "");
-    std::string action = params.value("action", "");
+    std::string button;
+    std::string action;
+
+    if (!json_read_string(params, "button", &button) || !json_read_string(params, "action", &action))
+        return {{"error", "missing or invalid button/action"}};
 
     if (button.empty() || action.empty())
         return {{"error", "missing button or action"}};
@@ -752,16 +935,41 @@ json DebugMonitorServer::HandleControllerButton(const json& params)
 
 json DebugMonitorServer::HandleTraceLogSet(const json& params)
 {
-    bool enabled = params.value("enabled", true);
-    u32 flags = params.value("flags", (u32)0xFF);
-    bool debug_output = params.value("debug_output", false);
+    bool enabled = true;
+    u32 flags = 0xFF;
+    bool debug_output = false;
+
+    if (params.contains("enabled") && !json_read_bool(params, "enabled", &enabled))
+        return {{"error", "invalid enabled"}};
+    if (params.contains("flags") && !json_read_u32(params, "flags", &flags))
+        return {{"error", "invalid flags"}};
+    if (params.contains("debug_output") && !json_read_bool(params, "debug_output", &debug_output))
+        return {{"error", "invalid debug_output"}};
+
     return m_debug_adapter->SetTraceLog(enabled, flags, debug_output);
 }
 
 json DebugMonitorServer::HandleTraceLogGet(const json& params)
 {
-    int start = params.value("start", -1);
-    int count = params.value("count", 200);
+    int start = -1;
+    int count = 200;
+
+    if (params.contains("start"))
+    {
+        s32 start_value = 0;
+        if (!json_read_s32_range(params, "start", -1, 1000000000, &start_value))
+            return {{"error", "invalid start"}};
+        start = start_value;
+    }
+
+    if (params.contains("count"))
+    {
+        s32 count_value = 0;
+        if (!json_read_s32_range(params, "count", 1, 10000, &count_value))
+            return {{"error", "invalid count"}};
+        count = count_value;
+    }
+
     return m_debug_adapter->GetTraceLog(start, count);
 }
 
