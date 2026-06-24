@@ -36,9 +36,12 @@ using json = nlohmann::json;
 
 // Debug-monitor wire protocol version. Bump on any breaking change to the
 // request/response/event JSON format. The LynxDebug client negotiates this via
-// the "handshake" command on connect and warns on mismatch. See README_VSCODE_PROTOCOL.md.
+// the "handshake" command on connect and warns on mismatch. See VSCODE_PROTOCOL_README.md.
 #define DM_PROTOCOL_VERSION 1
 #define DM_MAX_MESSAGE_SIZE (4 * 1024 * 1024)
+#define DM_MAX_IN_QUEUE 1024
+#define DM_MAX_OUT_QUEUE 1024
+#define DM_AUTH_ENV "GEARLYNX_DEBUG_MONITOR_TOKEN"
 
 enum DebugMonitorStopReason
 {
@@ -77,6 +80,11 @@ public:
     void Push(DebugMonitorMessage* msg)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_queue.size() >= DM_MAX_OUT_QUEUE)
+        {
+            delete msg;
+            return;
+        }
         m_queue.push(msg);
         m_cv.notify_one();
     }
@@ -123,6 +131,11 @@ public:
     void Push(DebugMonitorCommand* cmd)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_queue.size() >= DM_MAX_IN_QUEUE)
+        {
+            delete cmd;
+            return;
+        }
         m_queue.push(cmd);
     }
 
@@ -176,6 +189,8 @@ private:
     void RecvLoop();
     void SendLoop();
 
+    bool ConfigureClientSocket(glynx_socket_t client);
+    bool ValidateAuthToken(const json& params) const;
     bool JsonReadU32(const json& params, const char* name, u32* value) const;
     bool JsonReadS64(const json& params, const char* name, s64* value) const;
     bool JsonReadS32Range(const json& params, const char* name, s32 min_value, s32 max_value, s32* value) const;
@@ -221,6 +236,7 @@ private:
 
     GearlynxCore* m_core;
     DebugAdapter* m_debug_adapter;
+    std::string m_auth_token;
 
     DebugMonitorInQueue m_in_queue;
     DebugMonitorOutQueue m_out_queue;

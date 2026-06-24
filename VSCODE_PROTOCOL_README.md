@@ -46,6 +46,10 @@ Gearlynx --debug-monitor --debug-monitor-port 6502 --headless game.lnx
 - **Framing:** each message is `Content-Length: <n>\r\n\r\n` followed by `<n>`
   bytes of UTF-8 JSON (the same framing the Debug Adapter Protocol uses).
 - **Message size:** frames larger than 4 MiB are rejected.
+- **Optional auth:** if `GEARLYNX_DEBUG_MONITOR_TOKEN` is set, each request must
+  include a top-level `token` field with the same value.
+- **Timeouts:** accepted debug-monitor client sockets use 10 second receive/send
+  timeouts.
 - `TCP_NODELAY` is set on both ends.
 
 ### Requests
@@ -53,11 +57,13 @@ Gearlynx --debug-monitor --debug-monitor-port 6502 --headless game.lnx
 A request is a JSON object:
 
 ```json
-{ "id": 12, "cmd": "registers_get", "...": "command-specific params" }
+{ "id": 12, "cmd": "registers_get", "token": "optional-token", "...": "command-specific params" }
 ```
 
 - `id` (integer) -- client-assigned, echoed back in the response.
 - `cmd` (string) -- the command name.
+- `token` (string, optional) -- required only when
+  `GEARLYNX_DEBUG_MONITOR_TOKEN` is set in the emulator environment.
 - Any additional keys are command parameters.
 
 ### Responses
@@ -132,6 +138,8 @@ Response:
 
 A separate raw-binary TCP server (debug-monitor port `+ 1`) streams frames at
 display rate (`platforms/shared/desktop/vscode/framebuffer_server.cpp`).
+Framebuffer dimensions are capped to the Lynx display envelope and frames larger
+than 160 x 160 RGBA pixels are dropped before allocation or transmission.
 
 Per frame, the server sends an 8-byte little-endian header followed by the pixel
 payload:

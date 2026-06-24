@@ -23,8 +23,12 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <condition_variable>
 #include "common.h"
 #include "socket_types.h"
+
+#define FB_MAX_DIMENSION GLYNX_SCREEN_WIDTH
+#define FB_MAX_FRAME_SIZE (FB_MAX_DIMENSION * FB_MAX_DIMENSION * 4)
 
 class FramebufferServer
 {
@@ -43,6 +47,7 @@ public:
 private:
     void AcceptLoop();
     void ClientLoop(glynx_socket_t client);
+    bool ConfigureClientSocket(glynx_socket_t client);
     bool SendAll(glynx_socket_t client, const u8* data, int size);
 
     int m_port;
@@ -60,6 +65,7 @@ private:
     int m_frame_height;
     int m_frame_size;
     std::mutex m_frame_mutex;
+    std::condition_variable m_frame_cv;
     std::atomic<bool> m_frame_ready;
 };
 

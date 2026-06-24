@@ -33,6 +33,7 @@
     #include <netinet/in.h>
     #include <netinet/tcp.h>
     #include <arpa/inet.h>
+    #include <sys/time.h>
     #include <unistd.h>
     typedef int glynx_socket_t;
     typedef socklen_t glynx_socket_len_t;

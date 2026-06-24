@@ -19,7 +19,6 @@
 
 #include "framebuffer_server.h"
 #include "log.h"
-#include <SDL3/SDL.h>
 #include <cstring>
 
 FramebufferServer::FramebufferServer(int port)
@@ -97,6 +96,7 @@ void FramebufferServer::Stop()
 
     m_running.store(false);
     m_frame_ready.store(false);
+    m_frame_cv.notify_all();
 
     {
         std::lock_guard<std::mutex> lock(m_client_mutex);
@@ -138,8 +138,17 @@ void FramebufferServer::PushFrame(const u8* framebuffer, int width, int height, 
     if (!m_running.load() || !m_client_connected.load())
         return;
 
+    if (!IsValidPointer(framebuffer) || width <= 0 || height <= 0 || stride_pixels < width)
+        return;
+
+    if (width > FB_MAX_DIMENSION || height > FB_MAX_DIMENSION || stride_pixels > FB_MAX_DIMENSION)
+        return;
+
     int row_bytes = width * 4;
     int total = row_bytes * height;
+
+    if (total <= 0 || total > FB_MAX_FRAME_SIZE)
+        return;
 
     {
         std::lock_guard<std::mutex> lock(m_frame_mutex);
@@ -158,6 +167,7 @@ void FramebufferServer::PushFrame(const u8* framebuffer, int width, int height, 
     }
 
     m_frame_ready.store(true);
+    m_frame_cv.notify_one();
 }
 
 void FramebufferServer::AcceptLoop()
@@ -175,6 +185,13 @@ void FramebufferServer::AcceptLoop()
             continue;
         }
 
+        if (!ConfigureClientSocket(client))
+        {
+            Error("[FramebufferStream] Failed to configure client socket");
+            GLYNX_SOCKET_CLOSE(client);
+            continue;
+        }
+
         // Close previous client under lock, then join outside to avoid deadlock
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
@@ -185,11 +202,10 @@ void FramebufferServer::AcceptLoop()
                 m_client_connected.store(false);
             }
         }
+        m_frame_cv.notify_all();
+
         if (m_client_thread.joinable())
             m_client_thread.join();
-
-        int tcp_opt = 1;
-        setsockopt(client, IPPROTO_TCP, TCP_NODELAY, (const char*)&tcp_opt, sizeof(tcp_opt));
 
         Log("[FramebufferStream] Client connected");
         m_client_thread = std::thread(&FramebufferServer::ClientLoop, this, client);
@@ -211,23 +227,28 @@ void FramebufferServer::ClientLoop(glynx_socket_t client)
     // Header: width (u16 LE), height (u16 LE), size (u32 LE)
     while (m_running.load() && m_client_connected.load())
     {
-        if (!m_frame_ready.load())
-        {
-            SDL_Delay(1);
-            continue;
-        }
-
-        m_frame_ready.store(false);
-
         int w = 0;
         int h = 0;
         int size = 0;
 
         {
-            std::lock_guard<std::mutex> lock(m_frame_mutex);
+            std::unique_lock<std::mutex> lock(m_frame_mutex);
+            m_frame_cv.wait(lock, [this]
+            {
+                return m_frame_ready.load() || !m_running.load() || !m_client_connected.load();
+            });
+
+            if (!m_running.load() || !m_client_connected.load())
+                break;
+
+            m_frame_ready.store(false);
+
             w = m_frame_width;
             h = m_frame_height;
             size = m_frame_size;
+
+            if (!IsValidPointer(m_frame_buffer) || size <= 0 || size > FB_MAX_FRAME_SIZE)
+                continue;
 
             if (send_buffer_size < size)
             {
@@ -273,6 +294,27 @@ void FramebufferServer::ClientLoop(glynx_socket_t client)
             m_client_connected.store(false);
         }
     }
+}
+
+bool FramebufferServer::ConfigureClientSocket(glynx_socket_t client)
+{
+    int tcp_opt = 1;
+    if (setsockopt(client, IPPROTO_TCP, TCP_NODELAY, (const char*)&tcp_opt, sizeof(tcp_opt)) < 0)
+        return false;
+
+#ifdef _WIN32
+    DWORD timeout = 5000;
+    if (setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout)) < 0)
+        return false;
+#else
+    struct timeval timeout;
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
+    if (setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
+        return false;
+#endif
+
+    return true;
 }
 
 bool FramebufferServer::SendAll(glynx_socket_t client, const u8* data, int size)

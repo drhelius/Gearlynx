@@ -21,6 +21,7 @@
 #include "emu.h"
 #include "config.h"
 #include "rewind.h"
+#include <cstdlib>
 #include <cstring>
 
 DebugMonitorServer::DebugMonitorServer(int port)
@@ -68,6 +69,12 @@ void DebugMonitorServer::Start()
         return;
     }
 
+    const char* auth_token = getenv(DM_AUTH_ENV);
+    if (auth_token && auth_token[0])
+        m_auth_token = auth_token;
+    else
+        m_auth_token.clear();
+
     int opt = 1;
     setsockopt(m_server_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
 
@@ -98,6 +105,8 @@ void DebugMonitorServer::Start()
     m_running.store(true);
 
     Log("[DebugMonitor] Listening on 127.0.0.1:%d", m_port);
+    if (!m_auth_token.empty())
+        Log("[DebugMonitor] Token authentication enabled from %s", DM_AUTH_ENV);
 
     m_accept_thread = std::thread(&DebugMonitorServer::AcceptLoop, this);
     m_send_thread = std::thread(&DebugMonitorServer::SendLoop, this);
@@ -172,6 +181,13 @@ void DebugMonitorServer::AcceptLoop()
             continue;
         }
 
+        if (!ConfigureClientSocket(client))
+        {
+            Error("[DebugMonitor] Failed to configure client socket");
+            GLYNX_SOCKET_CLOSE(client);
+            continue;
+        }
+
         // Close previous client under lock, then join outside to avoid deadlock
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
@@ -189,10 +205,6 @@ void DebugMonitorServer::AcceptLoop()
 
         {
             std::lock_guard<std::mutex> lock(m_client_mutex);
-
-            int tcp_opt = 1;
-            setsockopt(client, IPPROTO_TCP, TCP_NODELAY, (const char*)&tcp_opt, sizeof(tcp_opt));
-
             m_client_socket = client;
             m_connection_id++;
             m_client_connected.store(true);
@@ -247,6 +259,12 @@ void DebugMonitorServer::RecvLoop()
         if (cmd.empty())
         {
             EnqueueResponse(id, false, {{"error", "missing cmd field"}});
+            continue;
+        }
+
+        if (!ValidateAuthToken(msg))
+        {
+            EnqueueResponse(id, false, {{"error", "unauthorized"}});
             continue;
         }
 
@@ -340,7 +358,10 @@ bool DebugMonitorServer::RecvMessage(glynx_socket_t sock, std::string& out_json)
 
         while (*p >= '0' && *p <= '9')
         {
-            content_length = (content_length * 10) + (*p - '0');
+            int digit = *p - '0';
+            if (content_length > (DM_MAX_MESSAGE_SIZE - digit) / 10)
+                return false;
+            content_length = (content_length * 10) + digit;
             if (content_length > DM_MAX_MESSAGE_SIZE)
                 return false;
             p++;
@@ -366,6 +387,9 @@ bool DebugMonitorServer::RecvMessage(glynx_socket_t sock, std::string& out_json)
 
 bool DebugMonitorServer::SendMessage(glynx_socket_t sock, const std::string& json_str)
 {
+    if (json_str.size() > DM_MAX_MESSAGE_SIZE)
+        return false;
+
     std::string frame = "Content-Length: " + std::to_string(json_str.size()) + "\r\n\r\n" + json_str;
 
     int total_sent = 0;
@@ -462,6 +486,43 @@ void DebugMonitorServer::EnqueueEvent(const std::string& event, const json& data
 }
 
 // ---- Helpers ----
+
+bool DebugMonitorServer::ConfigureClientSocket(glynx_socket_t client)
+{
+    int tcp_opt = 1;
+    if (setsockopt(client, IPPROTO_TCP, TCP_NODELAY, (const char*)&tcp_opt, sizeof(tcp_opt)) < 0)
+        return false;
+
+#ifdef _WIN32
+    DWORD timeout = 10000;
+    if (setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0)
+        return false;
+    if (setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout)) < 0)
+        return false;
+#else
+    struct timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+    if (setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+        return false;
+    if (setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
+        return false;
+#endif
+
+    return true;
+}
+
+bool DebugMonitorServer::ValidateAuthToken(const json& params) const
+{
+    if (m_auth_token.empty())
+        return true;
+
+    std::string token;
+    if (!JsonReadString(params, "token", &token))
+        return false;
+
+    return token == m_auth_token;
+}
 
 bool DebugMonitorServer::JsonReadU32(const json& params, const char* name, u32* value) const
 {
