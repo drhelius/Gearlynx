@@ -19,9 +19,9 @@
 
 #include "debug_monitor_server.h"
 #include "common.h"
-#include "emu.h"
-#include "config.h"
-#include "rewind.h"
+#include "../emu.h"
+#include "../config.h"
+#include "../rewind.h"
 #include <cstdlib>
 #include <cstring>
 
