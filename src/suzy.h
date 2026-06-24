@@ -132,6 +132,7 @@ public:
     Suzy_State* GetState();
     bool IsBlitterBusy();
     void SetFastSpriteRendering(bool enabled);
+    void SetSpriteBoundingBox(GLYNX_Sprite_Bounding_Box_Mode mode, u8 pen);
     void SetTraceLogger(TraceLogger* trace_logger);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
@@ -200,6 +201,8 @@ private:
     bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
     bool DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
     bool DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id);
+    void BeginSpriteBoundingBox();
+    void DrawSpriteBoundingBox();
     void AddPackedPixelTicks();
     void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id);
     u8 RamRead(u16 address);
@@ -232,6 +235,14 @@ private:
     TraceLogger* m_trace_logger;
     QuadPos m_quad_lut[4][4][4] = {};
     bool m_fast_sprite_rendering;
+    GLYNX_Sprite_Bounding_Box_Mode m_sprite_bounding_box_mode;
+    bool m_sprite_bounding_box_active;
+    u8 m_sprite_bounding_box_pen;
+    bool m_sprite_bounding_box_valid;
+    s32 m_sprite_bounding_box_min_x;
+    s32 m_sprite_bounding_box_min_y;
+    s32 m_sprite_bounding_box_max_x;
+    s32 m_sprite_bounding_box_max_y;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     std::vector<GLYNX_SCB_Info> m_frame_scb_list;
     std::vector<GLYNX_SCB_Info> m_frame_scb_list_display;

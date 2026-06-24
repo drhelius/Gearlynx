@@ -1086,7 +1086,11 @@ static void menu_debug(void)
     {
         gui_in_use = true;
 
-        ImGui::MenuItem("Enable", "", &config_debug.debug);
+        if (ImGui::MenuItem("Enable", "", &config_debug.debug))
+        {
+            emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+            emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
+        }
 
         ImGui::Separator();
 
@@ -1209,6 +1213,44 @@ static void menu_debug(void)
         ImGui::MenuItem("Show Framebuffers", "", &config_debug.show_frame_buffers, config_debug.debug);
         ImGui::MenuItem("Show LCD / Video DMA", "", &config_debug.show_lcd, config_debug.debug);
 
+        if (ImGui::BeginMenu("Sprite Bounding Box", config_debug.debug))
+        {
+            static const char* k_sprite_bounding_box_modes = "Disabled\0All Sprites\0SPRCOLL Bit 7\0\0";
+            ImGui::PushItemWidth(130.0f);
+            if (ImGui::Combo("##sprite_bbox_mode", &config_debug.sprite_bounding_box_mode, k_sprite_bounding_box_modes))
+                emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+            bool mode_hovered = ImGui::IsItemHovered();
+            ImGui::PopItemWidth();
+            mode_hovered |= ImGui::IsItemHovered();
+
+            if (mode_hovered)
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("Disabled: do not draw sprite bounding boxes.");
+                ImGui::Text("All Sprites: draw a box after every rendered sprite.");
+                ImGui::Text("SPRCOLL Bit 7: draw only SCBs with SPRCOLL bit 7 ($80) set.");
+                ImGui::Text("Real Lynx hardware ignores SPRCOLL bit 7.");
+                ImGui::Text("The outline uses the selected Lynx pen.");
+                ImGui::EndTooltip();
+            }
+
+            static const char* k_pen_names = "Pen 0\0Pen 1\0Pen 2\0Pen 3\0Pen 4\0Pen 5\0Pen 6\0Pen 7\0Pen 8\0Pen 9\0Pen 10\0Pen 11\0Pen 12\0Pen 13\0Pen 14\0Pen 15\0\0";
+            ImGui::PushItemWidth(100.0f);
+            if (ImGui::Combo("##sprite_bbox_pen", &config_debug.sprite_bounding_box_pen, k_pen_names))
+                emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+
+            Mikey::Mikey_State* mikey_state = emu_get_core()->GetMikey()->GetState();
+            u8 g = mikey_state->colors[config_debug.sprite_bounding_box_pen].green;
+            u8 br = mikey_state->colors[config_debug.sprite_bounding_box_pen].bluered;
+            u16 color = (g << 8) | br;
+            ImVec4 float_color = color_444_to_float(color);
+            ImGui::ColorEdit3("##sprite_bbox_pen_color", (float*)&float_color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoPicker);
+
+            ImGui::EndMenu();
+        }
+
         ImGui::Separator();
 
         ImGui::MenuItem("Show EEPROM", "", &config_debug.show_eeprom, config_debug.debug);
@@ -1217,6 +1259,16 @@ static void menu_debug(void)
         ImGui::Separator();
 
         ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
+
+        if (ImGui::MenuItem("Debug Output", "", &config_debug.debug_output_enabled))
+            emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Enable debug output registers ($FDC0-$FDC4).");
+            ImGui::Text("Games can send text to the Trace Logger.");
+            ImGui::EndTooltip();
+        }
 
         ImGui::Separator();
 
