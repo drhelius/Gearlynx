@@ -646,6 +646,52 @@ INLINE void Suzy::SetSCBAccumulationEnabled(bool enabled)
 }
 #endif
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+INLINE void Suzy::BeginSpriteBoundingBoxFrame()
+{
+    m_sprite_bounding_box_list.clear();
+
+    if (m_sprite_bounding_box_mode == GLYNX_SPRITE_BOUNDING_BOX_DISABLED)
+        m_sprite_bounding_box_list_display.clear();
+}
+
+INLINE void Suzy::EndSpriteBoundingBoxFrame()
+{
+    if (m_sprite_bounding_box_mode == GLYNX_SPRITE_BOUNDING_BOX_DISABLED)
+    {
+        m_sprite_bounding_box_list.clear();
+        m_sprite_bounding_box_list_display.clear();
+        return;
+    }
+
+    size_t write_index = 0;
+    for (size_t i = 0; i < m_sprite_bounding_box_list_display.size(); i++)
+    {
+        GLYNX_Sprite_Bounding_Box box = m_sprite_bounding_box_list_display[i];
+        if (box.frames_left == 0)
+            continue;
+
+        box.frames_left--;
+        m_sprite_bounding_box_list_display[write_index++] = box;
+    }
+    m_sprite_bounding_box_list_display.resize(write_index);
+
+    for (size_t i = 0; i < m_sprite_bounding_box_list.size(); i++)
+    {
+        GLYNX_Sprite_Bounding_Box box = m_sprite_bounding_box_list[i];
+        box.frames_left = (u8)m_sprite_bounding_box_decay;
+        m_sprite_bounding_box_list_display.push_back(box);
+    }
+
+    m_sprite_bounding_box_list.clear();
+}
+
+INLINE std::vector<Suzy::GLYNX_Sprite_Bounding_Box>* Suzy::GetSpriteBoundingBoxList()
+{
+    return &m_sprite_bounding_box_list_display;
+}
+#endif
+
 INLINE void Suzy::SpritesGo()
 {
     DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X",
@@ -810,7 +856,9 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.sprite_cycles += 5 * k_suzy_ram_read_ticks;
             m_state.fred = 0;
             m_state.everon = false;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
             BeginSpriteBoundingBox();
+#endif
 
             if (IS_SET_BIT(m_state.SPRCTL1, 2))
             {
@@ -1195,7 +1243,9 @@ INLINE void Suzy::StepBlitterPhase()
                 RamWrite(colpos, depository);
             }
 
-            DrawSpriteBoundingBox();
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            AddSpriteBoundingBox();
+#endif
 
             m_state.fsm_phase = SUZY_PHASE_SCB_NEXT;
             break;
@@ -1372,7 +1422,9 @@ INLINE void Suzy::DrawSprite()
     m_state.SCBNEXT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
     m_state.sprite_cycles += 5 * k_suzy_ram_read_ticks;  // 5 bytes from SCB header
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     BeginSpriteBoundingBox();
+#endif
 
     if (IS_SET_BIT(m_state.SPRCTL1, 2))
     {
@@ -1671,11 +1723,16 @@ INLINE void Suzy::DrawSprite()
         RamWrite(colpos, depository);
     }
 
-    DrawSpriteBoundingBox();
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    AddSpriteBoundingBox();
+#endif
 }
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
 INLINE void Suzy::BeginSpriteBoundingBox()
 {
+    m_sprite_bounding_box_active = false;
+
     if (unlikely(m_sprite_bounding_box_mode != GLYNX_SPRITE_BOUNDING_BOX_DISABLED))
     {
         m_sprite_bounding_box_active = 
@@ -1689,118 +1746,19 @@ INLINE void Suzy::BeginSpriteBoundingBox()
     }
 }
 
-INLINE void Suzy::DrawSpriteBoundingBox()
+INLINE void Suzy::AddSpriteBoundingBox()
 {
     if (!m_sprite_bounding_box_active || !m_sprite_bounding_box_valid)
         return;
 
-    u8 color = m_sprite_bounding_box_pen;
-    u8 color_left = (u8)(color << 4);
-    u8 color_byte = (u8)(color_left | color);
-    const s32 bytes_per_line = GLYNX_SCREEN_WIDTH / 2;
-
-    s32 x0 = m_sprite_bounding_box_min_x;
-    s32 x1 = m_sprite_bounding_box_max_x;
-    s32 y0 = m_sprite_bounding_box_min_y;
-    s32 y1 = m_sprite_bounding_box_max_y;
-
-    u16 row_addr = (u16)(m_state.VIDBAS.value + (u16)(y0 * bytes_per_line));
-    s32 x = x0;
-
-    // Top edge: align to a full byte before writing pixel pairs.
-    if ((x & 1) != 0)
-    {
-        u16 addr = (u16)(row_addr + (u16)(x >> 1));
-        RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
-        x++;
-    }
-
-    // Top edge: write two pixels per byte while possible.
-    for (; x + 1 <= x1; x += 2)
-    {
-        u16 addr = (u16)(row_addr + (u16)(x >> 1));
-        RamWrite(addr, color_byte);
-    }
-
-    // Top edge: preserve the untouched right nibble on odd widths.
-    if (x <= x1)
-    {
-        u16 addr = (u16)(row_addr + (u16)(x >> 1));
-        RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
-    }
-
-    // Bottom edge: skip duplicate work for one-line boxes.
-    if (y0 != y1)
-    {
-        row_addr = (u16)(m_state.VIDBAS.value + (u16)(y1 * bytes_per_line));
-        x = x0;
-
-        // Bottom edge: align to a full byte before writing pixel pairs.
-        if ((x & 1) != 0)
-        {
-            u16 addr = (u16)(row_addr + (u16)(x >> 1));
-            RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
-            x++;
-        }
-
-        // Bottom edge: write two pixels per byte while possible.
-        for (; x + 1 <= x1; x += 2)
-        {
-            u16 addr = (u16)(row_addr + (u16)(x >> 1));
-            RamWrite(addr, color_byte);
-        }
-
-        // Bottom edge: preserve the untouched right nibble on odd widths.
-        if (x <= x1)
-        {
-            u16 addr = (u16)(row_addr + (u16)(x >> 1));
-            RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
-        }
-    }
-
-    // Vertical edges: top/bottom already cover boxes up to two lines tall.
-    if (y1 <= y0 + 1)
-        return;
-
-    bool left_is_left = ((x0 & 1) == 0);
-    bool right_is_left = ((x1 & 1) == 0);
-    u16 left_byte = (u16)(x0 >> 1);
-    u16 right_byte = (u16)(x1 >> 1);
-
-    // Middle rows: draw only the left and right edges.
-    for (s32 y = y0 + 1; y < y1; y++)
-    {
-        row_addr = (u16)(m_state.VIDBAS.value + (u16)(y * bytes_per_line));
-
-        u16 addr = (u16)(row_addr + left_byte);
-        // Narrow boxes can have both vertical edges in the same byte.
-        if (right_byte == left_byte)
-        {
-            if (x0 == x1)
-            {
-                if (left_is_left)
-                    RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
-                else
-                    RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
-            }
-            else
-                RamWrite(addr, color_byte);
-
-            continue;
-        }
-
-        if (left_is_left)
-            RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
-        else
-            RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
-
-        addr = (u16)(row_addr + right_byte);
-        if (right_is_left)
-            RamWrite(addr, (u8)((RamRead(addr) & 0x0F) | color_left));
-        else
-            RamWrite(addr, (u8)((RamRead(addr) & 0xF0) | color));
-    }
+    GLYNX_Sprite_Bounding_Box box = {};
+    box.x0 = m_sprite_bounding_box_min_x;
+    box.y0 = m_sprite_bounding_box_min_y;
+    box.x1 = m_sprite_bounding_box_max_x;
+    box.y1 = m_sprite_bounding_box_max_y;
+    m_sprite_bounding_box_list.push_back(box);
 }
+#endif
 
 INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
                                         s32 x, s32 y, s32 dx,
@@ -1961,6 +1919,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
     if ((u32)y >= (u32)GLYNX_SCREEN_HEIGHT)
         return;
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (unlikely(m_sprite_bounding_box_active))
     {
         m_sprite_bounding_box_valid = true;
@@ -1969,6 +1928,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
         m_sprite_bounding_box_max_x = MAX(m_sprite_bounding_box_max_x, x);
         m_sprite_bounding_box_max_y = MAX(m_sprite_bounding_box_max_y, y);
     }
+#endif
 
     m_state.everon = true;
     bool transparent = false;

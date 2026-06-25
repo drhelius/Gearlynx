@@ -37,14 +37,16 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
     InitPointer(m_ram);
     InitPointer(m_trace_logger);
     m_fast_sprite_rendering = false;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_sprite_bounding_box_mode = GLYNX_SPRITE_BOUNDING_BOX_DISABLED;
+    m_sprite_bounding_box_decay = 0;
     m_sprite_bounding_box_active = false;
-    m_sprite_bounding_box_pen = 0;
     m_sprite_bounding_box_valid = false;
     m_sprite_bounding_box_min_x = 0;
     m_sprite_bounding_box_min_y = 0;
     m_sprite_bounding_box_max_x = 0;
     m_sprite_bounding_box_max_y = 0;
+#endif
     Reset();
 }
 Suzy::~Suzy()
@@ -69,16 +71,29 @@ void Suzy::SetFastSpriteRendering(bool enabled)
     m_fast_sprite_rendering = enabled;
 }
 
-void Suzy::SetSpriteBoundingBox(GLYNX_Sprite_Bounding_Box_Mode mode, u8 pen)
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+void Suzy::SetSpriteBoundingBox(GLYNX_Sprite_Bounding_Box_Mode mode, int decay)
 {
     if (mode < GLYNX_SPRITE_BOUNDING_BOX_DISABLED || mode > GLYNX_SPRITE_BOUNDING_BOX_SPRCOLL_BIT_7)
         mode = GLYNX_SPRITE_BOUNDING_BOX_DISABLED;
 
     m_sprite_bounding_box_mode = mode;
+    m_sprite_bounding_box_decay = CLAMP(decay, 0, 10);
+
     if (mode == GLYNX_SPRITE_BOUNDING_BOX_DISABLED)
+    {
         m_sprite_bounding_box_active = false;
-    m_sprite_bounding_box_pen = pen & 0x0F;
+        m_sprite_bounding_box_list.clear();
+        m_sprite_bounding_box_list_display.clear();
+    }
+
+    for (size_t i = 0; i < m_sprite_bounding_box_list_display.size(); i++)
+    {
+        if (m_sprite_bounding_box_list_display[i].frames_left > m_sprite_bounding_box_decay)
+            m_sprite_bounding_box_list_display[i].frames_left = (u8)m_sprite_bounding_box_decay;
+    }
 }
+#endif
 
 void Suzy::Reset()
 {
@@ -89,6 +104,11 @@ void Suzy::Reset()
         m_state.pen_map[i] = i;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_sprite_bounding_box_active = false;
+    m_sprite_bounding_box_valid = false;
+    m_sprite_bounding_box_list.clear();
+    m_sprite_bounding_box_list_display.clear();
+
     m_scb_accumulation_enabled = false;
     m_frame_scb_list.clear();
     m_frame_scb_list_display.clear();

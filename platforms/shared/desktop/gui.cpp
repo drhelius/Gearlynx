@@ -55,6 +55,10 @@ static void show_status_message(void);
 static void show_error_window(void);
 static void show_loading_popup(void);
 static bool finish_loading_rom(void);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+static ImU32 sprite_bounding_box_color(void);
+static void draw_sprite_bounding_boxes(const ImVec2& image_pos, const ImVec2& image_size);
+#endif
 static void set_style(void);
 static void set_style_light(ImGuiStyle& style);
 static void set_style_dark(ImGuiStyle& style);
@@ -105,7 +109,7 @@ bool gui_init(void)
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
     emu_set_fast_sprite_rendering(config_emulator.fast_sprite_rendering);
-    emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+    emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_decay);
     emu_audio_mute(!config_audio.enable);
     emu_audio_set_master_volume(config_audio.master_volume);
     emu_audio_set_lowpass_cutoff((float)config_audio.lowpass_cutoff);
@@ -643,6 +647,9 @@ static void main_window(void)
     ogl_renderer_get_screen_uv(&tex_h, &tex_v);
 
     ImGui::Image((ImTextureID)(intptr_t)ogl_renderer_get_screen_texture(), ImVec2(image_w, image_h), ImVec2(0, 0), ImVec2(tex_h, tex_v));
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    draw_sprite_bounding_boxes(ImGui::GetItemRectMin(), ImGui::GetItemRectSize());
+#endif
 
     if (config_video.fps)
         gui_show_fps();
@@ -653,6 +660,70 @@ static void main_window(void)
     ImGui::PopStyleVar();
     ImGui::PopStyleVar();
 }
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+static ImU32 sprite_bounding_box_color(void)
+{
+    static const ImU32 k_colors[] = {
+        IM_COL32(255, 0, 255, 255),
+        IM_COL32(0, 255, 255, 255),
+        IM_COL32(255, 0, 0, 255),
+        IM_COL32(0, 255, 0, 255),
+        IM_COL32(0, 0, 255, 255),
+        IM_COL32(255, 255, 0, 255),
+        IM_COL32(255, 255, 255, 255),
+        IM_COL32(0, 0, 0, 255)
+    };
+
+    int color = CLAMP(config_debug.sprite_bounding_box_color, 0, 7);
+    return k_colors[color];
+}
+
+static void draw_sprite_bounding_boxes(const ImVec2& image_pos, const ImVec2& image_size)
+{
+    if (!config_debug.debug || config_debug.sprite_bounding_box_mode == GLYNX_SPRITE_BOUNDING_BOX_DISABLED)
+        return;
+
+    std::vector<Suzy::GLYNX_Sprite_Bounding_Box>* boxes = emu_get_core()->GetSuzy()->GetSpriteBoundingBoxList();
+    if (!boxes || boxes->empty())
+        return;
+
+    GLYNX_Rotation rotation = emu_get_core()->GetMedia()->GetRotation();
+    float scale_x = image_size.x / (float)(rotation == GLYNX_ROTATION_LEFT || rotation == GLYNX_ROTATION_RIGHT ? GLYNX_SCREEN_HEIGHT : GLYNX_SCREEN_WIDTH);
+    float scale_y = image_size.y / (float)(rotation == GLYNX_ROTATION_LEFT || rotation == GLYNX_ROTATION_RIGHT ? GLYNX_SCREEN_WIDTH : GLYNX_SCREEN_HEIGHT);
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImU32 color = sprite_bounding_box_color();
+
+    for (size_t i = 0; i < boxes->size(); i++)
+    {
+        const Suzy::GLYNX_Sprite_Bounding_Box& box = (*boxes)[i];
+        float x0 = (float)box.x0;
+        float y0 = (float)box.y0;
+        float x1 = (float)(box.x1 + 1);
+        float y1 = (float)(box.y1 + 1);
+
+        if (rotation == GLYNX_ROTATION_LEFT)
+        {
+            x0 = (float)box.y0;
+            y0 = (float)(GLYNX_SCREEN_WIDTH - box.x1 - 1);
+            x1 = (float)(box.y1 + 1);
+            y1 = (float)(GLYNX_SCREEN_WIDTH - box.x0);
+        }
+        else if (rotation == GLYNX_ROTATION_RIGHT)
+        {
+            x0 = (float)(GLYNX_SCREEN_HEIGHT - box.y1 - 1);
+            y0 = (float)box.x0;
+            x1 = (float)(GLYNX_SCREEN_HEIGHT - box.y0);
+            y1 = (float)(box.x1 + 1);
+        }
+
+        ImVec2 rect_min(image_pos.x + x0 * scale_x, image_pos.y + y0 * scale_y);
+        ImVec2 rect_max(image_pos.x + x1 * scale_x, image_pos.y + y1 * scale_y);
+        draw_list->AddRect(rect_min, rect_max, color, 0.0f, 0, 1.0f);
+    }
+}
+#endif
 
 static void show_status_message(void)
 {

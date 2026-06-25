@@ -55,6 +55,9 @@ template<bool debugger>
 bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
     m_mikey->GetLcdScreen()->SetBuffer(frame_buffer);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_suzy->BeginSpriteBoundingBoxFrame();
+#endif
 
     if (debugger)
     {
@@ -124,6 +127,9 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
         while (!stop);
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        m_suzy->EndSpriteBoundingBoxFrame();
+#endif
         m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
         m_audio->EndFrame(sample_buffer, sample_count);
 
@@ -167,6 +173,9 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
         }
         while (!stop);
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        m_suzy->EndSpriteBoundingBoxFrame();
+#endif
         m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
         m_audio->EndFrame(sample_buffer, sample_count);
 

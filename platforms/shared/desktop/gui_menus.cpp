@@ -1088,7 +1088,7 @@ static void menu_debug(void)
 
         if (ImGui::MenuItem("Enable", "", &config_debug.debug))
         {
-            emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+            emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_decay);
             emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
         }
 
@@ -1218,7 +1218,7 @@ static void menu_debug(void)
             static const char* k_sprite_bounding_box_modes = "Disabled\0All Sprites\0SPRCOLL Bit 7\0\0";
             ImGui::PushItemWidth(130.0f);
             if (ImGui::Combo("##sprite_bbox_mode", &config_debug.sprite_bounding_box_mode, k_sprite_bounding_box_modes))
-                emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+                emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_decay);
             bool mode_hovered = ImGui::IsItemHovered();
             ImGui::PopItemWidth();
             mode_hovered |= ImGui::IsItemHovered();
@@ -1230,23 +1230,30 @@ static void menu_debug(void)
                 ImGui::Text("All Sprites: draw a box after every rendered sprite.");
                 ImGui::Text("SPRCOLL Bit 7: draw only SCBs with SPRCOLL bit 7 ($80) set.");
                 ImGui::Text("Real Lynx hardware ignores SPRCOLL bit 7.");
-                ImGui::Text("The outline uses the selected Lynx pen.");
+                ImGui::Text("The outline uses the selected color.");
                 ImGui::EndTooltip();
             }
 
-            static const char* k_pen_names = "Pen 0\0Pen 1\0Pen 2\0Pen 3\0Pen 4\0Pen 5\0Pen 6\0Pen 7\0Pen 8\0Pen 9\0Pen 10\0Pen 11\0Pen 12\0Pen 13\0Pen 14\0Pen 15\0\0";
-            ImGui::PushItemWidth(100.0f);
-            if (ImGui::Combo("##sprite_bbox_pen", &config_debug.sprite_bounding_box_pen, k_pen_names))
-                emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_pen);
+            static const char* k_color_names = "Magenta\0Cyan\0Red\0Green\0Blue\0Yellow\0White\0Black\0\0";
+            ImGui::PushItemWidth(130.0f);
+            ImGui::Combo("##sprite_bbox_color", &config_debug.sprite_bounding_box_color, k_color_names);
             ImGui::PopItemWidth();
-            ImGui::SameLine();
 
-            Mikey::Mikey_State* mikey_state = emu_get_core()->GetMikey()->GetState();
-            u8 g = mikey_state->colors[config_debug.sprite_bounding_box_pen].green;
-            u8 br = mikey_state->colors[config_debug.sprite_bounding_box_pen].bluered;
-            u16 color = (g << 8) | br;
-            ImVec4 float_color = color_444_to_float(color);
-            ImGui::ColorEdit3("##sprite_bbox_pen_color", (float*)&float_color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoPicker);
+            if (ImGui::BeginMenu("Decay"))
+            {
+                ImGui::PushItemWidth(140.0f);
+                if (ImGui::SliderInt("##sprite_bbox_decay", &config_debug.sprite_bounding_box_decay, 0, 10, "%d frames", ImGuiSliderFlags_AlwaysClamp))
+                    emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_decay);
+                ImGui::PopItemWidth();
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Number of frames to keep boxes after the frame that generated them.");
+                    ImGui::Text("0 shows only the current frame.");
+                    ImGui::EndTooltip();
+                }
+                ImGui::EndMenu();
+            }
 
             ImGui::EndMenu();
         }

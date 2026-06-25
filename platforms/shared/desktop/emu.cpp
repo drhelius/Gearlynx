@@ -562,11 +562,16 @@ void emu_set_fast_sprite_rendering(bool enabled)
     core->GetSuzy()->SetFastSpriteRendering(enabled);
 }
 
-void emu_set_sprite_bounding_box(int mode, int pen)
+void emu_set_sprite_bounding_box(int mode, int decay)
 {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
     int mode_index = CLAMP(mode, GLYNX_SPRITE_BOUNDING_BOX_DISABLED, GLYNX_SPRITE_BOUNDING_BOX_SPRCOLL_BIT_7);
-    int pen_index = CLAMP(pen, 0, 15);
-    core->GetSuzy()->SetSpriteBoundingBox((GLYNX_Sprite_Bounding_Box_Mode)mode_index, (u8)pen_index);
+    int decay_frames = CLAMP(decay, 0, 10);
+    core->GetSuzy()->SetSpriteBoundingBox((GLYNX_Sprite_Bounding_Box_Mode)mode_index, decay_frames);
+#else
+    UNUSED(mode);
+    UNUSED(decay);
+#endif
 }
 
 void emu_set_debug_output(bool enabled)
