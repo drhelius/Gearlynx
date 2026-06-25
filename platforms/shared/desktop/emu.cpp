@@ -28,6 +28,7 @@
 #include "sound_queue.h"
 #include "config.h"
 #include "rewind.h"
+#include "runahead.h"
 #include "events.h"
 #include "mcp/mcp_manager.h"
 #include "vscode/debug_monitor_server.h"
@@ -126,6 +127,7 @@ bool emu_init(void)
         emu_debug_irq_breakpoints[i] = false;
 
     rewind_init();
+    runahead_init();
 
     mcp_manager = new McpManager();
     mcp_manager->Init(core);
@@ -147,6 +149,7 @@ void emu_destroy(void)
 
     save_ram();
     rewind_destroy();
+    runahead_destroy();
     SafeDelete(fb_server);
     SafeDelete(debug_monitor);
     SafeDelete(mcp_manager);
@@ -355,7 +358,13 @@ void emu_update(void)
         if (!core->IsPaused())
         {
             rewind_commit_seek();
-            core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
+
+            int runahead = runahead_get_frames();
+            if (runahead > 0)
+                runahead_run(runahead, emu_frame_buffer, audio_buffer, &sampleCount);
+            else
+                core->RunToVBlank(emu_frame_buffer, audio_buffer, &sampleCount);
+
             frame_executed = true;
             frame_completed = true;
         }

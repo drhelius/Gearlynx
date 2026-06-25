@@ -69,6 +69,7 @@ struct config_Emulator
     bool pause_when_inactive = true;
     bool ffwd = false;
     int ffwd_speed = 1;
+    int runahead = 0;
     bool fast_sprite_rendering = false;
     bool show_info = false;
     std::string recent_roms[config_max_recent_roms];
