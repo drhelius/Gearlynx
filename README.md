@@ -99,6 +99,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - User selectable Lynx I or Lynx II emulation.
 - Compressed and homebrew ROM support (lnx, lyx, o, and zip).
 - Save states with preview and rewind support.
+- Run-ahead support to reduce input latency.
 - Very accurate audio emulation with configurable low-pass filter (mimics original Lynx audio hardware).
 - VGM recorder.
 - Internal database for automatic ROM detection and hardware selection if `Auto` options are selected.
