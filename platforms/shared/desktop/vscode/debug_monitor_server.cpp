@@ -132,10 +132,6 @@ void DebugMonitorServer::Stop()
         std::lock_guard<std::mutex> lock(m_client_mutex);
         if (m_client_socket != GLYNX_INVALID_SOCKET)
         {
-            // shutdown() before close() so a thread blocked in recv() on this
-            // socket is woken. On Linux close() alone does not interrupt a
-            // blocking recv()/accept() in another thread, which would wedge the
-            // join() below and leave the process (and its port) alive.
             GLYNX_SOCKET_SHUTDOWN(m_client_socket);
             GLYNX_SOCKET_CLOSE(m_client_socket);
             m_client_socket = GLYNX_INVALID_SOCKET;
@@ -144,8 +140,6 @@ void DebugMonitorServer::Stop()
 
     if (m_server_socket != GLYNX_INVALID_SOCKET)
     {
-        // shutdown() before close() so the AcceptLoop thread blocked in accept()
-        // is woken (see note above).
         GLYNX_SOCKET_SHUTDOWN(m_server_socket);
         GLYNX_SOCKET_CLOSE(m_server_socket);
         m_server_socket = GLYNX_INVALID_SOCKET;
