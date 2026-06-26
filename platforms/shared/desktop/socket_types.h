@@ -28,6 +28,7 @@
     typedef int glynx_socket_len_t;
     #define GLYNX_INVALID_SOCKET INVALID_SOCKET
     #define GLYNX_SOCKET_CLOSE(s) closesocket(s)
+    #define GLYNX_SOCKET_SHUTDOWN(s) ::shutdown((s), SD_BOTH)
 #else
     #include <sys/socket.h>
     #include <netinet/in.h>
@@ -39,6 +40,7 @@
     typedef socklen_t glynx_socket_len_t;
     #define GLYNX_INVALID_SOCKET -1
     #define GLYNX_SOCKET_CLOSE(s) ::close(s)
+    #define GLYNX_SOCKET_SHUTDOWN(s) ::shutdown((s), SHUT_RDWR)
 #endif
 
 #endif /* SOCKET_TYPES_H */
