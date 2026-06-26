@@ -169,7 +169,7 @@ For complete setup instructions and tool documentation, see [MCP_README.md](MCP_
 
 ### VS Code Extension
 
-A source-level debugger for VS Code -- **LynxDebug** -- lives in its own repository:
+A source-level debugger for VS Code lives in its own repository:
 [BrianPeek/gearlynx-vscode](https://github.com/BrianPeek/gearlynx-vscode). It drives
 Gearlynx over the debug-monitor protocol (`--debug-monitor`). The wire contract is
 documented in [VSCODE_PROTOCOL_README.md](VSCODE_PROTOCOL_README.md).
