@@ -117,6 +117,7 @@ void FramebufferServer::Stop()
         std::lock_guard<std::mutex> lock(m_client_mutex);
         if (m_client_socket != GLYNX_INVALID_SOCKET)
         {
+            GLYNX_SOCKET_SHUTDOWN(m_client_socket);
             GLYNX_SOCKET_CLOSE(m_client_socket);
             m_client_socket = GLYNX_INVALID_SOCKET;
         }
@@ -124,6 +125,7 @@ void FramebufferServer::Stop()
 
     if (m_server_socket != GLYNX_INVALID_SOCKET)
     {
+        GLYNX_SOCKET_SHUTDOWN(m_server_socket);
         GLYNX_SOCKET_CLOSE(m_server_socket);
         m_server_socket = GLYNX_INVALID_SOCKET;
     }
