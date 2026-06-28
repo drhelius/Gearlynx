@@ -286,10 +286,12 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-    info->geometry.base_width   = 102;
-    info->geometry.base_height  = 102;
-    info->geometry.max_width    = 160;
-    info->geometry.max_height   = 160;
+    core->GetRuntimeInfo(runtime_info);
+
+    info->geometry.base_width   = runtime_info.screen_width;
+    info->geometry.base_height  = runtime_info.screen_height;
+    info->geometry.max_width    = GLYNX_SCREEN_WIDTH;
+    info->geometry.max_height   = GLYNX_SCREEN_WIDTH;
     info->geometry.aspect_ratio = aspect_ratio == 0.0f ? (float)runtime_info.screen_width / (float)runtime_info.screen_height : aspect_ratio;
     info->timing.fps            = current_fps;
     info->timing.sample_rate    = 44100.0;
@@ -324,8 +326,8 @@ void retro_run(void)
         retro_system_av_info info;
         info.geometry.base_width   = runtime_info.screen_width;
         info.geometry.base_height  = runtime_info.screen_height;
-        info.geometry.max_width    = runtime_info.screen_width;
-        info.geometry.max_height   = runtime_info.screen_height;
+        info.geometry.max_width    = GLYNX_SCREEN_WIDTH;
+        info.geometry.max_height   = GLYNX_SCREEN_WIDTH;
         info.geometry.aspect_ratio = (aspect_ratio == 0.0f ? (float)runtime_info.screen_width / (float)runtime_info.screen_height : aspect_ratio);
         info.timing.fps            = current_fps;
         info.timing.sample_rate    = 44100.0;
