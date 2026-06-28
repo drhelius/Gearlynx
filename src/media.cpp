@@ -1314,6 +1314,11 @@ bool Media::LoadRam(std::istream& file, s32 file_size)
     }
 
     file.read(reinterpret_cast<char*>(data), size);
+    if (!file.good())
+    {
+        Error("Failed to load RAM from stream");
+        return false;
+    }
 
     return true;
 }
