@@ -184,9 +184,9 @@ void gui_debug_load_settings(const char* file_path)
         return;
     }
 
-    char magic[8];
+    char magic[8] = {};
     file.read(magic, GLDEBUG_MAGIC_LEN);
-    if (memcmp(magic, GLDEBUG_MAGIC, GLDEBUG_MAGIC_LEN) != 0)
+    if (file.gcount() != GLDEBUG_MAGIC_LEN || memcmp(magic, GLDEBUG_MAGIC, GLDEBUG_MAGIC_LEN) != 0)
     {
         Log("Invalid debug settings file: %s", file_path);
         file.close();
