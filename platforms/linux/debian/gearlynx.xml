@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+    <mime-type type="application/x-atari-lynx-rom">
+        <comment>Atari Lynx ROM</comment>
+        <glob pattern="*.lnx"/>
+    </mime-type>
+</mime-info>

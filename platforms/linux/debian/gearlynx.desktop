@@ -7,6 +7,7 @@ Exec=/usr/games/gearlynx %f
 TryExec=/usr/games/gearlynx
 Icon=gearlynx
 Terminal=false
+MimeType=application/x-atari-lynx-rom;
 Categories=Game;Emulator;
 Keywords=Atari;Lynx;Atari Lynx;
 StartupNotify=true
