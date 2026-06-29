@@ -600,7 +600,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
 
         // RESET TIMER DONE is level-triggered
         if (IS_SET_BIT(value, 6))
-            t->control_b = UNSET_BIT(t->control_b, 3) | 0xF0;
+            t->control_b = UNSET_BIT(t->control_b, 3);
 
         break;
     }
@@ -613,7 +613,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
         if (IS_NOT_SET_BIT(t->control_b, 1) && IS_SET_BIT(value, 1))
             BorrowInTimer(i, t);
-        t->control_b = value & 0xF8;
+        t->control_b = value & 0x08;
         break;
     default:
         break;
