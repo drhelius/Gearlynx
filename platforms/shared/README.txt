@@ -75,7 +75,7 @@ Features:
 - MCP server for AI-assisted debugging with GitHub Copilot, Claude, Codex and
   similar, exposing tools for execution control, memory inspection, hardware
   status, and more
-- Windows and Linux Portable Mode
+- Windows, Linux and macOS Portable Mode
 - ROM loading from the command line by adding the ROM path as an argument
 - ROM loading using drag & drop
 - Support for modern game controllers through gamecontrollerdb.txt file located
