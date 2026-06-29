@@ -18,29 +18,29 @@ This server provides tools for game development, rom hacking, reverse engineerin
     <tr>
       <td rowspan="2"><strong>Windows</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.16/Gearlynx-1.2.16-mcpb-windows-x64.mcpb">Gearlynx-1.2.16-mcpb-windows-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.17/Gearlynx-1.2.17-mcpb-windows-x64.mcpb">Gearlynx-1.2.17-mcpb-windows-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.16/Gearlynx-1.2.16-mcpb-windows-arm64.mcpb">Gearlynx-1.2.16-mcpb-windows-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.17/Gearlynx-1.2.17-mcpb-windows-arm64.mcpb">Gearlynx-1.2.17-mcpb-windows-arm64.mcpb</a></td>
     </tr>
     <tr>
       <td rowspan="2"><strong>macOS</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.16/Gearlynx-1.2.16-mcpb-macos-x64.mcpb">Gearlynx-1.2.16-mcpb-macos-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.17/Gearlynx-1.2.17-mcpb-macos-x64.mcpb">Gearlynx-1.2.17-mcpb-macos-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.16/Gearlynx-1.2.16-mcpb-macos-arm64.mcpb">Gearlynx-1.2.16-mcpb-macos-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.17/Gearlynx-1.2.17-mcpb-macos-arm64.mcpb">Gearlynx-1.2.17-mcpb-macos-arm64.mcpb</a></td>
     </tr>
     <tr>
       <td rowspan="2"><strong>Linux</strong></td>
       <td>x64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.16/Gearlynx-1.2.16-mcpb-linux-x64.mcpb">Gearlynx-1.2.16-mcpb-linux-x64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.17/Gearlynx-1.2.17-mcpb-linux-x64.mcpb">Gearlynx-1.2.17-mcpb-linux-x64.mcpb</a></td>
     </tr>
     <tr>
       <td>ARM64</td>
-      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.16/Gearlynx-1.2.16-mcpb-linux-arm64.mcpb">Gearlynx-1.2.16-mcpb-linux-arm64.mcpb</a></td>
+      <td><a href="https://github.com/drhelius/Gearlynx/releases/download/1.2.17/Gearlynx-1.2.17-mcpb-linux-arm64.mcpb">Gearlynx-1.2.17-mcpb-linux-arm64.mcpb</a></td>
     </tr>
   </tbody>
 </table>
@@ -216,7 +216,7 @@ If you prefer to build from source or configure manually:
   To bind to a custom address:
 
   ```bash
-  ./gearlynx --mcp-http --mcp-http-address 192.168.1.50 --mcp-http-port 3000
+  ./gearlynx --mcp-http --mcp-http-address 1.2.178.1.50 --mcp-http-port 3000
   ```
 
   You can also start the server using the "MCP" menu in the GUI.
