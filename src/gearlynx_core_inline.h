@@ -36,6 +36,12 @@ INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int*
         return false;
     }
 
+    if (!m_mikey->IsPoweredOn())
+    {
+        m_mikey->GetLcdScreen()->RenderNoPowerScreen(frame_buffer);
+        return false;
+    }
+
     if (m_paused || !m_media->IsReady())
         return false;
 

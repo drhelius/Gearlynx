@@ -76,6 +76,7 @@ void Mikey::Reset(bool is_lynx2)
     memset(&m_state, 0, sizeof(Mikey_State));
 
     m_is_lynx2 = is_lynx2;
+    m_state.SYSCTL1 = 0x02;
 
     m_lcd_screen->Reset();
 
@@ -328,6 +329,8 @@ void Mikey::Serialize(StateSerializer& s, int version)
     G_SERIALIZE(s, m_state.MPAN);
     G_SERIALIZE(s, m_state.MSTEREO);
     G_SERIALIZE(s, m_state.SYSCTL1);
+    if (s.IsLoading() && version < 16)
+        m_state.SYSCTL1 = SET_BIT(m_state.SYSCTL1, 1);
     G_SERIALIZE(s, m_state.IODIR);
     G_SERIALIZE(s, m_state.IODAT);
     G_SERIALIZE(s, m_state.SERCTL);

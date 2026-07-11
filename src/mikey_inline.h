@@ -468,6 +468,11 @@ INLINE Mikey::Mikey_State* Mikey::GetState()
     return &m_state;
 }
 
+INLINE bool Mikey::IsPoweredOn()
+{
+    return IS_SET_BIT(m_state.SYSCTL1, 1);
+}
+
 INLINE LcdScreen* Mikey::GetLcdScreen()
 {
     return m_lcd_screen;

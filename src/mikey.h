@@ -80,6 +80,7 @@ public:
     bool Clock(u32 cycles);
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
+    bool IsPoweredOn();
     Mikey_State* GetState();
     LcdScreen* GetLcdScreen();
     bool SwitchAudInValue();

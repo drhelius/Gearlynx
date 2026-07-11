@@ -71,6 +71,7 @@ public:
     u16* GetRGB565Palette();
     GLYNX_Pixel_Format GetPixelFormat();
     void RenderNoBiosScreen(u8* frame_buffer);
+    void RenderNoPowerScreen(u8* frame_buffer);
     void SetVBlank(bool vblank);
     LcdScreen_State* GetState();
     void SaveState(std::ostream& stream);

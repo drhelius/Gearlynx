@@ -22,6 +22,7 @@
 #include "memory.h"
 #include "bus.h"
 #include "no_bios.h"
+#include "no_power.h"
 
 LcdScreen::LcdScreen(Mikey* mikey, Memory* memory, Bus* bus)
 {
@@ -106,6 +107,13 @@ void LcdScreen::RenderNoBiosScreen(u8* frame_buffer)
     int byte_count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * (m_pixel_format == GLYNX_PIXEL_RGB565 ? 2 : 4);
     u8* no_bios_image = (m_pixel_format == GLYNX_PIXEL_RGB565) ? (u8*)k_no_bios_rgb565 : (u8*)k_no_bios_rgba8888;
     memcpy(frame_buffer, no_bios_image, byte_count);
+}
+
+void LcdScreen::RenderNoPowerScreen(u8* frame_buffer)
+{
+    int byte_count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * (m_pixel_format == GLYNX_PIXEL_RGB565 ? 2 : 4);
+    u8* no_power_image = (m_pixel_format == GLYNX_PIXEL_RGB565) ? (u8*)k_no_power_rgb565 : (u8*)k_no_power_rgba8888;
+    memcpy(frame_buffer, no_power_image, byte_count);
 }
 
 void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
