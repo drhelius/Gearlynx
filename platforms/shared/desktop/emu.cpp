@@ -1476,11 +1476,12 @@ static void render_debug_sprites(int count)
 
         int quadrant = 0;
         SpriteQuadPos pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+        SpriteQuadPos size_pos = get_sprite_quad_pos(quadrant, start_quad, 0);
         SpriteQuadPos start_pos = pos;
         s32 dx = pos.left ? -1 : +1;
         s32 dy = pos.up ? -1 : +1;
         s32 cur_y = 0;
-        u16 vsizacum = vsizoff;
+        u16 vsizacum = size_pos.up ? 0 : vsizoff;
         u16 tiltacum = 0;
         s32 base_hpos_bb = 0;
         int safety = 0;
@@ -1495,6 +1496,24 @@ static void render_debug_sprites(int count)
             u16 data_begin = (u16)(cur_sprdline_bb + 1);
             u16 data_end = next_ptr;
 
+            if (sprdoff <= 1)
+            {
+                if (sprdoff == 0)
+                    break;
+
+                quadrant = (quadrant + 1) & 3;
+                pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+                size_pos = get_sprite_quad_pos(quadrant, start_quad, 0);
+                dx = pos.left ? -1 : +1;
+                dy = pos.up ? -1 : +1;
+                cur_y = 0;
+                vsizacum = size_pos.up ? 0 : vsizoff;
+                if (pos.up != start_pos.up)
+                    cur_y += dy;
+                cur_sprdline_bb = next_ptr;
+                continue;
+            }
+
             vsizacum = vsizacum + cur_sprvsiz_bb;
             s16 pixel_height = MIN((s16)(vsizacum >> 8), (s16)k_sprite_buf_h);
             vsizacum &= 0x00FF;
@@ -1506,7 +1525,7 @@ static void render_debug_sprites(int count)
                     start_x += dx;
 
                 shift_reg_reset(&sr, data_begin);
-                u32 h_accum = hsizoff;
+                u32 h_accum = size_pos.left ? 0 : hsizoff;
                 s32 x = start_x;
 
                 if (literal_only)
@@ -1615,19 +1634,6 @@ static void render_debug_sprites(int count)
                 if (vertical_stretch)
                     cur_sprvsiz_bb += (s16)stretch_val * (s16)pixel_height;
 
-                if (sprdoff == 0)
-                    break;
-                else if (sprdoff == 1)
-                {
-                    quadrant = (quadrant + 1) & 3;
-                    pos = get_sprite_quad_pos(quadrant, start_quad, flip);
-                    dx = pos.left ? -1 : +1;
-                    dy = pos.up ? -1 : +1;
-                    cur_y = 0;
-                    vsizacum = vsizoff;
-                    if (pos.up != start_pos.up)
-                        cur_y += dy;
-                }
                 cur_sprdline_bb = next_ptr;
             }
         }
@@ -1674,11 +1680,12 @@ static void render_debug_sprites(int count)
 
         quadrant = 0;
         pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+        size_pos = get_sprite_quad_pos(quadrant, start_quad, 0);
         start_pos = pos;
         dx = pos.left ? -1 : +1;
         dy = pos.up ? -1 : +1;
         cur_y = 0;
-        vsizacum = vsizoff;
+        vsizacum = size_pos.up ? 0 : vsizoff;
         tiltacum = 0;
         s32 base_hpos_r = 0;
         safety = 0;
@@ -1692,6 +1699,24 @@ static void render_debug_sprites(int count)
             u16 data_begin = (u16)(cur_sprdline_r + 1);
             u16 data_end = next_ptr;
 
+            if (sprdoff <= 1)
+            {
+                if (sprdoff == 0)
+                    break;
+
+                quadrant = (quadrant + 1) & 3;
+                pos = get_sprite_quad_pos(quadrant, start_quad, flip);
+                size_pos = get_sprite_quad_pos(quadrant, start_quad, 0);
+                dx = pos.left ? -1 : +1;
+                dy = pos.up ? -1 : +1;
+                cur_y = 0;
+                vsizacum = size_pos.up ? 0 : vsizoff;
+                if (pos.up != start_pos.up)
+                    cur_y += dy;
+                cur_sprdline_r = next_ptr;
+                continue;
+            }
+
             vsizacum = vsizacum + cur_sprvsiz_r;
             s16 pixel_height = MIN((s16)(vsizacum >> 8), (s16)k_sprite_buf_h);
             vsizacum &= 0x00FF;
@@ -1703,7 +1728,7 @@ static void render_debug_sprites(int count)
                     start_x += dx;
 
                 shift_reg_reset(&sr, data_begin);
-                u32 h_accum = hsizoff;
+                u32 h_accum = size_pos.left ? 0 : hsizoff;
                 s32 x = start_x;
 
                 if (literal_only)
@@ -1829,19 +1854,6 @@ static void render_debug_sprites(int count)
                 if (vertical_stretch)
                     cur_sprvsiz_r += (s16)stretch_val * (s16)pixel_height;
 
-                if (sprdoff == 0)
-                    break;
-                else if (sprdoff == 1)
-                {
-                    quadrant = (quadrant + 1) & 3;
-                    pos = get_sprite_quad_pos(quadrant, start_quad, flip);
-                    dx = pos.left ? -1 : +1;
-                    dy = pos.up ? -1 : +1;
-                    cur_y = 0;
-                    vsizacum = vsizoff;
-                    if (pos.up != start_pos.up)
-                        cur_y += dy;
-                }
                 cur_sprdline_r = next_ptr;
             }
         }
