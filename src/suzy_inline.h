@@ -156,26 +156,26 @@ INLINE u8 Suzy::Read(u16 address)
     case SUZY_PROCADRH:    // 0xFC2F
         return m_state.PROCADR.high;
     case SUZY_SPRCTL0:     // 0xFC80
-        DebugSuzy("Reading write-only SPRCTL0: %02X", m_state.SPRCTL0);
+        DebugSuzy("Reading write-only SPRCTL0: FF");
         return 0xFF;
     case SUZY_SPRCTL1:     // 0xFC81
-        DebugSuzy("Reading write-only SPRCTL1: %02X", m_state.SPRCTL1);
+        DebugSuzy("Reading write-only SPRCTL1: FF");
         return 0xFF;
     case SUZY_SPRCOLL:     // 0xFC82
-        DebugSuzy("Reading write-only SPRCOLL: %02X", m_state.SPRCOLL);
+        DebugSuzy("Reading write-only SPRCOLL: FF");
         return 0xFF;
     case SUZY_SPRINIT:     // 0xFC83
-        DebugSuzy("Reading write-only SPRINIT: %02X", m_state.SPRINIT);
+        DebugSuzy("Reading write-only SPRINIT: FF");
         return 0xFF;
     case SUZY_SUZYHREV:    // 0xFC88
         return 0x01;
     case SUZY_SUZYSREV:    // 0xFC89
         return 0xFF;
     case SUZY_SUZYBUSEN:   // 0xFC90
-        DebugSuzy("Reading write-only SUZYBUSEN: %02X", m_state.SUZYBUSEN);
+        DebugSuzy("Reading write-only SUZYBUSEN: FF");
         return 0xFF;
     case SUZY_SPRGO:       // 0xFC91
-        DebugSuzy("Reading write-only SPRGO: %02X", m_state.SPRGO);
+        DebugSuzy("Reading write-only SPRGO: FF");
         return 0xFF;
     case SUZY_SPRSYS:      // 0xFC92
     {
