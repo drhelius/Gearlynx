@@ -1241,8 +1241,7 @@ static void update_debug_sprites(void)
 
         if (reload_palette)
         {
-            int colors = 1 << bpp;
-            int bytes_to_read = colors >> 1;
+            const int bytes_to_read = 8;
             for (int i = 0; i < bytes_to_read; i++)
             {
                 u8 byte = ram[tmpadr++];

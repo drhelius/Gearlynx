@@ -967,13 +967,11 @@ INLINE void Suzy::StepBlitterPhase()
 
         case SUZY_PHASE_PALETTE:
         {
-            int bpp = ((m_state.SPRCTL0 >> 6) & 0x03) + 1;
             bool reload_palette = IS_NOT_SET_BIT(m_state.SPRCTL1, 3);
 
             if (reload_palette)
             {
-                int colors = 1 << bpp;
-                int bytes_to_read = colors >> 1;
+                const int bytes_to_read = 8;
                 m_state.sprite_cycles += bytes_to_read * k_suzy_ram_read_ticks;
 
                 for (int i = 0; i < bytes_to_read; ++i)
@@ -1016,7 +1014,7 @@ INLINE void Suzy::StepBlitterPhase()
                 e.sprite.hpos = (s16)m_state.HPOSSTRT.value;
                 e.sprite.vpos = (s16)m_state.VPOSSTRT.value;
                 e.sprite.sprctl0 = m_state.SPRCTL0;
-                e.sprite.bpp = (u8)bpp;
+                e.sprite.bpp = (u8)(((m_state.SPRCTL0 >> 6) & 0x03) + 1);
                 e.sprite.type = (u8)(m_state.SPRCTL0 & 0x07);
                 m_trace_logger->TraceLog(e);
             }
@@ -1529,8 +1527,7 @@ INLINE void Suzy::DrawSprite()
 
     if (reload_palette)
     {
-        int colors = 1 << bpp;
-        int bytes_to_read = colors >> 1;
+        const int bytes_to_read = 8;
         m_state.sprite_cycles += bytes_to_read * k_suzy_ram_read_ticks;  // palette bytes
 
         for (int i = 0; i < bytes_to_read; ++i)
