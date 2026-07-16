@@ -806,7 +806,7 @@ json McpServer::BuildToolList()
     tools.push_back({
         {"name", "load_media"},
         {"title", "Load ROM"},
-        {"description", "Load ROM media (.lnx .lyx .o .zip), auto-load .sym/.elf/.lbl/.noi symbols, reset emulator."},
+        {"description", "Load ROM media (.lnx .lyx .o .zip); reset emulator and auto-load .sym/.elf/.lbl/.noi symbols. Debugger state may be lost unless saved debugger settings are enabled."},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
