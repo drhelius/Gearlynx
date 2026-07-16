@@ -84,6 +84,7 @@ struct config_Emulator
     int window_width = 770;
     int window_height = 600;
     bool status_messages = false;
+    bool allow_screensaver = false;
     int mcp_tcp_port = 7777;
     std::string mcp_http_address = "127.0.0.1";
     int console_type = 0;
