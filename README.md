@@ -163,7 +163,7 @@ Options:
 
 ### MCP Server
 
-Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, rewind and more. HTTP transport binds to `127.0.0.1` by default, validates `Host` and browser `Origin` values against the configured endpoint, and can require bearer-token auth with the `GEARLYNX_MCP_HTTP_TOKEN` environment variable.
+Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, rewind and more. STDIO and HTTP transports are supported, with STDIO preferred.
 
 For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
 
