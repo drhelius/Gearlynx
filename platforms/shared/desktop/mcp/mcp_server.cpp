@@ -1283,6 +1283,40 @@ json McpServer::BuildToolList()
     });
 
     tools.push_back({
+        {"name", "lookup_symbol_by_name"},
+        {"title", "Lookup Symbol by Name"},
+        {"description", "Find exact symbol name; return all matches."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"name", {
+                    {"type", "string"},
+                    {"description", "Exact symbol name."}
+                }}
+            }},
+            {"required", json::array({"name"})},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "lookup_symbol_at_address"},
+        {"title", "Lookup Symbol at Address"},
+        {"description", "Find symbol at address."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"address", {
+                    {"type", "string"},
+                    {"description", "Hex address, 0000-FFFF."}
+                }}
+            }},
+            {"required", json::array({"address"})},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
         {"name", "get_call_stack"},
         {"title", "Get Call Stack"},
         {"description", "List current call stack/subroutine hierarchy."},
@@ -2495,6 +2529,18 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     else if (normalizedTool == "list_symbols")
     {
         return m_debugAdapter.ListSymbols();
+    }
+    else if (normalizedTool == "lookup_symbol_by_name")
+    {
+        return m_debugAdapter.LookupSymbolByName(arguments["name"]);
+    }
+    else if (normalizedTool == "lookup_symbol_at_address")
+    {
+        std::string address_str = arguments["address"];
+        u16 address;
+        if (!parse_hex_with_prefix(address_str, &address))
+            return {{"error", "Invalid address format"}};
+        return m_debugAdapter.LookupSymbolAtAddress(address);
     }
     else if (normalizedTool == "get_call_stack")
     {

@@ -2490,6 +2490,26 @@ int gui_debug_get_symbols(void** symbols_ptr)
     return 0x10000; // 64K address space
 }
 
+DebugSymbol* gui_debug_get_symbol(u16 address)
+{
+    if (!IsValidPointer(fixed_symbols))
+        return NULL;
+
+    return fixed_symbols[address];
+}
+
+void gui_debug_find_symbols(const char* name, std::vector<DebugSymbol*>& symbols)
+{
+    symbols.clear();
+
+    for (size_t i = 0; i < fixed_symbol_list.size(); i++)
+    {
+        DebugSymbol* symbol = fixed_symbol_list[i].symbol;
+        if (IsValidPointer(symbol) && strcmp(symbol->text, name) == 0)
+            symbols.push_back(symbol);
+    }
+}
+
 static void save_full_disassembler(FILE* file)
 {
     Memory* memory = emu_get_core()->GetMemory();

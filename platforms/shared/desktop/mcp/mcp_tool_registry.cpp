@@ -188,7 +188,7 @@ static const McpToolCategory kMcpToolCategories[] =
     {"memory", "Memory", "List memory areas, read/write bytes, select ranges, fill selections, search memory, and manage watches/bookmarks."},
     {"cpu", "CPU", "Inspect 6502 registers, flags, interrupts, PC, stack, and write CPU register values."},
     {"disassembly", "Disassembly", "Read executed-code disassembly, run to addresses, inspect call stacks, and manage disassembly bookmarks."},
-    {"symbols", "Symbols", "Add, remove, load, and list debug symbols or labels used by disassembly and debugger views."},
+    {"symbols", "Symbols", "Add, remove, load, list, and look up debug symbols or labels."},
     {"hardware_mikey", "Mikey Hardware", "Inspect Atari Lynx Mikey registers, timers, audio channels, interrupts, and system control state."},
     {"hardware_suzy", "Suzy Hardware", "Inspect Atari Lynx Suzy registers, math hardware, sprite metadata, and sprite control blocks."},
     {"hardware_lcd", "LCD Hardware", "Inspect Atari Lynx LCD status, display line timing, visible/VBlank state, pixel, and DMA information."},
@@ -237,7 +237,8 @@ static const char* const kMcpDisassemblyTools[] =
 
 static const char* const kMcpSymbolTools[] =
 {
-    "add_symbol", "remove_symbol", "list_symbols", "load_symbols"
+    "add_symbol", "remove_symbol", "list_symbols", "load_symbols",
+    "lookup_symbol_by_name", "lookup_symbol_at_address"
 };
 
 static const char* const kMcpMikeyTools[] =
