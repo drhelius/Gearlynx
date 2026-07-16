@@ -25,7 +25,7 @@
 #include "media.h"
 #include "suzy.h"
 
-INLINE GLYNX_Keys Input::MapDirectional(GLYNX_Keys key)
+INLINE GLYNX_Keys Input::MapDirectional(GLYNX_Keys key) const
 {
     GLYNX_Keys mapped = key;
     GLYNX_Rotation rotation = m_media->GetRotation();
@@ -96,6 +96,13 @@ INLINE void Input::KeyReleased(GLYNX_Keys key)
         mapped = MapDirectional(key);
 
     m_state &= ~mapped;
+}
+
+INLINE bool Input::IsKeyPressed(GLYNX_Keys key) const
+{
+    bool is_dpad = (key == GLYNX_KEY_UP) || (key == GLYNX_KEY_DOWN) || (key == GLYNX_KEY_LEFT) || (key == GLYNX_KEY_RIGHT);
+    GLYNX_Keys mapped = is_dpad ? MapDirectional(key) : key;
+    return (m_state & mapped) != 0;
 }
 
 INLINE u8 Input::ReadJoystick()

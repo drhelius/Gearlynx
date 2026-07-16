@@ -18,6 +18,7 @@
  */
 
 #include "mcp_debug_adapter.h"
+#include "input.h"
 #include "log.h"
 #include "../utils.h"
 #include "../emu.h"
@@ -2119,6 +2120,26 @@ json DebugAdapter::ControllerButton(const std::string& button, const std::string
     result["action"] = action;
 
     return result;
+}
+
+json DebugAdapter::GetInputState()
+{
+    static const char* button_names[] = {"up", "down", "left", "right", "a", "b", "option1", "option2", "pause"};
+    static const GLYNX_Keys button_keys[] = {
+        GLYNX_KEY_UP, GLYNX_KEY_DOWN, GLYNX_KEY_LEFT, GLYNX_KEY_RIGHT, GLYNX_KEY_A,
+        GLYNX_KEY_B, GLYNX_KEY_OPTION1, GLYNX_KEY_OPTION2, GLYNX_KEY_PAUSE
+    };
+
+    json pressed = json::array();
+    Input* input = m_core->GetInput();
+
+    for (size_t i = 0; i < sizeof(button_keys) / sizeof(button_keys[0]); i++)
+    {
+        if (input->IsKeyPressed(button_keys[i]))
+            pressed.push_back(button_names[i]);
+    }
+
+    return {{"players", json::array({{{"player", 1}, {"pressed", pressed}}})}};
 }
 
 // Disassembler operations

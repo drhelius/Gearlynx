@@ -1035,6 +1035,16 @@ json McpServer::BuildToolList()
         }}
     });
 
+    tools.push_back({
+        {"name", "get_input_state"},
+        {"title", "Get Input State"},
+        {"description", "Get effective pressed buttons and pending tap releases."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"additionalProperties", false}
+        }}
+    });
+
     // Disassembler tools
     tools.push_back({
         {"name", "debug_run_to_cursor"},
@@ -2413,6 +2423,10 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
         std::string button = arguments["button"];
         std::string action = arguments["action"];
         return m_debugAdapter.ControllerButton(button, action);
+    }
+    else if (normalizedTool == "get_input_state")
+    {
+        return m_debugAdapter.GetInputState();
     }
     else if (normalizedTool == "controller_macro")
     {

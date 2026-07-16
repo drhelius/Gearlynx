@@ -36,6 +36,7 @@ public:
     void Reset();
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);
+    bool IsKeyPressed(GLYNX_Keys key) const;
     u8 ReadJoystick();
     u8 ReadSwitches();
     void WriteJoystick(u8 value);
@@ -44,7 +45,7 @@ public:
     void LoadState(std::istream& stream);
 
 private:
-    GLYNX_Keys MapDirectional(GLYNX_Keys key);
+    GLYNX_Keys MapDirectional(GLYNX_Keys key) const;
     void Serialize(StateSerializer& s);
 
 private:
