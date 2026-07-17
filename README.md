@@ -151,7 +151,7 @@ Options:
   -w, --windowed           Start in windowed mode with menu visible
       --mcp-stdio          Auto-start MCP server with stdio transport
       --mcp-http           Auto-start MCP server with HTTP transport
-      --mcp-no-router      Expose all MCP tools directly
+      --mcp-router         Enable compact MCP tool routing
       --mcp-http-address A HTTP bind address (default: 127.0.0.1)
       --mcp-http-port N    HTTP port for MCP server (default: 7777)
       --debug-monitor      Start debug monitor TCP server (default port: 6502)
