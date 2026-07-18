@@ -156,6 +156,16 @@ void Audio::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
+
+    if (m_buffer_pos >= GLYNX_AUDIO_BUFFER_SIZE)
+        m_buffer_pos = 0;
+    else
+        m_buffer_pos &= ~1u;
+
+    if (m_frame_samples > GLYNX_AUDIO_BUFFER_SIZE)
+        m_frame_samples = GLYNX_AUDIO_BUFFER_SIZE;
+
+    m_frame_samples &= ~1u;
 }
 
 void Audio::Serialize(StateSerializer& s, int version)
