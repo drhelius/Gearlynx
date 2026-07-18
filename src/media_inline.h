@@ -23,6 +23,7 @@
 #include <assert.h>
 #include "media.h"
 #include "eeprom.h"
+#include "game_drive.h"
 
 INLINE u32 Media::GetCRC()
 {
@@ -343,6 +344,21 @@ INLINE void Media::WriteCartBank(int bank, u8 value)
 
 INLINE u8 Media::ReadBank0()
 {
+    if (m_game_drive_instance->IsAvailable())
+    {
+        u8 data;
+
+        if (m_game_drive_instance->HasOutput())
+            data = m_game_drive_instance->ReadByte();
+        else if (m_game_drive_instance->HasProgrammedBank())
+            data = m_game_drive_instance->ReadProgrammedByte((m_address_shift << 11) | (m_page_offset & 0x7FF));
+        else
+            return ReadCartBank(CART_BANK_0);
+
+        AdvanceCounter();
+        return data;
+    }
+
     return ReadCartBank(CART_BANK_0);
 }
 
@@ -353,6 +369,14 @@ INLINE u8 Media::ReadBank1()
 
 INLINE u8 Media::PeekBank0()
 {
+    if (m_game_drive_instance->IsAvailable())
+    {
+        if (m_game_drive_instance->HasOutput())
+            return m_game_drive_instance->PeekByte();
+        if (m_game_drive_instance->HasProgrammedBank())
+            return m_game_drive_instance->ReadProgrammedByte((m_address_shift << 11) | (m_page_offset & 0x7FF));
+    }
+
     return PeekCartBank(CART_BANK_0);
 }
 
@@ -368,6 +392,13 @@ INLINE void Media::WriteBank0(u8 value)
 
 INLINE void Media::WriteBank1(u8 value)
 {
+    if (m_game_drive_instance->IsAvailable())
+    {
+        m_game_drive_instance->WriteByte(value);
+        AdvanceCounter();
+        return;
+    }
+
     WriteCartBank(CART_BANK_1, value);
 }
 
@@ -422,6 +453,11 @@ INLINE void Media::WriteBank1A(u8 value)
 INLINE EEPROM* Media::GetEEPROMInstance()
 {
     return m_eeprom_instance;
+}
+
+INLINE GameDrive* Media::GetGameDriveInstance()
+{
+    return m_game_drive_instance;
 }
 
 INLINE u8* Media::GetSaveMemoryPointer()

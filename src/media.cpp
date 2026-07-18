@@ -23,6 +23,7 @@
 #include <assert.h>
 #include "media.h"
 #include "eeprom.h"
+#include "game_drive.h"
 #include "miniz.h"
 #include "crc.h"
 #include "game_db.h"
@@ -39,6 +40,7 @@ Media::Media()
     InitPointer(m_persistent_ram);
     InitPointer(m_nvram);
     InitPointer(m_eeprom_instance);
+    InitPointer(m_game_drive_instance);
     InitPointer(m_decrypt_buffer_a);
     InitPointer(m_decrypt_buffer_b);
     InitPointer(m_decrypt_buffer_tmp);
@@ -56,6 +58,7 @@ Media::~Media()
     SafeDeleteArray(m_rom);
     SafeDeleteArray(m_nvram);
     SafeDelete(m_eeprom_instance);
+    SafeDelete(m_game_drive_instance);
     SafeDeleteArray(m_decrypt_buffer_a);
     SafeDeleteArray(m_decrypt_buffer_b);
     SafeDeleteArray(m_decrypt_buffer_tmp);
@@ -65,6 +68,7 @@ Media::~Media()
 void Media::Init()
 {
     m_eeprom_instance = new EEPROM();
+    m_game_drive_instance = new GameDrive();
     m_nvram = new u8[NVRAM_SIZE];
     memset(m_nvram, 0, NVRAM_SIZE);
     m_decrypt_buffer_a = new u8[EPYX_DECRYPT_BLOCK_SIZE];
@@ -82,10 +86,14 @@ void Media::Reset()
     m_shift_register_bit = false;
     memset(m_nvram, 0, NVRAM_SIZE);
     m_eeprom_instance->Reset(m_eeprom);
+    m_game_drive_instance->Reset(false);
 }
 
 void Media::HardReset()
 {
+    if (m_game_drive_instance)
+        m_game_drive_instance->Configure(false, NULL);
+
     ReleaseCartBankRAM();
     SafeDeleteArray(m_rom);
     m_rom_size = 0;
@@ -470,6 +478,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     m_epyx_headerless = DetectEpyxHeaderless();
     m_eeprom_instance->Reset(m_eeprom);
+    m_game_drive_instance->Configure((m_eeprom & GLYNX_EEPROM_SD) != 0, m_file_directory);
 
     m_ready = true;
 
@@ -1072,6 +1081,8 @@ void Media::SaveState(std::ostream& stream)
     Serialize(serializer, GLYNX_SAVESTATE_VERSION);
     if (m_eeprom != GLYNX_EEPROM_NONE)
         m_eeprom_instance->SaveState(stream);
+    if (m_game_drive_instance->IsAvailable())
+        m_game_drive_instance->SaveState(stream);
 }
 
 void Media::LoadState(std::istream& stream, int version)
@@ -1080,6 +1091,13 @@ void Media::LoadState(std::istream& stream, int version)
     Serialize(serializer, version);
     if (m_eeprom != GLYNX_EEPROM_NONE)
         m_eeprom_instance->LoadState(stream);
+    if (m_game_drive_instance->IsAvailable())
+    {
+        if (version >= 17)
+            m_game_drive_instance->LoadState(stream);
+        else
+            m_game_drive_instance->Reset(false);
+    }
     if (m_persistent_ram_size > 0)
         m_save_memory_dirty = true;
 }

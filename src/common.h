@@ -315,6 +315,21 @@ inline std::wstring utf8_to_wstring(const char* utf8_str)
     return wstr;
 }
 
+inline std::string wstring_to_utf8(const wchar_t* wide_str)
+{
+    if (!wide_str || wide_str[0] == L'\0')
+        return std::string();
+
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wide_str, -1, NULL, 0, NULL, NULL);
+    if (size_needed <= 0)
+        return std::string();
+
+    std::string str(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wide_str, -1, &str[0], size_needed, NULL, NULL);
+    str.resize(size_needed - 1);
+    return str;
+}
+
 #define open_ifstream_utf8(stream, path, mode) \
     do { \
         std::wstring wpath = utf8_to_wstring(path); \

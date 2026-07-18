@@ -61,6 +61,8 @@ SOURCES_CXX := \
     $(SRC_DIR)/gearlynx_core.cpp \
     $(SRC_DIR)/audio.cpp \
     $(SRC_DIR)/bus.cpp \
+    $(SRC_DIR)/game_drive.cpp \
+    $(SRC_DIR)/game_drive_filesystem_native.cpp \
     $(SRC_DIR)/input.cpp \
     $(SRC_DIR)/m6502.cpp \
     $(SRC_DIR)/m6502_functors.cpp \

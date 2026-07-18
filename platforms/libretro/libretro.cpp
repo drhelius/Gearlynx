@@ -25,6 +25,8 @@
 #include <math.h>
 #include "libretro.h"
 #include "gearlynx.h"
+#include "game_drive.h"
+#include "game_drive_filesystem_libretro.h"
 #include "libretro_core_options.h"
 
 #ifdef _WIN32
@@ -63,6 +65,7 @@ static float current_fps = 60.0f;
 
 static bool allow_up_down = false;
 static bool categories_supported = false;
+static bool content_info_ext_supported = false;
 
 static bool libretro_supports_bitmasks = false;
 static int joypad_current[MAX_PADS][JOYPAD_BUTTONS];
@@ -200,7 +203,7 @@ void retro_set_environment(retro_environment_t cb)
         { NULL, false, false }
     };
 
-    environ_cb(RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE, (void*)content_overrides);
+    content_info_ext_supported = environ_cb(RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE, (void*)content_overrides);
     set_controller_info();
     libretro_set_core_options(environ_cb, &categories_supported);
 }
@@ -219,6 +222,15 @@ void retro_init(void)
         snprintf(retro_system_directory, sizeof(retro_system_directory), "%s", ".");
 
     log_cb(RETRO_LOG_INFO, "%s (%s) libretro\n", GLYNX_TITLE, GLYNX_VERSION);
+
+    struct retro_vfs_interface_info vfs_interface_info = {};
+    vfs_interface_info.required_interface_version = 3;
+    vfs_interface_info.iface = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info) && vfs_interface_info.iface)
+        game_drive_set_vfs_interface(vfs_interface_info.iface);
+    else
+        game_drive_set_vfs_interface(NULL);
 
     core = new GearlynxCore();
 
@@ -239,6 +251,7 @@ void retro_deinit(void)
 {
     SafeDeleteArray(frame_buffer);
     SafeDelete(core);
+    game_drive_set_vfs_interface(NULL);
 
     audio_sample_count = 0;
     current_screen_width = 0;
@@ -355,6 +368,21 @@ bool retro_load_game(const struct retro_game_info *info)
     load_bootroms();
 
     const char* game_path = info->path ? info->path : "";
+    char extended_game_path[4096] = {};
+
+    const struct retro_game_info_ext* game_info_ext = NULL;
+    if (content_info_ext_supported && environ_cb(RETRO_ENVIRONMENT_GET_GAME_INFO_EXT, &game_info_ext) && game_info_ext)
+    {
+        if (game_info_ext->full_path && game_info_ext->full_path[0])
+            game_path = game_info_ext->full_path;
+        else if (game_info_ext->dir && game_info_ext->dir[0] && game_info_ext->name && game_info_ext->name[0])
+        {
+            const char* extension = (game_info_ext->ext && game_info_ext->ext[0]) ? game_info_ext->ext : "lnx";
+            snprintf(extended_game_path, sizeof(extended_game_path), "%s/%s.%s", game_info_ext->dir, game_info_ext->name, extension);
+            game_path = extended_game_path;
+        }
+    }
+
     snprintf(retro_game_path, sizeof(retro_game_path), "%s", game_path);
     log_cb(RETRO_LOG_INFO, "retro_load_game: %s\n", retro_game_path);
 
@@ -362,6 +390,15 @@ bool retro_load_game(const struct retro_game_info *info)
     {
         log_cb(RETRO_LOG_ERROR, "Invalid or corrupted ROM.\n");
         return false;
+    }
+
+    if ((core->GetMedia()->GetEEPROM() & GLYNX_EEPROM_SD) && !core->GetMedia()->GetGameDriveInstance()->IsAvailable())
+    {
+        struct retro_message msg = {};
+        msg.msg = "GameDrive requires frontend VFS v3 and a content directory";
+        msg.frames = 360;
+        environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
+        log_cb(RETRO_LOG_WARN, "%s.\n", msg.msg);
     }
 
     enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_RGB565;
@@ -397,7 +434,13 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 size_t retro_serialize_size(void)
 {
     size_t size = 0;
-    core->SaveState(NULL, size);
+    if (!core->SaveState(NULL, size))
+        return 0;
+
+    GameDrive* game_drive = core->GetMedia()->GetGameDriveInstance();
+    if (game_drive->IsAvailable())
+        size += game_drive->GetSaveStateSizeReserve();
+
     return size;
 }
 

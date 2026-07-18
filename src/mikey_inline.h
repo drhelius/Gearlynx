@@ -130,6 +130,8 @@ INLINE u8 Mikey::Read(u16 address)
             // EEPROM can override this when actively sending data
             if (IS_SET_BIT(m_state.IODIR, 4))
                 ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
+            else if (m_media->GetGameDriveInstance()->IsAvailable())
+                ret |= m_media->GetGameDriveInstance()->HasOutput() ? 0x10 : 0x00;
             else if (m_media->GetEEPROMInstance()->IsAvailable())
             {
                 if (!debug)

@@ -29,6 +29,7 @@
 
 class StateSerializer;
 class EEPROM;
+class GameDrive;
 
 class Media
 {
@@ -118,6 +119,7 @@ public:
     bool IsCartBankPersistent(int bank);
     const char* GetCartBankName(int bank);
     EEPROM* GetEEPROMInstance();
+    GameDrive* GetGameDriveInstance();
     u8* GetSaveMemoryPointer();
     s32 GetSaveMemorySize();
     void ClearSaveMemoryDirty();
@@ -195,6 +197,7 @@ private:
     GLYNX_Console_Type m_forced_console_type;
     GLYNX_EEPROM m_eeprom;
     EEPROM* m_eeprom_instance;
+    GameDrive* m_game_drive_instance;
     GLYNX_Media_Type m_type;
     bool m_audin;
     bool m_audin_value;

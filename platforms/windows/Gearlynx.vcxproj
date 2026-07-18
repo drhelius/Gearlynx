@@ -23,6 +23,9 @@
     <ClInclude Include="..\..\src\audio_inline.h" />
     <ClInclude Include="..\..\src\bit_ops.h" />
     <ClInclude Include="..\..\src\bus.h" />
+    <ClInclude Include="..\..\src\game_drive.h" />
+    <ClInclude Include="..\..\src\game_drive_filesystem.h" />
+    <ClInclude Include="..\..\src\game_drive_inline.h" />
     <ClInclude Include="..\..\src\media.h" />
     <ClInclude Include="..\..\src\media_inline.h" />
     <ClInclude Include="..\..\src\eeprom.h" />
@@ -131,6 +134,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp" />
     <ClCompile Include="..\..\src\bus.cpp" />
+    <ClCompile Include="..\..\src\game_drive.cpp" />
+    <ClCompile Include="..\..\src\game_drive_filesystem_native.cpp" />
     <ClCompile Include="..\..\src\media.cpp" />
     <ClCompile Include="..\..\src\gearlynx_core.cpp" />
     <ClCompile Include="..\..\src\input.cpp" />
