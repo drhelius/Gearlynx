@@ -845,6 +845,12 @@ bool Media::GatherBS93Header(const u8* buffer)
 
     Debug("BS93 Header found");
 
+    if (header.size <= 10)
+    {
+        Log("Invalid BS93 header size: %d", header.size);
+        return false;
+    }
+
     m_homebrew_boot_address = header.boot_address;
     m_homebrew_size = header.size - 10;
 
