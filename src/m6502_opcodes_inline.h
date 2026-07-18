@@ -409,7 +409,7 @@ inline void M6502::UnofficialOPCode()
 #if defined(GLYNX_DEBUG)
     u16 opcode_address = m_s.PC.GetValue() - 1;
     u8 opcode = m_memory->Read(opcode_address);
-    Debug("** M6502 --> UNOFFICIAL OP Code (%02X) at $%.4X -- %s", opcode, opcode_address, k_m6502_opcode_names[opcode]);
+    Debug("** M6502 --> UNOFFICIAL OP Code (%02X) at $%.4X -- %s", opcode, opcode_address, k_m6502_opcode_names[opcode].name[m_disassembler_syntax]);
 #endif
 }
 

@@ -30,6 +30,7 @@ bool run_test(RSJresource& test);
 GearlynxCore* core = NULL;
 M6502* cpu = NULL;
 Memory* memory = NULL;
+bool g_mcp_stdio_mode = false;
 
 int main(int argc, char* argv[])
 {
@@ -42,6 +43,7 @@ int main(int argc, char* argv[])
     core->Init();
     cpu = core->GetM6502();
     memory = core->GetMemory();
+    cpu->Reset(true);
 
     char file_number[4];
     char file_name[10];
@@ -64,11 +66,11 @@ int main(int argc, char* argv[])
 
         if (excluded)
         {
-            Log("Excluding %02X: %s", i, k_m6502_opcode_names[i].name);
+            Log("Excluding %02X: %s", i, k_m6502_opcode_names[i].name[GLYNX_Disassembler_Syntax_Gearlynx]);
             continue;
         }
 
-        Log("-> Testing %02X: %s", i, k_m6502_opcode_names[i].name);
+        Log("-> Testing %02X: %s", i, k_m6502_opcode_names[i].name[GLYNX_Disassembler_Syntax_Gearlynx]);
 
         snprintf(file_number, 4, "%02x", i);
         snprintf(file_name, 10, "%s.json", file_number);
