@@ -79,6 +79,30 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Auto"
     },
     {
+        "gearlynx_eeprom_type",
+        "EEPROM Type (restart)",
+        "EEPROM Type",
+        "Override the cartridge EEPROM capacity and organization. 'Auto' uses the cartridge header or game database. Restart or reload content to apply changes.",
+        NULL,
+        "system",
+        {
+            { "Auto",          NULL },
+            { "None",          NULL },
+            { "93C46_16bit",   "93C46 - 128 B - 16-bit" },
+            { "93C46_8bit",    "93C46 - 128 B - 8-bit" },
+            { "93C56_16bit",   "93C56 - 256 B - 16-bit" },
+            { "93C56_8bit",    "93C56 - 256 B - 8-bit" },
+            { "93C66_16bit",   "93C66 - 512 B - 16-bit" },
+            { "93C66_8bit",    "93C66 - 512 B - 8-bit" },
+            { "93C76_16bit",   "93C76 - 1 KB - 16-bit" },
+            { "93C76_8bit",    "93C76 - 1 KB - 8-bit" },
+            { "93C86_16bit",   "93C86 - 2 KB - 16-bit" },
+            { "93C86_8bit",    "93C86 - 2 KB - 8-bit" },
+            { NULL, NULL },
+        },
+        "Auto"
+    },
+    {
         "gearlynx_fast_sprite_rendering",
         "Fast Sprite Rendering",
         NULL,

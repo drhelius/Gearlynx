@@ -737,6 +737,47 @@ static void check_variables(void)
         core->GetMedia()->ForceConsoleType(console_type);
     }
 
+    var.key = "gearlynx_eeprom_type";
+    var.value = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        GLYNX_EEPROM eeprom = GLYNX_EEPROM_NONE;
+        bool force = true;
+
+        if (strcmp(var.value, "Auto") == 0)
+            force = false;
+        else if (strcmp(var.value, "None") == 0)
+            eeprom = GLYNX_EEPROM_NONE;
+        else if (strcmp(var.value, "93C46_16bit") == 0)
+            eeprom = GLYNX_EEPROM_93C46;
+        else if (strcmp(var.value, "93C46_8bit") == 0)
+            eeprom = (GLYNX_EEPROM)(GLYNX_EEPROM_93C46 | GLYNX_EEPROM_8BIT);
+        else if (strcmp(var.value, "93C56_16bit") == 0)
+            eeprom = GLYNX_EEPROM_93C56;
+        else if (strcmp(var.value, "93C56_8bit") == 0)
+            eeprom = (GLYNX_EEPROM)(GLYNX_EEPROM_93C56 | GLYNX_EEPROM_8BIT);
+        else if (strcmp(var.value, "93C66_16bit") == 0)
+            eeprom = GLYNX_EEPROM_93C66;
+        else if (strcmp(var.value, "93C66_8bit") == 0)
+            eeprom = (GLYNX_EEPROM)(GLYNX_EEPROM_93C66 | GLYNX_EEPROM_8BIT);
+        else if (strcmp(var.value, "93C76_16bit") == 0)
+            eeprom = GLYNX_EEPROM_93C76;
+        else if (strcmp(var.value, "93C76_8bit") == 0)
+            eeprom = (GLYNX_EEPROM)(GLYNX_EEPROM_93C76 | GLYNX_EEPROM_8BIT);
+        else if (strcmp(var.value, "93C86_16bit") == 0)
+            eeprom = GLYNX_EEPROM_93C86;
+        else if (strcmp(var.value, "93C86_8bit") == 0)
+            eeprom = (GLYNX_EEPROM)(GLYNX_EEPROM_93C86 | GLYNX_EEPROM_8BIT);
+        else
+            force = false;
+
+        if (force)
+            core->GetMedia()->ForceEEPROM(eeprom);
+        else
+            core->GetMedia()->AutoDetectEEPROM();
+    }
+
     var.key = "gearlynx_fast_sprite_rendering";
     var.value = NULL;
 

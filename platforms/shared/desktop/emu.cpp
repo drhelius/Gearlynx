@@ -566,6 +566,55 @@ void emu_force_console_type(int console_type)
     core->GetMedia()->ForceConsoleType((GLYNX_Console_Type)console_type);
 }
 
+void emu_force_eeprom(int eeprom)
+{
+    GLYNX_EEPROM type = GLYNX_EEPROM_NONE;
+
+    switch (eeprom)
+    {
+        case config_EEPROM_Auto:
+            core->GetMedia()->AutoDetectEEPROM();
+            return;
+        case config_EEPROM_None:
+            break;
+        case config_EEPROM_93C46_16Bit:
+            type = GLYNX_EEPROM_93C46;
+            break;
+        case config_EEPROM_93C46_8Bit:
+            type = (GLYNX_EEPROM)(GLYNX_EEPROM_93C46 | GLYNX_EEPROM_8BIT);
+            break;
+        case config_EEPROM_93C56_16Bit:
+            type = GLYNX_EEPROM_93C56;
+            break;
+        case config_EEPROM_93C56_8Bit:
+            type = (GLYNX_EEPROM)(GLYNX_EEPROM_93C56 | GLYNX_EEPROM_8BIT);
+            break;
+        case config_EEPROM_93C66_16Bit:
+            type = GLYNX_EEPROM_93C66;
+            break;
+        case config_EEPROM_93C66_8Bit:
+            type = (GLYNX_EEPROM)(GLYNX_EEPROM_93C66 | GLYNX_EEPROM_8BIT);
+            break;
+        case config_EEPROM_93C76_16Bit:
+            type = GLYNX_EEPROM_93C76;
+            break;
+        case config_EEPROM_93C76_8Bit:
+            type = (GLYNX_EEPROM)(GLYNX_EEPROM_93C76 | GLYNX_EEPROM_8BIT);
+            break;
+        case config_EEPROM_93C86_16Bit:
+            type = GLYNX_EEPROM_93C86;
+            break;
+        case config_EEPROM_93C86_8Bit:
+            type = (GLYNX_EEPROM)(GLYNX_EEPROM_93C86 | GLYNX_EEPROM_8BIT);
+            break;
+        default:
+            core->GetMedia()->AutoDetectEEPROM();
+            return;
+    }
+
+    core->GetMedia()->ForceEEPROM(type);
+}
+
 void emu_set_fast_sprite_rendering(bool enabled)
 {
     core->GetSuzy()->SetFastSpriteRendering(enabled);

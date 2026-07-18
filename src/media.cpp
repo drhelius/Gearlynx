@@ -49,6 +49,8 @@ Media::Media()
     m_is_bios_valid = false;
     m_forced_rotation = GLYNX_ROTATION_AUTO;
     m_forced_console_type = GLYNX_CONSOLE_AUTO;
+    m_forced_eeprom = GLYNX_EEPROM_NONE;
+    m_eeprom_forced = false;
     HardReset();
 }
 
@@ -85,8 +87,7 @@ void Media::Reset()
     m_shift_register_strobe = false;
     m_shift_register_bit = false;
     memset(m_nvram, 0, NVRAM_SIZE);
-    m_eeprom_instance->Reset(m_eeprom);
-    m_game_drive_instance->Reset(false);
+    ApplyEEPROMConfiguration();
 }
 
 void Media::HardReset()
@@ -121,6 +122,7 @@ void Media::HardReset()
     m_rotation = GLYNX_ROTATION_AUTO;
     m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = GLYNX_EEPROM_NONE;
+    m_active_eeprom = GLYNX_EEPROM_NONE;
     m_type = MEDIA_LYNX;
     m_audin = false;
     m_audin_value = false;
@@ -477,8 +479,7 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
     }
 
     m_epyx_headerless = DetectEpyxHeaderless();
-    m_eeprom_instance->Reset(m_eeprom);
-    m_game_drive_instance->Configure((m_eeprom & GLYNX_EEPROM_SD) != 0, m_file_directory);
+    ApplyEEPROMConfiguration();
 
     m_ready = true;
 
@@ -1034,6 +1035,18 @@ GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
     return (GLYNX_EEPROM)(base_type | flags);
 }
 
+void Media::ApplyEEPROMConfiguration()
+{
+    GLYNX_EEPROM previous_eeprom = m_active_eeprom;
+    m_active_eeprom = m_eeprom_forced ? m_forced_eeprom : m_eeprom;
+    m_eeprom_instance->Reset(m_active_eeprom);
+
+    if ((previous_eeprom & GLYNX_EEPROM_SD) != (m_active_eeprom & GLYNX_EEPROM_SD))
+        m_game_drive_instance->Configure((m_active_eeprom & GLYNX_EEPROM_SD) != 0, m_file_directory);
+    else
+        m_game_drive_instance->Reset(false);
+}
+
 bool Media::IsValidFile(const char* path)
 {
     using namespace std;
@@ -1079,7 +1092,7 @@ void Media::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, GLYNX_SAVESTATE_VERSION);
-    if (m_eeprom != GLYNX_EEPROM_NONE)
+    if (m_active_eeprom != GLYNX_EEPROM_NONE)
         m_eeprom_instance->SaveState(stream);
     if (m_game_drive_instance->IsAvailable())
         m_game_drive_instance->SaveState(stream);
@@ -1089,7 +1102,7 @@ void Media::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
-    if (m_eeprom != GLYNX_EEPROM_NONE)
+    if (m_active_eeprom != GLYNX_EEPROM_NONE)
         m_eeprom_instance->LoadState(stream);
     if (m_game_drive_instance->IsAvailable())
     {

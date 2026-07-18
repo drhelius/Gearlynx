@@ -116,6 +116,7 @@ EXTERN GLYNX_Bios_State emu_load_bios(const char* file_path);
 EXTERN void emu_reset(void);
 EXTERN void emu_force_rotation(int rotation);
 EXTERN void emu_force_console_type(int console_type);
+EXTERN void emu_force_eeprom(int eeprom);
 EXTERN void emu_set_fast_sprite_rendering(bool enabled);
 EXTERN void emu_set_sprite_bounding_box(int mode, int decay);
 EXTERN void emu_set_debug_output(bool enabled);

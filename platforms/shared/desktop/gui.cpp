@@ -109,6 +109,7 @@ bool gui_init(void)
 
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
+    emu_force_eeprom(config_emulator.eeprom);
     emu_set_fast_sprite_rendering(config_emulator.fast_sprite_rendering);
     emu_set_sprite_bounding_box(config_debug.debug ? config_debug.sprite_bounding_box_mode : GLYNX_SPRITE_BOUNDING_BOX_DISABLED, config_debug.sprite_bounding_box_decay);
     emu_audio_mute(!config_audio.enable);

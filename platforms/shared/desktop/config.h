@@ -56,6 +56,23 @@ enum config_VideoSync
     config_VideoSync_VRR = 2
 };
 
+enum config_EEPROM
+{
+    config_EEPROM_Auto = 0,
+    config_EEPROM_None,
+    config_EEPROM_93C46_16Bit,
+    config_EEPROM_93C46_8Bit,
+    config_EEPROM_93C56_16Bit,
+    config_EEPROM_93C56_8Bit,
+    config_EEPROM_93C66_16Bit,
+    config_EEPROM_93C66_8Bit,
+    config_EEPROM_93C76_16Bit,
+    config_EEPROM_93C76_8Bit,
+    config_EEPROM_93C86_16Bit,
+    config_EEPROM_93C86_8Bit,
+    config_EEPROM_Count
+};
+
 struct config_Emulator
 {
     bool maximized = false;
@@ -88,6 +105,7 @@ struct config_Emulator
     int mcp_tcp_port = 7777;
     std::string mcp_http_address = "127.0.0.1";
     int console_type = 0;
+    int eeprom = config_EEPROM_Auto;
 };
 
 struct config_Video

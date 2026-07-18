@@ -149,9 +149,25 @@ INLINE GLYNX_Console_Type Media::GetConsoleType()
         return GLYNX_CONSOLE_MODEL_II;
 }
 
+INLINE void Media::ForceEEPROM(GLYNX_EEPROM type)
+{
+    m_forced_eeprom = type;
+    m_eeprom_forced = true;
+}
+
+INLINE void Media::AutoDetectEEPROM()
+{
+    m_eeprom_forced = false;
+}
+
+INLINE bool Media::IsEEPROMForced()
+{
+    return m_eeprom_forced;
+}
+
 INLINE GLYNX_EEPROM Media::GetEEPROM()
 {
-    return m_eeprom;
+    return m_active_eeprom;
 }
 
 INLINE Media::GLYNX_Media_Type Media::GetType()

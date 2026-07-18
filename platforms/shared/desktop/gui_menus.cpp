@@ -331,6 +331,29 @@ static void menu_emulator(void)
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("EEPROM"))
+        {
+            ImGui::PushItemWidth(180.0f);
+            if (ImGui::Combo("##eeprom", &config_emulator.eeprom,
+                "Auto\0None\093C46 - 128 B - 16-bit\093C46 - 128 B - 8-bit\0"
+                "93C56 - 256 B - 16-bit\093C56 - 256 B - 8-bit\0"
+                "93C66 - 512 B - 16-bit\093C66 - 512 B - 8-bit\0"
+                "93C76 - 1 KB - 16-bit\093C76 - 1 KB - 8-bit\0"
+                "93C86 - 2 KB - 16-bit\093C86 - 2 KB - 8-bit\0\0"))
+            {
+                emu_force_eeprom(config_emulator.eeprom);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("It is recommended to leave this option on Auto.");
+                ImGui::Text("Reload the game to apply changes.");
+                ImGui::EndTooltip();
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
         ImGui::Separator();
 
         if (ImGui::BeginMenu("BIOS"))

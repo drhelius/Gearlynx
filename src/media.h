@@ -68,6 +68,9 @@ public:
     GLYNX_Rotation GetRotation();
     void ForceConsoleType(GLYNX_Console_Type type);
     GLYNX_Console_Type GetConsoleType();
+    void ForceEEPROM(GLYNX_EEPROM type);
+    void AutoDetectEEPROM();
+    bool IsEEPROMForced();
     GLYNX_EEPROM GetEEPROM();
     GLYNX_Media_Type GetType();
     bool GetAudin();
@@ -146,6 +149,7 @@ private:
     void GatherDataFromPath(const char* path);
     GLYNX_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_EEPROM ReadHeaderEEPROM(u8 eeprom);
+    void ApplyEEPROMConfiguration();
     bool IsValidFile(const char* path);
     void DecryptDoubleValue(u8* result, int length);
     int DecryptMinusEquals(u8* result, const u8* value, int length);
@@ -196,6 +200,9 @@ private:
     GLYNX_Console_Type m_console_type;
     GLYNX_Console_Type m_forced_console_type;
     GLYNX_EEPROM m_eeprom;
+    GLYNX_EEPROM m_forced_eeprom;
+    GLYNX_EEPROM m_active_eeprom;
+    bool m_eeprom_forced;
     EEPROM* m_eeprom_instance;
     GameDrive* m_game_drive_instance;
     GLYNX_Media_Type m_type;
