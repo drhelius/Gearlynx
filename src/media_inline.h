@@ -309,7 +309,10 @@ INLINE u32 Media::GetCartBankAddress(int bank)
 INLINE u8 Media::ReadCartBank(int bank)
 {
     if (m_cart_bank_data[bank] == NULL || m_cart_bank_size[bank] == 0)
+    {
+        AdvanceCounter();
         return 0xFF;
+    }
 
     u8 data = m_cart_bank_data[bank][GetCartBankAddress(bank)];
     AdvanceCounter();
