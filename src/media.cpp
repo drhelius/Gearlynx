@@ -514,6 +514,12 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
 
     file.seekg(0, ios::beg);
     file.read(reinterpret_cast<char*>(m_bios), size);
+    if (!file.good() || file.gcount() != size)
+    {
+        Error("Failed to load BIOS data: %s", path);
+        file.close();
+        return BIOS_LOAD_FILE_ERROR;
+    }
     file.close();
 
     m_is_bios_loaded = true;
