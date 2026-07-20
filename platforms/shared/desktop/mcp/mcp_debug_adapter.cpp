@@ -576,6 +576,9 @@ json DebugAdapter::GetMediaInfo()
         case Media::MEDIA_HOMEBREW:
             info["media_type"] = "Homebrew";
             break;
+        case Media::MEDIA_EPYX_HEADERLESS:
+            info["media_type"] = "Epyx Headerless";
+            break;
         default:
             info["media_type"] = "Unknown";
             break;
@@ -1796,7 +1799,18 @@ json DebugAdapter::FinishLoadMedia(const std::string& file_path)
     result["rom_name"] = m_core->GetMedia()->GetFileName();
 
     Media::GLYNX_Media_Type type = m_core->GetMedia()->GetType();
-    result["media_type"] = (type == Media::MEDIA_HOMEBREW) ? "Homebrew" : "Lynx";
+    switch (type)
+    {
+        case Media::MEDIA_HOMEBREW:
+            result["media_type"] = "Homebrew";
+            break;
+        case Media::MEDIA_EPYX_HEADERLESS:
+            result["media_type"] = "Epyx Headerless";
+            break;
+        default:
+            result["media_type"] = "Lynx";
+            break;
+    }
 
     return result;
 }
