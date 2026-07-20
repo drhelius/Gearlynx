@@ -105,8 +105,12 @@ public:
 
     void Start()
     {
-        if (m_server && m_server->IsRunning())
-            return;
+        if (m_server)
+        {
+            if (m_server->IsRunning())
+                return;
+            SafeDelete(m_server);
+        }
 
         m_commandQueue.Clear();
         m_responseQueue.Reset();
@@ -138,15 +142,8 @@ public:
 
     void Stop()
     {
-        if (m_server)
-        {
-            m_server->Stop();
-
-            if (m_server->GetTransport())
-                m_server->GetTransport()->close();
-
-            SafeDelete(m_server);
-        }
+        SafeDelete(m_server);
+        m_commandQueue.Clear();
     }
 
     bool IsRunning() const
