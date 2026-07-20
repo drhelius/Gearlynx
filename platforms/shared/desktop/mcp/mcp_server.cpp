@@ -347,6 +347,7 @@ json McpServer::BuildToolList()
         {"name", "debug_pause"},
         {"title", "Pause Emulator"},
         {"description", "Pause execution at current instruction; enter debugger."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -357,6 +358,7 @@ json McpServer::BuildToolList()
         {"name", "debug_continue"},
         {"title", "Continue Execution"},
         {"description", "Resume emulator execution from pause or breakpoint."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -367,6 +369,7 @@ json McpServer::BuildToolList()
         {"name", "debug_step_into"},
         {"title", "Step Into"},
         {"description", "Step next 6502 CPU instruction; enter subroutines."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -377,6 +380,7 @@ json McpServer::BuildToolList()
         {"name", "debug_step_over"},
         {"title", "Step Over"},
         {"description", "Step next 6502 CPU instruction; skip JSR subroutines."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -387,6 +391,7 @@ json McpServer::BuildToolList()
         {"name", "debug_step_out"},
         {"title", "Step Out"},
         {"description", "Run until RTS/RTI returns from current subroutine/interrupt."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -397,6 +402,7 @@ json McpServer::BuildToolList()
         {"name", "debug_step_frame"},
         {"title", "Step Frame"},
         {"description", "Run one or more Atari Lynx video frames to VBlank."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -415,6 +421,7 @@ json McpServer::BuildToolList()
         {"name", "debug_reset"},
         {"title", "Reset System"},
         {"description", "Reset the emulated Atari Lynx system."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -425,6 +432,7 @@ json McpServer::BuildToolList()
         {"name", "debug_get_status"},
         {"title", "Get Debug Status"},
         {"description", "Read debugger state: paused, breakpoint hit, current PC."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -436,6 +444,7 @@ json McpServer::BuildToolList()
         {"name", "set_breakpoint"},
         {"title", "Set Breakpoint"},
         {"description", "Add execute/read/write breakpoint in Atari Lynx 64K CPU address space."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -464,6 +473,7 @@ json McpServer::BuildToolList()
         {"name", "set_breakpoint_range"},
         {"title", "Set Range Breakpoint"},
         {"description", "Add execute/read/write breakpoint over Atari Lynx 64K CPU address range."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -496,6 +506,7 @@ json McpServer::BuildToolList()
         {"name", "remove_breakpoint"},
         {"title", "Remove Breakpoint"},
         {"description", "Remove matching single/range CPU breakpoint by address and optional end_address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -516,6 +527,7 @@ json McpServer::BuildToolList()
         {"name", "list_breakpoints"},
         {"title", "List Breakpoints"},
         {"description", "List all CPU execution/read/write breakpoints."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -526,6 +538,7 @@ json McpServer::BuildToolList()
         {"name", "set_breakpoint_on_irq"},
         {"title", "Set IRQ Breakpoint"},
         {"description", "Add IRQ breakpoint for Mikey timer interrupt 0-7."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -544,6 +557,7 @@ json McpServer::BuildToolList()
         {"name", "clear_breakpoint_on_irq"},
         {"title", "Clear IRQ Breakpoint"},
         {"description", "Remove IRQ breakpoint for Mikey timer interrupt 0-7."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -562,6 +576,7 @@ json McpServer::BuildToolList()
         {"name", "list_breakpoints_on_irq"},
         {"title", "List IRQ Breakpoints"},
         {"description", "List active IRQ breakpoints; returns timer IRQ numbers 0-7."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -573,6 +588,7 @@ json McpServer::BuildToolList()
         {"name", "list_memory_areas"},
         {"title", "List Memory Areas"},
         {"description", "List memory areas/tabs and CPU ranges: RAM, STACK, BIOS; use returned CPU addresses for read/write."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -583,6 +599,7 @@ json McpServer::BuildToolList()
         {"name", "read_memory"},
         {"title", "Read Memory"},
         {"description", "Read bytes from memory area by CPU address within listed range."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -607,6 +624,7 @@ json McpServer::BuildToolList()
         {"name", "write_memory"},
         {"title", "Write Memory"},
         {"description", "Write hex bytes to memory area by CPU address within listed range."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -632,6 +650,7 @@ json McpServer::BuildToolList()
         {"name", "write_6502_register"},
         {"title", "Write CPU Register"},
         {"description", "Write 6502 CPU register PC, A, X, Y, S, or P."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -653,6 +672,7 @@ json McpServer::BuildToolList()
         {"name", "get_disassembly"},
         {"title", "Get Disassembly"},
         {"description", "Read recorded 6502 disassembly for CPU address range: segment, mnemonic, bytes. Records exist after execution; max practical range 0x2000."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -682,6 +702,7 @@ json McpServer::BuildToolList()
         {"name", "get_media_info"},
         {"title", "Get ROM Info"},
         {"description", "Read loaded Atari Lynx ROM info: path, type, size, mapper, BIOS paths."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -692,6 +713,7 @@ json McpServer::BuildToolList()
         {"name", "list_recent_media"},
         {"title", "List Recent Media"},
         {"description", "List recent ROMs with file_path values for load_media."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -703,6 +725,7 @@ json McpServer::BuildToolList()
         {"name", "get_6502_status"},
         {"title", "Get CPU Status"},
         {"description", "Read 6502 CPU state: registers, flags, interrupts, MAPCTL memory-map visibility."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -713,6 +736,7 @@ json McpServer::BuildToolList()
         {"name", "get_mikey_registers"},
         {"title", "Get Mikey Registers"},
         {"description", "Read Mikey registers $FD00-$FDFF; optional single address filter."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -728,6 +752,7 @@ json McpServer::BuildToolList()
         {"name", "write_mikey_register"},
         {"title", "Write Mikey Register"},
         {"description", "Write Mikey register $FD00-$FDFF."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -748,6 +773,7 @@ json McpServer::BuildToolList()
         {"name", "get_mikey_timers"},
         {"title", "Get Mikey Timers"},
         {"description", "Read Mikey timer state for timers 0-7; optional single timer filter."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -765,6 +791,7 @@ json McpServer::BuildToolList()
         {"name", "get_mikey_audio"},
         {"title", "Get Mikey Audio"},
         {"description", "Read Mikey audio state for channels 0-3; optional single channel filter."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -782,6 +809,7 @@ json McpServer::BuildToolList()
         {"name", "get_suzy_registers"},
         {"title", "Get Suzy Registers"},
         {"description", "Read Suzy registers $FC00-$FCFF; optional single address filter."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -797,6 +825,7 @@ json McpServer::BuildToolList()
         {"name", "write_suzy_register"},
         {"title", "Write Suzy Register"},
         {"description", "Write Suzy register $FC00-$FCFF."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -817,6 +846,7 @@ json McpServer::BuildToolList()
         {"name", "get_uart_status"},
         {"title", "Get UART Status"},
         {"description", "Read UART/ComLynx serial status."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -827,6 +857,7 @@ json McpServer::BuildToolList()
         {"name", "get_cart_status"},
         {"title", "Get Cartridge Status"},
         {"description", "Read cartridge status: address generation, banks, AUDIN."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -837,6 +868,7 @@ json McpServer::BuildToolList()
         {"name", "get_eeprom_status"},
         {"title", "Get EEPROM Status"},
         {"description", "Read EEPROM status: type, size, mode, state, I/O pins."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -847,6 +879,7 @@ json McpServer::BuildToolList()
         {"name", "get_lcd_status"},
         {"title", "Get LCD Status"},
         {"description", "Read LCD status: line, visible/VBlank type, cycle, pixel/DMA info on visible lines."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -857,6 +890,7 @@ json McpServer::BuildToolList()
         {"name", "get_screenshot"},
         {"title", "Capture Screenshot"},
         {"description", "Capture current screen/frame/video output as PNG screenshot image."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -867,6 +901,7 @@ json McpServer::BuildToolList()
         {"name", "get_frame_buffer"},
         {"title", "Get Frame Buffer"},
         {"description", "Capture debug frame buffer PNG: vidbas Suzy video buffer or dispadr Mikey display address."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -884,6 +919,7 @@ json McpServer::BuildToolList()
         {"name", "get_sprite"},
         {"title", "Get Sprite"},
         {"description", "Read/render SCB sprite: PNG image or metadata (SCB address, position, size, BPP, type, flip flags)."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -906,6 +942,7 @@ json McpServer::BuildToolList()
         {"name", "load_media"},
         {"title", "Load ROM"},
         {"description", "Load ROM media (.lnx .lyx .o .zip); reset emulator and auto-load .sym/.elf/.lbl/.noi symbols. Debugger state may be lost unless saved debugger settings are enabled."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -922,6 +959,7 @@ json McpServer::BuildToolList()
         {"name", "load_bios"},
         {"title", "Load BIOS"},
         {"description", "Load Atari Lynx BIOS file; must be exactly 512 bytes."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -938,6 +976,7 @@ json McpServer::BuildToolList()
         {"name", "load_symbols"},
         {"title", "Load Symbols"},
         {"description", "Load debug symbols (.sym ADDRESS LABEL, llvm-nm text, llvm-mos ELF, and other supported labels); append to symbol table."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -954,6 +993,7 @@ json McpServer::BuildToolList()
         {"name", "list_save_state_slots"},
         {"title", "List Save Slots"},
         {"description", "List save-state slots: slot, ROM name, timestamp, screenshot flag."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -964,6 +1004,7 @@ json McpServer::BuildToolList()
         {"name", "select_save_state_slot"},
         {"title", "Select Save Slot"},
         {"description", "Select active save-state slot 1-5 for save_state/load_state."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -982,6 +1023,7 @@ json McpServer::BuildToolList()
         {"name", "save_state"},
         {"title", "Save State"},
         {"description", "Save emulator state to active save-state slot."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -992,6 +1034,7 @@ json McpServer::BuildToolList()
         {"name", "load_state"},
         {"title", "Load State"},
         {"description", "Load emulator state from active save-state slot."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1002,6 +1045,7 @@ json McpServer::BuildToolList()
         {"name", "save_state_file"},
         {"title", "Save State File"},
         {"description", "Save emulator state to an explicit file path."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1019,6 +1063,7 @@ json McpServer::BuildToolList()
         {"name", "load_state_file"},
         {"title", "Load State File"},
         {"description", "Load emulator state from an explicit file path."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1036,6 +1081,7 @@ json McpServer::BuildToolList()
         {"name", "set_fast_forward_speed"},
         {"title", "Set Fast Forward Speed"},
         {"description", "Set fast-forward speed index: 0=1.5x, 1=2x, 2=2.5x, 3=3x, 4=unlimited."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1054,6 +1100,7 @@ json McpServer::BuildToolList()
         {"name", "toggle_fast_forward"},
         {"title", "Toggle Fast Forward"},
         {"description", "Enable/disable fast-forward mode at configured speed."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1071,6 +1118,7 @@ json McpServer::BuildToolList()
         {"name", "controller_button"},
         {"title", "Controller Button"},
         {"description", "Press/release/tap Atari Lynx input: up/down/left/right/a/b/option1/option2/pause."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1093,6 +1141,7 @@ json McpServer::BuildToolList()
         {"name", "controller_macro"},
         {"title", "Controller Macro"},
         {"description", "Run a frame-based controller macro. Commands are tap, press, release, and wait."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1138,6 +1187,7 @@ json McpServer::BuildToolList()
         {"name", "get_input_state"},
         {"title", "Get Input State"},
         {"description", "Get effective pressed buttons and pending tap releases."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1149,6 +1199,7 @@ json McpServer::BuildToolList()
         {"name", "debug_run_to_cursor"},
         {"title", "Run to Address"},
         {"description", "Continue execution until CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1165,6 +1216,7 @@ json McpServer::BuildToolList()
         {"name", "add_disassembler_bookmark"},
         {"title", "Add Disassembler Bookmark"},
         {"description", "Add disassembler bookmark at CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1185,6 +1237,7 @@ json McpServer::BuildToolList()
         {"name", "remove_disassembler_bookmark"},
         {"title", "Remove Disassembler Bookmark"},
         {"description", "Remove disassembler bookmark at CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1201,6 +1254,7 @@ json McpServer::BuildToolList()
         {"name", "add_symbol"},
         {"title", "Add Symbol"},
         {"description", "Add disassembler symbol/label at CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1221,6 +1275,7 @@ json McpServer::BuildToolList()
         {"name", "remove_symbol"},
         {"title", "Remove Symbol"},
         {"description", "Remove disassembler symbol/label at CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1238,6 +1293,7 @@ json McpServer::BuildToolList()
         {"name", "select_memory_range"},
         {"title", "Select Memory Range"},
         {"description", "Select memory editor range by area and CPU addresses."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1262,6 +1318,7 @@ json McpServer::BuildToolList()
         {"name", "set_memory_selection_value"},
         {"title", "Fill Memory Selection"},
         {"description", "Fill current memory selection with byte value; use select_memory_range first."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1282,6 +1339,7 @@ json McpServer::BuildToolList()
         {"name", "add_memory_bookmark"},
         {"title", "Add Memory Bookmark"},
         {"description", "Add memory bookmark at area CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1306,6 +1364,7 @@ json McpServer::BuildToolList()
         {"name", "remove_memory_bookmark"},
         {"title", "Remove Memory Bookmark"},
         {"description", "Remove memory bookmark at area CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1326,6 +1385,7 @@ json McpServer::BuildToolList()
         {"name", "add_memory_watch"},
         {"title", "Add Memory Watch"},
         {"description", "Add memory watch at area CPU address with optional notes and bit size."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1355,6 +1415,7 @@ json McpServer::BuildToolList()
         {"name", "remove_memory_watch"},
         {"title", "Remove Memory Watch"},
         {"description", "Remove memory watch at area CPU address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1375,6 +1436,7 @@ json McpServer::BuildToolList()
         {"name", "list_disassembler_bookmarks"},
         {"title", "List Disassembler Bookmarks"},
         {"description", "List disassembler bookmarks."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1385,6 +1447,7 @@ json McpServer::BuildToolList()
         {"name", "list_symbols"},
         {"title", "List Symbols"},
         {"description", "List disassembler symbols/labels."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1395,6 +1458,7 @@ json McpServer::BuildToolList()
         {"name", "lookup_symbol_by_name"},
         {"title", "Lookup Symbol by Name"},
         {"description", "Find exact symbol name; return all matches."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1412,6 +1476,7 @@ json McpServer::BuildToolList()
         {"name", "lookup_symbol_at_address"},
         {"title", "Lookup Symbol at Address"},
         {"description", "Find symbol at address."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1429,6 +1494,7 @@ json McpServer::BuildToolList()
         {"name", "get_call_stack"},
         {"title", "Get Call Stack"},
         {"description", "List current call stack/subroutine hierarchy."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1439,6 +1505,7 @@ json McpServer::BuildToolList()
         {"name", "list_memory_bookmarks"},
         {"title", "List Memory Bookmarks"},
         {"description", "List bookmarks for memory area."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1455,6 +1522,7 @@ json McpServer::BuildToolList()
         {"name", "list_memory_watches"},
         {"title", "List Memory Watches"},
         {"description", "List watches for memory area."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1471,6 +1539,7 @@ json McpServer::BuildToolList()
         {"name", "get_memory_selection"},
         {"title", "Get Memory Selection"},
         {"description", "Read current memory selection range for area."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1487,6 +1556,7 @@ json McpServer::BuildToolList()
         {"name", "memory_search_capture"},
         {"title", "Capture Memory Snapshot"},
         {"description", "Snapshot memory area for later value-change search."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1503,6 +1573,7 @@ json McpServer::BuildToolList()
         {"name", "memory_search"},
         {"title", "Search Memory"},
         {"description", "Search memory values by comparison against snapshot, constant value, or address."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1538,6 +1609,7 @@ json McpServer::BuildToolList()
         {"name", "memory_find_bytes"},
         {"title", "Find Byte Sequence in Memory"},
         {"description", "Find consecutive hex byte sequence in memory; return addresses."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1558,6 +1630,7 @@ json McpServer::BuildToolList()
         {"name", "get_trace_log"},
         {"title", "Get Trace Log"},
         {"description", "Read trace log entries: CPU instructions and hardware/debug events."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1581,6 +1654,7 @@ json McpServer::BuildToolList()
         {"name", "set_trace_log"},
         {"title", "Set Trace Logger"},
         {"description", "Enable/disable trace log; filters CPU, IRQ, Suzy, Mikey, UART, audio, cart, debug messages; debug_output maps $FDC0-$FDC4 text registers."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1649,6 +1723,7 @@ json McpServer::BuildToolList()
         {"name", "get_rewind_status"},
         {"title", "Get Rewind Status"},
         {"description", "Read rewind buffer: snapshot count, capacity, buffered seconds, configuration."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1659,6 +1734,7 @@ json McpServer::BuildToolList()
         {"name", "rewind_seek"},
         {"title", "Rewind Seek"},
         {"description", "Load rewind snapshot by number; 1 oldest, snapshot_count newest; pause first; non-consuming reusable seek."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1724,6 +1800,7 @@ void McpServer::AddRouterTools(json& tools)
         {"name", "list_tool_categories"},
         {"title", "List Tool Categories"},
         {"description", "List routed MCP tool categories with descriptions and tool counts. Use this first to discover advanced emulator/debugger tools."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"additionalProperties", false}
@@ -1734,6 +1811,7 @@ void McpServer::AddRouterTools(json& tools)
         {"name", "get_category_tools"},
         {"title", "Get Category Tools"},
         {"description", "List routed tools in a category with compact descriptions. Use category names returned by list_tool_categories, then call get_tool_info for one tool's input schema."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1748,6 +1826,7 @@ void McpServer::AddRouterTools(json& tools)
         {"name", "get_tool_info"},
         {"title", "Get Tool Info"},
         {"description", "Return one MCP tool's title, description, category, direct/routed status, and real input schema. Use this after search_tools or get_category_tools before execute_tool."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1762,6 +1841,7 @@ void McpServer::AddRouterTools(json& tools)
         {"name", "search_tools"},
         {"title", "Search Tools"},
         {"description", "Search direct and routed MCP tools by keyword, category, title, description, and aliases. Use this when you know what you want to do but not the tool name."},
+        {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
@@ -1776,6 +1856,7 @@ void McpServer::AddRouterTools(json& tools)
         {"name", "execute_tool"},
         {"title", "Execute Routed Tool"},
         {"description", "Execute a routed MCP tool by name. First use search_tools or get_category_tools to discover the tool, then call get_tool_info to obtain its exact input schema."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
         {"inputSchema", {
             {"type", "object"},
             {"properties", {
