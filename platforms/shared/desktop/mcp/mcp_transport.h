@@ -25,6 +25,7 @@
 #define MCP_HTTP_MAX_HEADER_SIZE (64 * 1024)
 #define MCP_HTTP_MAX_BODY_SIZE (4 * 1024 * 1024)
 #define MCP_HTTP_RECEIVE_TIMEOUT_MS 5000
+#define MCP_PROTOCOL_VERSION "2025-11-25"
 
 #include <string>
 #include <iostream>
@@ -48,6 +49,8 @@ public:
     virtual bool send(const std::string& jsonLine) = 0;
     virtual bool acknowledge_notification() = 0;
     virtual bool reject_notification() = 0;
+    virtual bool validate_protocol_version(const std::string& method) = 0;
+    virtual void set_protocol_version(const std::string& version) = 0;
     virtual bool recv(std::string& jsonLine) = 0;
     virtual void close() = 0;
 };
@@ -82,6 +85,17 @@ public:
         return acknowledge_notification();
     }
 
+    bool validate_protocol_version(const std::string& method)
+    {
+        (void)method;
+        return true;
+    }
+
+    void set_protocol_version(const std::string& version)
+    {
+        (void)version;
+    }
+
     bool recv(std::string& jsonLine)
     {
         if (m_closed)
@@ -114,6 +128,7 @@ public:
             m_auth_token = auth_token;
         m_server_socket = INVALID_SOCKET_VALUE;
         m_current_client = INVALID_SOCKET_VALUE;
+        m_pending_protocol_version_count = 0;
 #ifdef _WIN32
         WSADATA wsaData;
         WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -194,6 +209,28 @@ public:
     bool reject_notification()
     {
         return send_http_response(400, "Bad Request", NULL, "", true);
+    }
+
+    bool validate_protocol_version(const std::string& method)
+    {
+        if (method == "initialize")
+        {
+            if (m_pending_protocol_version_count <= 1)
+                return true;
+        }
+        else if (validate_protocol_version_header(false))
+        {
+            return true;
+        }
+
+        send_http_response(400, "Bad Request", NULL, "", true);
+        return false;
+    }
+
+    void set_protocol_version(const std::string& version)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_protocol_version = version;
     }
 
     bool extract_http_method(const std::string& request, std::string& method)
@@ -340,6 +377,20 @@ public:
 #endif
     }
 
+    bool validate_protocol_version_header(bool allow_uninitialized)
+    {
+        std::string protocol_version;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            protocol_version = m_protocol_version;
+        }
+
+        if (protocol_version.empty())
+            return allow_uninitialized;
+
+        return m_pending_protocol_version_count == 1 && m_pending_protocol_version == protocol_version;
+    }
+
     std::string sanitize_http_headers_for_debug(const std::string& headers)
     {
         std::string sanitized;
@@ -444,6 +495,8 @@ public:
             SOCKET_CLOSE(m_current_client);
         m_current_client = INVALID_SOCKET_VALUE;
         m_current_origin.clear();
+        m_pending_protocol_version.clear();
+        m_pending_protocol_version_count = 0;
         m_client_cv.notify_all();
     }
 
@@ -619,6 +672,8 @@ public:
                 m_current_client = client;
                 m_current_origin.clear();
             }
+            m_pending_protocol_version.clear();
+            m_pending_protocol_version_count = 0;
 
             if (!configure_client_receive_timeout(client))
             {
@@ -671,6 +726,8 @@ public:
                         }
 
                         Debug("[MCP] HTTP headers:\n%s", sanitize_http_headers_for_debug(request.substr(0, header_end)).c_str());
+
+                        m_pending_protocol_version_count = extract_http_header(request, "MCP-Protocol-Version", m_pending_protocol_version);
 
                         if (!request_line_valid)
                         {
@@ -787,6 +844,12 @@ public:
                 return true;
             }
 
+            if (http_method == "GET" && !validate_protocol_version_header(true))
+            {
+                send_http_response(400, "Bad Request", NULL, "", true);
+                continue;
+            }
+
             Debug("[MCP] HTTP %s request not supported, responding 405", http_method.c_str());
 
             if (http_method == "HEAD")
@@ -840,6 +903,9 @@ private:
     std::string m_bind_address;
     std::string m_auth_token;
     std::string m_current_origin;
+    std::string m_protocol_version;
+    std::string m_pending_protocol_version;
+    int m_pending_protocol_version_count;
     socket_t m_server_socket;
     socket_t m_current_client;
 };
