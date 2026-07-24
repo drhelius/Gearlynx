@@ -130,7 +130,8 @@ struct GLYNX_Cartridge_Header
     u8 rotation;
     u8 audin;
     u8 eeprom;
-    u8 reserved[3];
+    u8 reserved[2];
+    u8 sd_api;
 };
 
 struct GLYNX_Cartridge_Header_LNX2
@@ -144,7 +145,8 @@ struct GLYNX_Cartridge_Header_LNX2
     u8 flags;
     u8 eeprom;
     u8 reserved;
-    u8 custom[2];
+    u8 custom;
+    u8 sd_api;
 };
 
 enum GLYNX_Cartridge_Bank_Type
@@ -181,6 +183,12 @@ enum GLYNX_Cartridge_Hardware
     GLYNX_CARTRIDGE_HARDWARE_STANDARD,
     GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE,
     GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD
+};
+
+enum GLYNX_SD_API
+{
+    GLYNX_SD_API_GAME_DRIVE = 0,
+    GLYNX_SD_API_EL_CHEAPO_SD = 1
 };
 
 struct GLYNX_SaveState_Header

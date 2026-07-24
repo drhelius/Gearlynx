@@ -155,6 +155,7 @@ private:
     void GatherDataFromPath(const char* path);
     GLYNX_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_EEPROM ReadHeaderEEPROM(u8 eeprom);
+    GLYNX_Cartridge_Hardware ReadHeaderCartridgeHardware(GLYNX_EEPROM eeprom, u8 sd_api);
     void ApplyEEPROMConfiguration();
     void ApplyCartridgeHardwareConfiguration();
     bool IsValidFile(const char* path);

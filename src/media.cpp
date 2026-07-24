@@ -806,16 +806,23 @@ bool Media::GatherLynxHeader(const u8* buffer)
     header.rotation = *p;
     p++;
 
-    header.audin = (*p & 0x01) != 0;
+    header.audin = IS_SET_BIT(*p, 0);
     p++;
 
     header.eeprom = *p;
+    p++;
+
+    memcpy(header.reserved, p, sizeof(header.reserved));
+    p += sizeof(header.reserved);
+
+    header.sd_api = *p;
 
     m_bank_page_size[0] = header.bank0_page_size;
     m_bank_page_size[1] = header.bank1_page_size;
     m_rotation = ReadHeaderRotation(header.rotation);
     m_audin = (header.audin == 1);
     m_eeprom = ReadHeaderEEPROM(header.eeprom);
+    m_detected_cartridge_hardware = ReadHeaderCartridgeHardware(m_eeprom, header.sd_api);
     strncpy(m_header_name, header.name, 31);
     m_header_name[31] = 0;
     strncpy(m_header_manufacturer, header.manufacturer, 15);
@@ -870,12 +877,22 @@ bool Media::GatherLynx2Header(const u8* buffer)
     p++;
 
     header.eeprom = *p;
+    p++;
+
+    header.reserved = *p;
+    p++;
+
+    header.custom = *p;
+    p++;
+
+    header.sd_api = *p;
 
     m_is_lnx2 = true;
     m_rotation = ReadHeaderRotation(header.rotation);
     m_audin = ((m_lnx2_bank[CART_BANK_0_A] >> 6) != GLYNX_CART_BANK_UNUSED) || ((m_lnx2_bank[CART_BANK_1_A] >> 6) != GLYNX_CART_BANK_UNUSED);
     m_eeprom = ReadHeaderEEPROM(header.eeprom);
-    if (header.flags & 0x01)
+    m_detected_cartridge_hardware = ReadHeaderCartridgeHardware(m_eeprom, header.sd_api);
+    if (IS_SET_BIT(header.flags, 0))
         m_console_type = GLYNX_CONSOLE_MODEL_II;
 
     strncpy(m_header_name, header.name, 31);
@@ -1060,7 +1077,7 @@ GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
 
     if (base_type == GLYNX_EEPROM_NONE)
     {
-        if (eeprom & GLYNX_EEPROM_8BIT)
+        if (IS_SET_BIT(eeprom, 7))
             base_type = GLYNX_EEPROM_93C46;
         else if (eeprom == GLYNX_EEPROM_SD)
         {
@@ -1077,19 +1094,19 @@ GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
     switch (base_type)
     {
         case GLYNX_EEPROM_93C46:
-            Debug("Header EEPROM: 93C46%s%s", (flags & GLYNX_EEPROM_SD) ? " SD" : "", (flags & GLYNX_EEPROM_8BIT) ? " 8-bit" : "");
+            Debug("Header EEPROM: 93C46%s%s", IS_SET_BIT(flags, 6) ? " SD" : "", IS_SET_BIT(flags, 7) ? " 8-bit" : "");
             break;
         case GLYNX_EEPROM_93C56:
-            Debug("Header EEPROM: 93C56%s%s", (flags & GLYNX_EEPROM_SD) ? " SD" : "", (flags & GLYNX_EEPROM_8BIT) ? " 8-bit" : "");
+            Debug("Header EEPROM: 93C56%s%s", IS_SET_BIT(flags, 6) ? " SD" : "", IS_SET_BIT(flags, 7) ? " 8-bit" : "");
             break;
         case GLYNX_EEPROM_93C66:
-            Debug("Header EEPROM: 93C66%s%s", (flags & GLYNX_EEPROM_SD) ? " SD" : "", (flags & GLYNX_EEPROM_8BIT) ? " 8-bit" : "");
+            Debug("Header EEPROM: 93C66%s%s", IS_SET_BIT(flags, 6) ? " SD" : "", IS_SET_BIT(flags, 7) ? " 8-bit" : "");
             break;
         case GLYNX_EEPROM_93C76:
-            Debug("Header EEPROM: 93C76%s%s", (flags & GLYNX_EEPROM_SD) ? " SD" : "", (flags & GLYNX_EEPROM_8BIT) ? " 8-bit" : "");
+            Debug("Header EEPROM: 93C76%s%s", IS_SET_BIT(flags, 6) ? " SD" : "", IS_SET_BIT(flags, 7) ? " 8-bit" : "");
             break;
         case GLYNX_EEPROM_93C86:
-            Debug("Header EEPROM: 93C86%s%s", (flags & GLYNX_EEPROM_SD) ? " SD" : "", (flags & GLYNX_EEPROM_8BIT) ? " 8-bit" : "");
+            Debug("Header EEPROM: 93C86%s%s", IS_SET_BIT(flags, 6) ? " SD" : "", IS_SET_BIT(flags, 7) ? " 8-bit" : "");
             break;
         default:
             Debug("Invalid EEPROM value in header: %d", eeprom);
@@ -1097,6 +1114,25 @@ GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
     }
 
     return (GLYNX_EEPROM)(base_type | flags);
+}
+
+GLYNX_Cartridge_Hardware Media::ReadHeaderCartridgeHardware(GLYNX_EEPROM eeprom, u8 sd_api)
+{
+    if (IS_NOT_SET_BIT(eeprom, 6))
+        return GLYNX_CARTRIDGE_HARDWARE_STANDARD;
+
+    switch (sd_api)
+    {
+        case GLYNX_SD_API_GAME_DRIVE:
+            Debug("Header SD API: GameDrive");
+            return GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE;
+        case GLYNX_SD_API_EL_CHEAPO_SD:
+            Debug("Header SD API: ElCheapoSD");
+            return GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD;
+        default:
+            Error("Unsupported header SD API: %d", sd_api);
+            return GLYNX_CARTRIDGE_HARDWARE_STANDARD;
+    }
 }
 
 void Media::ApplyEEPROMConfiguration()
@@ -1110,12 +1146,8 @@ void Media::ApplyEEPROMConfiguration()
 
 void Media::ApplyCartridgeHardwareConfiguration()
 {
-    GLYNX_Cartridge_Hardware detected = m_detected_cartridge_hardware;
-    if (detected == GLYNX_CARTRIDGE_HARDWARE_STANDARD && (m_active_eeprom & GLYNX_EEPROM_SD))
-        detected = GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE;
-
     GLYNX_Cartridge_Hardware previous = m_active_cartridge_hardware;
-    m_active_cartridge_hardware = m_cartridge_hardware_forced ? m_forced_cartridge_hardware : detected;
+    m_active_cartridge_hardware = m_cartridge_hardware_forced ? m_forced_cartridge_hardware : m_detected_cartridge_hardware;
 
     if (previous != m_active_cartridge_hardware)
     {
