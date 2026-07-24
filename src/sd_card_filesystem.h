@@ -17,14 +17,14 @@
  *
  */
 
-#ifndef GAME_DRIVE_FILESYSTEM_H
-#define GAME_DRIVE_FILESYSTEM_H
+#ifndef SD_CARD_FILESYSTEM_H
+#define SD_CARD_FILESYSTEM_H
 
 #include <string>
 #include <vector>
 #include "types.h"
 
-struct GameDriveFileSystemEntry
+struct SdCardFileSystemEntry
 {
     std::string name;
     u64 size;
@@ -35,20 +35,22 @@ struct GameDriveFileSystemEntry
     bool hidden;
 };
 
-class GameDriveFileSystem
+class SdCardFileSystem
 {
 public:
-    virtual ~GameDriveFileSystem() {}
+    virtual ~SdCardFileSystem() {}
 
     virtual bool IsAvailable() const = 0;
     virtual bool IsValidRootPath(const char* root_path) const = 0;
+    virtual bool GetFileInfo(const char* path, bool& directory, u32& size) = 0;
+    virtual bool CreateFile(const char* path, u32 size) = 0;
     virtual bool OpenFile(const char* path, bool& writable, u32& size) = 0;
     virtual void CloseFile() = 0;
     virtual s64 ReadFile(u32 offset, void* data, u32 size) = 0;
     virtual bool WriteFile(u32 offset, const void* data, u32 size) = 0;
-    virtual bool ReadDirectory(const char* path, std::vector<GameDriveFileSystemEntry>& entries) = 0;
+    virtual bool ReadDirectory(const char* path, std::vector<SdCardFileSystemEntry>& entries) = 0;
 };
 
-GameDriveFileSystem* CreateGameDriveFileSystem();
+SdCardFileSystem* CreateSdCardFileSystem();
 
-#endif /* GAME_DRIVE_FILESYSTEM_H */
+#endif /* SD_CARD_FILESYSTEM_H */

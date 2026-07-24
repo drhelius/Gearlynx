@@ -63,6 +63,7 @@ int application_headless_init(const ApplicationParams& params)
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
     emu_force_eeprom(config_emulator.eeprom);
+    emu_force_cartridge_hardware(config_emulator.cartridge_hardware);
 
     if (params.debug_monitor_port <= 0)
         emu_audio_mute(true);

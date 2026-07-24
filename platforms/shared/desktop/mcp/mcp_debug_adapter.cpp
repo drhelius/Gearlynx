@@ -635,6 +635,19 @@ json DebugAdapter::GetMediaInfo()
     info["eeprom_sd"] = (eeprom & GLYNX_EEPROM_SD) != 0;
     info["eeprom_8bit"] = (eeprom & GLYNX_EEPROM_8BIT) != 0;
 
+    switch (media->GetCartridgeHardware())
+    {
+        case GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE:
+            info["cartridge_hardware"] = "GameDrive";
+            break;
+        case GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD:
+            info["cartridge_hardware"] = "ElCheapoSD";
+            break;
+        default:
+            info["cartridge_hardware"] = "Standard";
+            break;
+    }
+
     info["audin"] = media->GetAudin();
     info["bios_loaded"] = media->IsBiosLoaded();
     info["bios_valid"] = media->IsBiosValid();

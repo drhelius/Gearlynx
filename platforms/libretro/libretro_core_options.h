@@ -103,6 +103,22 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Auto"
     },
     {
+        "gearlynx_cartridge_hardware",
+        "Cartridge Hardware (restart)",
+        "Cartridge Hardware",
+        "Override special cartridge hardware. 'Auto' uses the cartridge header or game database. Restart or reload content to apply changes.",
+        NULL,
+        "system",
+        {
+            { "Auto",        NULL },
+            { "Standard",    NULL },
+            { "GameDrive",   NULL },
+            { "ElCheapoSD",  NULL },
+            { NULL, NULL },
+        },
+        "Auto"
+    },
+    {
         "gearlynx_fast_sprite_rendering",
         "Fast Sprite Rendering",
         NULL,

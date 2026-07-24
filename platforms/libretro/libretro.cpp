@@ -26,7 +26,8 @@
 #include "libretro.h"
 #include "gearlynx.h"
 #include "game_drive.h"
-#include "game_drive_filesystem_libretro.h"
+#include "el_cheapo_sd.h"
+#include "sd_card_filesystem_libretro.h"
 #include "libretro_core_options.h"
 
 #ifdef _WIN32
@@ -228,9 +229,9 @@ void retro_init(void)
     vfs_interface_info.iface = NULL;
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info) && vfs_interface_info.iface)
-        game_drive_set_vfs_interface(vfs_interface_info.iface);
+        sd_card_set_vfs_interface(vfs_interface_info.iface);
     else
-        game_drive_set_vfs_interface(NULL);
+        sd_card_set_vfs_interface(NULL);
 
     core = new GearlynxCore();
 
@@ -251,7 +252,7 @@ void retro_deinit(void)
 {
     SafeDeleteArray(frame_buffer);
     SafeDelete(core);
-    game_drive_set_vfs_interface(NULL);
+    sd_card_set_vfs_interface(NULL);
 
     audio_sample_count = 0;
     current_screen_width = 0;
@@ -392,10 +393,15 @@ bool retro_load_game(const struct retro_game_info *info)
         return false;
     }
 
-    if ((core->GetMedia()->GetEEPROM() & GLYNX_EEPROM_SD) && !core->GetMedia()->GetGameDriveInstance()->IsAvailable())
+    GLYNX_Cartridge_Hardware cartridge_hardware = core->GetMedia()->GetCartridgeHardware();
+    bool sd_unavailable =
+        (cartridge_hardware == GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE && !core->GetMedia()->GetGameDriveInstance()->IsAvailable()) ||
+        (cartridge_hardware == GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD && !core->GetMedia()->GetElCheapoSDInstance()->IsAvailable());
+
+    if (sd_unavailable)
     {
         struct retro_message msg = {};
-        msg.msg = "GameDrive requires frontend VFS v3 and a content directory";
+        msg.msg = "SD cartridge requires frontend VFS v3 and a content directory";
         msg.frames = 360;
         environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
         log_cb(RETRO_LOG_WARN, "%s.\n", msg.msg);
@@ -434,12 +440,8 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 size_t retro_serialize_size(void)
 {
     size_t size = 0;
-    if (!core->SaveState(NULL, size))
+    if (!core->GetMaxSaveStateSize(size))
         return 0;
-
-    GameDrive* game_drive = core->GetMedia()->GetGameDriveInstance();
-    if (game_drive->IsAvailable())
-        size += game_drive->GetSaveStateSizeReserve();
 
     return size;
 }
@@ -776,6 +778,21 @@ static void check_variables(void)
             core->GetMedia()->ForceEEPROM(eeprom);
         else
             core->GetMedia()->AutoDetectEEPROM();
+    }
+
+    var.key = "gearlynx_cartridge_hardware";
+    var.value = NULL;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (strcmp(var.value, "Standard") == 0)
+            core->GetMedia()->ForceCartridgeHardware(GLYNX_CARTRIDGE_HARDWARE_STANDARD);
+        else if (strcmp(var.value, "GameDrive") == 0)
+            core->GetMedia()->ForceCartridgeHardware(GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE);
+        else if (strcmp(var.value, "ElCheapoSD") == 0)
+            core->GetMedia()->ForceCartridgeHardware(GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD);
+        else
+            core->GetMedia()->AutoDetectCartridgeHardware();
     }
 
     var.key = "gearlynx_fast_sprite_rendering";

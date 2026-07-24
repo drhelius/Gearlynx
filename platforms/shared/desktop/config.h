@@ -73,6 +73,15 @@ enum config_EEPROM
     config_EEPROM_Count
 };
 
+enum config_CartridgeHardware
+{
+    config_CartridgeHardware_Auto = 0,
+    config_CartridgeHardware_Standard,
+    config_CartridgeHardware_GameDrive,
+    config_CartridgeHardware_ElCheapoSD,
+    config_CartridgeHardware_Count
+};
+
 struct config_Emulator
 {
     bool maximized = false;
@@ -106,6 +115,7 @@ struct config_Emulator
     std::string mcp_http_address = "127.0.0.1";
     int console_type = 0;
     int eeprom = config_EEPROM_Auto;
+    int cartridge_hardware = config_CartridgeHardware_Auto;
 };
 
 struct config_Video

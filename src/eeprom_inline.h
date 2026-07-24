@@ -33,6 +33,11 @@ INLINE bool EEPROM::IsAvailable()
     return (m_type != GLYNX_EEPROM_NONE);
 }
 
+INLINE bool EEPROM::IsSelected()
+{
+    return IsAvailable() && m_last_cs;
+}
+
 INLINE void EEPROM::ProcessIO(u8 iodir, u8 iodat)
 {
     m_iodir = iodir;

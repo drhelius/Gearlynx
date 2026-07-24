@@ -21,6 +21,8 @@
 #define STATE_SERIALIZER_H
 
 #include <iostream>
+#include <string>
+#include <vector>
 #include "types.h"
 
 #define G_SERIALIZE(serializer, var) serializer.Serialize(var)
@@ -53,6 +55,29 @@ public:
             m_output_stream->write(reinterpret_cast<const char*>(array), sizeof(T) * count);
         else
             m_input_stream->read(reinterpret_cast<char*>(array), sizeof(T) * count);
+    }
+
+    void SerializeString(std::string& value)
+    {
+        u32 size = (u32)value.size();
+        Serialize(size);
+
+        if (IsLoading())
+            value.resize(size);
+        if (size > 0)
+            SerializeArray(&value[0], size);
+    }
+
+    template<typename T>
+    void SerializeVector(std::vector<T>& value)
+    {
+        u32 size = (u32)value.size();
+        Serialize(size);
+
+        if (IsLoading())
+            value.resize(size);
+        if (size > 0)
+            SerializeArray(&value[0], size);
     }
 
     std::ostream* GetOutputStream() { return m_output_stream; }

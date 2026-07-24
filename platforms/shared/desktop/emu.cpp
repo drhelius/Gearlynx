@@ -615,6 +615,28 @@ void emu_force_eeprom(int eeprom)
     core->GetMedia()->ForceEEPROM(type);
 }
 
+void emu_force_cartridge_hardware(int cartridge_hardware)
+{
+    switch (cartridge_hardware)
+    {
+        case config_CartridgeHardware_Auto:
+            core->GetMedia()->AutoDetectCartridgeHardware();
+            break;
+        case config_CartridgeHardware_Standard:
+            core->GetMedia()->ForceCartridgeHardware(GLYNX_CARTRIDGE_HARDWARE_STANDARD);
+            break;
+        case config_CartridgeHardware_GameDrive:
+            core->GetMedia()->ForceCartridgeHardware(GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE);
+            break;
+        case config_CartridgeHardware_ElCheapoSD:
+            core->GetMedia()->ForceCartridgeHardware(GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD);
+            break;
+        default:
+            core->GetMedia()->AutoDetectCartridgeHardware();
+            break;
+    }
+}
+
 void emu_set_fast_sprite_rendering(bool enabled)
 {
     core->GetSuzy()->SetFastSpriteRendering(enabled);

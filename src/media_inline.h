@@ -24,6 +24,7 @@
 #include "media.h"
 #include "eeprom.h"
 #include "game_drive.h"
+#include "el_cheapo_sd.h"
 
 INLINE u32 Media::GetCRC()
 {
@@ -170,6 +171,22 @@ INLINE GLYNX_EEPROM Media::GetEEPROM()
     return m_active_eeprom;
 }
 
+INLINE void Media::ForceCartridgeHardware(GLYNX_Cartridge_Hardware type)
+{
+    m_forced_cartridge_hardware = type;
+    m_cartridge_hardware_forced = true;
+}
+
+INLINE void Media::AutoDetectCartridgeHardware()
+{
+    m_cartridge_hardware_forced = false;
+}
+
+INLINE GLYNX_Cartridge_Hardware Media::GetCartridgeHardware()
+{
+    return m_active_cartridge_hardware;
+}
+
 INLINE Media::GLYNX_Media_Type Media::GetType()
 {
     return m_type;
@@ -285,6 +302,8 @@ INLINE void Media::ShiftRegisterStrobe(bool strobe)
         m_page_offset = 0;
         if (m_eeprom_instance->IsAvailable())
             m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+        if (m_el_cheapo_sd_instance->IsAvailable())
+            m_el_cheapo_sd_instance->ProcessCounter((u16)m_page_offset);
     }
 
     // Detect rising edge (0 -> 1)
@@ -311,6 +330,8 @@ INLINE void Media::AdvanceCounter()
         m_page_offset = (m_page_offset + 1) & 0x7FF;
         if (m_eeprom_instance->IsAvailable())
             m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+        if (m_el_cheapo_sd_instance->IsAvailable())
+            m_el_cheapo_sd_instance->ProcessCounter((u16)m_page_offset);
     }
 }
 
@@ -375,6 +396,13 @@ INLINE u8 Media::ReadBank0()
         return data;
     }
 
+    if (m_el_cheapo_sd_instance->IsAvailable())
+    {
+        u8 data = m_el_cheapo_sd_instance->ReadCartByte((m_address_shift << 11) | (m_page_offset & 0x7FF));
+        AdvanceCounter();
+        return data;
+    }
+
     return ReadCartBank(CART_BANK_0);
 }
 
@@ -393,6 +421,9 @@ INLINE u8 Media::PeekBank0()
             return m_game_drive_instance->ReadProgrammedByte((m_address_shift << 11) | (m_page_offset & 0x7FF));
     }
 
+    if (m_el_cheapo_sd_instance->IsAvailable())
+        return m_el_cheapo_sd_instance->PeekCartByte((m_address_shift << 11) | (m_page_offset & 0x7FF));
+
     return PeekCartBank(CART_BANK_0);
 }
 
@@ -403,6 +434,12 @@ INLINE u8 Media::PeekBank1()
 
 INLINE void Media::WriteBank0(u8 value)
 {
+    if (m_el_cheapo_sd_instance->IsAvailable())
+    {
+        AdvanceCounter();
+        return;
+    }
+
     WriteCartBank(CART_BANK_0, value);
 }
 
@@ -474,6 +511,23 @@ INLINE EEPROM* Media::GetEEPROMInstance()
 INLINE GameDrive* Media::GetGameDriveInstance()
 {
     return m_game_drive_instance;
+}
+
+INLINE ElCheapoSD* Media::GetElCheapoSDInstance()
+{
+    return m_el_cheapo_sd_instance;
+}
+
+INLINE size_t Media::GetSaveStateSizeReserve()
+{
+    size_t size = 0;
+
+    if (m_game_drive_instance->IsAvailable())
+        size += m_game_drive_instance->GetSaveStateSizeReserve();
+    if (m_el_cheapo_sd_instance->IsAvailable())
+        size += m_el_cheapo_sd_instance->GetSaveStateSizeReserve();
+
+    return size;
 }
 
 INLINE u8* Media::GetSaveMemoryPointer()

@@ -28,6 +28,8 @@
 #define GLYNX_DB_FLAG_AUDIN         0x04
 #define GLYNX_DB_FLAG_EEPROM_93C46  0x08
 #define GLYNX_DB_FLAG_NVRAM_8KB     0x10
+#define GLYNX_DB_FLAG_GAMEDRIVE     0x20
+#define GLYNX_DB_FLAG_EL_CHEAPO_SD  0x40
 
 #define GLYNX_DB_SIZE_C64K          0x100
 #define GLYNX_DB_SIZE_C128K         0x200
@@ -72,6 +74,7 @@ const GLYNX_Game_DB_Entry k_game_database[] =
     { 0x19C5A7A5, "Checkered Flag (USA, Europe)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },
     { 0x6A5F53ED, "Chip's Challenge (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
     { 0xAEC474C8, "Crystal Mines II (USA, Europe)", GLYNX_CONSOLE_AUTO, 131072, 0, 0, 0 },
+    { 0xF5319EB4, "CYA Test (Demo)", GLYNX_CONSOLE_AUTO, 38984, 0, 0, GLYNX_DB_FLAG_EL_CHEAPO_SD },
     { 0x99729395, "Daemonsgate (USA) (Proto)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },
     { 0xB9AC1FE5, "Desert Strike - Return to the Gulf (USA, Europe)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },
     { 0x50386CFA, "Dinolympics (USA, Europe)", GLYNX_CONSOLE_AUTO, 262144, 0, 0, 0 },

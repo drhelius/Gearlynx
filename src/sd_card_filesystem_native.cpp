@@ -26,7 +26,7 @@
 #include <sys/stat.h>
 #endif
 #include "common.h"
-#include "game_drive_filesystem.h"
+#include "sd_card_filesystem.h"
 
 static void BuildFatDateTime(time_t timestamp, u16& date, u16& time)
 {
@@ -41,25 +41,71 @@ static void BuildFatDateTime(time_t timestamp, u16& date, u16& time)
     time = (u16)((local_time.tm_hour << 11) | (local_time.tm_min << 5) | (local_time.tm_sec / 2));
 }
 
-class GameDriveFileSystemNative : public GameDriveFileSystem
+class SdCardFileSystemNative : public SdCardFileSystem
 {
 public:
-    GameDriveFileSystemNative() {}
-    virtual ~GameDriveFileSystemNative() { CloseFile(); }
+    SdCardFileSystemNative() {}
+    virtual ~SdCardFileSystemNative() { CloseFile(); }
 
     virtual bool IsAvailable() const { return true; }
     virtual bool IsValidRootPath(const char* root_path) const { (void)root_path; return true; }
+    virtual bool GetFileInfo(const char* path, bool& directory, u32& size);
+    virtual bool CreateFile(const char* path, u32 size);
     virtual bool OpenFile(const char* path, bool& writable, u32& size);
     virtual void CloseFile();
     virtual s64 ReadFile(u32 offset, void* data, u32 size);
     virtual bool WriteFile(u32 offset, const void* data, u32 size);
-    virtual bool ReadDirectory(const char* path, std::vector<GameDriveFileSystemEntry>& entries);
+    virtual bool ReadDirectory(const char* path, std::vector<SdCardFileSystemEntry>& entries);
 
 private:
     std::fstream m_file;
 };
 
-bool GameDriveFileSystemNative::OpenFile(const char* path, bool& writable, u32& size)
+bool SdCardFileSystemNative::GetFileInfo(const char* path, bool& directory, u32& size)
+{
+#if defined(_WIN32)
+    WIN32_FILE_ATTRIBUTE_DATA attributes;
+    std::wstring wide_path = utf8_to_wstring(path);
+    if (!GetFileAttributesExW(wide_path.c_str(), GetFileExInfoStandard, &attributes))
+        return false;
+
+    u64 file_size = ((u64)attributes.nFileSizeHigh << 32) | attributes.nFileSizeLow;
+    if (file_size > 0xFFFFFFFFULL)
+        return false;
+
+    directory = (attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    size = directory ? 0 : (u32)file_size;
+#else
+    struct stat status;
+    if (stat(path, &status) != 0 || (u64)status.st_size > 0xFFFFFFFFULL)
+        return false;
+
+    directory = S_ISDIR(status.st_mode);
+    size = directory ? 0 : (u32)status.st_size;
+#endif
+
+    return true;
+}
+
+bool SdCardFileSystemNative::CreateFile(const char* path, u32 size)
+{
+    std::fstream file;
+    open_ofstream_utf8(file, path, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!file.is_open())
+        return false;
+
+    if (size > 0)
+    {
+        file.seekp(size - 1, std::ios::beg);
+        file.put(0);
+    }
+
+    file.flush();
+    file.close();
+    return file.good();
+}
+
+bool SdCardFileSystemNative::OpenFile(const char* path, bool& writable, u32& size)
 {
     CloseFile();
 
@@ -90,7 +136,7 @@ bool GameDriveFileSystemNative::OpenFile(const char* path, bool& writable, u32& 
     return true;
 }
 
-void GameDriveFileSystemNative::CloseFile()
+void SdCardFileSystemNative::CloseFile()
 {
     if (m_file.is_open())
         m_file.close();
@@ -98,7 +144,7 @@ void GameDriveFileSystemNative::CloseFile()
     m_file.clear();
 }
 
-s64 GameDriveFileSystemNative::ReadFile(u32 offset, void* data, u32 size)
+s64 SdCardFileSystemNative::ReadFile(u32 offset, void* data, u32 size)
 {
     if (!m_file.is_open())
         return -1;
@@ -112,7 +158,7 @@ s64 GameDriveFileSystemNative::ReadFile(u32 offset, void* data, u32 size)
     return (s64)m_file.gcount();
 }
 
-bool GameDriveFileSystemNative::WriteFile(u32 offset, const void* data, u32 size)
+bool SdCardFileSystemNative::WriteFile(u32 offset, const void* data, u32 size)
 {
     if (!m_file.is_open())
         return false;
@@ -124,7 +170,7 @@ bool GameDriveFileSystemNative::WriteFile(u32 offset, const void* data, u32 size
     return m_file.good();
 }
 
-bool GameDriveFileSystemNative::ReadDirectory(const char* path, std::vector<GameDriveFileSystemEntry>& entries)
+bool SdCardFileSystemNative::ReadDirectory(const char* path, std::vector<SdCardFileSystemEntry>& entries)
 {
     entries.clear();
 
@@ -144,7 +190,7 @@ bool GameDriveFileSystemNative::ReadDirectory(const char* path, std::vector<Game
         if (name == "." || name == "..")
             continue;
 
-        GameDriveFileSystemEntry entry = {};
+        SdCardFileSystemEntry entry = {};
         entry.name = name;
         entry.size = ((u64)find_data.nFileSizeHigh << 32) | find_data.nFileSizeLow;
         entry.directory = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -182,7 +228,7 @@ bool GameDriveFileSystemNative::ReadDirectory(const char* path, std::vector<Game
         if (stat(item_path.c_str(), &status) != 0)
             continue;
 
-        GameDriveFileSystemEntry entry = {};
+        SdCardFileSystemEntry entry = {};
         entry.name = directory_entry->d_name;
         entry.size = S_ISDIR(status.st_mode) ? 0 : (u64)status.st_size;
         entry.directory = S_ISDIR(status.st_mode);
@@ -198,7 +244,7 @@ bool GameDriveFileSystemNative::ReadDirectory(const char* path, std::vector<Game
     return true;
 }
 
-GameDriveFileSystem* CreateGameDriveFileSystem()
+SdCardFileSystem* CreateSdCardFileSystem()
 {
-    return new GameDriveFileSystemNative();
+    return new SdCardFileSystemNative();
 }

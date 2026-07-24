@@ -453,6 +453,15 @@ bool GearlynxCore::SaveState(u8* buffer, size_t& size, bool screenshot)
     }
 }
 
+bool GearlynxCore::GetMaxSaveStateSize(size_t& size)
+{
+    if (!SaveState(NULL, size))
+        return false;
+
+    size += m_media->GetSaveStateSizeReserve();
+    return true;
+}
+
 bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot)
 {
     using namespace std;

@@ -69,6 +69,7 @@ public:
     void LoadRam(const char* path, bool full_path = false);
     bool SaveState(const char* path = NULL, int index = -1, bool screenshot = false);
     bool SaveState(u8* buffer, size_t& size, bool screenshot = false);
+    bool GetMaxSaveStateSize(size_t& size);
     bool LoadState(const char* path = NULL, int index = -1);
     bool LoadState(const u8* buffer, size_t size);
     bool GetSaveStateHeader(int index, const char* path, GLYNX_SaveState_Header* header);

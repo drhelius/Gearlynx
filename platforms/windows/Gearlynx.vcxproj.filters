@@ -180,10 +180,16 @@
     <ClInclude Include="..\..\src\bus.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\el_cheapo_sd.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\el_cheapo_sd_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\game_drive.h">
       <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game_drive_filesystem.h">
+    <ClInclude Include="..\..\src\sd_card_filesystem.h">
       <Filter>core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game_drive_inline.h">
@@ -451,10 +457,13 @@
     <ClCompile Include="..\..\src\bus.cpp">
       <Filter>core</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\el_cheapo_sd.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\game_drive.cpp">
       <Filter>core</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game_drive_filesystem_native.cpp">
+    <ClCompile Include="..\..\src\sd_card_filesystem_native.cpp">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\media.cpp">

@@ -319,6 +319,8 @@ void config_read(void)
     config_emulator.console_type = read_int("Emulator", "ConsoleType", 0);
     config_emulator.eeprom = read_int("Emulator", "EEPROM", config_EEPROM_Auto);
     config_emulator.eeprom = CLAMP(config_emulator.eeprom, config_EEPROM_Auto, config_EEPROM_Count - 1);
+    config_emulator.cartridge_hardware = read_int("Emulator", "CartridgeHardware", config_CartridgeHardware_Auto);
+    config_emulator.cartridge_hardware = CLAMP(config_emulator.cartridge_hardware, config_CartridgeHardware_Auto, config_CartridgeHardware_Count - 1);
 
     if (config_emulator.savefiles_path.empty())
     {
@@ -566,6 +568,7 @@ void config_write(void)
     write_string("Emulator", "MCPHTTPAddress", config_emulator.mcp_http_address);
     write_int("Emulator", "ConsoleType", config_emulator.console_type);
     write_int("Emulator", "EEPROM", config_emulator.eeprom);
+    write_int("Emulator", "CartridgeHardware", config_emulator.cartridge_hardware);
 
     for (int i = 0; i < config_max_recent_roms; i++)
     {

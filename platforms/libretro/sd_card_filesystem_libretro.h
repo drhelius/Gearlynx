@@ -17,11 +17,11 @@
  *
  */
 
-#ifndef GAME_DRIVE_FILESYSTEM_LIBRETRO_H
-#define GAME_DRIVE_FILESYSTEM_LIBRETRO_H
+#ifndef SD_CARD_FILESYSTEM_LIBRETRO_H
+#define SD_CARD_FILESYSTEM_LIBRETRO_H
 
 struct retro_vfs_interface;
 
-void game_drive_set_vfs_interface(const retro_vfs_interface* vfs_interface);
+void sd_card_set_vfs_interface(const retro_vfs_interface* vfs_interface);
 
-#endif /* GAME_DRIVE_FILESYSTEM_LIBRETRO_H */
+#endif /* SD_CARD_FILESYSTEM_LIBRETRO_H */

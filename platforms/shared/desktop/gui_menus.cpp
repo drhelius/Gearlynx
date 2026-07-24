@@ -322,7 +322,7 @@ static void menu_emulator(void)
 
         if (ImGui::BeginMenu("Console Type"))
         {
-            ImGui::PushItemWidth(120.0f);
+            ImGui::PushItemWidth(100.0f);
             if (ImGui::Combo("##console_type", &config_emulator.console_type, "Auto\0Lynx I\0Lynx II\0\0"))
             {
                 emu_force_console_type(config_emulator.console_type);
@@ -342,6 +342,25 @@ static void menu_emulator(void)
                 "93C86 - 2 KB - 16-bit\093C86 - 2 KB - 8-bit\0\0"))
             {
                 emu_force_eeprom(config_emulator.eeprom);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("It is recommended to leave this option on Auto.");
+                ImGui::Text("Reload the game to apply changes.");
+                ImGui::EndTooltip();
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Cartridge Hardware"))
+        {
+            ImGui::PushItemWidth(130.0f);
+            if (ImGui::Combo("##cartridge_hardware", &config_emulator.cartridge_hardware,
+                "Auto\0Standard\0GameDrive\0ElCheapoSD\0\0"))
+            {
+                emu_force_cartridge_hardware(config_emulator.cartridge_hardware);
             }
             if (ImGui::IsItemHovered())
             {

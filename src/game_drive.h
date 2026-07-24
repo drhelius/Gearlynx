@@ -25,7 +25,7 @@
 #include "common.h"
 
 class StateSerializer;
-class GameDriveFileSystem;
+class SdCardFileSystem;
 
 class GameDrive
 {
@@ -112,8 +112,6 @@ private:
     u16 InputWord(u32 offset) const;
     u32 InputDword(u32 offset) const;
     void Serialize(StateSerializer& serializer);
-    void SerializeString(StateSerializer& serializer, std::string& value);
-    void SerializeByteVector(StateSerializer& serializer, std::vector<u8>& value);
 
 private:
     bool m_available;
@@ -131,7 +129,7 @@ private:
     std::string m_root_path;
     std::string m_open_file_guest_path;
     std::string m_open_directory_guest_path;
-    GameDriveFileSystem* m_file_system;
+    SdCardFileSystem* m_file_system;
     std::vector<u8> m_input;
     std::vector<u8> m_output;
     std::vector<u8> m_program_bank;

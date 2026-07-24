@@ -21,7 +21,7 @@
 #include <cctype>
 #include <limits>
 #include "game_drive.h"
-#include "game_drive_filesystem.h"
+#include "sd_card_filesystem.h"
 #include "state_serializer.h"
 
 static void BuildShortName(const char* file_name, char* short_name)
@@ -64,7 +64,7 @@ static void BuildShortName(const char* file_name, char* short_name)
 
 GameDrive::GameDrive()
 {
-    m_file_system = CreateGameDriveFileSystem();
+    m_file_system = CreateSdCardFileSystem();
     m_program_bank.resize(PROGRAM_BANK_SIZE);
     m_available = false;
     m_root_path = ".";
@@ -358,13 +358,13 @@ bool GameDrive::OpenDirectory(const std::string& guest_path)
     m_directory_entries.clear();
     m_directory_index = 0;
 
-    std::vector<GameDriveFileSystemEntry> file_system_entries;
+    std::vector<SdCardFileSystemEntry> file_system_entries;
     if (!m_file_system->ReadDirectory(host_path.c_str(), file_system_entries))
         return false;
 
     for (size_t index = 0; index < file_system_entries.size(); index++)
     {
-        const GameDriveFileSystemEntry& file_system_entry = file_system_entries[index];
+        const SdCardFileSystemEntry& file_system_entry = file_system_entries[index];
         DirectoryEntry entry = {};
         entry.size = (u32)MIN(file_system_entry.size, 0xFFFFFFFFULL);
         entry.date = file_system_entry.date;
@@ -446,10 +446,10 @@ void GameDrive::Serialize(StateSerializer& serializer)
     G_SERIALIZE(serializer, m_file_offset);
     G_SERIALIZE(serializer, m_output_offset);
     G_SERIALIZE(serializer, m_directory_index);
-    SerializeString(serializer, m_open_file_guest_path);
-    SerializeString(serializer, m_open_directory_guest_path);
-    SerializeByteVector(serializer, m_input);
-    SerializeByteVector(serializer, m_output);
+    serializer.SerializeString(m_open_file_guest_path);
+    serializer.SerializeString(m_open_directory_guest_path);
+    serializer.SerializeVector(m_input);
+    serializer.SerializeVector(m_output);
 
     if (m_programmed)
         G_SERIALIZE_ARRAY(serializer, &m_program_bank[0], m_program_bank.size());
@@ -477,26 +477,4 @@ void GameDrive::Serialize(StateSerializer& serializer)
         if (m_output_offset > m_output.size())
             m_output_offset = (u32)m_output.size();
     }
-}
-
-void GameDrive::SerializeString(StateSerializer& serializer, std::string& value)
-{
-    u32 size = (u32)value.size();
-    G_SERIALIZE(serializer, size);
-
-    if (serializer.IsLoading())
-        value.resize(size);
-    if (size > 0)
-        G_SERIALIZE_ARRAY(serializer, &value[0], size);
-}
-
-void GameDrive::SerializeByteVector(StateSerializer& serializer, std::vector<u8>& value)
-{
-    u32 size = (u32)value.size();
-    G_SERIALIZE(serializer, size);
-
-    if (serializer.IsLoading())
-        value.resize(size);
-    if (size > 0)
-        G_SERIALIZE_ARRAY(serializer, &value[0], size);
 }

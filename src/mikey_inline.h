@@ -30,6 +30,7 @@
 #include "lcd_screen.h"
 #include "trace_logger.h"
 #include "eeprom.h"
+#include "el_cheapo_sd.h"
 #include "memory.h"
 
 INLINE bool Mikey::Clock(u32 cycles)
@@ -130,8 +131,11 @@ INLINE u8 Mikey::Read(u16 address)
             // EEPROM can override this when actively sending data
             if (IS_SET_BIT(m_state.IODIR, 4))
                 ret |= IS_SET_BIT(m_state.IODAT, 4) ? 0x10 : 0x00;
-            else if (m_media->GetGameDriveInstance()->IsAvailable())
+            else if (m_media->GetGameDriveInstance()->IsAvailable() &&
+                !m_media->GetEEPROMInstance()->IsSelected())
                 ret |= m_media->GetGameDriveInstance()->HasOutput() ? 0x10 : 0x00;
+            else if (m_media->GetElCheapoSDInstance()->IsSelected())
+                ret |= m_media->GetElCheapoSDInstance()->OutputBit() ? 0x10 : 0x00;
             else if (m_media->GetEEPROMInstance()->IsAvailable())
             {
                 if (!debug)
@@ -293,6 +297,8 @@ INLINE void Mikey::Write(u16 address, u8 value)
 
             if (m_media->GetEEPROMInstance()->IsAvailable())
                 m_media->GetEEPROMInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
+            else if (m_media->GetElCheapoSDInstance()->IsAvailable())
+                m_media->GetElCheapoSDInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
 
             break;
         case MIKEY_IODAT:         // 0xFD8B
@@ -305,6 +311,8 @@ INLINE void Mikey::Write(u16 address, u8 value)
 
             if (m_media->GetEEPROMInstance()->IsAvailable())
                 m_media->GetEEPROMInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
+            else if (m_media->GetElCheapoSDInstance()->IsAvailable())
+                m_media->GetElCheapoSDInstance()->ProcessIO(m_state.IODIR, m_state.IODAT);
 
             break;
         case MIKEY_SERCTL:        // 0xFD8C

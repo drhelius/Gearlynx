@@ -33,6 +33,7 @@ static int capacity = 0;
 static int frame_accum = 0;
 static bool active = false;
 static int seek_age = -1;
+static size_t slot_size = 0;
 
 static int slot_at(int age);
 static int get_target_capacity(void);
@@ -56,6 +57,7 @@ void rewind_destroy(void)
     frame_accum = 0;
     active = false;
     seek_age = -1;
+    slot_size = 0;
 }
 
 void rewind_reset(void)
@@ -71,6 +73,13 @@ void rewind_reset(void)
     if (!config_rewind.enabled || emu_is_empty())
     {
         release_storage();
+        return;
+    }
+
+    if (!emu_get_core()->GetMaxSaveStateSize(slot_size) || slot_size == 0 || slot_size > REWIND_MAX_MEMORY_SIZE)
+    {
+        release_storage();
+        slot_size = 0;
         return;
     }
 
@@ -96,8 +105,8 @@ void rewind_push(void)
         return;
     frame_accum = 0;
 
-    u8* slot = buffer + (size_t)head * REWIND_MAX_STATE_SIZE;
-    size_t size = REWIND_MAX_STATE_SIZE;
+    u8* slot = buffer + (size_t)head * slot_size;
+    size_t size = slot_size;
 
     if (!emu_get_core()->SaveState(slot, size, false))
         return;
@@ -116,7 +125,7 @@ bool rewind_pop(void)
         return false;
 
     int idx = slot_at(0);
-    const u8* slot = buffer + (size_t)idx * REWIND_MAX_STATE_SIZE;
+    const u8* slot = buffer + (size_t)idx * slot_size;
     size_t size = sizes[idx];
 
     bool ok = emu_get_core()->LoadState(slot, size);
@@ -154,7 +163,7 @@ int rewind_get_snapshot_count(void)
 
 size_t rewind_get_memory_usage(void)
 {
-    return IsValidPointer(buffer) ? (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE : 0;
+    return IsValidPointer(buffer) ? REWIND_MAX_MEMORY_SIZE : 0;
 }
 
 bool rewind_seek(int age)
@@ -165,7 +174,7 @@ bool rewind_seek(int age)
         return false;
 
     int idx = slot_at(age);
-    const u8* slot = buffer + (size_t)idx * REWIND_MAX_STATE_SIZE;
+    const u8* slot = buffer + (size_t)idx * slot_size;
     size_t size = sizes[idx];
 
     bool ok = emu_get_core()->LoadState(slot, size);
@@ -208,6 +217,8 @@ static int get_target_capacity(void)
         target = 1;
     if (target > REWIND_MAX_SNAPSHOTS)
         target = REWIND_MAX_SNAPSHOTS;
+    if (slot_size > 0)
+        target = MIN(target, (int)(REWIND_MAX_MEMORY_SIZE / slot_size));
 
     return target;
 }
@@ -223,7 +234,7 @@ static bool ensure_storage(void)
     if (IsValidPointer(buffer))
         return true;
 
-    size_t target_size = (size_t)REWIND_MAX_SNAPSHOTS * REWIND_MAX_STATE_SIZE;
+    size_t target_size = REWIND_MAX_MEMORY_SIZE;
     u8* new_buffer = new (std::nothrow) u8[target_size];
     if (!IsValidPointer(new_buffer))
     {

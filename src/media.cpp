@@ -24,6 +24,7 @@
 #include "media.h"
 #include "eeprom.h"
 #include "game_drive.h"
+#include "el_cheapo_sd.h"
 #include "miniz.h"
 #include "crc.h"
 #include "game_db.h"
@@ -41,6 +42,7 @@ Media::Media()
     InitPointer(m_nvram);
     InitPointer(m_eeprom_instance);
     InitPointer(m_game_drive_instance);
+    InitPointer(m_el_cheapo_sd_instance);
     InitPointer(m_decrypt_buffer_a);
     InitPointer(m_decrypt_buffer_b);
     InitPointer(m_decrypt_buffer_tmp);
@@ -51,6 +53,8 @@ Media::Media()
     m_forced_console_type = GLYNX_CONSOLE_AUTO;
     m_forced_eeprom = GLYNX_EEPROM_NONE;
     m_eeprom_forced = false;
+    m_forced_cartridge_hardware = GLYNX_CARTRIDGE_HARDWARE_STANDARD;
+    m_cartridge_hardware_forced = false;
     HardReset();
 }
 
@@ -61,6 +65,7 @@ Media::~Media()
     SafeDeleteArray(m_nvram);
     SafeDelete(m_eeprom_instance);
     SafeDelete(m_game_drive_instance);
+    SafeDelete(m_el_cheapo_sd_instance);
     SafeDeleteArray(m_decrypt_buffer_a);
     SafeDeleteArray(m_decrypt_buffer_b);
     SafeDeleteArray(m_decrypt_buffer_tmp);
@@ -71,6 +76,7 @@ void Media::Init()
 {
     m_eeprom_instance = new EEPROM();
     m_game_drive_instance = new GameDrive();
+    m_el_cheapo_sd_instance = new ElCheapoSD();
     m_nvram = new u8[NVRAM_SIZE];
     memset(m_nvram, 0, NVRAM_SIZE);
     m_decrypt_buffer_a = new u8[EPYX_DECRYPT_BLOCK_SIZE];
@@ -94,6 +100,8 @@ void Media::HardReset()
 {
     if (m_game_drive_instance)
         m_game_drive_instance->Configure(false, NULL);
+    if (m_el_cheapo_sd_instance)
+        m_el_cheapo_sd_instance->Configure(false, NULL, NULL, 0);
 
     ReleaseCartBankRAM();
     SafeDeleteArray(m_rom);
@@ -123,6 +131,8 @@ void Media::HardReset()
     m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = GLYNX_EEPROM_NONE;
     m_active_eeprom = GLYNX_EEPROM_NONE;
+    m_detected_cartridge_hardware = GLYNX_CARTRIDGE_HARDWARE_STANDARD;
+    m_active_cartridge_hardware = GLYNX_CARTRIDGE_HARDWARE_STANDARD;
     m_type = MEDIA_LYNX;
     m_audin = false;
     m_audin_value = false;
@@ -654,12 +664,12 @@ void Media::GatherInfoFromDB()
                 m_bank_page_size[1] = k_game_database[i].bank1_page_size;
             }
 
-            if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT))
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
             {
                 Debug("Forcing rotation to database value: Rotate LEFT");
                 m_rotation = GLYNX_ROTATION_LEFT;
             }
-            else if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT))
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_RIGHT)
             {
                 Debug("Forcing rotation to database value: Rotate RIGHT");
                 m_rotation = GLYNX_ROTATION_RIGHT;
@@ -681,6 +691,17 @@ void Media::GatherInfoFromDB()
             {
                 Debug("Enabling 8KB NVRAM in bank1");
                 m_nvram_enabled = true;
+            }
+
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_GAMEDRIVE)
+            {
+                Debug("Forcing cartridge hardware to database value: GameDrive");
+                m_detected_cartridge_hardware = GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE;
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_EL_CHEAPO_SD)
+            {
+                Debug("Forcing cartridge hardware to database value: ElCheapoSD");
+                m_detected_cartridge_hardware = GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD;
             }
 
             if (!m_is_lnx2 && k_game_database[i].console_type != GLYNX_CONSOLE_AUTO)
@@ -1037,14 +1058,41 @@ GLYNX_EEPROM Media::ReadHeaderEEPROM(u8 eeprom)
 
 void Media::ApplyEEPROMConfiguration()
 {
-    GLYNX_EEPROM previous_eeprom = m_active_eeprom;
     m_active_eeprom = m_eeprom_forced ? m_forced_eeprom : m_eeprom;
-    m_eeprom_instance->Reset(m_active_eeprom);
+    GLYNX_EEPROM physical_eeprom = (GLYNX_EEPROM)(m_active_eeprom & ~GLYNX_EEPROM_SD);
+    m_eeprom_instance->Reset(physical_eeprom);
 
-    if ((previous_eeprom & GLYNX_EEPROM_SD) != (m_active_eeprom & GLYNX_EEPROM_SD))
-        m_game_drive_instance->Configure((m_active_eeprom & GLYNX_EEPROM_SD) != 0, m_file_directory);
+    ApplyCartridgeHardwareConfiguration();
+}
+
+void Media::ApplyCartridgeHardwareConfiguration()
+{
+    GLYNX_Cartridge_Hardware detected = m_detected_cartridge_hardware;
+    if (detected == GLYNX_CARTRIDGE_HARDWARE_STANDARD && (m_active_eeprom & GLYNX_EEPROM_SD))
+        detected = GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE;
+
+    GLYNX_Cartridge_Hardware previous = m_active_cartridge_hardware;
+    m_active_cartridge_hardware = m_cartridge_hardware_forced ? m_forced_cartridge_hardware : detected;
+
+    if (previous != m_active_cartridge_hardware)
+    {
+        m_game_drive_instance->Configure(m_active_cartridge_hardware == GLYNX_CARTRIDGE_HARDWARE_GAME_DRIVE, m_file_directory);
+        m_el_cheapo_sd_instance->Configure(m_active_cartridge_hardware == GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD,
+            m_file_directory, m_cart_bank_data[CART_BANK_0], m_cart_bank_size[CART_BANK_0]);
+    }
     else
+    {
         m_game_drive_instance->Reset(false);
+        if (m_active_cartridge_hardware == GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD)
+        {
+            m_el_cheapo_sd_instance->Configure(true, m_file_directory,
+                m_cart_bank_data[CART_BANK_0], m_cart_bank_size[CART_BANK_0]);
+        }
+        else
+        {
+            m_el_cheapo_sd_instance->Reset(false);
+        }
+    }
 }
 
 bool Media::IsValidFile(const char* path)
@@ -1092,24 +1140,39 @@ void Media::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, GLYNX_SAVESTATE_VERSION);
-    if (m_active_eeprom != GLYNX_EEPROM_NONE)
+    if (m_eeprom_instance->IsAvailable())
         m_eeprom_instance->SaveState(stream);
     if (m_game_drive_instance->IsAvailable())
         m_game_drive_instance->SaveState(stream);
+    if (m_el_cheapo_sd_instance->IsAvailable())
+        m_el_cheapo_sd_instance->SaveState(stream);
 }
 
 void Media::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
-    if (m_active_eeprom != GLYNX_EEPROM_NONE)
+    bool legacy_eeprom_state = version < 18 && m_active_eeprom != GLYNX_EEPROM_NONE;
+    bool legacy_sd_only_eeprom = legacy_eeprom_state && !m_eeprom_instance->IsAvailable();
+    if (legacy_sd_only_eeprom)
+        m_eeprom_instance->Reset(m_active_eeprom);
+    if (legacy_eeprom_state || m_eeprom_instance->IsAvailable())
         m_eeprom_instance->LoadState(stream);
+    if (legacy_sd_only_eeprom)
+        m_eeprom_instance->Reset(GLYNX_EEPROM_NONE);
     if (m_game_drive_instance->IsAvailable())
     {
         if (version >= 17)
             m_game_drive_instance->LoadState(stream);
         else
             m_game_drive_instance->Reset(false);
+    }
+    if (m_el_cheapo_sd_instance->IsAvailable())
+    {
+        if (version == 18)
+            m_el_cheapo_sd_instance->LoadState(stream);
+        else
+            m_el_cheapo_sd_instance->Reset(false);
     }
     if (m_persistent_ram_size > 0)
         m_save_memory_dirty = true;

@@ -30,6 +30,7 @@
 class StateSerializer;
 class EEPROM;
 class GameDrive;
+class ElCheapoSD;
 
 class Media
 {
@@ -72,6 +73,9 @@ public:
     void AutoDetectEEPROM();
     bool IsEEPROMForced();
     GLYNX_EEPROM GetEEPROM();
+    void ForceCartridgeHardware(GLYNX_Cartridge_Hardware type);
+    void AutoDetectCartridgeHardware();
+    GLYNX_Cartridge_Hardware GetCartridgeHardware();
     GLYNX_Media_Type GetType();
     bool GetAudin();
     u16 GetHomebrewBootAddress();
@@ -123,6 +127,7 @@ public:
     const char* GetCartBankName(int bank);
     EEPROM* GetEEPROMInstance();
     GameDrive* GetGameDriveInstance();
+    ElCheapoSD* GetElCheapoSDInstance();
     u8* GetSaveMemoryPointer();
     s32 GetSaveMemorySize();
     void ClearSaveMemoryDirty();
@@ -130,6 +135,7 @@ public:
     bool LoadRam(std::istream& file, s32 file_size);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream, int version);
+    size_t GetSaveStateSizeReserve();
 
 private:
     void Serialize(StateSerializer& s, int version);
@@ -150,6 +156,7 @@ private:
     GLYNX_Rotation ReadHeaderRotation(u8 rotation);
     GLYNX_EEPROM ReadHeaderEEPROM(u8 eeprom);
     void ApplyEEPROMConfiguration();
+    void ApplyCartridgeHardwareConfiguration();
     bool IsValidFile(const char* path);
     void DecryptDoubleValue(u8* result, int length);
     int DecryptMinusEquals(u8* result, const u8* value, int length);
@@ -205,6 +212,11 @@ private:
     bool m_eeprom_forced;
     EEPROM* m_eeprom_instance;
     GameDrive* m_game_drive_instance;
+    ElCheapoSD* m_el_cheapo_sd_instance;
+    GLYNX_Cartridge_Hardware m_detected_cartridge_hardware;
+    GLYNX_Cartridge_Hardware m_forced_cartridge_hardware;
+    GLYNX_Cartridge_Hardware m_active_cartridge_hardware;
+    bool m_cartridge_hardware_forced;
     GLYNX_Media_Type m_type;
     bool m_audin;
     bool m_audin_value;

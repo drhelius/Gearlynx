@@ -32,6 +32,7 @@ public:
     void Reset(GLYNX_EEPROM type);
     GLYNX_EEPROM GetType();
     bool IsAvailable();
+    bool IsSelected();
     s32 GetSize();
     void ProcessIO(u8 iodir, u8 iodat);
     void ProcessEepromCounter(u16 counter);

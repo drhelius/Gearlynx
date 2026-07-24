@@ -21,6 +21,7 @@
 #define COMMON_H
 
 #include <stdlib.h>
+#include <cctype>
 #include <string>
 #include <string.h>
 #include <time.h>
@@ -208,6 +209,22 @@ inline char* strncat_fit(char* dest, const char* src, size_t dest_size)
         return dest;
 
     return strncat(dest, src, dest_size - len - 1);
+}
+
+inline bool strings_equal_ignore_case(const std::string& left, const std::string& right)
+{
+    if (left.size() != right.size())
+        return false;
+
+    for (size_t i = 0; i < left.size(); i++)
+    {
+        unsigned char left_char = (unsigned char)left[i];
+        unsigned char right_char = (unsigned char)right[i];
+        if (std::tolower(left_char) != std::tolower(right_char))
+            return false;
+    }
+
+    return true;
 }
 
 inline void append_path_component(std::string& path, const char* component)
