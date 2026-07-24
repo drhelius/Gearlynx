@@ -816,6 +816,9 @@ void emu_get_info(char* info, int buffer_size)
             case GLYNX_ROTATION_RIGHT:
                 rotation_str = "Right";
                 break;
+            case GLYNX_ROTATION_180:
+                rotation_str = "180";
+                break;
             default:
                 rotation_str = "None";
                 break;

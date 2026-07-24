@@ -664,7 +664,12 @@ void Media::GatherInfoFromDB()
                 m_bank_page_size[1] = k_game_database[i].bank1_page_size;
             }
 
-            if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_NONE)
+            {
+                Debug("Forcing rotation to database value: None");
+                m_rotation = GLYNX_ROTATION_DISABLED;
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_LEFT)
             {
                 Debug("Forcing rotation to database value: Rotate LEFT");
                 m_rotation = GLYNX_ROTATION_LEFT;
@@ -674,6 +679,11 @@ void Media::GatherInfoFromDB()
                 Debug("Forcing rotation to database value: Rotate RIGHT");
                 m_rotation = GLYNX_ROTATION_RIGHT;
             }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_ROTATE_180)
+            {
+                Debug("Forcing rotation to database value: Rotate 180");
+                m_rotation = GLYNX_ROTATION_180;
+            }
 
             if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_AUDIN))
             {
@@ -681,10 +691,43 @@ void Media::GatherInfoFromDB()
                 m_audin = true;
             }
 
-            if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46))
+            GLYNX_EEPROM database_eeprom = GLYNX_EEPROM_NONE;
+            const char* database_eeprom_name = NULL;
+
+            if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C46)
             {
-                Debug("Forcing EEPROM to database value: 93C46");
-                m_eeprom = GLYNX_EEPROM_93C46;
+                database_eeprom = GLYNX_EEPROM_93C46;
+                database_eeprom_name = "93C46";
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C56)
+            {
+                database_eeprom = GLYNX_EEPROM_93C56;
+                database_eeprom_name = "93C56";
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C66)
+            {
+                database_eeprom = GLYNX_EEPROM_93C66;
+                database_eeprom_name = "93C66";
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C76)
+            {
+                database_eeprom = GLYNX_EEPROM_93C76;
+                database_eeprom_name = "93C76";
+            }
+            else if (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_93C86)
+            {
+                database_eeprom = GLYNX_EEPROM_93C86;
+                database_eeprom_name = "93C86";
+            }
+
+            if (!m_is_lnx2 && database_eeprom != GLYNX_EEPROM_NONE)
+            {
+                bool eeprom_8bit = (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_8BIT) != 0;
+                if (eeprom_8bit)
+                    database_eeprom = (GLYNX_EEPROM)(database_eeprom | GLYNX_EEPROM_8BIT);
+
+                Debug("Forcing EEPROM to database value: %s%s", database_eeprom_name, eeprom_8bit ? " 8-bit" : "");
+                m_eeprom = database_eeprom;
             }
 
             if (!m_is_lnx2 && (k_game_database[i].flags & GLYNX_DB_FLAG_NVRAM_8KB))

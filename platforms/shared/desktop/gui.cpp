@@ -740,6 +740,13 @@ static void draw_sprite_bounding_boxes(const ImVec2& image_pos, const ImVec2& im
             x1 = (float)(GLYNX_SCREEN_HEIGHT - box.y0);
             y1 = (float)(box.x1 + 1);
         }
+        else if (rotation == GLYNX_ROTATION_180)
+        {
+            x0 = (float)(GLYNX_SCREEN_WIDTH - box.x1 - 1);
+            y0 = (float)(GLYNX_SCREEN_HEIGHT - box.y1 - 1);
+            x1 = (float)(GLYNX_SCREEN_WIDTH - box.x0);
+            y1 = (float)(GLYNX_SCREEN_HEIGHT - box.y0);
+        }
 
         ImVec2 rect_min(image_pos.x + x0 * scale_x, image_pos.y + y0 * scale_y);
         ImVec2 rect_max(image_pos.x + x1 * scale_x, image_pos.y + y1 * scale_y);

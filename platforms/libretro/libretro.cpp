@@ -718,6 +718,8 @@ static void check_variables(void)
             rotation = GLYNX_ROTATION_RIGHT;
         else if (strcmp(var.value, "Disabled") == 0)
             rotation = GLYNX_ROTATION_DISABLED;
+        else if (strcmp(var.value, "180") == 0)
+            rotation = GLYNX_ROTATION_180;
 
         core->GetMedia()->ForceRotation(rotation);
     }

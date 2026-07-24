@@ -55,6 +55,17 @@ INLINE GLYNX_Keys Input::MapDirectional(GLYNX_Keys key) const
                 mapped = GLYNX_KEY_UP;
             break;
 
+        case GLYNX_ROTATION_180:
+            if (key == GLYNX_KEY_UP)
+                mapped = GLYNX_KEY_DOWN;
+            else if (key == GLYNX_KEY_DOWN)
+                mapped = GLYNX_KEY_UP;
+            else if (key == GLYNX_KEY_LEFT)
+                mapped = GLYNX_KEY_RIGHT;
+            else if (key == GLYNX_KEY_RIGHT)
+                mapped = GLYNX_KEY_LEFT;
+            break;
+
         default:
             break;
     }

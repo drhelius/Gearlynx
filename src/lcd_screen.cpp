@@ -130,6 +130,15 @@ void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
         const u16* src = reinterpret_cast<const u16*>(m_frame_buffer);
         u16* dst = reinterpret_cast<u16*>(m_rotated_frame_buffer);
 
+        if (rotation == GLYNX_ROTATION_180)
+        {
+            for (int i = 0; i < pixel_count; i++)
+                dst[pixel_count - 1 - i] = src[i];
+
+            memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u16));
+            return;
+        }
+
         for (int y = 0; y < height; ++y)
         {
             for (int x = 0; x < width; ++x)
@@ -148,6 +157,15 @@ void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
 
     const u32* src = reinterpret_cast<const u32*>(m_frame_buffer);
     u32* dst = reinterpret_cast<u32*>(m_rotated_frame_buffer);
+
+    if (rotation == GLYNX_ROTATION_180)
+    {
+        for (int i = 0; i < pixel_count; i++)
+            dst[pixel_count - 1 - i] = src[i];
+
+        memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u32));
+        return;
+    }
 
     for (int y = 0; y < height; ++y)
     {

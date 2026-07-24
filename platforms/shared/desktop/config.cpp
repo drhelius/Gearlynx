@@ -347,6 +347,7 @@ void config_read(void)
     config_video.scale_manual = read_int("Video", "ScaleManual", 1);
     config_video.ratio = read_int("Video", "AspectRatio", 0);
     config_video.rotation = read_int("Video", "Rotation", 0);
+    config_video.rotation = CLAMP(config_video.rotation, GLYNX_ROTATION_AUTO, GLYNX_ROTATION_180);
     config_video.fps = read_bool("Video", "FPS", false);
     config_video.shader_mode = read_int("Video", "ShaderMode", config_ShaderMode_PixelPerfect);
     config_video.shader_mode = CLAMP(config_video.shader_mode, config_ShaderMode_PixelPerfect, config_ShaderMode_External);

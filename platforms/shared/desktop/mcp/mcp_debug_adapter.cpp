@@ -600,6 +600,9 @@ json DebugAdapter::GetMediaInfo()
         case GLYNX_ROTATION_DISABLED:
             info["rotation"] = "Disabled";
             break;
+        case GLYNX_ROTATION_180:
+            info["rotation"] = "180";
+            break;
         default:
             info["rotation"] = "Unknown";
             break;
