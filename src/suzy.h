@@ -99,6 +99,18 @@ public:
         u8 pack_pen;
         u8 pack_is_literal;
         u8 pack_pixel_pair;
+        u32 row_collision_burst_mask;
+        u32 row_collision_read_burst_mask;
+        u32 row_video_burst_mask;
+        u32 row_video_read_burst_mask;
+        u32 row_timing_bus_ticks;
+        u32 row_timing_internal_ticks;
+        u32 row_timing_internal_base_ticks;
+        u32 row_timing_charged_ticks;
+        u32 row_source_bytes;
+        u32 row_source_pixels;
+        u32 row_output_pixels;
+        u32 row_packed_packet_ticks;
     };
 
     // Math register macros - these are physically the same as sprite registers
@@ -124,6 +136,7 @@ public:
     void Init(Memory* memory);
     void Reset();
     void Clock(u32 cycles);
+    u32 ApplyBusStall(u32 cycles, u32 stolen_cycles);
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
@@ -200,27 +213,42 @@ private:
     };
 
     void SpritesGo();
+    void AddSpriteCycles(u32 cycles);
+    bool UsePipelineTiming();
+    void ClearRowPipelineTiming();
+    void ResetRowPipelineTiming(bool visible, bool process_pixels = true);
+    void UpdateRowPipelineTiming();
+    void UpdateRowPipelineInternalTiming(u32 pipeline_pixels);
+    void AddRowPipelineBusTicks(u32 ticks);
+    void AddRowPipelineSourceByte();
+    u32 GetRowPipelinePixelTicks(u32 pixels);
+    void AddRowPipelineSourcePixel();
+    void AddRowPipelinePackedPacket();
+    void AddRowPipelineOutputPixel();
+    void AddRowPipelineVideoPixel(s32 x);
+    void AddRowPipelineVideoReadPixel(s32 x);
     void StepBlitter(u32 cycles);
     bool ConsumeBlitterCycleDebt(u32* cycles);
     void StepBlitterPhase();
     void FinishBlitter();
+    void AdvanceSpriteRow(s32 dy);
     void DrawSprite();
     void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
     void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
-    bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
-    bool DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
-    bool DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id);
+    bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id, bool pipeline_timing);
+    bool DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id, bool pipeline_timing);
+    bool DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id, bool pipeline_timing);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     void BeginSpriteBoundingBox();
     void AddSpriteBoundingBox();
 #endif
-    void AddPackedPixelTicks();
-    void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id);
+    void AddPackedPixelTicks(bool pipeline_timing);
+    void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id, bool pipeline_timing);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
     void RamWrite(u16 address, u8 value);
-    void ShiftRegisterReset(u16 address);
-    u32 ShiftRegisterGetBits(int n, u16 stop_addr);
+    void ShiftRegisterReset(u16 address, bool pipeline_timing);
+    u32 ShiftRegisterGetBits(int n, u16 stop_addr, bool pipeline_timing);
     void UpdateMath(u32 cycles);
     void MathRunMultiply();
     void MathRunDivide();
@@ -244,6 +272,7 @@ private:
     Suzy_State m_state;
     u8* m_ram;
     TraceLogger* m_trace_logger;
+    u32 m_sprite_total_cycles;
     QuadPos m_quad_lut[4][4][4] = {};
     bool m_fast_sprite_rendering;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)

@@ -36,6 +36,7 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
     InitPointer(m_memory);
     InitPointer(m_ram);
     InitPointer(m_trace_logger);
+    m_sprite_total_cycles = 0;
     m_fast_sprite_rendering = false;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_sprite_bounding_box_mode = GLYNX_SPRITE_BOUNDING_BOX_DISABLED;
@@ -98,6 +99,7 @@ void Suzy::SetSpriteBoundingBox(GLYNX_Sprite_Bounding_Box_Mode mode, int decay)
 void Suzy::Reset()
 {
     memset(&m_state, 0, sizeof(Suzy_State));
+    m_sprite_total_cycles = 0;
     m_state.shift_register_bit = -1;
 
     for (int i = 0; i < 16; ++i)
@@ -358,5 +360,36 @@ void Suzy::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.pack_pen);
         G_SERIALIZE(s, m_state.pack_is_literal);
         G_SERIALIZE(s, m_state.pack_pixel_pair);
+    }
+
+    if (version >= 19)
+    {
+        G_SERIALIZE(s, m_state.row_collision_burst_mask);
+        G_SERIALIZE(s, m_state.row_collision_read_burst_mask);
+        G_SERIALIZE(s, m_state.row_video_burst_mask);
+        G_SERIALIZE(s, m_state.row_video_read_burst_mask);
+        G_SERIALIZE(s, m_state.row_timing_bus_ticks);
+        G_SERIALIZE(s, m_state.row_timing_internal_ticks);
+        G_SERIALIZE(s, m_state.row_timing_internal_base_ticks);
+        G_SERIALIZE(s, m_state.row_timing_charged_ticks);
+        G_SERIALIZE(s, m_state.row_source_bytes);
+        G_SERIALIZE(s, m_state.row_source_pixels);
+        G_SERIALIZE(s, m_state.row_output_pixels);
+        G_SERIALIZE(s, m_state.row_packed_packet_ticks);
+    }
+    else if (s.IsLoading())
+    {
+        m_state.row_collision_burst_mask = 0;
+        m_state.row_collision_read_burst_mask = 0;
+        m_state.row_video_burst_mask = 0;
+        m_state.row_video_read_burst_mask = 0;
+        m_state.row_timing_bus_ticks = 0;
+        m_state.row_timing_internal_ticks = 0;
+        m_state.row_timing_internal_base_ticks = 0;
+        m_state.row_timing_charged_ticks = 0;
+        m_state.row_source_bytes = 0;
+        m_state.row_source_pixels = 0;
+        m_state.row_output_pixels = 0;
+        m_state.row_packed_packet_ticks = 0;
     }
 }

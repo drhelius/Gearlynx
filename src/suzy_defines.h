@@ -21,7 +21,6 @@
 #define SUZY_DEFINES_H
 
 static const u32 k_suzy_ram_read_ticks                  = 2;
-static const u32 k_suzy_ram_write_ticks                 = 2;
 static const u32 k_suzy_rmw_ticks                       = 1;
 static const u32 k_suzy_process_ticks                   = 1;
 static const u32 k_suzy_visible_row_ticks               = 60;
@@ -35,6 +34,27 @@ static const u32 k_suzy_packed_line_ticks               = 6;
 static const u32 k_suzy_packed_pair_ticks               = 2;
 static const u32 k_suzy_packed_quad_ticks               = 1;
 static const u32 k_suzy_packed_scb_ticks                = 13;
+static const u32 k_suzy_collision_clear_burst_ticks     = 10;
+static const u32 k_suzy_collision_detect_burst_ticks    = 18;
+static const u32 k_suzy_collision_merge_burst_ticks     = 8;
+static const u32 k_suzy_source_fifo_burst_ticks         = 10;
+static const u32 k_suzy_video_write_burst_ticks         = 10;
+static const u32 k_suzy_video_read_burst_ticks          = 10;
+static const u32 k_suzy_video_merge_burst_ticks         = 8;
+static const u32 k_suzy_pipeline_pixel_pair_ticks       = 5;
+static const u32 k_suzy_literal_1bpp_pixel_pair_ticks   = 4;
+static const u32 k_suzy_literal_1bpp_row_internal_ticks = 70;
+static const u32 k_suzy_literal_1bpp_half_pair_ticks    = 2;
+static const u32 k_suzy_pixel_builder_even_end_ticks    = 6;
+static const u32 k_suzy_regular_clip_fifo_ticks         = 6;
+static const u32 k_suzy_packed_packet_ticks             = 4;
+static const u32 k_suzy_packed_scaled_packet_ticks      = 1;
+static const u32 k_suzy_packed_scaled_packet_pair_ticks = 3;
+static const u32 k_suzy_packed_row_bus_ticks            = 12;
+static const u32 k_suzy_packed_row_internal_ticks       = 24;
+static const u32 k_suzy_clipped_row_ticks               = 46;
+static const u32 k_suzy_lcd_dma_burst_ticks             = 28;
+static const u32 k_suzy_lcd_dma_mandatory_stall_ticks   = 18;
 
 #include "m6502.h"
 

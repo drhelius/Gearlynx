@@ -3,6 +3,7 @@
 *.dylib
 *.app/
 platforms/macos/mcp
+docs/
 
 # Visual Studio files
 .vscode/mcp.json

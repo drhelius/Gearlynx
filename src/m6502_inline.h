@@ -54,7 +54,11 @@ INLINE u32 M6502::RunInstruction()
                 HandleIRQ();
         }
         else
+        {
+            m_s.last_ticks = 8;
+            m_s.total_ticks += 8;
             return 8;
+        }
     }
     else
     {

@@ -287,9 +287,11 @@ static void format_entry_text(const GLYNX_Trace_Entry& entry, char* buf, int buf
             break;
         case TRACE_SUZY_SPRITE:
             if (entry.sprite.is_start)
-                snprintf(buf, buf_size, "  [SUZY] SPRITES   START  SCB:$%04X", entry.sprite.scb_addr);
+                snprintf(buf, buf_size, "  [SUZY] SPRITES   START  SCB:$%04X  Tick:%llu", entry.sprite.scb_addr,
+                         (unsigned long long)entry.cycle);
             else if (entry.sprite.is_end)
-                snprintf(buf, buf_size, "  [SUZY] SPRITES   END  Cycles:%u", entry.sprite.total_cycles);
+                snprintf(buf, buf_size, "  [SUZY] SPRITES   END  Cycles:%u  Tick:%llu", entry.sprite.total_cycles,
+                         (unsigned long long)entry.cycle);
             else if (entry.sprite.skipped)
                 snprintf(buf, buf_size, "  [SUZY]  SPRITE   SCB:$%04X  [SKIP]", entry.sprite.scb_addr);
             else

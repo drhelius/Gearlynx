@@ -35,6 +35,24 @@ INLINE void Suzy::Clock(u32 cycles)
     UpdateMath(cycles);
 }
 
+INLINE u32 Suzy::ApplyBusStall(u32 cycles, u32 stolen_cycles)
+{
+    stolen_cycles = MIN(cycles, stolen_cycles);
+
+    if (stolen_cycles == 0)
+        return cycles;
+
+    if (m_state.fsm_phase == SUZY_PHASE_ROW_PAINT && UsePipelineTiming())
+    {
+        u32 mandatory_stall = (stolen_cycles * k_suzy_lcd_dma_mandatory_stall_ticks) /
+                k_suzy_lcd_dma_burst_ticks;
+        AddRowPipelineBusTicks(stolen_cycles - mandatory_stall);
+        return cycles - mandatory_stall;
+    }
+
+    return cycles - stolen_cycles;
+}
+
 template<bool debug>
 INLINE u8 Suzy::Read(u16 address)
 {
@@ -692,12 +710,206 @@ INLINE std::vector<Suzy::GLYNX_Sprite_Bounding_Box>* Suzy::GetSpriteBoundingBoxL
 }
 #endif
 
+INLINE void Suzy::AddSpriteCycles(u32 cycles)
+{
+    m_state.sprite_cycles += cycles;
+    m_sprite_total_cycles += cycles;
+}
+
+INLINE bool Suzy::UsePipelineTiming()
+{
+    return !m_fast_sprite_rendering && IS_NOT_SET_BIT(m_state.SPRCTL0, 1);
+}
+
+INLINE void Suzy::UpdateRowPipelineTiming()
+{
+    u32 row_ticks = MAX(m_state.row_timing_bus_ticks, m_state.row_timing_internal_ticks);
+
+    if (row_ticks > m_state.row_timing_charged_ticks)
+    {
+        AddSpriteCycles(row_ticks - m_state.row_timing_charged_ticks);
+        m_state.row_timing_charged_ticks = row_ticks;
+    }
+}
+
+INLINE void Suzy::AddRowPipelineBusTicks(u32 ticks)
+{
+    m_state.row_timing_bus_ticks += ticks;
+    UpdateRowPipelineTiming();
+}
+
+INLINE void Suzy::UpdateRowPipelineInternalTiming(u32 pipeline_pixels)
+{
+    m_state.row_timing_internal_ticks = m_state.row_timing_internal_base_ticks +
+            GetRowPipelinePixelTicks(pipeline_pixels) +
+            m_state.row_packed_packet_ticks;
+    UpdateRowPipelineTiming();
+}
+
+INLINE void Suzy::ClearRowPipelineTiming()
+{
+    m_state.row_video_burst_mask = 0;
+    m_state.row_video_read_burst_mask = 0;
+    m_state.row_timing_bus_ticks = 0;
+    m_state.row_timing_internal_ticks = 0;
+    m_state.row_timing_internal_base_ticks = 0;
+    m_state.row_timing_charged_ticks = 0;
+    m_state.row_source_bytes = 0;
+    m_state.row_source_pixels = 0;
+    m_state.row_output_pixels = 0;
+    m_state.row_packed_packet_ticks = 0;
+}
+
+INLINE void Suzy::ResetRowPipelineTiming(bool visible, bool process_pixels)
+{
+    ClearRowPipelineTiming();
+
+    if (!process_pixels)
+    {
+        m_state.row_timing_internal_ticks = k_suzy_clipped_row_ticks;
+        UpdateRowPipelineTiming();
+        return;
+    }
+
+    bool literal = IS_SET_BIT(m_state.SPRCTL1, 7);
+
+    if (!literal && m_state.quad_row > 0)
+    {
+        m_state.row_timing_bus_ticks = k_suzy_packed_row_bus_ticks;
+        m_state.row_timing_internal_base_ticks = k_suzy_packed_row_internal_ticks;
+        m_state.row_timing_internal_ticks = m_state.row_timing_internal_base_ticks;
+    }
+    else if (literal && (m_state.SPRCTL0 & 0xC0) == 0 && m_state.quad_row > 0)
+    {
+        m_state.row_timing_internal_base_ticks = k_suzy_literal_1bpp_row_internal_ticks;
+        m_state.row_timing_internal_ticks = m_state.row_timing_internal_base_ticks;
+    }
+
+    if (visible)
+        m_state.row_timing_bus_ticks += k_suzy_visible_row_ticks;
+
+    UpdateRowPipelineTiming();
+}
+
+INLINE void Suzy::AddRowPipelineSourceByte()
+{
+    if ((m_state.row_source_bytes & 3) == 0)
+        AddRowPipelineBusTicks(k_suzy_source_fifo_burst_ticks);
+
+    m_state.row_source_bytes++;
+}
+
+INLINE u32 Suzy::GetRowPipelinePixelTicks(u32 pixels)
+{
+    u32 pair_ticks = k_suzy_pipeline_pixel_pair_ticks;
+
+    if (IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0)
+    {
+        if (m_state.quad_row > 0)
+        {
+            if (pixels <= 3)
+                return 0;
+
+            pair_ticks = k_suzy_literal_1bpp_pixel_pair_ticks;
+            pixels &= ~1u;
+        }
+    }
+
+    return (pixels * pair_ticks + 1) >> 1;
+}
+
+INLINE void Suzy::AddRowPipelineSourcePixel()
+{
+    m_state.row_source_pixels++;
+
+    if (m_state.row_source_pixels > m_state.row_output_pixels)
+        UpdateRowPipelineInternalTiming(m_state.row_source_pixels);
+}
+
+INLINE void Suzy::AddRowPipelinePackedPacket()
+{
+    u32 packet_ticks = k_suzy_packed_packet_ticks;
+
+    if (m_state.quad_row > 0 && m_state.SPRHSIZ.value > 0x0100)
+    {
+        packet_ticks = (m_state.row_packed_packet_ticks % k_suzy_packed_scaled_packet_pair_ticks) ==
+                k_suzy_packed_scaled_packet_ticks ?
+                k_suzy_packed_scaled_packet_pair_ticks - k_suzy_packed_scaled_packet_ticks :
+                k_suzy_packed_scaled_packet_ticks;
+    }
+
+    m_state.row_packed_packet_ticks += packet_ticks;
+    UpdateRowPipelineInternalTiming(MAX(m_state.row_source_pixels, m_state.row_output_pixels));
+}
+
+INLINE void Suzy::AddRowPipelineOutputPixel()
+{
+    m_state.row_output_pixels++;
+
+    if (m_state.row_output_pixels > m_state.row_source_pixels)
+        UpdateRowPipelineInternalTiming(m_state.row_output_pixels);
+}
+
+INLINE void Suzy::AddRowPipelineVideoPixel(s32 x)
+{
+    bool local_1bpp_group = IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0;
+    u32 group = local_1bpp_group ? ((m_state.row_output_pixels - 1) >> 3) : ((u32)x >> 3);
+    u32 burst_bit = 1u << group;
+
+    if ((m_state.row_video_burst_mask & burst_bit) == 0)
+    {
+        m_state.row_video_burst_mask |= burst_bit;
+        bool first_1bpp_transaction = local_1bpp_group &&
+            m_state.row_video_burst_mask == 1 &&
+            m_state.row_video_read_burst_mask == 0;
+
+        if (!first_1bpp_transaction)
+        {
+            AddRowPipelineBusTicks((m_state.row_video_read_burst_mask & burst_bit) != 0 ?
+                k_suzy_video_merge_burst_ticks : k_suzy_video_write_burst_ticks);
+        }
+    }
+}
+
+INLINE void Suzy::AddRowPipelineVideoReadPixel(s32 x)
+{
+    bool local_1bpp_group = IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0;
+    u32 group = local_1bpp_group ? ((m_state.row_output_pixels - 1) >> 3) : ((u32)x >> 3);
+    u32 burst_bit = 1u << group;
+
+    if ((m_state.row_video_read_burst_mask & burst_bit) == 0)
+    {
+        m_state.row_video_read_burst_mask |= burst_bit;
+        bool first_1bpp_transaction = local_1bpp_group &&
+            m_state.row_video_read_burst_mask == 1 &&
+            m_state.row_video_burst_mask == 0;
+
+        if (!first_1bpp_transaction)
+        {
+            AddRowPipelineBusTicks((m_state.row_video_burst_mask & burst_bit) != 0 ?
+                k_suzy_video_merge_burst_ticks : k_suzy_video_read_burst_ticks);
+        }
+    }
+}
+
+INLINE void Suzy::AdvanceSpriteRow(s32 dy)
+{
+    m_state.SPRVPOS.value = (u16)((s16)m_state.SPRVPOS.value + dy);
+    m_state.TILTACUM.value = (u16)(m_state.TILTACUM.value + m_state.TILT.value);
+    s32 tilt_carry = (s16)m_state.TILTACUM.value >> 8;
+    m_state.HPOSSTRT.value = (u16)((s16)m_state.HPOSSTRT.value + tilt_carry);
+    m_state.TILTACUM.value &= 0x00FF;
+    m_state.SPRHSIZ.value += m_state.STRETCH.value;
+    m_state.quad_row++;
+}
+
 INLINE void Suzy::SpritesGo()
 {
     DebugSuzy("SpritesGo called: SPRCTL0=%02X, SPRCTL1=%02X, SPRCOLL=%02X, SPRINIT=%02X",
               m_state.SPRCTL0, m_state.SPRCTL1, m_state.SPRCOLL, m_state.SPRINIT);
 
     m_state.sprite_cycles = 0;
+    m_sprite_total_cycles = 0;
     m_state.sprsys_spritesbusy = true;
     m_state.fsm_phase = SUZY_PHASE_IDLE;
 
@@ -706,6 +918,7 @@ INLINE void Suzy::SpritesGo()
     {
         GLYNX_Trace_Entry e = {};
         e.type = TRACE_SUZY_SPRITE;
+        e.cycle = m_m6502->GetState()->total_ticks;
         e.sprite.scb_addr = m_state.SCBNEXT.value;
         e.sprite.is_start = true;
         m_trace_logger->TraceLog(e);
@@ -719,15 +932,16 @@ INLINE void Suzy::SpritesGo()
             DrawSprite();
         }
 
-        DebugSuzy("SpritesGo finished: total cycles = %d", m_state.sprite_cycles);
+        DebugSuzy("SpritesGo finished: total cycles = %d", m_sprite_total_cycles);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
         if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
         {
             GLYNX_Trace_Entry e = {};
             e.type = TRACE_SUZY_SPRITE;
+            e.cycle = m_m6502->GetState()->total_ticks;
             e.sprite.is_end = true;
-            e.sprite.total_cycles = m_state.sprite_cycles;
+            e.sprite.total_cycles = m_sprite_total_cycles;
             m_trace_logger->TraceLog(e);
         }
 #endif
@@ -756,15 +970,16 @@ INLINE void Suzy::SpritesGo()
 
 INLINE void Suzy::FinishBlitter()
 {
-    DebugSuzy("SpritesGo finished: total cycles = %d", m_state.sprite_cycles);
+    DebugSuzy("SpritesGo finished: total cycles = %d", m_sprite_total_cycles);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
     {
         GLYNX_Trace_Entry e = {};
         e.type = TRACE_SUZY_SPRITE;
+        e.cycle = m_m6502->GetState()->total_ticks;
         e.sprite.is_end = true;
-        e.sprite.total_cycles = m_state.sprite_cycles;
+        e.sprite.total_cycles = m_sprite_total_cycles;
         m_trace_logger->TraceLog(e);
     }
 #endif
@@ -853,7 +1068,7 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.SPRCOLL = RamRead(m_state.TMPADR.value++);
             m_state.SCBNEXT.value = RamReadWord(m_state.TMPADR.value);
             m_state.TMPADR.value += 2;
-            m_state.sprite_cycles += 5 * k_suzy_ram_read_ticks;
+            AddSpriteCycles(5 * k_suzy_ram_read_ticks);
             m_state.fred = 0;
             m_state.everon = false;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
@@ -869,6 +1084,7 @@ INLINE void Suzy::StepBlitterPhase()
                 {
                     GLYNX_Trace_Entry e = {};
                     e.type = TRACE_SUZY_SPRITE;
+                    e.cycle = m_m6502->GetState()->total_ticks;
                     e.sprite.scb_addr = m_state.SCBADR.value;
                     e.sprite.skipped = true;
                     m_trace_logger->TraceLog(e);
@@ -925,7 +1141,7 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.TMPADR.value += 2;
             m_state.VPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
             m_state.TMPADR.value += 2;
-            m_state.sprite_cycles += 6 * k_suzy_ram_read_ticks;
+            AddSpriteCycles(6 * k_suzy_ram_read_ticks);
 
             m_state.STRETCH.value = 0;
             m_state.TILT.value = 0;
@@ -936,7 +1152,7 @@ INLINE void Suzy::StepBlitterPhase()
                 m_state.TMPADR.value += 2;
                 m_state.SPRVSIZ.value = RamReadWord(m_state.TMPADR.value);
                 m_state.TMPADR.value += 2;
-                m_state.sprite_cycles += 4 * k_suzy_ram_read_ticks;
+                AddSpriteCycles(4 * k_suzy_ram_read_ticks);
             }
             else if (reload_depth == 2)
             {
@@ -946,7 +1162,7 @@ INLINE void Suzy::StepBlitterPhase()
                 m_state.TMPADR.value += 2;
                 m_state.STRETCH.value = RamReadWord(m_state.TMPADR.value);
                 m_state.TMPADR.value += 2;
-                m_state.sprite_cycles += 6 * k_suzy_ram_read_ticks;
+                AddSpriteCycles(6 * k_suzy_ram_read_ticks);
             }
             else if (reload_depth == 3)
             {
@@ -958,7 +1174,7 @@ INLINE void Suzy::StepBlitterPhase()
                 m_state.TMPADR.value += 2;
                 m_state.TILT.value = RamReadWord(m_state.TMPADR.value);
                 m_state.TMPADR.value += 2;
-                m_state.sprite_cycles += 8 * k_suzy_ram_read_ticks;
+                AddSpriteCycles(8 * k_suzy_ram_read_ticks);
             }
 
             m_state.fsm_phase = SUZY_PHASE_PALETTE;
@@ -972,7 +1188,7 @@ INLINE void Suzy::StepBlitterPhase()
             if (reload_palette)
             {
                 const int bytes_to_read = 8;
-                m_state.sprite_cycles += bytes_to_read * k_suzy_ram_read_ticks;
+                AddSpriteCycles(bytes_to_read * k_suzy_ram_read_ticks);
 
                 for (int i = 0; i < bytes_to_read; ++i)
                 {
@@ -1009,6 +1225,7 @@ INLINE void Suzy::StepBlitterPhase()
             {
                 GLYNX_Trace_Entry e = {};
                 e.type = TRACE_SUZY_SPRITE;
+                e.cycle = m_m6502->GetState()->total_ticks;
                 e.sprite.scb_addr = m_state.SCBADR.value;
                 e.sprite.scb_next = m_state.SCBNEXT.value;
                 e.sprite.hpos = (s16)m_state.HPOSSTRT.value;
@@ -1044,7 +1261,7 @@ INLINE void Suzy::StepBlitterPhase()
         {
             u16 line_address = m_state.SPRDLINE.value;
             u8 sprdoff = RamRead(line_address);
-            m_state.sprite_cycles += k_suzy_ram_read_ticks;
+            AddSpriteCycles(k_suzy_ram_read_ticks);
 
             m_state.SPRDOFF.value = sprdoff;
             m_state.TMPADR.value = (u16)(line_address + 1);
@@ -1053,7 +1270,7 @@ INLINE void Suzy::StepBlitterPhase()
 
             if (sprdoff <= 1)
             {
-                m_state.sprite_cycles += k_suzy_control_line_ticks;
+                AddSpriteCycles(k_suzy_control_line_ticks);
                 m_state.quad_row = 0;
                 m_state.quad_pixel_height = 0;
                 m_state.fsm_phase = SUZY_PHASE_QUAD_END;
@@ -1081,13 +1298,16 @@ INLINE void Suzy::StepBlitterPhase()
             QuadPos size_pos = m_quad_lut[m_state.spr_quadrant][start_quad][0];
             QuadPos start_pos = m_quad_lut[0][start_quad][flip];
             s32 dx = pos.left ? -1 : +1;
+            s32 dy = pos.up ? -1 : +1;
             s32 start_x = (s16)m_state.HPOSSTRT.value;
+            s32 start_y = (s16)m_state.SPRVPOS.value;
+            bool pipeline_timing = UsePipelineTiming();
 
             if (pos.left != start_pos.left)
                 start_x += dx;
 
             m_state.row_x = (s16)start_x;
-            m_state.row_render = ((u32)(s16)m_state.SPRVPOS.value < (u32)GLYNX_SCREEN_HEIGHT) ? 1 : 0;
+            m_state.row_render = ((u32)start_y < (u32)GLYNX_SCREEN_HEIGHT) ? 1 : 0;
             m_state.row_h_accum = size_pos.left ? 0 : m_state.HSIZOFF.value;
             m_state.row_emit_count = 0;
             m_state.row_pen = 0;
@@ -1096,13 +1316,42 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.pack_pen = 0;
             m_state.pack_is_literal = 0;
             m_state.pack_pixel_pair = 0;
+            m_state.row_collision_burst_mask = 0;
+            m_state.row_collision_read_burst_mask = 0;
 
-            ShiftRegisterReset(m_state.TMPADR.value);
+            bool away_x = (start_x < 0 && dx < 0) || (start_x >= GLYNX_SCREEN_WIDTH && dx > 0);
+            bool away_y = (start_y < 0 && dy < 0) || (start_y >= GLYNX_SCREEN_HEIGHT && dy > 0);
 
-            if (IS_NOT_SET_BIT(m_state.SPRCTL1, 7))
-                m_state.sprite_cycles += k_suzy_packed_line_ticks;
+            if (away_y)
+            {
+                if (pipeline_timing)
+                    ClearRowPipelineTiming();
+
+                while (m_state.quad_row < m_state.quad_pixel_height)
+                    AdvanceSpriteRow(dy);
+
+                m_state.fsm_phase = SUZY_PHASE_QUAD_END;
+                break;
+            }
+
+            bool skip_row = !m_state.row_render || away_x;
+
+            if (pipeline_timing)
+                ResetRowPipelineTiming(m_state.row_render != 0, !skip_row);
+
+            if (skip_row)
+            {
+                m_state.PROCADR.value = m_state.SPRDLINE.value;
+                m_state.fsm_phase = SUZY_PHASE_ROW_END;
+                break;
+            }
+
+            ShiftRegisterReset(m_state.TMPADR.value, pipeline_timing);
+
+            if (IS_NOT_SET_BIT(m_state.SPRCTL1, 7) && !pipeline_timing)
+                AddSpriteCycles(k_suzy_packed_line_ticks);
             else if (IS_SET_BIT(m_state.SPRCTL1, 3))
-                m_state.sprite_cycles += k_suzy_literal_line_ticks;
+                AddSpriteCycles(k_suzy_literal_line_ticks);
 
             m_state.fsm_phase = SUZY_PHASE_ROW_PAINT;
             break;
@@ -1122,12 +1371,13 @@ INLINE void Suzy::StepBlitterPhase()
             int type = (m_state.SPRCTL0 & 0x07);
             bool collide = !m_state.sprsys_dontcollide && IS_NOT_SET_BIT(m_state.SPRCOLL, 5);
             u8 collision_id = (m_state.SPRCOLL & 0x0F);
+            bool pipeline_timing = UsePipelineTiming();
             bool done;
 
             if (IS_SET_BIT(m_state.SPRCTL1, 7))
-                done = DrawSpriteLineLiteralStep(m_state.SPRDLINE.value, dx, bpp, type, collide, collision_id);
+                done = DrawSpriteLineLiteralStep(m_state.SPRDLINE.value, dx, bpp, type, collide, collision_id, pipeline_timing);
             else
-                done = DrawSpriteLinePackedStep(m_state.SPRDLINE.value, dx, bpp, type, collide, collision_id);
+                done = DrawSpriteLinePackedStep(m_state.SPRDLINE.value, dx, bpp, type, collide, collision_id, pipeline_timing);
 
             if (done)
             {
@@ -1147,17 +1397,50 @@ INLINE void Suzy::StepBlitterPhase()
             int flip = (h_flip ? 1 : 0) | (v_flip ? 2 : 0);
             int start_quad = (start_left ? 1 : 0) | (start_up ? 2 : 0);
             QuadPos pos = m_quad_lut[m_state.spr_quadrant][start_quad][flip];
+            s32 dx = pos.left ? -1 : +1;
             s32 dy = pos.up ? -1 : +1;
-
-            m_state.SPRVPOS.value = (u16)((s16)m_state.SPRVPOS.value + dy);
-            m_state.TILTACUM.value = (u16)(m_state.TILTACUM.value + m_state.TILT.value);
-            s32 tilt_carry = (s16)m_state.TILTACUM.value >> 8;
-            m_state.HPOSSTRT.value = (u16)((s16)m_state.HPOSSTRT.value + tilt_carry);
-            m_state.TILTACUM.value &= 0x00FF;
-            m_state.SPRHSIZ.value += m_state.STRETCH.value;
-            m_state.quad_row++;
-
             bool visible_y = ((u32)(s16)m_state.SPRVPOS.value < (u32)GLYNX_SCREEN_HEIGHT);
+            bool pipeline_timing = UsePipelineTiming();
+
+            if (pipeline_timing && IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0 &&
+                m_state.quad_row > 0 && m_state.row_output_pixels > 0)
+            {
+                s32 last_visible_x = m_state.row_render ? m_state.row_x - dx : (dx > 0 ? GLYNX_SCREEN_WIDTH - 1 : 0);
+                u32 finalization_ticks = 0;
+                u32 pipeline_pixels = MAX(m_state.row_source_pixels, m_state.row_output_pixels);
+
+                if ((pipeline_pixels & 1) != 0 && (m_state.row_render || m_state.row_source_bytes >= 3))
+                    finalization_ticks += k_suzy_literal_1bpp_half_pair_ticks;
+
+                if ((last_visible_x & 1) == 0)
+                    finalization_ticks += k_suzy_pixel_builder_even_end_ticks;
+
+                if (!m_state.row_render)
+                {
+                    s32 start_x = m_state.row_x - dx * (s32)m_state.row_output_pixels;
+                    u32 visible_pixels = dx > 0 ?
+                            (u32)(GLYNX_SCREEN_WIDTH - MAX(start_x, 0)) :
+                            (u32)(MIN(start_x, GLYNX_SCREEN_WIDTH - 1) + 1);
+
+                    if ((visible_pixels & 1) != 0 && ((((visible_pixels - 1) >> 4) & 1) != 0))
+                        finalization_ticks += k_suzy_regular_clip_fifo_ticks;
+                }
+
+                if (finalization_ticks > 0)
+                {
+                    m_state.row_timing_internal_ticks += finalization_ticks;
+                    UpdateRowPipelineTiming();
+                }
+            }
+
+            AdvanceSpriteRow(dy);
+
+            if (pipeline_timing)
+            {
+                m_state.fsm_phase = (m_state.quad_row < m_state.quad_pixel_height) ? SUZY_PHASE_ROW_BEGIN : SUZY_PHASE_QUAD_END;
+                break;
+            }
+
             u32 row_bus_ticks = visible_y ? k_suzy_visible_row_ticks : 0;
             if (visible_y && IS_NOT_SET_BIT(m_state.SPRCTL1, 7))
             {
@@ -1170,7 +1453,7 @@ INLINE void Suzy::StepBlitterPhase()
             else if (visible_y && (((m_state.SPRCTL1 >> 4) & 0x03) != 0) && ((u16)(m_state.SPRDLINE.value - m_state.TMPADR.value) > 16))
                 row_bus_ticks += k_suzy_literal_wide_reload_row_ticks;
 
-            m_state.sprite_cycles += row_bus_ticks;
+            AddSpriteCycles(row_bus_ticks);
             m_state.fsm_phase = (m_state.quad_row < m_state.quad_pixel_height) ? SUZY_PHASE_ROW_BEGIN : SUZY_PHASE_QUAD_END;
             break;
         }
@@ -1221,8 +1504,8 @@ INLINE void Suzy::StepBlitterPhase()
             bool collide = !m_state.sprsys_dontcollide && IS_NOT_SET_BIT(m_state.SPRCOLL, 5);
             int type = (m_state.SPRCTL0 & 0x07);
 
-            if (IS_NOT_SET_BIT(m_state.SPRCTL1, 7))
-                m_state.sprite_cycles += k_suzy_packed_scb_ticks;
+            if (IS_NOT_SET_BIT(m_state.SPRCTL1, 7) && !UsePipelineTiming())
+                AddSpriteCycles(k_suzy_packed_scb_ticks);
 
             if (collide)
             {
@@ -1271,18 +1554,26 @@ INLINE void Suzy::StepBlitterPhase()
     }
 }
 
-INLINE bool Suzy::DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id)
+INLINE bool Suzy::DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id, bool pipeline_timing)
 {
     if (m_state.row_emit_count <= 0)
         return false;
 
     if (m_state.row_render)
     {
-        DrawPixel(m_state.row_x, (s16)m_state.SPRVPOS.value, pen, type, collide, collision_id);
-        m_state.row_x = (s16)(m_state.row_x + dx);
+        if (pipeline_timing)
+            AddRowPipelineOutputPixel();
 
         if ((dx > 0 && m_state.row_x >= GLYNX_SCREEN_WIDTH) || (dx < 0 && m_state.row_x < 0))
+        {
             m_state.row_render = 0;
+            m_state.row_x = (s16)(m_state.row_x + dx);
+            m_state.row_emit_count--;
+            return true;
+        }
+
+        DrawPixel(m_state.row_x, (s16)m_state.SPRVPOS.value, pen, type, collide, collision_id, pipeline_timing);
+        m_state.row_x = (s16)(m_state.row_x + dx);
     }
     else
     {
@@ -1294,24 +1585,27 @@ INLINE bool Suzy::DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 c
     return false;
 }
 
-INLINE bool Suzy::DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id)
+INLINE bool Suzy::DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id, bool pipeline_timing)
 {
     while (true)
     {
         if (m_state.row_emit_count > 0)
         {
             if (IS_SET_BIT(m_state.SPRCTL1, 3) && ((m_state.row_x & 1) == 0))
-                m_state.sprite_cycles += k_suzy_literal_byte_ticks;
+                AddSpriteCycles(k_suzy_literal_byte_ticks);
 
-            return DrawSpriteEmitPen(m_state.row_pen, dx, type, collide, collision_id);
+            return DrawSpriteEmitPen(m_state.row_pen, dx, type, collide, collision_id, pipeline_timing);
         }
 
         if (m_state.shift_register_address >= data_end)
             return true;
 
-        u32 pi = ShiftRegisterGetBits(bpp, data_end);
+        u32 pi = ShiftRegisterGetBits(bpp, data_end, pipeline_timing);
         if (pi == SHIFTREG_EOF)
             return true;
+
+        if (pipeline_timing)
+            AddRowPipelineSourcePixel();
 
         m_state.row_pen = m_state.pen_map[pi & 0x0F];
 
@@ -1321,23 +1615,29 @@ INLINE bool Suzy::DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int t
     }
 }
 
-INLINE void Suzy::AddPackedPixelTicks()
+INLINE void Suzy::AddPackedPixelTicks(bool pipeline_timing)
 {
+    if (pipeline_timing)
+    {
+        AddRowPipelineSourcePixel();
+        return;
+    }
+
     m_state.pack_pixel_pair = (m_state.pack_pixel_pair + 1) & 3;
 
     if ((m_state.pack_pixel_pair & 1) == 0)
-        m_state.sprite_cycles += k_suzy_packed_pair_ticks;
+        AddSpriteCycles(k_suzy_packed_pair_ticks);
 
     if (m_state.pack_pixel_pair == 0)
-        m_state.sprite_cycles += k_suzy_packed_quad_ticks;
+        AddSpriteCycles(k_suzy_packed_quad_ticks);
 }
 
-INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id)
+INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id, bool pipeline_timing)
 {
     while (true)
     {
         if (m_state.row_emit_count > 0)
-            return DrawSpriteEmitPen(m_state.row_pen, dx, type, collide, collision_id);
+            return DrawSpriteEmitPen(m_state.row_pen, dx, type, collide, collision_id, pipeline_timing);
 
         switch (m_state.pack_state)
         {
@@ -1346,9 +1646,12 @@ INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int ty
             if (m_state.shift_register_address >= data_end)
                 return true;
 
-            u32 header = ShiftRegisterGetBits(5, data_end);
+            u32 header = ShiftRegisterGetBits(5, data_end, pipeline_timing);
             if (header == 0 || header == SHIFTREG_EOF)
                 return true;
+
+            if (pipeline_timing)
+                AddRowPipelinePackedPacket();
 
             m_state.pack_is_literal = (u8)(header >> 4);
             m_state.pack_count = (u8)((header & 0x0F) + 1);
@@ -1364,13 +1667,13 @@ INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int ty
                 break;
             }
 
-            u32 pi = ShiftRegisterGetBits(bpp, data_end);
+            u32 pi = ShiftRegisterGetBits(bpp, data_end, pipeline_timing);
             if (pi == SHIFTREG_EOF)
                 return true;
 
             m_state.row_pen = m_state.pen_map[pi & 0x0F];
             m_state.pack_count--;
-            AddPackedPixelTicks();
+            AddPackedPixelTicks(pipeline_timing);
 
             u32 h_accum = (u32)m_state.row_h_accum + (u32)m_state.SPRHSIZ.value;
             m_state.row_emit_count = (s16)(h_accum >> 8);
@@ -1380,7 +1683,7 @@ INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int ty
 
         case SUZY_PACK_RLE_PEN:
         {
-            u32 pixel_index = ShiftRegisterGetBits(bpp, data_end);
+            u32 pixel_index = ShiftRegisterGetBits(bpp, data_end, pipeline_timing);
             if (pixel_index == SHIFTREG_EOF)
                 return true;
 
@@ -1399,7 +1702,7 @@ INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int ty
 
             m_state.row_pen = m_state.pack_pen;
             m_state.pack_count--;
-            AddPackedPixelTicks();
+            AddPackedPixelTicks(pipeline_timing);
 
             u32 h_accum = (u32)m_state.row_h_accum + (u32)m_state.SPRHSIZ.value;
             m_state.row_emit_count = (s16)(h_accum >> 8);
@@ -1425,7 +1728,7 @@ INLINE void Suzy::DrawSprite()
     m_state.SPRCOLL = RamRead(m_state.TMPADR.value++);
     m_state.SCBNEXT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
-    m_state.sprite_cycles += 5 * k_suzy_ram_read_ticks;  // 5 bytes from SCB header
+    AddSpriteCycles(5 * k_suzy_ram_read_ticks);  // 5 bytes from SCB header
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     BeginSpriteBoundingBox();
 #endif
@@ -1439,6 +1742,7 @@ INLINE void Suzy::DrawSprite()
         {
             GLYNX_Trace_Entry e = {};
             e.type = TRACE_SUZY_SPRITE;
+            e.cycle = m_m6502->GetState()->total_ticks;
             e.sprite.scb_addr = m_state.SCBADR.value;
             e.sprite.skipped = true;
             m_trace_logger->TraceLog(e);
@@ -1495,7 +1799,7 @@ INLINE void Suzy::DrawSprite()
     m_state.TMPADR.value += 2;
     m_state.VPOSSTRT.value = RamReadWord(m_state.TMPADR.value);
     m_state.TMPADR.value += 2;
-    m_state.sprite_cycles += 6 * k_suzy_ram_read_ticks;  // 6 bytes for position data
+    AddSpriteCycles(6 * k_suzy_ram_read_ticks);  // 6 bytes for position data
 
     m_state.STRETCH.value = 0;
     m_state.TILT.value = 0;
@@ -1506,7 +1810,7 @@ INLINE void Suzy::DrawSprite()
         m_state.TMPADR.value += 2;
         m_state.SPRVSIZ.value = RamReadWord(m_state.TMPADR.value);
         m_state.TMPADR.value += 2;
-        m_state.sprite_cycles += 4 * k_suzy_ram_read_ticks;  // 4 bytes for size
+        AddSpriteCycles(4 * k_suzy_ram_read_ticks);  // 4 bytes for size
     }
     else if (reload_depth == 2)
     {
@@ -1516,7 +1820,7 @@ INLINE void Suzy::DrawSprite()
         m_state.TMPADR.value += 2;
         m_state.STRETCH.value = RamReadWord(m_state.TMPADR.value);
         m_state.TMPADR.value += 2;
-        m_state.sprite_cycles += 6 * k_suzy_ram_read_ticks;  // 6 bytes for size+stretch
+        AddSpriteCycles(6 * k_suzy_ram_read_ticks);  // 6 bytes for size+stretch
     }
     else if (reload_depth == 3)
     {
@@ -1528,13 +1832,13 @@ INLINE void Suzy::DrawSprite()
         m_state.TMPADR.value += 2;
         m_state.TILT.value = RamReadWord(m_state.TMPADR.value);
         m_state.TMPADR.value += 2;
-        m_state.sprite_cycles += 8 * k_suzy_ram_read_ticks;  // 8 bytes for size+stretch+tilt
+        AddSpriteCycles(8 * k_suzy_ram_read_ticks);  // 8 bytes for size+stretch+tilt
     }
 
     if (reload_palette)
     {
         const int bytes_to_read = 8;
-        m_state.sprite_cycles += bytes_to_read * k_suzy_ram_read_ticks;  // palette bytes
+        AddSpriteCycles(bytes_to_read * k_suzy_ram_read_ticks);  // palette bytes
 
         for (int i = 0; i < bytes_to_read; ++i)
         {
@@ -1575,6 +1879,7 @@ INLINE void Suzy::DrawSprite()
     {
         GLYNX_Trace_Entry e = {};
         e.type = TRACE_SUZY_SPRITE;
+        e.cycle = m_m6502->GetState()->total_ticks;
         e.sprite.scb_addr = m_state.SCBADR.value;
         e.sprite.scb_next = m_state.SCBNEXT.value;
         e.sprite.hpos = (s16)m_state.HPOSSTRT.value;
@@ -1609,7 +1914,7 @@ INLINE void Suzy::DrawSprite()
     {
         u16 line_address = m_state.SPRDLINE.value;
         u8 sprdoff = RamRead(line_address);
-        m_state.sprite_cycles += k_suzy_ram_read_ticks;  // sprdoff byte
+        AddSpriteCycles(k_suzy_ram_read_ticks);  // sprdoff byte
         u16 next_ptr = (u16)(line_address + (u16)sprdoff);
 
         m_state.SPRDLINE.value = next_ptr;
@@ -1617,7 +1922,7 @@ INLINE void Suzy::DrawSprite()
 
         if (sprdoff <= 1)
         {
-            m_state.sprite_cycles += k_suzy_control_line_ticks;
+            AddSpriteCycles(k_suzy_control_line_ticks);
 
             // end of sprite
             if (sprdoff == 0)
@@ -1657,6 +1962,8 @@ INLINE void Suzy::DrawSprite()
                 start_x += dx;
 
             u32 haccum_init = size_pos.left ? 0 : m_state.HSIZOFF.value;
+            m_state.row_collision_burst_mask = 0;
+            m_state.row_collision_read_burst_mask = 0;
 
             if (literal_only)
             {
@@ -1668,6 +1975,7 @@ INLINE void Suzy::DrawSprite()
             }
 
             bool visible_y = ((u32)cur_y < (u32)GLYNX_SCREEN_HEIGHT);
+
             u32 row_bus_ticks = visible_y ? k_suzy_visible_row_ticks : 0;
             if (visible_y && !literal_only)
             {
@@ -1680,7 +1988,7 @@ INLINE void Suzy::DrawSprite()
             else if (visible_y && (reload_depth != 0) && ((u16)(data_end - data_begin) > 16))
                 row_bus_ticks += k_suzy_literal_wide_reload_row_ticks;
 
-            m_state.sprite_cycles += row_bus_ticks;
+            AddSpriteCycles(row_bus_ticks);
             cur_y += dy;
 
             m_state.TILTACUM.value = (u16)(m_state.TILTACUM.value + m_state.TILT.value);
@@ -1702,7 +2010,7 @@ INLINE void Suzy::DrawSprite()
     u16 colpos = m_state.SCBADR.value + m_state.COLLOFF.value;
 
     if (!literal_only)
-        m_state.sprite_cycles += k_suzy_packed_scb_ticks;
+        AddSpriteCycles(k_suzy_packed_scb_ticks);
 
     if (collide)
     {
@@ -1769,17 +2077,17 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
                                         s32 x, s32 y, s32 dx,
                                         int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id)
 {
-    ShiftRegisterReset(data_begin);
+    ShiftRegisterReset(data_begin, false);
 
     if (IS_SET_BIT(m_state.SPRCTL1, 3))
-        m_state.sprite_cycles += k_suzy_literal_line_ticks;
+        AddSpriteCycles(k_suzy_literal_line_ticks);
 
     u32 h_accum = haccum_init;
     bool render = ((u32)y < (u32)GLYNX_SCREEN_HEIGHT);
 
     while (m_state.shift_register_address < data_end)
     {
-        u32 pi = ShiftRegisterGetBits(bpp, data_end);
+        u32 pi = ShiftRegisterGetBits(bpp, data_end, false);
         if (pi == SHIFTREG_EOF)
             break;
 
@@ -1796,9 +2104,9 @@ INLINE void Suzy::DrawSpriteLineLiteral(u16 data_begin, u16 data_end,
                 for (s32 p = 0; p < pixel_count; ++p)
                 {
                     if (IS_SET_BIT(m_state.SPRCTL1, 3) && ((x & 1) == 0))
-                        m_state.sprite_cycles += k_suzy_literal_byte_ticks;
+                        AddSpriteCycles(k_suzy_literal_byte_ticks);
 
-                    DrawPixel(x, y, pen, type, collide, collision_id);
+                    DrawPixel(x, y, pen, type, collide, collision_id, false);
                     x += dx;
                 }
 
@@ -1819,8 +2127,8 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                                        s32 x, s32 y, s32 dx,
                                        int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id)
 {
-    ShiftRegisterReset(data_begin);
-    m_state.sprite_cycles += k_suzy_packed_line_ticks;
+    ShiftRegisterReset(data_begin, false);
+    AddSpriteCycles(k_suzy_packed_line_ticks);
     m_state.pack_pixel_pair = 0;
 
     u32 h_accum = haccum_init;
@@ -1828,7 +2136,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
 
     while (m_state.shift_register_address < data_end)
     {
-        u32 header = ShiftRegisterGetBits(5, data_end);
+        u32 header = ShiftRegisterGetBits(5, data_end, false);
         if (header == 0 || header == SHIFTREG_EOF)
             break;
 
@@ -1839,7 +2147,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
         {
             while (count--)
             {
-                u32 pi = ShiftRegisterGetBits(bpp, data_end);
+                u32 pi = ShiftRegisterGetBits(bpp, data_end, false);
                 if (pi == SHIFTREG_EOF)
                 {
                     m_state.PROCADR.value = data_end;
@@ -1847,7 +2155,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                 }
 
                 u8 pen = m_state.pen_map[pi & 0x0F];
-                AddPackedPixelTicks();
+                AddPackedPixelTicks(false);
 
                 h_accum += (u32)hsiz;
                 s32 pixel_count = (s32)(h_accum >> 8);
@@ -1859,7 +2167,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                     {
                         for (s32 p = 0; p < pixel_count; ++p)
                         {
-                            DrawPixel(x, y, pen, type, collide, collision_id);
+                            DrawPixel(x, y, pen, type, collide, collision_id, false);
                             x += dx;
                         }
 
@@ -1875,7 +2183,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
         }
         else // RLE
         {
-            u32 pixel_index = ShiftRegisterGetBits(bpp, data_end);
+            u32 pixel_index = ShiftRegisterGetBits(bpp, data_end, false);
             if (pixel_index == SHIFTREG_EOF)
             {
                 m_state.PROCADR.value = data_end;
@@ -1886,7 +2194,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
 
             while (count--)
             {
-                AddPackedPixelTicks();
+                AddPackedPixelTicks(false);
 
                 h_accum += (u32)hsiz;
                 s32 pixel_count = (s32)(h_accum >> 8);
@@ -1898,7 +2206,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
                     {
                         for (s32 p = 0; p < pixel_count; ++p)
                         {
-                            DrawPixel(x, y, pen, type, collide, collision_id);
+                            DrawPixel(x, y, pen, type, collide, collision_id, false);
                             x += dx;
                         }
 
@@ -1917,7 +2225,7 @@ INLINE void Suzy::DrawSpriteLinePacked(u16 data_begin, u16 data_end,
     m_state.PROCADR.value = data_end;
 }
 
-INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id)
+INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id, bool pipeline_timing)
 {
     if ((u32)x >= (u32)GLYNX_SCREEN_WIDTH)
         return;
@@ -1974,6 +2282,14 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
             break;
     }
 
+    if (pipeline_timing)
+    {
+        if (transparent)
+            AddRowPipelineVideoReadPixel(x);
+        else
+            AddRowPipelineVideoPixel(x);
+    }
+
     if (transparent && non_collidable)
         return;
 
@@ -1984,16 +2300,31 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
     {
         if (type == 0) // BACKGROUND
         {
-            if (pen != 0x0E)
+            u32 burst_bit = 1u << (x >> 3);
+
+            if (pen == 0x0E)
             {
+                if ((m_state.row_collision_read_burst_mask & burst_bit) == 0)
+                {
+                    m_state.row_collision_read_burst_mask |= burst_bit;
+                    AddSpriteCycles((m_state.row_collision_burst_mask & burst_bit) != 0 ?
+                            k_suzy_collision_merge_burst_ticks : k_suzy_collision_clear_burst_ticks);
+                }
+            }
+            else
+            {
+                if ((m_state.row_collision_burst_mask & burst_bit) == 0)
+                {
+                    m_state.row_collision_burst_mask |= burst_bit;
+                    AddSpriteCycles((m_state.row_collision_read_burst_mask & burst_bit) != 0 ?
+                            k_suzy_collision_merge_burst_ticks : k_suzy_collision_clear_burst_ticks);
+                }
+
                 u16 coll_addr = m_state.COLLBAS.value + pixel_offset;
                 u8 back = RamRead(coll_addr);
 
                 if (is_left)
-                {
                     back = (u8)((back & 0x0F) | (collision_id << 4));
-                    m_state.sprite_cycles += 2;
-                }
                 else
                     back = (u8)((back & 0xF0) | (collision_id & 0x0F));
 
@@ -2002,6 +2333,13 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
         }
         else if (!non_collidable)
         {
+            u32 burst_bit = 1u << (x >> 3);
+            if ((m_state.row_collision_burst_mask & burst_bit) == 0)
+            {
+                m_state.row_collision_burst_mask |= burst_bit;
+                AddSpriteCycles(k_suzy_collision_detect_burst_ticks);
+            }
+
             u16 coll_addr = m_state.COLLBAS.value + pixel_offset;
             u8 back = RamRead(coll_addr);
             u8 back_nib = is_left ? (back >> 4) : (back & 0x0F);
@@ -2010,10 +2348,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
                 m_state.fred = back_nib;
 
             if (is_left)
-            {
                 back = (u8)((back & 0x0F) | (collision_id << 4));
-                m_state.sprite_cycles += k_suzy_rmw_ticks + k_suzy_process_ticks;  // left pixel: R-M-W + processing
-            }
             else
                 back = (u8)((back & 0xF0) | (collision_id & 0x0F));
 
@@ -2034,7 +2369,7 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
             {
                 new_nib ^= (u8)((video_byte >> 4) & 0x0F);
                 video_byte = (u8)((video_byte & 0x0F) | ((new_nib & 0x0F) << 4));
-                m_state.sprite_cycles += k_suzy_rmw_ticks + k_suzy_process_ticks;  // XOR left pixel: R-M-W + processing
+                AddSpriteCycles(k_suzy_rmw_ticks + k_suzy_process_ticks);  // XOR left pixel: R-M-W + processing
             }
             else
             {
@@ -2047,7 +2382,8 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
             if (is_left)
             {
                 video_byte = (u8)((video_byte & 0x0F) | ((new_nib & 0x0F) << 4));
-                m_state.sprite_cycles += k_suzy_rmw_ticks + k_suzy_process_ticks;  // normal left pixel: R-M-W + processing
+                if (!pipeline_timing)
+                    AddSpriteCycles(k_suzy_rmw_ticks + k_suzy_process_ticks);  // normal left pixel: R-M-W + processing
             }
             else
                 video_byte = (u8)((video_byte & 0xF0) | (new_nib & 0x0F));
@@ -2072,16 +2408,19 @@ INLINE void Suzy::RamWrite(u16 address, u8 value)
     m_ram[address] = value;
 }
 
-INLINE void Suzy::ShiftRegisterReset(u16 address)
+INLINE void Suzy::ShiftRegisterReset(u16 address, bool pipeline_timing)
 {
     m_state.shift_register_address = address;
     m_state.PROCADR.value = address;
     m_state.shift_register_current = RamRead(address);
     m_state.shift_register_bit = 7;
-    m_state.sprite_cycles += k_suzy_ram_read_ticks;  // initial sprite data byte
+    if (pipeline_timing)
+        AddRowPipelineSourceByte();
+    else
+        AddSpriteCycles(k_suzy_ram_read_ticks);  // initial sprite data byte
 }
 
-INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
+INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr, bool pipeline_timing)
 {
     if (m_state.shift_register_address >= stop_addr)
         return SHIFTREG_EOF;
@@ -2106,7 +2445,10 @@ INLINE u32 Suzy::ShiftRegisterGetBits(int n, u16 stop_addr)
             m_state.PROCADR.value = m_state.shift_register_address;
             m_state.shift_register_current = RamRead(m_state.shift_register_address);
             m_state.shift_register_bit = 7;
-            m_state.sprite_cycles += k_suzy_ram_read_ticks;  // next sprite data byte
+            if (pipeline_timing)
+                AddRowPipelineSourceByte();
+            else
+                AddSpriteCycles(k_suzy_ram_read_ticks);  // next sprite data byte
         }
 
         value = (value << 1) | ((m_state.shift_register_current >> m_state.shift_register_bit) & 1);

@@ -3201,9 +3201,11 @@ json DebugAdapter::GetTraceLog(int start, int count)
                 break;
             case TRACE_SUZY_SPRITE:
                 if (entry.sprite.is_start)
-                    snprintf(buf, sizeof(buf), "  [SUZY] SPRITES   START  SCB:$%04X", entry.sprite.scb_addr);
+                    snprintf(buf, sizeof(buf), "  [SUZY] SPRITES   START  SCB:$%04X  Tick:%llu", entry.sprite.scb_addr,
+                             (unsigned long long)entry.cycle);
                 else if (entry.sprite.is_end)
-                    snprintf(buf, sizeof(buf), "  [SUZY] SPRITES   END  Cycles:%u", entry.sprite.total_cycles);
+                    snprintf(buf, sizeof(buf), "  [SUZY] SPRITES   END  Cycles:%u  Tick:%llu", entry.sprite.total_cycles,
+                             (unsigned long long)entry.cycle);
                 else if (entry.sprite.skipped)
                     snprintf(buf, sizeof(buf), "  [SUZY]  SPRITE   SCB:$%04X  [SKIP]", entry.sprite.scb_addr);
                 else
