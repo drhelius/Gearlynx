@@ -55,6 +55,7 @@ static const u32 k_suzy_literal_1bpp_half_pair_ticks    = 2;
 static const u32 k_suzy_pixel_builder_even_end_ticks    = 6;
 static const u32 k_suzy_regular_clip_fifo_ticks         = 6;
 static const u32 k_suzy_packed_packet_ticks             = 4;
+static const u32 k_suzy_packed_readiness_ticks          = 72;
 static const u32 k_suzy_packed_scaled_packet_ticks      = 1;
 static const u32 k_suzy_packed_scaled_packet_pair_ticks = 3;
 static const u32 k_suzy_packed_row_bus_ticks            = 12;

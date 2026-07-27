@@ -89,6 +89,7 @@ public:
         u8 spr_quadrant;
         s16 quad_row;
         s16 quad_pixel_height;
+        bool sprite_row_started;
         s16 row_x;
         s16 row_emit_count;
         u16 row_h_accum;
@@ -224,6 +225,8 @@ private:
     void UpdateRowPipeline2bppTiming();
     void UpdateRowPipeline3bppTiming();
     void UpdateRowPipeline4bppTiming();
+    void UpdateRowPipelinePackedTiming();
+    void FinalizeRowPipelinePackedTiming();
     void AddRowPipelineBusTicks(u32 ticks);
     void AddRowPipelineSourceByte();
     u32 GetRowPipelinePixelTicks(u32 pixels, int literal_bpp);

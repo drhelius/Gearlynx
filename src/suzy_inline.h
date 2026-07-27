@@ -796,6 +796,26 @@ INLINE void Suzy::UpdateRowPipeline4bppTiming()
     UpdateRowPipelineTiming();
 }
 
+INLINE void Suzy::UpdateRowPipelinePackedTiming()
+{
+    m_state.row_timing_internal_ticks = k_suzy_packed_readiness_ticks +
+            (m_state.row_output_pixels << 1) + m_state.row_packed_packet_ticks;
+
+    UpdateRowPipelineTiming();
+}
+
+INLINE void Suzy::FinalizeRowPipelinePackedTiming()
+{
+    u32 phase = m_state.row_output_pixels & 7;
+    u32 finalization_ticks = (phase & 1) != 0 ? phase + 1 : (phase > 0 ? phase - 2 : 0);
+
+    if (finalization_ticks > 0)
+    {
+        m_state.row_timing_internal_ticks += finalization_ticks;
+        UpdateRowPipelineTiming();
+    }
+}
+
 INLINE void Suzy::ClearRowPipelineTiming()
 {
     m_state.row_video_burst_mask = 0;
@@ -825,7 +845,8 @@ INLINE void Suzy::ResetRowPipelineTiming(bool visible, bool process_pixels, bool
 
     bool literal = IS_SET_BIT(m_state.SPRCTL1, 7);
 
-    if (!literal && m_state.quad_row > 0)
+    if (!literal && (m_state.quad_row > 0 ||
+            (m_state.sprite_row_started && m_state.SPRHSIZ.value == 0x0100)))
     {
         m_state.row_timing_bus_ticks = k_suzy_packed_row_bus_ticks;
         m_state.row_timing_internal_base_ticks = k_suzy_packed_row_internal_ticks;
@@ -873,7 +894,9 @@ INLINE void Suzy::AddRowPipelineSourcePixel(int literal_bpp)
 {
     m_state.row_source_pixels++;
 
-    if (literal_bpp == 3 && m_state.quad_row > 0)
+    if (literal_bpp == 0 && m_state.sprite_row_started && m_state.SPRHSIZ.value == 0x0100)
+        UpdateRowPipelinePackedTiming();
+    else if (literal_bpp == 3 && m_state.quad_row > 0)
         UpdateRowPipeline3bppTiming();
     else if (literal_bpp == 4 && m_state.quad_row > 0)
         UpdateRowPipeline4bppTiming();
@@ -897,14 +920,19 @@ INLINE void Suzy::AddRowPipelinePackedPacket()
     }
 
     m_state.row_packed_packet_ticks += packet_ticks;
-    UpdateRowPipelineInternalTiming(MAX(m_state.row_source_pixels, m_state.row_output_pixels), 0);
+    if (m_state.sprite_row_started && m_state.SPRHSIZ.value == 0x0100)
+        UpdateRowPipelinePackedTiming();
+    else
+        UpdateRowPipelineInternalTiming(MAX(m_state.row_source_pixels, m_state.row_output_pixels), 0);
 }
 
 INLINE void Suzy::AddRowPipelineOutputPixel(int literal_bpp)
 {
     m_state.row_output_pixels++;
 
-    if (literal_bpp == 4 && m_state.quad_row > 0)
+    if (literal_bpp == 0 && m_state.sprite_row_started && m_state.SPRHSIZ.value == 0x0100)
+        UpdateRowPipelinePackedTiming();
+    else if (literal_bpp == 4 && m_state.quad_row > 0)
         UpdateRowPipeline4bppTiming();
     else if (literal_bpp == 2 && m_state.row_timing_internal_base_ticks == k_suzy_literal_row_internal_ticks &&
             m_state.quad_row > 0)
@@ -1342,6 +1370,7 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.TILTACUM.value = 0;
             m_state.SPRVPOS.value = m_state.VPOSSTRT.value;
             m_state.VSIZACUM.value = size_pos.up ? 0 : m_state.VSIZOFF.value;
+            m_state.sprite_row_started = false;
             m_state.fsm_phase = SUZY_PHASE_LINE_FETCH;
             break;
         }
@@ -1502,6 +1531,12 @@ INLINE void Suzy::StepBlitterPhase()
             bool visible_y = ((u32)(s16)m_state.SPRVPOS.value < (u32)GLYNX_SCREEN_HEIGHT);
             bool pipeline_timing = UsePipelineTiming();
 
+            if (pipeline_timing && IS_NOT_SET_BIT(m_state.SPRCTL1, 7) &&
+                    m_state.sprite_row_started && m_state.SPRHSIZ.value == 0x0100)
+            {
+                FinalizeRowPipelinePackedTiming();
+            }
+
             if (pipeline_timing && m_state.quad_row > 0 && m_state.row_output_pixels > 0)
             {
                 s32 last_visible_x = m_state.row_render ? m_state.row_x - dx : (dx > 0 ? GLYNX_SCREEN_WIDTH - 1 : 0);
@@ -1592,6 +1627,12 @@ INLINE void Suzy::StepBlitterPhase()
                         }
                     }
                 }
+            }
+
+            if (pipeline_timing && IS_NOT_SET_BIT(m_state.SPRCTL1, 7) &&
+                    m_state.row_source_pixels > 0)
+            {
+                m_state.sprite_row_started = true;
             }
 
             AdvanceSpriteRow(dy);

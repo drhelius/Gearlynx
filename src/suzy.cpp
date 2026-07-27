@@ -350,6 +350,7 @@ void Suzy::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.spr_quadrant);
         G_SERIALIZE(s, m_state.quad_row);
         G_SERIALIZE(s, m_state.quad_pixel_height);
+        G_SERIALIZE(s, m_state.sprite_row_started);
         G_SERIALIZE(s, m_state.row_x);
         G_SERIALIZE(s, m_state.row_emit_count);
         G_SERIALIZE(s, m_state.row_h_accum);
