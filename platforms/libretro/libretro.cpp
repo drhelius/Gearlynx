@@ -411,8 +411,60 @@ void retro_run(void)
         audio_batch_cb(audio_buf, audio_sample_count / 2);
 }
 
+static bool load_rom(const struct retro_game_info* info, const char* path)
+{
+    if (!info)
+        return false;
+
+    if (IsValidPointer(info->data) && (info->size > 0))
+        return core->LoadROMFromBuffer(reinterpret_cast<const u8*>(info->data), info->size, path);
+
+    if (!path || !path[0])
+        return false;
+
+    if (!vfs_interface)
+        return core->LoadROM(path);
+
+    if (!vfs_interface->open || !vfs_interface->close || !vfs_interface->size || !vfs_interface->read)
+        return false;
+
+    retro_vfs_file_handle* file = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ,
+        RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    if (!file)
+        return false;
+
+    s64 size = (s64)vfs_interface->size(file);
+    if ((size <= 0) || (size > 0x7FFFFFFF))
+    {
+        vfs_interface->close(file);
+        return false;
+    }
+
+    u8* buffer = new u8[(int)size];
+    s64 total = 0;
+
+    while (total < size)
+    {
+        s64 read = (s64)vfs_interface->read(file, buffer + total, size - total);
+        if (read <= 0)
+            break;
+
+        total += read;
+    }
+
+    bool loaded = vfs_interface->close(file) == 0 && total == size;
+    if (loaded)
+        loaded = core->LoadROMFromBuffer(buffer, (int)size, path);
+
+    SafeDeleteArray(buffer);
+    return loaded;
+}
+
 bool retro_load_game(const struct retro_game_info *info)
 {
+    if (!info)
+        return false;
+
     check_variables();
     load_bootroms();
 
@@ -435,7 +487,7 @@ bool retro_load_game(const struct retro_game_info *info)
     snprintf(retro_game_path, sizeof(retro_game_path), "%s", game_path);
     log_cb(RETRO_LOG_INFO, "retro_load_game: %s\n", retro_game_path);
 
-    if (!core->LoadROMFromBuffer(reinterpret_cast<const u8*>(info->data), info->size, retro_game_path))
+    if (!load_rom(info, retro_game_path))
     {
         log_cb(RETRO_LOG_ERROR, "Invalid or corrupted ROM.\n");
         return false;
