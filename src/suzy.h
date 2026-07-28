@@ -100,6 +100,7 @@ public:
         u8 pack_pen;
         u8 pack_is_literal;
         u8 pack_pixel_pair;
+        bool row_packed_rle_seen;
         u32 row_collision_burst_mask;
         u32 row_collision_read_burst_mask;
         u32 row_video_burst_mask;
@@ -231,7 +232,7 @@ private:
     void AddRowPipelineSourceByte();
     u32 GetRowPipelinePixelTicks(u32 pixels, int literal_bpp);
     void AddRowPipelineSourcePixel(int literal_bpp);
-    void AddRowPipelinePackedPacket();
+    void AddRowPipelinePackedPacket(bool literal);
     void AddRowPipelineOutputPixel(int literal_bpp);
     void AddRowPipelineVideoPixel(int literal_bpp);
     void AddRowPipelineVideoReadPixel(int literal_bpp);

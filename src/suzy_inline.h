@@ -798,8 +798,18 @@ INLINE void Suzy::UpdateRowPipeline4bppTiming()
 
 INLINE void Suzy::UpdateRowPipelinePackedTiming()
 {
-    m_state.row_timing_internal_ticks = k_suzy_packed_readiness_ticks +
+    u32 output_ticks = k_suzy_packed_readiness_ticks +
             (m_state.row_output_pixels << 1) + m_state.row_packed_packet_ticks;
+    u32 builder_ticks = 0;
+
+    if (!m_state.row_packed_rle_seen)
+    {
+        builder_ticks = k_suzy_packed_readiness_ticks +
+                GetRowPipelinePixelTicks(m_state.row_source_pixels, 0) +
+                (m_state.row_packed_packet_ticks >> 1);
+    }
+
+    m_state.row_timing_internal_ticks = MAX(output_ticks, builder_ticks);
 
     UpdateRowPipelineTiming();
 }
@@ -808,12 +818,12 @@ INLINE void Suzy::FinalizeRowPipelinePackedTiming()
 {
     u32 phase = m_state.row_output_pixels & 7;
     u32 finalization_ticks = (phase & 1) != 0 ? phase + 1 : (phase > 0 ? phase - 2 : 0);
+    u32 output_ticks = k_suzy_packed_readiness_ticks +
+            (m_state.row_output_pixels << 1) + m_state.row_packed_packet_ticks +
+            finalization_ticks;
 
-    if (finalization_ticks > 0)
-    {
-        m_state.row_timing_internal_ticks += finalization_ticks;
-        UpdateRowPipelineTiming();
-    }
+    m_state.row_timing_internal_ticks = MAX(m_state.row_timing_internal_ticks, output_ticks);
+    UpdateRowPipelineTiming();
 }
 
 INLINE void Suzy::ClearRowPipelineTiming()
@@ -828,6 +838,7 @@ INLINE void Suzy::ClearRowPipelineTiming()
     m_state.row_source_pixels = 0;
     m_state.row_output_pixels = 0;
     m_state.row_packed_packet_ticks = 0;
+    m_state.row_packed_rle_seen = false;
     m_state.row_video_pixels = 0;
     m_state.row_video_words = 0;
 }
@@ -907,9 +918,12 @@ INLINE void Suzy::AddRowPipelineSourcePixel(int literal_bpp)
         UpdateRowPipelineInternalTiming(m_state.row_source_pixels, literal_bpp);
 }
 
-INLINE void Suzy::AddRowPipelinePackedPacket()
+INLINE void Suzy::AddRowPipelinePackedPacket(bool literal)
 {
     u32 packet_ticks = k_suzy_packed_packet_ticks;
+
+    if (!literal)
+        m_state.row_packed_rle_seen = true;
 
     if (m_state.quad_row > 0 && m_state.SPRHSIZ.value > 0x0100)
     {
@@ -1855,10 +1869,10 @@ INLINE bool Suzy::DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int ty
             if (header == 0 || header == SHIFTREG_EOF)
                 return true;
 
-            if (pipeline_timing)
-                AddRowPipelinePackedPacket();
-
             m_state.pack_is_literal = (u8)(header >> 4);
+            if (pipeline_timing)
+                AddRowPipelinePackedPacket(m_state.pack_is_literal != 0);
+
             m_state.pack_count = (u8)((header & 0x0F) + 1);
             m_state.pack_state = m_state.pack_is_literal ? SUZY_PACK_LITERAL : SUZY_PACK_RLE_PEN;
             break;
