@@ -47,7 +47,6 @@ void Bus::InjectCycles(u32 cycles)
 
 void Bus::InjectSuzyStolenCycles(u32 cycles)
 {
-    m_cycles += cycles;
     m_suzy_stolen_cycles += cycles;
 }
 

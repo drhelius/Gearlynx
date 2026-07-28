@@ -378,8 +378,13 @@ void Suzy::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.row_output_pixels);
         G_SERIALIZE(s, m_state.row_packed_packet_ticks);
         G_SERIALIZE(s, m_state.row_packed_rle_seen);
+        G_SERIALIZE(s, m_state.row_packed_literal_excess);
+        G_SERIALIZE(s, m_state.row_packed_builder_stall_ticks);
+        G_SERIALIZE(s, m_state.row_packed_literal_start_pixels);
+        G_SERIALIZE(s, m_state.row_packed_literal_run);
         G_SERIALIZE(s, m_state.row_video_pixels);
         G_SERIALIZE(s, m_state.row_video_words);
+        G_SERIALIZE(s, m_state.lcd_dma_pending_ticks);
     }
     else if (s.IsLoading())
     {
@@ -396,7 +401,12 @@ void Suzy::Serialize(StateSerializer& s, int version)
         m_state.row_output_pixels = 0;
         m_state.row_packed_packet_ticks = 0;
         m_state.row_packed_rle_seen = false;
+        m_state.row_packed_literal_excess = 0;
+        m_state.row_packed_builder_stall_ticks = 0;
+        m_state.row_packed_literal_start_pixels = 0;
+        m_state.row_packed_literal_run = false;
         m_state.row_video_pixels = 0;
         m_state.row_video_words = 0;
+        m_state.lcd_dma_pending_ticks = 0;
     }
 }

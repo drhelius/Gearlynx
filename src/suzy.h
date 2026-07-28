@@ -113,8 +113,13 @@ public:
         u32 row_source_pixels;
         u32 row_output_pixels;
         u32 row_packed_packet_ticks;
+        s32 row_packed_literal_excess;
+        u32 row_packed_builder_stall_ticks;
+        u32 row_packed_literal_start_pixels;
+        bool row_packed_literal_run;
         u32 row_video_pixels;
         u32 row_video_words;
+        u32 lcd_dma_pending_ticks;
     };
 
     // Math register macros - these are physically the same as sprite registers
@@ -140,7 +145,7 @@ public:
     void Init(Memory* memory);
     void Reset();
     void Clock(u32 cycles);
-    u32 ApplyBusStall(u32 cycles, u32 stolen_cycles);
+    u32 ApplyBusStall(u32* cycles, u32 stolen_cycles);
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
@@ -227,12 +232,13 @@ private:
     void UpdateRowPipeline3bppTiming();
     void UpdateRowPipeline4bppTiming();
     void UpdateRowPipelinePackedTiming();
+    void FinalizeRowPipelinePackedLiteralRun();
     void FinalizeRowPipelinePackedTiming();
     void AddRowPipelineBusTicks(u32 ticks);
     void AddRowPipelineSourceByte();
     u32 GetRowPipelinePixelTicks(u32 pixels, int literal_bpp);
     void AddRowPipelineSourcePixel(int literal_bpp);
-    void AddRowPipelinePackedPacket(bool literal);
+    void AddRowPipelinePackedPacket(bool literal, u32 count);
     void AddRowPipelineOutputPixel(int literal_bpp);
     void AddRowPipelineVideoPixel(int literal_bpp);
     void AddRowPipelineVideoReadPixel(int literal_bpp);

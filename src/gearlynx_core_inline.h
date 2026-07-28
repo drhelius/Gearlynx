@@ -89,7 +89,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             u32 bus_cycles = m_bus->ConsumeCycles();
             u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
             u32 lynx_cycles = cpu_cycles + bus_cycles;
-            u32 suzy_cycles = m_suzy->ApplyBusStall(lynx_cycles, suzy_stolen_cycles);
+            u32 suzy_cycles = m_suzy->ApplyBusStall(&lynx_cycles, suzy_stolen_cycles);
             m_total_cycles += lynx_cycles;
 
             //Debug("-> CPU cycles=%u, Lynx cycles=%u", cpu_cycles, lynx_cycles);
@@ -154,7 +154,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             u32 bus_cycles = m_bus->ConsumeCycles();
             u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
             u32 lynx_cycles = cpu_cycles + bus_cycles;
-            u32 suzy_cycles = m_suzy->ApplyBusStall(lynx_cycles, suzy_stolen_cycles);
+            u32 suzy_cycles = m_suzy->ApplyBusStall(&lynx_cycles, suzy_stolen_cycles);
             m_total_cycles += lynx_cycles;
 
             if (m_m6502->IsHalted())

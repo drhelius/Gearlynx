@@ -1357,7 +1357,9 @@ INLINE void Mikey::UpdateVideo(u32 cycles)
     while (m_state.refresh_cycle_counter >= k_mikey_refresh_period_cycles)
     {
         m_state.refresh_cycle_counter -= k_mikey_refresh_period_cycles;
-        m_bus->InjectCycles(k_mikey_refresh_inject_cycles);
+        // Coalesce refresh with enabled LCD transfers on visible lines.
+        if (IS_NOT_SET_BIT(m_state.DISPCTL, 0) || m_lcd_screen->GetState()->in_vblank)
+            m_bus->InjectCycles(k_mikey_refresh_inject_cycles);
     }
 }
 

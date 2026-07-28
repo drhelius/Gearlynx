@@ -49,7 +49,7 @@ static const u32 k_suzy_literal_1bpp_pixel_pair_ticks   = 4;
 static const u32 k_suzy_literal_row_internal_ticks      = 70;
 static const u32 k_suzy_literal_4bpp_upscale_ticks      = 72;
 static const u32 k_suzy_literal_4bpp_collision_ticks    = 78;
-static const u32 k_suzy_collision_pipeline_group_ticks = 5;
+static const u32 k_suzy_collision_pipeline_group_ticks  = 5;
 static const u32 k_suzy_unpacker_shift_bits             = 12;
 static const u32 k_suzy_literal_1bpp_half_pair_ticks    = 2;
 static const u32 k_suzy_pixel_builder_even_end_ticks    = 6;
@@ -62,7 +62,7 @@ static const u32 k_suzy_packed_row_bus_ticks            = 12;
 static const u32 k_suzy_packed_row_internal_ticks       = 24;
 static const u32 k_suzy_clipped_row_ticks               = 46;
 static const u32 k_suzy_lcd_dma_burst_ticks             = 28;
-static const u32 k_suzy_lcd_dma_mandatory_stall_ticks   = 18;
+static const u32 k_suzy_lcd_dma_overlappable_ticks      = 10;
 
 #include "m6502.h"
 
