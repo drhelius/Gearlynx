@@ -89,6 +89,7 @@ static GLYNX_Keys keymap[] = {
 
 static GearlynxCore* core;
 static u8* frame_buffer;
+static const retro_vfs_interface* vfs_interface = NULL;
 
 static void set_controller_info(void);
 static void clear_input_state(void);
@@ -116,11 +117,51 @@ static bool IsJoypadDevice(unsigned device)
     return ((device == RETRO_DEVICE_JOYPAD) || (device == RETRO_DEVICE_LYNX_PAD));
 }
 
+static GLYNX_Bios_State load_bios_file(const char* path)
+{
+    if (!vfs_interface || !vfs_interface->open || !vfs_interface->close ||
+        !vfs_interface->size || !vfs_interface->read)
+        return core->LoadBios(path);
+
+    core->UnloadBios();
+
+    retro_vfs_file_handle* file = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ,
+        RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    if (!file)
+        return BIOS_LOAD_FILE_ERROR;
+
+    s64 size = (s64)vfs_interface->size(file);
+    if (size != GLYNX_BIOS_SIZE)
+    {
+        vfs_interface->close(file);
+        return BIOS_LOAD_INVALID_SIZE;
+    }
+
+    u8 bios[GLYNX_BIOS_SIZE];
+    s64 total = 0;
+
+    while (total < size)
+    {
+        s64 read = (s64)vfs_interface->read(file, bios + total, size - total);
+        if (read <= 0)
+            break;
+
+        total += read;
+    }
+
+    vfs_interface->close(file);
+
+    if (total != size)
+        return BIOS_LOAD_FILE_ERROR;
+
+    return core->LoadBiosFromBuffer(bios, (int)size);
+}
+
 static void load_bootroms(void)
 {
     char bios_path[4113];
     snprintf(bios_path, 4113, "%s%clynxboot.img", retro_system_directory, slash);
-    GLYNX_Bios_State result = core->LoadBios(bios_path);
+    GLYNX_Bios_State result = load_bios_file(bios_path);
 
     switch (result)
     {
@@ -229,9 +270,15 @@ void retro_init(void)
     vfs_interface_info.iface = NULL;
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info) && vfs_interface_info.iface)
-        sd_card_set_vfs_interface(vfs_interface_info.iface);
+    {
+        vfs_interface = vfs_interface_info.iface;
+        sd_card_set_vfs_interface(vfs_interface);
+    }
     else
+    {
+        vfs_interface = NULL;
         sd_card_set_vfs_interface(NULL);
+    }
 
     core = new GearlynxCore();
 
@@ -252,6 +299,7 @@ void retro_deinit(void)
 {
     SafeDeleteArray(frame_buffer);
     SafeDelete(core);
+    vfs_interface = NULL;
     sd_card_set_vfs_interface(NULL);
 
     audio_sample_count = 0;

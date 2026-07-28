@@ -124,6 +124,16 @@ GLYNX_Bios_State GearlynxCore::LoadBios(const char* file_path)
     return m_media->LoadBios(file_path);
 }
 
+GLYNX_Bios_State GearlynxCore::LoadBiosFromBuffer(const u8* buffer, int size)
+{
+    return m_media->LoadBiosFromBuffer(buffer, size);
+}
+
+void GearlynxCore::UnloadBios()
+{
+    m_media->UnloadBios();
+}
+
 bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
 {
     GLYNX_Rotation rotation = m_media->GetRotation();

@@ -58,6 +58,8 @@ public:
     bool LoadROM(const char* file_path);
     bool LoadROMFromBuffer(const u8* buffer, int size, const char* file_path = NULL);
     GLYNX_Bios_State LoadBios(const char* file_path);
+    GLYNX_Bios_State LoadBiosFromBuffer(const u8* buffer, int size);
+    void UnloadBios();
     void ResetROM(bool preserve_ram);
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);

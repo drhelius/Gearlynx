@@ -92,6 +92,8 @@ public:
     bool LoadFromFile(const char* path);
     bool LoadFromBuffer(const u8* buffer, int size, const char* path);
     GLYNX_Bios_State LoadBios(const char* path);
+    GLYNX_Bios_State LoadBiosFromBuffer(const u8* buffer, int size);
+    void UnloadBios();
     u8 ReadBank0();
     u8 ReadBank1();
     u8 ReadBank0A();
@@ -140,6 +142,7 @@ public:
 private:
     void Serialize(StateSerializer& s, int version);
     bool LoadFromZipFile(const u8* buffer, int size);
+    GLYNX_Bios_State LoadBiosData(const u8* buffer, int size, const char* path);
     void GatherInfoFromDB();
     bool GatherLynxHeader(const u8* buffer);
     bool GatherLynx2Header(const u8* buffer);

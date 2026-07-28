@@ -505,8 +505,7 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
 {
     using namespace std;
 
-    m_is_bios_loaded = false;
-    m_is_bios_valid = false;
+    UnloadBios();
 
     if (!IsValidFile(path))
     {
@@ -525,15 +524,16 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
 
     int size = static_cast<int>(file.tellg());
 
-    if (size != 0x200)
+    if (size != GLYNX_BIOS_SIZE)
     {
         Error("Incorrect BIOS size %d: %s", size, path);
         file.close();
         return BIOS_LOAD_INVALID_SIZE;
     }
 
+    u8 bios[GLYNX_BIOS_SIZE];
     file.seekg(0, ios::beg);
-    file.read(reinterpret_cast<char*>(m_bios), size);
+    file.read(reinterpret_cast<char*>(bios), size);
     if (!file.good() || file.gcount() != size)
     {
         Error("Failed to load BIOS data: %s", path);
@@ -542,8 +542,46 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
     }
     file.close();
 
+    return LoadBiosData(bios, size, path);
+}
+
+GLYNX_Bios_State Media::LoadBiosFromBuffer(const u8* buffer, int size)
+{
+    return LoadBiosData(buffer, size, NULL);
+}
+
+void Media::UnloadBios()
+{
+    m_is_bios_loaded = false;
+    m_is_bios_valid = false;
+}
+
+GLYNX_Bios_State Media::LoadBiosData(const u8* buffer, int size, const char* path)
+{
+    UnloadBios();
+
+    if (!IsValidPointer(buffer))
+    {
+        Error("Invalid BIOS buffer");
+        return BIOS_LOAD_FILE_ERROR;
+    }
+
+    if (size != GLYNX_BIOS_SIZE)
+    {
+        if (path)
+            Error("Incorrect BIOS size %d: %s", size, path);
+        else
+            Error("Incorrect BIOS size %d", size);
+        return BIOS_LOAD_INVALID_SIZE;
+    }
+
+    memcpy(m_bios, buffer, size);
     m_is_bios_loaded = true;
-    Log("BIOS loaded (%d bytes): %s", size, path);
+
+    if (path)
+        Log("BIOS loaded (%d bytes): %s", size, path);
+    else
+        Log("BIOS loaded (%d bytes)", size);
 
     m_bios[0x1F8] = 0x00;   // Register 0xFFF8 is RAM
     m_bios[0x1F9] = 0x80;   // Register 0xFFF9 is MAPCTL
@@ -554,12 +592,18 @@ GLYNX_Bios_State Media::LoadBios(const char* path)
 
     if (m_is_bios_valid)
     {
-        Log("BIOS CRC is valid: %08X: %s", crc, path);
+        if (path)
+            Log("BIOS CRC is valid: %08X: %s", crc, path);
+        else
+            Log("BIOS CRC is valid: %08X", crc);
         return BIOS_LOAD_OK;
     }
     else
     {
-        Log("WARNING: Incorrect BIOS CRC %08X: %s", crc, path);
+        if (path)
+            Log("WARNING: Incorrect BIOS CRC %08X: %s", crc, path);
+        else
+            Log("WARNING: Incorrect BIOS CRC %08X", crc);
         return BIOS_LOAD_INVALID_CRC;
     }
 }
