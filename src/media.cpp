@@ -720,6 +720,8 @@ void Media::GatherInfoFromDB()
                 database_eeprom_name = "93C86";
             }
 
+            (void)database_eeprom_name;
+
             if (!m_is_lnx2 && database_eeprom != GLYNX_EEPROM_NONE)
             {
                 bool eeprom_8bit = (k_game_database[i].flags & GLYNX_DB_FLAG_EEPROM_8BIT) != 0;
