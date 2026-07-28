@@ -33,7 +33,7 @@ public:
     virtual bool IsAvailable() const;
     virtual bool IsValidRootPath(const char* root_path) const;
     virtual bool GetFileInfo(const char* path, bool& directory, u32& size);
-    virtual bool CreateFile(const char* path, u32 size);
+    virtual bool CreateSizedFile(const char* path, u32 size);
     virtual bool OpenFile(const char* path, bool& writable, u32& size);
     virtual void CloseFile();
     virtual s64 ReadFile(u32 offset, void* data, u32 size);
@@ -86,7 +86,7 @@ bool SdCardFileSystemLibretro::GetFileInfo(const char* path, bool& directory, u3
     return true;
 }
 
-bool SdCardFileSystemLibretro::CreateFile(const char* path, u32 size)
+bool SdCardFileSystemLibretro::CreateSizedFile(const char* path, u32 size)
 {
     if (!IsAvailable() || !m_vfs_interface->write || !m_vfs_interface->truncate)
         return false;

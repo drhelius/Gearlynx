@@ -183,7 +183,7 @@ void ElCheapoSD::ExecuteNew()
 
     BuildHostPath(file_name, host_path);
     u32 size = read_u32_be(&m_mailbox[14]);
-    SetResponse(m_file_system->CreateFile(host_path.c_str(), size) ? "DONE" : "NOSPACE");
+    SetResponse(m_file_system->CreateSizedFile(host_path.c_str(), size) ? "DONE" : "NOSPACE");
 }
 
 void ElCheapoSD::ExecuteLoad()

@@ -50,7 +50,7 @@ public:
     virtual bool IsAvailable() const { return true; }
     virtual bool IsValidRootPath(const char* root_path) const { (void)root_path; return true; }
     virtual bool GetFileInfo(const char* path, bool& directory, u32& size);
-    virtual bool CreateFile(const char* path, u32 size);
+    virtual bool CreateSizedFile(const char* path, u32 size);
     virtual bool OpenFile(const char* path, bool& writable, u32& size);
     virtual void CloseFile();
     virtual s64 ReadFile(u32 offset, void* data, u32 size);
@@ -87,7 +87,7 @@ bool SdCardFileSystemNative::GetFileInfo(const char* path, bool& directory, u32&
     return true;
 }
 
-bool SdCardFileSystemNative::CreateFile(const char* path, u32 size)
+bool SdCardFileSystemNative::CreateSizedFile(const char* path, u32 size)
 {
     std::fstream file;
     open_ofstream_utf8(file, path, std::ios::out | std::ios::binary | std::ios::trunc);
