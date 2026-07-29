@@ -103,6 +103,8 @@ public:
         bool row_packed_rle_seen;
         u32 row_collision_burst_mask;
         u32 row_collision_read_burst_mask;
+        u32 row_collision_group_mask;
+        u32 row_collision_read_group_mask;
         u32 row_video_burst_mask;
         u32 row_video_read_burst_mask;
         u32 row_timing_bus_ticks;
@@ -223,7 +225,6 @@ private:
 
     void SpritesGo();
     void AddSpriteCycles(u32 cycles);
-    bool UsePipelineTiming();
     void ClearRowPipelineTiming();
     void ResetRowPipelineTiming(bool visible, bool process_pixels = true, bool literal_2bpp_natural_eof = false);
     void UpdateRowPipelineTiming();
@@ -242,6 +243,8 @@ private:
     void AddRowPipelineOutputPixel(int literal_bpp);
     void AddRowPipelineVideoPixel(int literal_bpp);
     void AddRowPipelineVideoReadPixel(int literal_bpp);
+    void AddRowPipelineCollisionPixel();
+    void AddRowPipelineCollisionReadPixel();
     void AddRowPipelineVideoWord();
     void StepBlitter(u32 cycles);
     bool ConsumeBlitterCycleDebt(u32* cycles);
@@ -251,9 +254,9 @@ private:
     void DrawSprite();
     void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
     void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
-    bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id, bool pipeline_timing);
-    bool DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id, bool pipeline_timing);
-    bool DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id, bool pipeline_timing, int literal_bpp);
+    bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
+    bool DrawSpriteLinePackedStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
+    bool DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 collision_id, int literal_bpp);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     void BeginSpriteBoundingBox();
     void AddSpriteBoundingBox();

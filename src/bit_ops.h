@@ -79,4 +79,16 @@ INLINE u8 parity16(u16 x)
 #endif
 }
 
+INLINE u32 popcount32(u32 x)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return (u32)__builtin_popcount(x);
+#else
+    x -= (x >> 1) & 0x55555555;
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    x = (x + (x >> 4)) & 0x0F0F0F0F;
+    return (x * 0x01010101) >> 24;
+#endif
+}
+
 #endif /* BIT_OPS_H */

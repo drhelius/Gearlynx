@@ -22,7 +22,8 @@
 
 static const u32 k_suzy_ram_read_ticks                  = 2;
 static const u32 k_suzy_rmw_ticks                       = 1;
-static const u32 k_suzy_process_ticks                   = 1;
+static const u32 k_suzy_fast_process_ticks              = 3;
+static const u32 k_suzy_xor_byte_ticks                  = 2;
 static const u32 k_suzy_visible_row_ticks               = 60;
 static const u32 k_suzy_control_line_ticks              = 54;
 static const u32 k_suzy_packed_reload_row_ticks         = 2;

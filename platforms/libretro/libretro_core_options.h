@@ -120,9 +120,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     },
     {
         "gearlynx_fast_sprite_rendering",
-        "Fast Sprite Rendering",
+        "Legacy Sprite Renderer",
         NULL,
-        "Use a simpler Suzy sprite renderer. This is faster but it is less accurate for mid-render interrupt effects used on some demos.",
+        "Use a simpler Suzy sprite renderer. This is faster but it is less accurate for mid-render interrupt effects used on some demos. NOT RECOMMENDED.",
         NULL,
         "system",
         {
