@@ -35,10 +35,10 @@
 
 INLINE bool Mikey::Clock(u32 cycles)
 {
-    UpdateVideo(cycles);
-    UpdateAudio(cycles);
-    UpdateTimers(cycles);
-    UpdateIRQs();
+    if (cycles > m_cpu_read_cycles)
+        Advance(cycles - m_cpu_read_cycles);
+
+    m_cpu_read_cycles = 0;
 
     bool ret = m_state.frame_ready;
 
@@ -63,7 +63,11 @@ INLINE u8 Mikey::Read(u16 address)
         return ReadTimer<debug>(address);
     else if (address < 0xFD40)
         return ReadAudio<debug>(address);
-    else if (address <= 0xFD50)
+
+    if (!debug)
+        SynchronizeCPURead();
+
+    if (address <= 0xFD50)
         return ReadAudioExtra(address);
     else if (address >= 0xFDA0 && address < 0xFDC0)
         return ReadColor(address);
@@ -523,6 +527,7 @@ inline u8 Mikey::ReadTimer(u16 address)
     if (!debug)
     {
         m_bus->InjectCycles(k_bus_cycles_timer);
+        SynchronizeCPURead();
     }
 
     int reg = address & 3;
@@ -643,6 +648,7 @@ inline u8 Mikey::ReadAudio(u16 address)
     if (!debug)
     {
         m_bus->InjectCycles(k_bus_cycles_audio);
+        SynchronizeCPURead();
     }
 
     int reg = address & 7;
@@ -831,6 +837,26 @@ inline void Mikey::WriteAudioExtra(u16 address, u8 value)
     default:
         DebugMikey("Audio Extra WRITE called with unknown address: %04X, value: %02X", address, value);
         break;
+    }
+}
+
+INLINE void Mikey::Advance(u32 cycles)
+{
+    UpdateVideo(cycles);
+    UpdateAudio(cycles);
+    UpdateTimers(cycles);
+    UpdateIRQs();
+}
+
+INLINE void Mikey::SynchronizeCPURead()
+{
+    u32 cycles = m_m6502->GetInstructionTicks() + m_bus->GetCycles();
+
+    while (cycles > m_cpu_read_cycles)
+    {
+        Advance(cycles - m_cpu_read_cycles);
+        m_cpu_read_cycles = cycles;
+        cycles = m_m6502->GetInstructionTicks() + m_bus->GetCycles();
     }
 }
 

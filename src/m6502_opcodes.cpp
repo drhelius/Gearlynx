@@ -868,8 +868,7 @@ void M6502::OPCode0x88()
 void M6502::OPCode0x89()
 {
     // BIT #nn
-    OPCodes_BIT_Immediate(m_s.PC.GetValue());
-    m_s.PC.Increment();
+    OPCodes_BIT_Immediate(FetchOperand8());
 }
 
 void M6502::OPCode0x8A()

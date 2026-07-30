@@ -31,6 +31,7 @@ public:
     void Reset();
     void InjectCycles(u32 cycles);
     void InjectSuzyStolenCycles(u32 cycles);
+    u32 GetCycles() const;
     u32 ConsumeCycles();
     u32 ConsumeSuzyStolenCycles();
 
@@ -47,5 +48,7 @@ static const u32 k_bus_cycles_mikey_write       = 0;    // Mikey register write
 static const u32 k_bus_cycles_int_tick_factor   = 5;    // Internal CPU cycle to tick scaling
 static const u32 k_bus_cycles_timer             = 7;
 static const u32 k_bus_cycles_audio             = 7;
+
+#include "bus_inline.h"
 
 #endif /* BUS_H */

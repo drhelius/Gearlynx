@@ -23,6 +23,7 @@
     <ClInclude Include="..\..\src\audio_inline.h" />
     <ClInclude Include="..\..\src\bit_ops.h" />
     <ClInclude Include="..\..\src\bus.h" />
+    <ClInclude Include="..\..\src\bus_inline.h" />
     <ClInclude Include="..\..\src\el_cheapo_sd.h" />
     <ClInclude Include="..\..\src\el_cheapo_sd_inline.h" />
     <ClInclude Include="..\..\src\game_drive.h" />

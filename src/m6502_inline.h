@@ -160,6 +160,11 @@ INLINE void M6502::InjectCycles(unsigned int cycles)
     m_s.cycles += cycles;
 }
 
+INLINE u32 M6502::GetInstructionTicks()
+{
+    return (m_s.cycles * k_bus_cycles_int_tick_factor) - (u32)m_s.page_mode_discounts;
+}
+
 INLINE void M6502::SetPageModeEnabled(bool enabled)
 {
     m_page_mode_tick_discount = enabled ? 1 : 0;
@@ -209,6 +214,8 @@ INLINE u8 M6502::FetchOperand8()
     u8 value = m_memory->Read(addr);
     m_s.PC.Increment();
 
+    m_stream_open = true;
+
     if (page_mode)
         m_s.page_mode_discounts += m_page_mode_tick_discount;
 
@@ -219,18 +226,16 @@ INLINE u16 M6502::FetchOperand16()
 {
     const u16 addr = m_s.PC.GetValue();
 
-    u8 discounts = 0;
-    if (m_stream_open)
-    {
-        if ((addr & 0x0F) != 0)
-            discounts++;
-        if (((addr + 1) & 0x0F) != 0)
-            discounts++;
-    }
+    u8 discounts = m_stream_open && ((addr & 0x0F) != 0) ? 1 : 0;
+
+    if (((addr + 1) & 0x0F) != 0)
+        discounts++;
 
     const u8 l = m_memory->Read(addr);
     const u8 h = m_memory->Read(addr + 1);
     m_s.PC.SetValue(addr + 2);
+
+    m_stream_open = true;
 
     m_s.page_mode_discounts += discounts * m_page_mode_tick_discount;
 

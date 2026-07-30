@@ -36,6 +36,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
     InitPointer(m_lcd_screen);
     InitPointer(m_trace_logger);
     m_debug_output_enabled = false;
+    m_cpu_read_cycles = 0;
 }
 
 Mikey::~Mikey()
@@ -74,6 +75,7 @@ bool Mikey::IsDebugOutputEnabled()
 void Mikey::Reset(bool is_lynx2)
 {
     memset(&m_state, 0, sizeof(Mikey_State));
+    m_cpu_read_cycles = 0;
 
     m_is_lynx2 = is_lynx2;
     m_state.SYSCTL1 = 0x02;
@@ -245,6 +247,7 @@ void Mikey::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
+    m_cpu_read_cycles = 0;
 
     m_lcd_screen->LoadState(stream);
 }

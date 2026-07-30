@@ -17,25 +17,38 @@
  *
  */
 
+#ifndef BUS_INLINE_H
+#define BUS_INLINE_H
+
 #include "bus.h"
 
-Bus::Bus()
+INLINE void Bus::InjectCycles(u32 cycles)
 {
+    m_cycles += cycles;
+}
+
+INLINE void Bus::InjectSuzyStolenCycles(u32 cycles)
+{
+    m_suzy_stolen_cycles += cycles;
+}
+
+INLINE u32 Bus::GetCycles() const
+{
+    return m_cycles;
+}
+
+INLINE u32 Bus::ConsumeCycles()
+{
+    u32 ret = m_cycles;
     m_cycles = 0;
+    return ret;
+}
+
+INLINE u32 Bus::ConsumeSuzyStolenCycles()
+{
+    u32 ret = m_suzy_stolen_cycles;
     m_suzy_stolen_cycles = 0;
+    return ret;
 }
 
-Bus::~Bus()
-{
-}
-
-void Bus::Init()
-{
-    Reset();
-}
-
-void Bus::Reset()
-{
-    m_cycles = 0;
-    m_suzy_stolen_cycles = 0;
-}
+#endif /* BUS_INLINE_H */

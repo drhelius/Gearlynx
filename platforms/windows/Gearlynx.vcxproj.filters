@@ -180,6 +180,9 @@
     <ClInclude Include="..\..\src\bus.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\bus_inline.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\el_cheapo_sd.h">
       <Filter>core</Filter>
     </ClInclude>

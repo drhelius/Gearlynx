@@ -96,6 +96,7 @@ public:
     void Halt(bool halted);
     bool IsHalted();
     void InjectCycles(unsigned int cycles);
+    u32 GetInstructionTicks();
     M6502_State* GetState();
     void DisassembleNextOPCode();
     void DisassembleAhead(int count);
@@ -219,7 +220,7 @@ private:
     void OPCodes_ASL_Memory(u16 address);
     void OPcodes_Branch(bool condition);
     void OPCodes_BIT(u16 address);
-    void OPCodes_BIT_Immediate(u16 address);
+    void OPCodes_BIT_Immediate(u8 value);
     void OPCodes_BRK();
     void OPCodes_CMP(EightBitRegister* reg, u8 value);
     void OPCodes_DEC_Mem(u16 address);

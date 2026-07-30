@@ -103,6 +103,8 @@ private:
     template<bool debug = false> void WriteAudio(u16 address, u8 value);
     u8 ReadAudioExtra(u16 address);
     void WriteAudioExtra(u16 address, u8 value);
+    void Advance(u32 cycles);
+    void SynchronizeCPURead();
     void UpdateTimers(u32 cycles);
     bool BorrowInTimer(int i, GLYNX_Mikey_Timer* t);
     void UpdateAudio(u32 cycles);
@@ -134,6 +136,7 @@ private:
     bool m_is_lynx2;
     bool m_debug_output_enabled;
     TraceLogger* m_trace_logger;
+    u32 m_cpu_read_cycles;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

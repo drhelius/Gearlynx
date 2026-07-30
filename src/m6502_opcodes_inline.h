@@ -101,20 +101,20 @@ INLINE void M6502::OPCodes_ASL_Memory(u16 address)
 
 INLINE void M6502::OPcodes_Branch(bool condition)
 {
+    s8 displacement = RelativeAddressing();
+
     if (condition)
     {
-        s8 displacement = RelativeAddressing();
         u16 address = m_s.PC.GetValue();
         u16 result = static_cast<u16>(address + displacement);
         m_s.PC.SetValue(result);
         m_s.cycles++;
         if (PageCrossed(address, result))
             m_s.cycles++;
-    }
-    else
-        m_s.PC.Increment();
 
-    m_stream_open = false;
+        if (result != address)
+            m_stream_open = false;
+    }
 }
 
 INLINE void M6502::OPCodes_BIT(u16 address)
@@ -128,9 +128,8 @@ INLINE void M6502::OPCodes_BIT(u16 address)
     m_s.P.SetValue(flags);
 }
 
-INLINE void M6502::OPCodes_BIT_Immediate(u16 address)
+INLINE void M6502::OPCodes_BIT_Immediate(u8 value)
 {
-    u8 value = MemRead8(address);
     u8 result = m_s.A.GetValue() & value;
     ClearFlag(FLAG_ZERO);
     u8 flags = m_s.P.GetValue();
