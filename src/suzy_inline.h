@@ -1875,7 +1875,8 @@ INLINE void Suzy::StepBlitterPhase()
                 bool pipeline_xor = (m_state.SPRCTL0 & 0xC0) == 0xC0 &&
                         (m_state.SPRCTL0 & 0x07) == 6 &&
                         m_state.row_render && !partial_word &&
-                        m_state.row_output_pixels > 16 && m_state.row_pen != 0;
+                        m_state.row_output_pixels > 16 &&
+                        m_state.row_pen != 0 && m_state.row_pen != 0x0E;
 
                 if (pipeline_xor)
                     AddSpriteCycles(4);
