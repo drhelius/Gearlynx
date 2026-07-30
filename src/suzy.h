@@ -95,6 +95,7 @@ public:
         s16 row_x;
         s16 row_emit_count;
         u16 row_h_accum;
+        u32 row_expansion_outputs;
         u8 row_render;
         u8 row_pen;
         u8 pack_state;
@@ -123,6 +124,7 @@ public:
         bool row_packed_literal_run;
         u32 row_video_pixels;
         u32 row_video_words;
+        bool expansion_fifo_primed;
         bool row_lcd_dma_granted;
         u32 lcd_dma_pending_ticks;
     };

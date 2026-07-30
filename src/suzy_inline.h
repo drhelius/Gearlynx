@@ -61,7 +61,7 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
                 !m_state.row_lcd_dma_granted && m_state.SPRHSIZ.value == 0x0100 &&
                 IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0;
         u32 grant_overhead = (accurate_timing && !pipeline_timing &&
-                !m_state.sprite_row_started) || warm_literal_1bpp_grant ?
+            !m_state.sprite_row_started) || warm_literal_1bpp_grant ?
                 k_suzy_bus_grant_overhead_ticks : 0;
         u32 overlap_ticks = pipeline_timing ?
                 (grant_ticks * k_suzy_lcd_dma_overlappable_ticks) /
@@ -109,6 +109,16 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
         source_window = GetRowPipelinePixelTicks(source_values, literal ? (int)bpp : 0);
         if (literal && bpp == 2)
             source_window = MIN(source_window, k_suzy_source_fifo_burst_ticks);
+        else if (literal && bpp == 4 && m_state.SPRHSIZ.value > 0x0100 &&
+                m_state.row_expansion_outputs <=
+                k_suzy_pixel_fifo_outputs + k_suzy_video_merge_group_outputs)
+        {
+            u32 expanded_outputs = ((u32)m_state.row_h_accum +
+                    source_values * m_state.SPRHSIZ.value) >> 8;
+            u32 outputs_to_group = 8 - (m_state.row_output_pixels & 7);
+            source_window = expanded_outputs >= outputs_to_group ?
+                    outputs_to_group << 1 : 0;
+        }
     }
 
     fifo_window = MIN(fifo_window, remaining_outputs << 1);
@@ -130,9 +140,13 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
     u32 grant_ticks = MIN(m_state.lcd_dma_pending_ticks, k_suzy_lcd_dma_burst_ticks);
     m_state.lcd_dma_pending_ticks -= grant_ticks;
     u32 overlap_ticks = MIN(grant_ticks, internal_window);
-    *cycles += grant_ticks;
+    bool literal_4bpp_expansion = literal && bpp == 4 && m_state.SPRHSIZ.value > 0x0100;
+    u32 grant_overhead = literal_4bpp_expansion && !m_state.expansion_fifo_primed &&
+            internal_window < k_suzy_bus_grant_overhead_ticks ?
+            k_suzy_bus_grant_overhead_ticks - internal_window : 0;
+    *cycles += grant_ticks + grant_overhead;
 
-    return *cycles - grant_ticks + overlap_ticks;
+    return *cycles - grant_ticks - grant_overhead + overlap_ticks;
 }
 
 template<bool debug>
@@ -1298,6 +1312,7 @@ INLINE void Suzy::SpritesGo()
     m_state.fsm_phase = SUZY_PHASE_SCB_FETCH;
     m_state.sprite_row_started = false;
     m_state.row_pipeline_warm = false;
+    m_state.expansion_fifo_primed = false;
     m_state.scb_control_line_pending = false;
     m_state.spr_quadrant = 0;
     m_state.quad_row = 0;
@@ -1677,6 +1692,8 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.row_x = (s16)start_x;
             m_state.row_render = ((u32)start_y < (u32)GLYNX_SCREEN_HEIGHT) ? 1 : 0;
             m_state.row_h_accum = size_pos.left ? 0 : m_state.HSIZOFF.value;
+            m_state.row_expansion_outputs = ((u32)m_state.row_h_accum +
+                    m_state.SPRHSIZ.value) >> 8;
             m_state.row_emit_count = 0;
             m_state.row_pen = 0;
             m_state.pack_state = SUZY_PACK_HEADER;
@@ -2026,6 +2043,7 @@ INLINE void Suzy::StepBlitterPhase()
             else
             {
                 m_state.sprite_row_started = false;
+                m_state.expansion_fifo_primed = false;
                 m_state.fsm_phase = SUZY_PHASE_SCB_FETCH;
             }
 
@@ -2742,7 +2760,12 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
     bool non_collidable = false;
 
     if (pipeline_timing)
+    {
         m_state.row_video_pixels++;
+        if (literal_bpp == 4 && m_state.SPRHSIZ.value > 0x0100 &&
+                m_state.row_video_pixels >= 8)
+            m_state.expansion_fifo_primed = true;
+    }
 
     switch (type & 0x07)
     {
