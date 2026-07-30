@@ -1778,6 +1778,7 @@ INLINE void Suzy::StepBlitterPhase()
             if (warm_row && m_state.row_output_pixels > 0)
             {
                 s32 last_visible_x = m_state.row_render ? m_state.row_x - dx : (dx > 0 ? GLYNX_SCREEN_WIDTH - 1 : 0);
+                bool partial_word = dx > 0 ? (last_visible_x & 1) == 0 : (last_visible_x & 1) != 0;
                 bool literal_1bpp = IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0;
 
                 if (literal_1bpp)
@@ -1815,8 +1816,6 @@ INLINE void Suzy::StepBlitterPhase()
                 }
                 else if (IS_NOT_SET_BIT(m_state.SPRCTL1, 7))
                 {
-                    bool partial_word = dx > 0 ? (last_visible_x & 1) == 0 : (last_visible_x & 1) != 0;
-
                     if (partial_word)
                     {
                         bool video_access = (m_state.row_video_burst_mask |
@@ -1840,7 +1839,6 @@ INLINE void Suzy::StepBlitterPhase()
                 }
                 else
                 {
-                    bool partial_word = dx > 0 ? (last_visible_x & 1) == 0 : (last_visible_x & 1) != 0;
                     bool video_access = (m_state.row_video_burst_mask | m_state.row_video_read_burst_mask) != 0;
 
                     if (partial_word && video_access)
@@ -1869,15 +1867,15 @@ INLINE void Suzy::StepBlitterPhase()
                             AddRowPipelineBusTicks(words << 1);
                         }
                     }
-
-                    bool pipeline_xor = pipeline_literal_4bpp &&
-                            (m_state.SPRCTL0 & 0x07) == 6 &&
-                            m_state.row_render && !partial_word &&
-                            m_state.row_video_words > 8 && m_state.row_pen != 0;
-
-                    if (pipeline_xor)
-                        AddSpriteCycles(4);
                 }
+
+                bool pipeline_xor = (m_state.SPRCTL0 & 0xC0) == 0xC0 &&
+                        (m_state.SPRCTL0 & 0x07) == 6 &&
+                        m_state.row_render && !partial_word &&
+                        m_state.row_output_pixels > 16 && m_state.row_pen != 0;
+
+                if (pipeline_xor)
+                    AddSpriteCycles(4);
             }
 
             if (m_state.row_source_pixels > 0)
