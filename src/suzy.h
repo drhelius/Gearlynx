@@ -123,6 +123,7 @@ public:
         bool row_packed_literal_run;
         u32 row_video_pixels;
         u32 row_video_words;
+        bool row_lcd_dma_granted;
         u32 lcd_dma_pending_ticks;
     };
 

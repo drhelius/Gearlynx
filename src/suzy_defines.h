@@ -68,6 +68,7 @@ static const u32 k_suzy_literal_4bpp_collision_ticks        = 78;
 static const u32 k_suzy_literal_4bpp_source_overlap_ticks   = 8;
 static const u32 k_suzy_collision_pipeline_group_ticks      = 5;
 static const u32 k_suzy_unpacker_shift_bits                 = 12;
+static const u32 k_suzy_literal_1bpp_record_ticks           = 5;
 static const u32 k_suzy_literal_1bpp_half_pair_ticks        = 2;
 static const u32 k_suzy_pixel_builder_even_end_ticks        = 6;
 static const u32 k_suzy_regular_clip_fifo_ticks             = 6;

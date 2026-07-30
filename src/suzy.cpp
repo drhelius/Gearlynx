@@ -384,6 +384,7 @@ void Suzy::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.row_packed_literal_run);
         G_SERIALIZE(s, m_state.row_video_pixels);
         G_SERIALIZE(s, m_state.row_video_words);
+        G_SERIALIZE(s, m_state.row_lcd_dma_granted);
         G_SERIALIZE(s, m_state.lcd_dma_pending_ticks);
         G_SERIALIZE(s, m_state.row_collision_group_mask);
         G_SERIALIZE(s, m_state.row_collision_read_group_mask);
@@ -411,6 +412,7 @@ void Suzy::Serialize(StateSerializer& s, int version)
         m_state.row_packed_literal_run = false;
         m_state.row_video_pixels = 0;
         m_state.row_video_words = 0;
+        m_state.row_lcd_dma_granted = false;
         m_state.lcd_dma_pending_ticks = 0;
         m_state.row_collision_group_mask = 0;
         m_state.row_collision_read_group_mask = 0;
