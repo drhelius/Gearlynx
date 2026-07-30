@@ -387,6 +387,8 @@ void Suzy::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.lcd_dma_pending_ticks);
         G_SERIALIZE(s, m_state.row_collision_group_mask);
         G_SERIALIZE(s, m_state.row_collision_read_group_mask);
+        G_SERIALIZE(s, m_state.row_pipeline_warm);
+        G_SERIALIZE(s, m_state.scb_control_line_pending);
     }
     else if (s.IsLoading())
     {
@@ -412,5 +414,7 @@ void Suzy::Serialize(StateSerializer& s, int version)
         m_state.lcd_dma_pending_ticks = 0;
         m_state.row_collision_group_mask = 0;
         m_state.row_collision_read_group_mask = 0;
+        m_state.row_pipeline_warm = false;
+        m_state.scb_control_line_pending = false;
     }
 }

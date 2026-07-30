@@ -21,67 +21,69 @@
 #define SUZY_DEFINES_H
 
 // Shared sprite and row timing
-static const u32 k_suzy_ram_read_ticks                  = 2;
-static const u32 k_suzy_visible_row_ticks               = 60;
-static const u32 k_suzy_control_line_ticks              = 54;
+
+static const u32 k_suzy_ram_read_ticks                      = 2;
+static const u32 k_suzy_visible_row_ticks                   = 60;
+static const u32 k_suzy_control_line_ticks                  = 54;
+static const u32 k_suzy_linked_scb_control_overlap_ticks    = 48;
 
 // Accurate renderer setup
-static const u32 k_suzy_active_scb_startup_ticks        = 35;
-static const u32 k_suzy_palette_fetch_ticks             = 8;
+static const u32 k_suzy_active_scb_startup_ticks            = 35;
+static const u32 k_suzy_palette_fetch_ticks                 = 8;
 
 // Legacy sprite renderer
-static const u32 k_suzy_rmw_ticks                       = 1;
-static const u32 k_suzy_fast_process_ticks              = 3;
-static const u32 k_suzy_packed_reload_row_ticks         = 2;
-static const u32 k_suzy_packed_wide_row_discount_ticks  = 6;
-static const u32 k_suzy_literal_line_ticks              = 6;
-static const u32 k_suzy_literal_byte_ticks              = 1;
-static const u32 k_suzy_literal_wide_reload_row_ticks   = 14;
-static const u32 k_suzy_packed_line_ticks               = 6;
-static const u32 k_suzy_packed_pair_ticks               = 2;
-static const u32 k_suzy_packed_quad_ticks               = 1;
-static const u32 k_suzy_packed_scb_ticks                = 13;
+static const u32 k_suzy_rmw_ticks                           = 1;
+static const u32 k_suzy_fast_process_ticks                  = 3;
+static const u32 k_suzy_packed_reload_row_ticks             = 2;
+static const u32 k_suzy_packed_wide_row_discount_ticks      = 6;
+static const u32 k_suzy_literal_line_ticks                  = 6;
+static const u32 k_suzy_literal_byte_ticks                  = 1;
+static const u32 k_suzy_literal_wide_reload_row_ticks       = 14;
+static const u32 k_suzy_packed_line_ticks                   = 6;
+static const u32 k_suzy_packed_pair_ticks                   = 2;
+static const u32 k_suzy_packed_quad_ticks                   = 1;
+static const u32 k_suzy_packed_scb_ticks                    = 13;
 
 // Shared RAM transactions and FIFO geometry
-static const u32 k_suzy_collision_clear_burst_ticks     = 10;
-static const u32 k_suzy_collision_detect_burst_ticks    = 18;
-static const u32 k_suzy_collision_merge_burst_ticks     = 8;
-static const u32 k_suzy_source_fifo_burst_ticks         = 10;
-static const u32 k_suzy_source_fifo_bytes               = 8;
-static const u32 k_suzy_source_fifo_turnover_ticks      = 1;
-static const u32 k_suzy_video_write_burst_ticks         = 10;
-static const u32 k_suzy_video_read_burst_ticks          = 10;
-static const u32 k_suzy_video_merge_burst_ticks         = 8;
+static const u32 k_suzy_collision_clear_burst_ticks         = 10;
+static const u32 k_suzy_collision_detect_burst_ticks        = 18;
+static const u32 k_suzy_collision_merge_burst_ticks         = 8;
+static const u32 k_suzy_source_fifo_burst_ticks             = 10;
+static const u32 k_suzy_source_fifo_bytes                   = 8;
+static const u32 k_suzy_source_fifo_turnover_ticks          = 1;
+static const u32 k_suzy_video_write_burst_ticks             = 10;
+static const u32 k_suzy_video_read_burst_ticks              = 10;
+static const u32 k_suzy_video_merge_burst_ticks             = 8;
 
 // Accurate common pipeline
-static const u32 k_suzy_xor_byte_ticks                  = 2;
-static const u32 k_suzy_pipeline_pixel_pair_ticks       = 5;
-static const u32 k_suzy_clipped_row_ticks               = 46;
+static const u32 k_suzy_xor_byte_ticks                      = 2;
+static const u32 k_suzy_pipeline_pixel_pair_ticks           = 5;
+static const u32 k_suzy_clipped_row_ticks                   = 46;
 
 // Accurate literal pipeline
-static const u32 k_suzy_literal_1bpp_pixel_pair_ticks   = 4;
-static const u32 k_suzy_literal_row_internal_ticks      = 70;
-static const u32 k_suzy_literal_4bpp_upscale_ticks      = 72;
-static const u32 k_suzy_literal_4bpp_collision_ticks    = 78;
-static const u32 k_suzy_literal_4bpp_source_overlap_ticks = 8;
-static const u32 k_suzy_collision_pipeline_group_ticks  = 5;
-static const u32 k_suzy_unpacker_shift_bits             = 12;
-static const u32 k_suzy_literal_1bpp_half_pair_ticks    = 2;
-static const u32 k_suzy_pixel_builder_even_end_ticks    = 6;
-static const u32 k_suzy_regular_clip_fifo_ticks         = 6;
+static const u32 k_suzy_literal_1bpp_pixel_pair_ticks       = 4;
+static const u32 k_suzy_literal_row_internal_ticks          = 70;
+static const u32 k_suzy_literal_4bpp_upscale_ticks          = 72;
+static const u32 k_suzy_literal_4bpp_collision_ticks        = 78;
+static const u32 k_suzy_literal_4bpp_source_overlap_ticks   = 8;
+static const u32 k_suzy_collision_pipeline_group_ticks      = 5;
+static const u32 k_suzy_unpacker_shift_bits                 = 12;
+static const u32 k_suzy_literal_1bpp_half_pair_ticks        = 2;
+static const u32 k_suzy_pixel_builder_even_end_ticks        = 6;
+static const u32 k_suzy_regular_clip_fifo_ticks             = 6;
 
 // Accurate packed pipeline
-static const u32 k_suzy_packed_packet_ticks             = 4;
-static const u32 k_suzy_packed_readiness_ticks          = 72;
-static const u32 k_suzy_packed_scaled_packet_ticks      = 1;
-static const u32 k_suzy_packed_scaled_packet_pair_ticks = 3;
-static const u32 k_suzy_packed_row_bus_ticks            = 12;
-static const u32 k_suzy_packed_row_internal_ticks       = 24;
+static const u32 k_suzy_packed_packet_ticks                 = 4;
+static const u32 k_suzy_packed_readiness_ticks              = 72;
+static const u32 k_suzy_packed_scaled_packet_ticks          = 1;
+static const u32 k_suzy_packed_scaled_packet_pair_ticks     = 3;
+static const u32 k_suzy_packed_row_bus_ticks                = 12;
+static const u32 k_suzy_packed_row_internal_ticks           = 24;
 
 // LCD DMA arbitration
-static const u32 k_suzy_lcd_dma_burst_ticks             = 28;
-static const u32 k_suzy_bus_grant_overhead_ticks        = 10;
-static const u32 k_suzy_lcd_dma_overlappable_ticks      = 10;
+static const u32 k_suzy_lcd_dma_burst_ticks                 = 28;
+static const u32 k_suzy_bus_grant_overhead_ticks            = 10;
+static const u32 k_suzy_lcd_dma_overlappable_ticks          = 10;
 
 #include "m6502.h"
 

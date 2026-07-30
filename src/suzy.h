@@ -90,6 +90,8 @@ public:
         s16 quad_row;
         s16 quad_pixel_height;
         bool sprite_row_started;
+        bool row_pipeline_warm;
+        bool scb_control_line_pending;
         s16 row_x;
         s16 row_emit_count;
         u16 row_h_accum;
@@ -225,6 +227,7 @@ private:
 
     void SpritesGo();
     void AddSpriteCycles(u32 cycles);
+    bool RowPipelineIsWarm();
     void ClearRowPipelineTiming();
     void ResetRowPipelineTiming(bool visible, bool process_pixels = true, bool literal_2bpp_natural_eof = false);
     void UpdateRowPipelineTiming();
