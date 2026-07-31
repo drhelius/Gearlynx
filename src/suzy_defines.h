@@ -74,6 +74,9 @@ static const u32 k_suzy_literal_1bpp_record_ticks           = 5;
 static const u32 k_suzy_literal_1bpp_half_pair_ticks        = 2;
 static const u32 k_suzy_pixel_builder_even_end_ticks        = 6;
 static const u32 k_suzy_regular_clip_fifo_ticks             = 6;
+static const u32 k_suzy_vertical_skip_ticks                 = 18;
+static const u32 k_suzy_stretch_row_ticks                   = 8;
+static const u32 k_suzy_tilt_row_ticks                      = 18;
 
 // Accurate packed pipeline
 static const u32 k_suzy_packed_packet_ticks                 = 4;

@@ -60,9 +60,6 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
         bool warm_literal_1bpp_grant = pipeline_timing && m_state.sprite_row_started &&
                 !m_state.row_lcd_dma_granted && m_state.SPRHSIZ.value == 0x0100 &&
                 IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0;
-        bool warm_packed_grant = pipeline_timing && m_state.sprite_row_started &&
-            !m_state.row_lcd_dma_granted && m_state.SPRHSIZ.value == 0x0100 &&
-            IS_NOT_SET_BIT(m_state.SPRCTL1, 7);
         u32 grant_overhead = (accurate_timing && !pipeline_timing &&
             !m_state.sprite_row_started) || warm_literal_1bpp_grant ?
                 k_suzy_bus_grant_overhead_ticks : 0;
@@ -70,7 +67,7 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
                 (grant_ticks * k_suzy_lcd_dma_overlappable_ticks) /
                 k_suzy_lcd_dma_burst_ticks : 0;
         m_state.lcd_dma_pending_ticks -= grant_ticks;
-        if (warm_literal_1bpp_grant || warm_packed_grant)
+        if (pipeline_timing)
             m_state.row_lcd_dma_granted = true;
         *cycles += grant_ticks + grant_overhead;
 
@@ -84,6 +81,7 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
     {
         u32 grant_ticks = MIN(m_state.lcd_dma_pending_ticks, k_suzy_lcd_dma_burst_ticks);
         m_state.lcd_dma_pending_ticks -= grant_ticks;
+        m_state.row_lcd_dma_granted = true;
         *cycles += grant_ticks + k_suzy_bus_grant_overhead_ticks;
         return *cycles - grant_ticks - k_suzy_bus_grant_overhead_ticks;
     }
@@ -142,6 +140,7 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
 
     u32 grant_ticks = MIN(m_state.lcd_dma_pending_ticks, k_suzy_lcd_dma_burst_ticks);
     m_state.lcd_dma_pending_ticks -= grant_ticks;
+    m_state.row_lcd_dma_granted = true;
     u32 overlap_ticks = MIN(grant_ticks, internal_window);
     bool literal_4bpp_expansion = literal && bpp == 4 && m_state.SPRHSIZ.value > 0x0100;
     u32 grant_overhead = literal_4bpp_expansion && !m_state.expansion_fifo_primed &&
@@ -941,6 +940,33 @@ INLINE void Suzy::UpdateRowPipeline4bppTiming()
     UpdateRowPipelineTiming();
 }
 
+INLINE void Suzy::FinalizeRowPipelineLowerDepthCollisionTiming()
+{
+    if ((m_state.SPRCTL0 & 0xC0) == 0xC0)
+        return;
+
+    u32 collision_mask = m_state.row_collision_group_mask |
+            m_state.row_collision_read_group_mask;
+    if (collision_mask == 0)
+        return;
+
+    u32 collision_groups = popcount32(collision_mask);
+    u32 complete_groups = m_state.row_video_pixels >> 3;
+    u32 complete_mask = complete_groups >= 32 ? 0xFFFFFFFFu :
+            ((1u << complete_groups) - 1);
+    u32 detect_groups = popcount32(m_state.row_collision_group_mask & complete_mask);
+    u32 collision_ticks = k_suzy_literal_4bpp_collision_ticks +
+            (m_state.row_output_pixels << 1) +
+            collision_groups * k_suzy_collision_pipeline_group_ticks;
+
+    if ((m_state.SPRCTL0 & 0x07) != 0)
+        collision_ticks += detect_groups * k_suzy_collision_merge_burst_ticks;
+
+    m_state.row_timing_internal_ticks = MAX(m_state.row_timing_internal_ticks,
+            collision_ticks);
+    UpdateRowPipelineTiming();
+}
+
 INLINE u32 Suzy::GetRowPipelinePackedLiteralTicks(bool finalizing)
 {
     if (m_state.row_packed_rle_seen)
@@ -1271,7 +1297,8 @@ INLINE void Suzy::AddRowPipelineCollisionPixel()
         if ((m_state.row_collision_group_mask & group_bit) == 0)
         {
             m_state.row_collision_group_mask |= group_bit;
-            UpdateRowPipeline4bppTiming();
+            if ((m_state.SPRCTL0 & 0xC0) == 0xC0)
+                UpdateRowPipeline4bppTiming();
         }
     }
 }
@@ -1286,7 +1313,8 @@ INLINE void Suzy::AddRowPipelineCollisionReadPixel()
         if ((m_state.row_collision_read_group_mask & group_bit) == 0)
         {
             m_state.row_collision_read_group_mask |= group_bit;
-            UpdateRowPipeline4bppTiming();
+            if ((m_state.SPRCTL0 & 0xC0) == 0xC0)
+                UpdateRowPipeline4bppTiming();
         }
     }
 }
@@ -1297,8 +1325,18 @@ INLINE void Suzy::AddRowPipelineVideoWord()
     m_state.row_video_words++;
 }
 
-INLINE void Suzy::AdvanceSpriteRow(s32 dy)
+INLINE void Suzy::AdvanceSpriteRow(s32 dy, bool charge_transform_timing)
 {
+    int reload_depth = (m_state.SPRCTL1 >> 4) & 0x03;
+
+    if (charge_transform_timing && reload_depth >= 2)
+        AddSpriteCycles(k_suzy_stretch_row_ticks);
+    if (charge_transform_timing && reload_depth >= 3)
+    {
+        if (!m_state.row_lcd_dma_granted)
+            AddSpriteCycles(k_suzy_tilt_row_ticks);
+    }
+
     m_state.SPRVPOS.value = (u16)((s16)m_state.SPRVPOS.value + dy);
     m_state.TILTACUM.value = (u16)(m_state.TILTACUM.value + m_state.TILT.value);
     s32 tilt_carry = (s16)m_state.TILTACUM.value >> 8;
@@ -1721,7 +1759,13 @@ INLINE void Suzy::StepBlitterPhase()
             m_state.VSIZACUM.value &= 0x00FF;
             m_state.quad_row = 0;
 
-            m_state.fsm_phase = (m_state.quad_pixel_height > 0) ? SUZY_PHASE_ROW_BEGIN : SUZY_PHASE_QUAD_END;
+            if (m_state.quad_pixel_height > 0)
+                m_state.fsm_phase = SUZY_PHASE_ROW_BEGIN;
+            else
+            {
+                AddSpriteCycles(k_suzy_vertical_skip_ticks);
+                m_state.fsm_phase = SUZY_PHASE_QUAD_END;
+            }
             break;
         }
 
@@ -1768,7 +1812,7 @@ INLINE void Suzy::StepBlitterPhase()
                 ClearRowPipelineTiming();
 
                 while (m_state.quad_row < m_state.quad_pixel_height)
-                    AdvanceSpriteRow(dy);
+                    AdvanceSpriteRow(dy, false);
 
                 m_state.fsm_phase = SUZY_PHASE_QUAD_END;
                 break;
@@ -1859,6 +1903,8 @@ INLINE void Suzy::StepBlitterPhase()
 
             if (pipeline_literal_4bpp)
                 UpdateRowPipeline4bppTiming();
+
+            FinalizeRowPipelineLowerDepthCollisionTiming();
 
             if (warm_row && m_state.row_output_pixels > 0)
             {
@@ -1999,7 +2045,7 @@ INLINE void Suzy::StepBlitterPhase()
             if (m_state.row_source_pixels > 0)
                 m_state.sprite_row_started = true;
 
-            AdvanceSpriteRow(dy);
+            AdvanceSpriteRow(dy, true);
             m_state.fsm_phase = (m_state.quad_row < m_state.quad_pixel_height) ? SUZY_PHASE_ROW_BEGIN : SUZY_PHASE_QUAD_END;
             break;
         }
@@ -2873,9 +2919,10 @@ INLINE void Suzy::DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 col
     u16 pixel_offset = (u16)(y * (GLYNX_SCREEN_WIDTH / 2)) + (u16)(x >> 1);
     bool is_left = ((x & 1) == 0);
     bool pipeline_collision = pipeline_timing &&
-            (m_state.SPRCTL0 & 0xC0) == 0xC0 &&
+            (((m_state.SPRCTL0 & 0xC0) != 0xC0 && literal_bpp > 0) ||
+            ((m_state.SPRCTL0 & 0xC0) == 0xC0 &&
             (literal_bpp == 0 || (literal_bpp == 4 && m_state.SPRHSIZ.value > 0x0100)) &&
-            m_state.quad_row > 0;
+            m_state.quad_row > 0));
 
     if (collide)
     {

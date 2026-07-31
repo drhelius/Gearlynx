@@ -239,6 +239,7 @@ private:
     void UpdateRowPipeline3bppTiming();
     void DiscardRowPipeline3bppClippedOutput();
     void UpdateRowPipeline4bppTiming();
+    void FinalizeRowPipelineLowerDepthCollisionTiming();
     u32 GetRowPipelinePackedLiteralTicks(bool finalizing);
     void UpdateRowPipelinePackedTiming();
     void FinalizeRowPipelinePackedLiteralRun();
@@ -258,7 +259,7 @@ private:
     bool ConsumeBlitterCycleDebt(u32* cycles);
     void StepBlitterPhase();
     void FinishBlitter();
-    void AdvanceSpriteRow(s32 dy);
+    void AdvanceSpriteRow(s32 dy, bool charge_transform_timing);
     void DrawSprite();
     void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
     void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
