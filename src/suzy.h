@@ -239,6 +239,7 @@ private:
     void UpdateRowPipeline3bppTiming();
     void DiscardRowPipeline3bppClippedOutput();
     void UpdateRowPipeline4bppTiming();
+    u32 GetRowPipelinePackedLiteralTicks(bool finalizing);
     void UpdateRowPipelinePackedTiming();
     void FinalizeRowPipelinePackedLiteralRun();
     void FinalizeRowPipelinePackedTiming();

@@ -60,6 +60,9 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
         bool warm_literal_1bpp_grant = pipeline_timing && m_state.sprite_row_started &&
                 !m_state.row_lcd_dma_granted && m_state.SPRHSIZ.value == 0x0100 &&
                 IS_SET_BIT(m_state.SPRCTL1, 7) && (m_state.SPRCTL0 & 0xC0) == 0;
+        bool warm_packed_grant = pipeline_timing && m_state.sprite_row_started &&
+            !m_state.row_lcd_dma_granted && m_state.SPRHSIZ.value == 0x0100 &&
+            IS_NOT_SET_BIT(m_state.SPRCTL1, 7);
         u32 grant_overhead = (accurate_timing && !pipeline_timing &&
             !m_state.sprite_row_started) || warm_literal_1bpp_grant ?
                 k_suzy_bus_grant_overhead_ticks : 0;
@@ -67,7 +70,7 @@ INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
                 (grant_ticks * k_suzy_lcd_dma_overlappable_ticks) /
                 k_suzy_lcd_dma_burst_ticks : 0;
         m_state.lcd_dma_pending_ticks -= grant_ticks;
-        if (warm_literal_1bpp_grant)
+        if (warm_literal_1bpp_grant || warm_packed_grant)
             m_state.row_lcd_dma_granted = true;
         *cycles += grant_ticks + grant_overhead;
 
@@ -938,19 +941,31 @@ INLINE void Suzy::UpdateRowPipeline4bppTiming()
     UpdateRowPipelineTiming();
 }
 
+INLINE u32 Suzy::GetRowPipelinePackedLiteralTicks(bool finalizing)
+{
+    if (m_state.row_packed_rle_seen)
+        return 0;
+
+    u32 builder_ticks = k_suzy_packed_readiness_ticks +
+            GetRowPipelinePixelTicks(m_state.row_source_pixels, 0) +
+            (m_state.row_packed_packet_ticks >> 1);
+    u32 packet_ticks = m_state.row_packed_packet_ticks >> 1;
+    u32 fifo_headroom = packet_ticks < k_suzy_pixel_fifo_outputs ?
+            k_suzy_pixel_fifo_outputs - packet_ticks : 0;
+
+    // Packet commands consume the otherwise idle eight-word FIFO startup.
+    if (!finalizing || (m_state.row_output_pixels & 7) == 0)
+        builder_ticks -= fifo_headroom;
+
+    return builder_ticks;
+}
+
 INLINE void Suzy::UpdateRowPipelinePackedTiming()
 {
     u32 output_ticks = k_suzy_packed_readiness_ticks +
             (m_state.row_output_pixels << 1) + m_state.row_packed_packet_ticks +
             m_state.row_packed_builder_stall_ticks;
-    u32 builder_ticks = 0;
-
-    if (!m_state.row_packed_rle_seen)
-    {
-        builder_ticks = k_suzy_packed_readiness_ticks +
-                GetRowPipelinePixelTicks(m_state.row_source_pixels, 0) +
-                (m_state.row_packed_packet_ticks >> 1);
-    }
+    u32 builder_ticks = GetRowPipelinePackedLiteralTicks(false);
 
     m_state.row_timing_internal_ticks = MAX(output_ticks, builder_ticks);
 
@@ -990,13 +1005,28 @@ INLINE void Suzy::FinalizeRowPipelinePackedTiming()
 {
     FinalizeRowPipelinePackedLiteralRun();
 
+    if (!m_state.row_packed_rle_seen && m_state.row_lcd_dma_granted)
+    {
+        u32 packet_ticks = m_state.row_packed_packet_ticks >> 1;
+        u32 fifo_headroom = packet_ticks < k_suzy_pixel_fifo_outputs ?
+                k_suzy_pixel_fifo_outputs - packet_ticks : 0;
+        // LCD ownership exposes handshake and packet-command recovery.
+        u32 recovery_ticks = k_suzy_lcd_dma_burst_ticks +
+                k_suzy_bus_grant_overhead_ticks +
+            packet_ticks;
+        if ((m_state.row_output_pixels & 7) == 0)
+            recovery_ticks -= fifo_headroom >> 1;
+        AddRowPipelineBusTicks(recovery_ticks);
+    }
+
     u32 phase = m_state.row_output_pixels & 7;
     u32 finalization_ticks = (phase & 1) != 0 ? phase + 1 : (phase > 0 ? phase - 2 : 0);
     u32 output_ticks = k_suzy_packed_readiness_ticks +
             (m_state.row_output_pixels << 1) + m_state.row_packed_packet_ticks +
             m_state.row_packed_builder_stall_ticks + finalization_ticks;
+    u32 builder_ticks = GetRowPipelinePackedLiteralTicks(true);
 
-    m_state.row_timing_internal_ticks = MAX(m_state.row_timing_internal_ticks, output_ticks);
+    m_state.row_timing_internal_ticks = MAX(output_ticks, builder_ticks);
     UpdateRowPipelineTiming();
 }
 
@@ -1039,10 +1069,11 @@ INLINE void Suzy::ResetRowPipelineTiming(bool visible, bool process_pixels, bool
     bool literal_1bpp = literal && (m_state.SPRCTL0 & 0xC0) == 0;
     bool repeated_or_linked = m_state.quad_row > 0 || m_state.row_pipeline_warm ||
             (literal_1bpp && m_state.sprite_row_started);
-
-    if (!literal && (m_state.quad_row > 0 ||
+    bool packed_warm = !literal && (m_state.quad_row > 0 ||
             ((m_state.sprite_row_started || m_state.row_pipeline_warm) &&
-            m_state.SPRHSIZ.value == 0x0100)))
+            m_state.SPRHSIZ.value == 0x0100));
+
+    if (packed_warm)
     {
         m_state.row_timing_bus_ticks = k_suzy_packed_row_bus_ticks;
         m_state.row_timing_internal_base_ticks = k_suzy_packed_row_internal_ticks;
@@ -1056,7 +1087,7 @@ INLINE void Suzy::ResetRowPipelineTiming(bool visible, bool process_pixels, bool
         m_state.row_timing_internal_ticks = m_state.row_timing_internal_base_ticks;
     }
 
-    if (visible)
+    if (visible && !packed_warm)
         m_state.row_timing_bus_ticks += k_suzy_visible_row_ticks;
 
     UpdateRowPipelineTiming();
@@ -1119,6 +1150,11 @@ INLINE void Suzy::AddRowPipelinePackedPacket(bool literal, u32 count)
 
     if (!literal)
     {
+        // RLE exits the shared pure-literal startup process.
+        if (!m_state.row_packed_rle_seen && RowPipelineIsWarm() &&
+                m_state.SPRHSIZ.value == 0x0100)
+            AddRowPipelineBusTicks(k_suzy_visible_row_ticks);
+
         m_state.row_packed_rle_seen = true;
         FinalizeRowPipelinePackedLiteralRun();
     }
