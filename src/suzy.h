@@ -237,6 +237,7 @@ private:
     void UpdateRowPipelineInternalTiming(u32 pipeline_pixels, int literal_bpp);
     void UpdateRowPipeline2bppTiming();
     void UpdateRowPipeline3bppTiming();
+    void DiscardRowPipeline3bppClippedOutput();
     void UpdateRowPipeline4bppTiming();
     void UpdateRowPipelinePackedTiming();
     void FinalizeRowPipelinePackedLiteralRun();

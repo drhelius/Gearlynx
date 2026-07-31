@@ -876,6 +876,24 @@ INLINE void Suzy::UpdateRowPipeline3bppTiming()
     UpdateRowPipelineTiming();
 }
 
+INLINE void Suzy::DiscardRowPipeline3bppClippedOutput()
+{
+    if (!RowPipelineIsWarm() || m_state.row_timing_internal_ticks < 2)
+        return;
+
+    // The clip comparator consumes the generated pen before the byte builder.
+    u32 previous_ticks = MAX(m_state.row_timing_bus_ticks,
+            m_state.row_timing_internal_ticks);
+    m_state.row_timing_internal_ticks -= 2;
+    u32 clipped_ticks = MAX(m_state.row_timing_bus_ticks,
+            m_state.row_timing_internal_ticks);
+    u32 discarded_ticks = previous_ticks - clipped_ticks;
+
+    m_state.row_timing_charged_ticks -= discarded_ticks;
+    m_state.sprite_cycles -= discarded_ticks;
+    m_sprite_total_cycles -= discarded_ticks;
+}
+
 INLINE void Suzy::UpdateRowPipeline4bppTiming()
 {
     bool packed = IS_NOT_SET_BIT(m_state.SPRCTL1, 7);
@@ -1825,7 +1843,7 @@ INLINE void Suzy::StepBlitterPhase()
                         if ((pipeline_pixels & 1) != 0 && (m_state.row_render || m_state.row_source_bytes >= 3))
                             finalization_ticks += k_suzy_literal_1bpp_half_pair_ticks;
 
-                        if ((last_visible_x & 1) == 0)
+                        if (partial_word)
                             finalization_ticks += k_suzy_pixel_builder_even_end_ticks;
 
                         if (!m_state.row_render)
@@ -2067,6 +2085,9 @@ INLINE bool Suzy::DrawSpriteEmitPen(u8 pen, s32 dx, int type, bool collide, u8 c
 
         if ((dx > 0 && m_state.row_x >= GLYNX_SCREEN_WIDTH) || (dx < 0 && m_state.row_x < 0))
         {
+            if (literal_bpp == 3)
+                DiscardRowPipeline3bppClippedOutput();
+
             m_state.row_render = 0;
             m_state.row_x = (s16)(m_state.row_x + dx);
             m_state.row_emit_count--;
