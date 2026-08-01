@@ -100,7 +100,6 @@ private:
 
 static const u32 k_pixel_spacing_cycles = 12;
 static const u32 k_dma_burst_cycles = 28;
-static const u32 k_dma_refresh_only_cycles = 10;
 static const u32 k_dma_spacing_cycles = 192;
 static const u32 k_dma_bursts_per_line = 10;
 

@@ -161,7 +161,6 @@ INLINE void LcdScreen::DoDMA()
     else
     {
         memset(dst, 0, 16);
-        m_bus->InjectCycles(k_dma_refresh_only_cycles);
     }
 
     m_state.dma_current_src_addr += 8;

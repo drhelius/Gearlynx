@@ -239,7 +239,7 @@ private:
     void UpdateRowPipeline3bppTiming();
     void DiscardRowPipeline3bppClippedOutput();
     void UpdateRowPipeline4bppTiming();
-    void FinalizeRowPipelineLowerDepthCollisionTiming();
+    void FinalizeRowPipelineLowerDepthCollisionTiming(s32 dx);
     u32 GetRowPipelinePackedLiteralTicks(bool finalizing);
     void UpdateRowPipelinePackedTiming();
     void FinalizeRowPipelinePackedLiteralRun();
@@ -254,6 +254,7 @@ private:
     void AddRowPipelineVideoReadPixel(int literal_bpp);
     void AddRowPipelineCollisionPixel();
     void AddRowPipelineCollisionReadPixel();
+    void AddRowPipelineCollisionBusTicks(u32 ticks, int literal_bpp);
     void AddRowPipelineVideoWord();
     void StepBlitter(u32 cycles);
     bool ConsumeBlitterCycleDebt(u32* cycles);

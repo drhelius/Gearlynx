@@ -72,6 +72,7 @@ static const u32 k_suzy_collision_pipeline_group_ticks      = 5;
 static const u32 k_suzy_unpacker_shift_bits                 = 12;
 static const u32 k_suzy_literal_1bpp_record_ticks           = 5;
 static const u32 k_suzy_literal_1bpp_half_pair_ticks        = 2;
+static const u32 k_suzy_pixel_builder_complete_end_ticks    = 4;
 static const u32 k_suzy_pixel_builder_even_end_ticks        = 6;
 static const u32 k_suzy_regular_clip_fifo_ticks             = 6;
 static const u32 k_suzy_vertical_skip_ticks                 = 18;
@@ -85,6 +86,7 @@ static const u32 k_suzy_packed_scaled_packet_ticks          = 1;
 static const u32 k_suzy_packed_scaled_packet_pair_ticks     = 3;
 static const u32 k_suzy_packed_row_bus_ticks                = 12;
 static const u32 k_suzy_packed_row_internal_ticks           = 24;
+static const u32 k_suzy_packed_collision_handoff_ticks      = 3;
 
 // LCD DMA arbitration
 static const u32 k_suzy_lcd_dma_burst_ticks                 = 28;
