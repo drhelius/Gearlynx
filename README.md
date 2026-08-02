@@ -121,7 +121,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 ### Basic Usage
 - **BIOS**: Gearlynx requires a BIOS to work. It is possible to load any BIOS but the original with md5 `fcd403db69f54290b51035d82f835e7b` is recommended.
 - **Mouse Cursor**: Automatically hides when hovering over the main output window or when Main Menu is disabled.
-- **Portable Mode**: Create an empty file named `portable.ini` in the same directory as the application binary to enable portable mode. On macOS, place the file next to the `.app` bundle.
+- **Portable Mode**: Run with `--portable`, or create an empty file named `portable.ini` in the same directory as the application binary. On macOS, place the file next to the `.app` bundle.
 
 ### Debugging Features
 - **Docking Windows**: In debug mode, you can dock windows together by pressing SHIFT and dragging a window onto another.
@@ -158,6 +158,7 @@ Options:
       --debug-monitor      Start debug monitor TCP server (default port: 6502)
       --debug-monitor-port N Debug monitor port (default: 6502)
       --headless           Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)
+        --portable           Store configuration and user data beside the application
   -v, --version            Display version information
   -h, --help               Display this help message
 ```
