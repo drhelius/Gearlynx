@@ -33,12 +33,11 @@ static const u32 k_suzy_palette_fetch_ticks                 = 8;
 
 // Legacy sprite renderer
 static const u32 k_suzy_rmw_ticks                           = 1;
-static const u32 k_suzy_fast_process_ticks                  = 3;
 static const u32 k_suzy_packed_reload_row_ticks             = 2;
 static const u32 k_suzy_packed_wide_row_discount_ticks      = 6;
-static const u32 k_suzy_literal_line_ticks                  = 6;
-static const u32 k_suzy_literal_byte_ticks                  = 1;
-static const u32 k_suzy_literal_wide_reload_row_ticks       = 14;
+static const u32 k_suzy_fast_4bpp_downscale_record_ticks    = 16;
+static const u32 k_suzy_fast_1bpp_row_handoff_ticks         = 1;
+static const u32 k_suzy_fast_packed_clip_overlap_ticks      = 3;
 static const u32 k_suzy_packed_line_ticks                   = 6;
 static const u32 k_suzy_packed_pair_ticks                   = 2;
 static const u32 k_suzy_packed_quad_ticks                   = 1;

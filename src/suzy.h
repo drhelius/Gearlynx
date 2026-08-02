@@ -265,6 +265,8 @@ private:
     void SignalBlitterDone();
     void AdvanceSpriteRow(s32 dy, bool charge_transform_timing);
     void DrawSprite();
+    u32 CalculateFastLiteralRowTicks(u32 source_bytes, u32 source_pixels,
+            u32 output_pixels, s32 x, s32 dx, int bpp, u16 hsiz);
     void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
     void DrawSpriteLinePacked(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
     bool DrawSpriteLineLiteralStep(u16 data_end, s32 dx, int bpp, int type, bool collide, u8 collision_id);
@@ -274,7 +276,7 @@ private:
     void BeginSpriteBoundingBox();
     void AddSpriteBoundingBox();
 #endif
-    void AddPackedPixelTicks(bool pipeline_timing);
+    void AddPackedPixelTicks(bool pipeline_timing, bool charge_timing);
     void DrawPixel(s32 x, s32 y, u8 pen, int type, bool collide, u8 collision_id, bool pipeline_timing, int literal_bpp);
     u8 RamRead(u16 address);
     u16 RamReadWord(u16 address);
