@@ -297,7 +297,7 @@ void config_read(void)
     config_emulator.runahead = CLAMP(config_emulator.runahead, 0, 3);
     config_emulator.save_slot = read_int("Emulator", "SaveSlot", 0);
     config_emulator.save_slot = CLAMP(config_emulator.save_slot, 0, 4);
-    config_emulator.fast_sprite_rendering = read_bool("Emulator", "FastSpriteRendering", false);
+    config_emulator.fast_sprite_rendering = read_bool("Emulator", "LegacySpriteRendering", false);
     config_emulator.start_paused = read_bool("Emulator", "StartPaused", false);
     config_emulator.pause_when_inactive = read_bool("Emulator", "PauseWhenInactive", true);
     config_emulator.bios_path = read_string("Emulator", "BiosPath");
@@ -550,7 +550,7 @@ void config_write(void)
     write_int("Emulator", "FFWD", config_emulator.ffwd_speed);
     write_int("Emulator", "RunAhead", config_emulator.runahead);
     write_int("Emulator", "SaveSlot", config_emulator.save_slot);
-    write_bool("Emulator", "FastSpriteRendering", config_emulator.fast_sprite_rendering);
+    write_bool("Emulator", "LegacySpriteRendering", config_emulator.fast_sprite_rendering);
     write_bool("Emulator", "StartPaused", config_emulator.start_paused);
     write_bool("Emulator", "PauseWhenInactive", config_emulator.pause_when_inactive);
     write_string("Emulator", "BiosPath", config_emulator.bios_path);

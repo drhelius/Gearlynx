@@ -897,11 +897,13 @@ static void check_variables(void)
             core->GetMedia()->AutoDetectCartridgeHardware();
     }
 
-    var.key = "gearlynx_fast_sprite_rendering";
+    var.key = "gearlynx_legacy_sprite_renderer";
     var.value = NULL;
 
+    bool fast_sprite_rendering = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-        core->GetSuzy()->SetFastSpriteRendering(strcmp(var.value, "Enabled") == 0);
+        fast_sprite_rendering = strcmp(var.value, "Enabled") == 0;
+    core->GetSuzy()->SetFastSpriteRendering(fast_sprite_rendering);
 
     var.key = "gearlynx_lowpass_filter";
     var.value = NULL;

@@ -592,6 +592,7 @@ static void menu_emulator(void)
         {
             ImGui::BeginTooltip();
             ImGui::Text("NOT RECOMMENDED");
+            ImGui::Text("RESET REQUIRED");
             ImGui::NewLine();
             ImGui::Text("Use a simpler Suzy sprite renderer.");
             ImGui::Text("It is faster but it is less accurate.");
