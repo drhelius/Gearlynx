@@ -23,6 +23,7 @@
 #include "media.h"
 #include "memory.h"
 #include "m6502.h"
+#include "mikey.h"
 #include "input.h"
 #include "state_serializer.h"
 #include "trace_logger.h"
@@ -33,6 +34,7 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
     m_m6502 = m6502;
     m_input = input;
     m_bus = bus;
+    InitPointer(m_mikey);
     InitPointer(m_memory);
     InitPointer(m_ram);
     InitPointer(m_trace_logger);
@@ -54,9 +56,10 @@ Suzy::~Suzy()
 {
 }
 
-void Suzy::Init(Memory* memory)
+void Suzy::Init(Memory* memory, Mikey* mikey)
 {
     m_memory = memory;
+    m_mikey = mikey;
     m_ram = m_memory->GetRAM();
     ComputeQuadLUT();
     Reset();
@@ -65,6 +68,11 @@ void Suzy::Init(Memory* memory)
 void Suzy::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void Suzy::SignalBlitterDone()
+{
+    m_mikey->SetSuzyDone();
 }
 
 void Suzy::SetFastSpriteRendering(bool enabled)

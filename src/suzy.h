@@ -33,6 +33,7 @@ class Input;
 class Bus;
 class StateSerializer;
 class TraceLogger;
+class Mikey;
 
 class Suzy
 {
@@ -149,7 +150,7 @@ public:
 public:
     Suzy(Media* media, M6502* m6502, Input* input, Bus* bus);
     ~Suzy();
-    void Init(Memory* memory);
+    void Init(Memory* memory, Mikey* mikey);
     void Reset();
     void Clock(u32 cycles);
     u32 ApplyBusStall(u32* cycles, u32 stolen_cycles);
@@ -157,6 +158,7 @@ public:
     template<bool debug = false> void Write(u16 address, u8 value);
     Suzy_State* GetState();
     bool IsBlitterBusy();
+    bool IsBusEnabled();
     void SetFastSpriteRendering(bool enabled);
     void SetTraceLogger(TraceLogger* trace_logger);
 
@@ -260,6 +262,7 @@ private:
     bool ConsumeBlitterCycleDebt(u32* cycles);
     void StepBlitterPhase();
     void FinishBlitter();
+    void SignalBlitterDone();
     void AdvanceSpriteRow(s32 dy, bool charge_transform_timing);
     void DrawSprite();
     void DrawSpriteLineLiteral(u16 data_begin, u16 data_end, s32 x, s32 y, s32 dx, int bpp, int type, u16 hsiz, u32 haccum_init, bool collide, u8 collision_id);
@@ -296,6 +299,7 @@ private:
     Media* m_media;
     Memory* m_memory;
     M6502* m_m6502;
+    Mikey* m_mikey;
     Input* m_input;
     Bus* m_bus;
     Suzy_State m_state;

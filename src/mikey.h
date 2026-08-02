@@ -62,6 +62,7 @@ public:
         u16_union DISPADR;
         u8 irq_pending;
         u8 irq_mask;
+        bool suzy_done_pending;
         bool frame_ready;
         u16 dispadr_latch;
         bool rest;
@@ -84,6 +85,7 @@ public:
     Mikey_State* GetState();
     LcdScreen* GetLcdScreen();
     bool SwitchAudInValue();
+    void SetSuzyDone();
     void SetTraceLogger(TraceLogger* trace_logger);
     void SetDebugOutputEnabled(bool enabled);
     bool IsDebugOutputEnabled();

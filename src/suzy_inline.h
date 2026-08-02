@@ -675,7 +675,7 @@ INLINE void Suzy::Write(u16 address, u8 value)
         DebugSuzy("Setting SPRGO to %02X (was %02X)", value, m_state.SPRGO);
         m_state.SPRGO = value;
         m_state.sprsys_stopsprites = false;
-        if ((value & 0x01) && IS_SET_BIT(m_state.SUZYBUSEN, 0))
+        if (IS_SET_BIT(value, 0))
             SpritesGo();
         break;
     case SUZY_SPRSYS:      // 0xFC92
@@ -735,6 +735,11 @@ INLINE bool Suzy::IsBlitterBusy()
 {
     return m_state.sprsys_spritesbusy;
 };
+
+INLINE bool Suzy::IsBusEnabled()
+{
+    return IS_SET_BIT(m_state.SUZYBUSEN, 0);
+}
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
 INLINE std::vector<Suzy::GLYNX_SCB_Info>* Suzy::GetFrameSCBList()
@@ -1451,7 +1456,7 @@ INLINE void Suzy::SpritesGo()
         {
             m_state.sprsys_spritesbusy = false;
             m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
-            m_m6502->Halt(false);
+            SignalBlitterDone();
         }
         else
             m_state.fsm_phase = SUZY_PHASE_LEGACY_DELAY;
@@ -1495,7 +1500,7 @@ INLINE void Suzy::FinishBlitter()
     m_state.sprsys_spritesbusy = false;
     m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
     m_state.fsm_phase = SUZY_PHASE_IDLE;
-    m_m6502->Halt(false);
+    SignalBlitterDone();
 }
 
 INLINE bool Suzy::ConsumeBlitterCycleDebt(u32* cycles)
@@ -1524,7 +1529,7 @@ INLINE void Suzy::StepBlitter(u32 cycles)
             m_state.sprsys_spritesbusy = false;
             m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
             m_state.fsm_phase = SUZY_PHASE_IDLE;
-            m_m6502->Halt(false);
+            SignalBlitterDone();
         }
         return;
     }

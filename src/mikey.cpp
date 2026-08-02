@@ -75,6 +75,7 @@ bool Mikey::IsDebugOutputEnabled()
 void Mikey::Reset(bool is_lynx2)
 {
     memset(&m_state, 0, sizeof(Mikey_State));
+    m_state.suzy_done_pending = true;
     m_cpu_read_cycles = 0;
 
     m_is_lynx2 = is_lynx2;
@@ -349,6 +350,11 @@ void Mikey::Serialize(StateSerializer& s, int version)
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
     G_SERIALIZE(s, m_state.refresh_cycle_counter);
+
+    if (version >= 20)
+        G_SERIALIZE(s, m_state.suzy_done_pending);
+    else if (s.IsLoading())
+        m_state.suzy_done_pending = false;
 }
 
 void Mikey::DebugOutputFlush()

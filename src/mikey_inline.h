@@ -394,10 +394,12 @@ INLINE void Mikey::Write(u16 address, u8 value)
         case MIKEY_SDONEACK:      // 0xFD90
             DebugMikey("Setting SDONEACK to %02X (was %02X)", value, m_state.SDONEACK);
             m_state.SDONEACK = value;
+            m_state.suzy_done_pending = false;
             break;
         case MIKEY_CPUSLEEP:      // 0xFD91
             DebugMikey("Setting CPUSLEEP to %02X (was %02X)", value, m_state.CPUSLEEP);
-            if ((value == 0) && m_suzy->IsBlitterBusy())
+            if ((value == 0) && m_suzy->IsBlitterBusy() && m_suzy->IsBusEnabled() &&
+                !m_state.suzy_done_pending && ((m_state.irq_pending & m_state.irq_mask) == 0))
                 m_m6502->Halt(true);
             m_state.CPUSLEEP = value;
             break;
@@ -1167,6 +1169,12 @@ INLINE void Mikey::UpdateIRQs()
 
     if ((effective_irqs != 0) && m_m6502->IsHalted())
         m_m6502->Halt(false);
+}
+
+INLINE void Mikey::SetSuzyDone()
+{
+    m_state.suzy_done_pending = true;
+    m_m6502->Halt(false);
 }
 
 INLINE void Mikey::UartRelevelIRQ()
