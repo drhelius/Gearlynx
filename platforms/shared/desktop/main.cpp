@@ -18,6 +18,7 @@
  */
 
 #include <SDL3/SDL_main.h>
+#include <stdlib.h>
 #include "gearlynx.h"
 #include "application.h"
 #include "application_headless.h"
@@ -41,7 +42,7 @@ int main(int argc, char* argv[])
 
     for (int i = 1; i < argc; i++)
     {
-        if (argv[i][0] == '-')
+        if (argv[i][0] == '-' || strcmp(argv[i], "/?") == 0)
         {
             if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "-?") == 0) ||
                 (strcmp(argv[i], "--help") == 0) || (strcmp(argv[i], "/?") == 0))
@@ -89,26 +90,32 @@ int main(int argc, char* argv[])
             }
             else if (strcmp(argv[i], "--mcp-http-port") == 0)
             {
-                if (i + 1 < argc)
+                if (i + 1 >= argc || argv[i + 1][0] == '-')
                 {
-                    app_params.mcp_tcp_port = atoi(argv[++i]);
-                    app_params.mcp_tcp_port_set = true;
-                    if (app_params.mcp_tcp_port <= 0 || app_params.mcp_tcp_port > 65535)
-                    {
-                        printf("Invalid port number: %d\n", app_params.mcp_tcp_port);
-                        app_params.mcp_tcp_port = 7777;
-                    }
+                    fprintf(stderr, "Missing value for --mcp-http-port\n");
+                    return -1;
                 }
+
+                char* end = NULL;
+                long port = strtol(argv[++i], &end, 10);
+                if (!end || *end != '\0' || port <= 0 || port > 65535)
+                {
+                    fprintf(stderr, "Invalid port number: %s\n", argv[i]);
+                    return -1;
+                }
+                app_params.mcp_tcp_port = (int)port;
+                app_params.mcp_tcp_port_set = true;
             }
             else if (strcmp(argv[i], "--mcp-http-address") == 0)
             {
-                if (i + 1 < argc)
+                if (i + 1 >= argc || argv[i + 1][0] == '-')
                 {
-                    app_params.mcp_http_address = argv[++i];
-                    app_params.mcp_http_address_set = true;
-                    if (app_params.mcp_http_address.empty())
-                        app_params.mcp_http_address = "127.0.0.1";
+                    fprintf(stderr, "Missing value for --mcp-http-address\n");
+                    return -1;
                 }
+
+                app_params.mcp_http_address = argv[++i];
+                app_params.mcp_http_address_set = true;
             }
             else if (strcmp(argv[i], "--debug-monitor") == 0)
             {
@@ -116,18 +123,20 @@ int main(int argc, char* argv[])
             }
             else if (strcmp(argv[i], "--debug-monitor-port") == 0)
             {
-                if (i + 1 < argc)
+                if (i + 1 >= argc || argv[i + 1][0] == '-')
                 {
-                    int port = atoi(argv[++i]);
-                    if (port <= 0 || port > 65534)
-                    {
-                        printf("Invalid debug monitor port: %d\n", port);
-                    }
-                    else
-                    {
-                        app_params.debug_monitor_port = port;
-                    }
+                    fprintf(stderr, "Missing value for --debug-monitor-port\n");
+                    return -1;
                 }
+
+                char* end = NULL;
+                long port = strtol(argv[++i], &end, 10);
+                if (!end || *end != '\0' || port <= 0 || port > 65534)
+                {
+                    fprintf(stderr, "Invalid debug monitor port: %s\n", argv[i]);
+                    return -1;
+                }
+                app_params.debug_monitor_port = (int)port;
             }
             else
             {
@@ -150,7 +159,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        if (argv[i][0] != '-')
+        if (argv[i][0] != '-' && strcmp(argv[i], "/?") != 0)
         {
             if (non_option_count == 0)
                 app_params.rom_file = argv[i];
