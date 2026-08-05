@@ -28,6 +28,7 @@
 #include "gearlynx.h"
 #include "application.h"
 #include "display.h"
+#include "utils.h"
 
 void gui_action_reset(void)
 {
@@ -125,11 +126,11 @@ void gui_action_save_screenshot(const char* path)
         return;
 
     time_t now = time(0);
-    tm* ltm = localtime(&now);
+    tm ltm;
 
     char date_time[32] = {};
-    if (ltm != NULL)
-        strftime(date_time, sizeof(date_time), "%Y-%m-%d %H%M%S", ltm);
+    if (get_local_time(now, &ltm))
+        strftime(date_time, sizeof(date_time), "%Y-%m-%d %H%M%S", &ltm);
 
     string file_path;
 
