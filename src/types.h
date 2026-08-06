@@ -21,6 +21,7 @@
 #define TYPES_H
 
 #include <stdint.h>
+#include "defines.h"
 
 typedef uint8_t u8;
 typedef int8_t s8;
