@@ -24,6 +24,7 @@
 #include <fstream>
 #include "common.h"
 #include "mikey_defines.h"
+#include "random.h"
 
 class Media;
 class Memory;
@@ -73,7 +74,7 @@ public:
     };
 
 public:
-    Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus);
+    Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random);
     ~Mikey();
     void Init(Memory* memory, GLYNX_Pixel_Format pixel_format);
     void SetAudio(Audio* audio);
@@ -133,6 +134,7 @@ private:
     M6502* m_m6502;
     Audio* m_audio;
     Bus* m_bus;
+    Random* m_random;
     LcdScreen* m_lcd_screen;
     Mikey_State m_state;
     bool m_is_lynx2;

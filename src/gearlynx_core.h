@@ -32,6 +32,7 @@ class Media;
 class M6502;
 class Suzy;
 class Mikey;
+class Random;
 class TraceLogger;
 
 class GearlynxCore
@@ -108,6 +109,7 @@ private:
     M6502* m_m6502;
     Suzy* m_suzy;
     Mikey* m_mikey;
+    Random* m_random;
     TraceLogger* m_trace_logger;
     bool m_paused;
     u64 m_total_cycles;

@@ -26,11 +26,13 @@
 #include "m6502_timing.h"
 #include "bus.h"
 #include "memory.h"
+#include "random.h"
 #include "state_serializer.h"
 
-M6502::M6502(Bus* bus)
+M6502::M6502(Bus* bus, Random* random)
 {
     m_bus = bus;
+    m_random = random;
     InitPointer(m_memory);
     InitPointer(m_trace_logger);
     m_opcode_cycles = k_m6502_opcode_cycles_lynx2;
@@ -94,11 +96,12 @@ void M6502::Reset(bool is_lynx2)
 
     if (m_reset_value < 0)
     {
-        m_s.A.SetValue(rand() & 0xFF);
-        m_s.X.SetValue(rand() & 0xFF);
-        m_s.Y.SetValue(rand() & 0xFF);
-        m_s.S.SetValue(rand() & 0xFF);
-        m_s.P.SetValue(rand() & 0xFF);
+        u32 rnd = m_random->Next();
+        m_s.A.SetValue((u8)rnd);
+        m_s.X.SetValue((u8)(rnd >> 8));
+        m_s.Y.SetValue((u8)(rnd >> 16));
+        m_s.S.SetValue((u8)(rnd >> 24));
+        m_s.P.SetValue(m_random->Next8Bit());
     }
     else
     {

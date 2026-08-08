@@ -22,15 +22,17 @@
 #include <ostream>
 #include "mikey.h"
 #include "memory.h"
+#include "random.h"
 #include "state_serializer.h"
 #include "lcd_screen.h"
 
-Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus)
+Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
 {
     m_suzy = suzy;
     m_media = media;
     m_m6502 = m6502;
     m_bus = bus;
+    m_random = random;
     InitPointer(m_audio);
     InitPointer(m_memory);
     InitPointer(m_lcd_screen);

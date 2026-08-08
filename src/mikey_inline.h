@@ -598,7 +598,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
             if (enable_count_rising)
             {
                 if (i == 0 || i == 2)
-                    t->internal_cycles = (t->internal_period_cycles > 0) ? (rand() % t->internal_period_cycles) : 0;
+                    t->internal_cycles = (t->internal_period_cycles > 0) ? m_random->NextMask(t->internal_period_cycles - 1) : 0;
                 else
                     t->internal_cycles = (t->internal_period_cycles / 2) + 1;
             }

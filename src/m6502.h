@@ -42,6 +42,7 @@
 class Memory;
 class StateSerializer;
 class Bus;
+class Random;
 class TraceLogger;
 
 class M6502
@@ -87,7 +88,7 @@ public:
     };
 
 public:
-    M6502(Bus* bus);
+    M6502(Bus* bus, Random* random);
     ~M6502();
     void Init(Memory* memory);
     void Reset(bool is_lynx2);
@@ -133,6 +134,7 @@ private:
     u8 m_zn_flags_lut[256];
     Memory* m_memory;
     Bus* m_bus;
+    Random* m_random;
     TraceLogger* m_trace_logger;
     M6502_State m_s;
     bool m_breakpoints_enabled;

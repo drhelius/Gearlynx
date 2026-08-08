@@ -26,9 +26,10 @@
 #include "mikey.h"
 #include "m6502.h"
 #include "bus.h"
+#include "random.h"
 #include "state_serializer.h"
 
-Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus)
+Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus, Random* random)
 {
     m_media = media;
     m_input = input;
@@ -36,6 +37,7 @@ Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m650
     m_mikey = mikey;
     m_m6502 = m6502;
     m_bus = bus;
+    m_random = random;
     InitPointer(m_disassembler);
     InitPointer(m_state.ram);
     m_state.MAPCTL = 0;
@@ -86,8 +88,14 @@ void Memory::Reset(bool is_lynx2)
     m_state.MAPCTL = 0;
     m_is_lynx2 = is_lynx2;
 
-    for (int i = 0; i < 0x10000; i++)
-        m_state.ram[i] = rand() & 0xFF;
+    for (int i = 0; i < 0x10000; i += 4)
+    {
+        u32 rnd = m_random->Next();
+        m_state.ram[i] = (u8)rnd;
+        m_state.ram[i + 1] = (u8)(rnd >> 8);
+        m_state.ram[i + 2] = (u8)(rnd >> 16);
+        m_state.ram[i + 3] = (u8)(rnd >> 24);
+    }
 
     SetupDefaultMemoryMap();
 }

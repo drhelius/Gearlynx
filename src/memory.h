@@ -31,6 +31,7 @@ class Suzy;
 class Mikey;
 class M6502;
 class Bus;
+class Random;
 class StateSerializer;
 
 class Memory
@@ -43,7 +44,7 @@ public:
     };
 
 public:
-    Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus);
+    Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m6502, Bus* bus, Random* random);
     ~Memory();
     void Init();
     void Reset(bool is_lynx2);
@@ -82,6 +83,7 @@ private:
     Mikey* m_mikey;
     M6502* m_m6502;
     Bus* m_bus;
+    Random* m_random;
     Memory_State m_state;
     GLYNX_Disassembler_Record** m_disassembler;
     u8* m_read_page[256];

@@ -33,6 +33,7 @@
 #include "m6502.h"
 #include "suzy.h"
 #include "mikey.h"
+#include "random.h"
 #include "trace_logger.h"
 #include "memory_stream.h"
 
@@ -46,6 +47,7 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_m6502);
     InitPointer(m_suzy);
     InitPointer(m_mikey);
+    InitPointer(m_random);
     InitPointer(m_trace_logger);
     m_paused = true;
     m_total_cycles = 0;
@@ -61,6 +63,7 @@ GearlynxCore::~GearlynxCore()
     SafeDelete(m_memory);
     SafeDelete(m_suzy);
     SafeDelete(m_mikey);
+    SafeDelete(m_random);
     SafeDelete(m_trace_logger);
 }
 
@@ -68,15 +71,15 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
 {
     Log("Loading %s core %s by Ignacio Sanchez", GLYNX_TITLE, GLYNX_VERSION);
 
-    srand((unsigned int)time(NULL));
-
     m_media = new Media();
     m_bus = new Bus();
-    m_m6502 = new M6502(m_bus);
+    m_random = new Random();
+    m_random->Seed((u32)time(NULL));
+    m_m6502 = new M6502(m_bus, m_random);
     m_input = new Input(m_media);
     m_suzy = new Suzy(m_media, m_m6502, m_input, m_bus);
-    m_mikey = new Mikey(m_suzy, m_media, m_m6502, m_bus);
-    m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502, m_bus);
+    m_mikey = new Mikey(m_suzy, m_media, m_m6502, m_bus, m_random);
+    m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502, m_bus, m_random);
     m_audio = new Audio(m_mikey);
     m_trace_logger = new TraceLogger();
 
@@ -491,6 +494,7 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
     m_audio->SaveState(stream);
     m_input->SaveState(stream);
     m_media->SaveState(stream);
+    m_random->SaveState(stream);
 
 #if defined(__LIBRETRO__)
     GLYNX_SaveState_Header_Libretro header;
@@ -709,6 +713,11 @@ bool GearlynxCore::LoadState(std::istream& stream)
     m_audio->LoadState(stream, header.version);
     m_input->LoadState(stream);
     m_media->LoadState(stream, header.version);
+
+    if (header.version >= 21)
+    {
+        m_random->LoadState(stream);
+    }
 
     return true;
 }
