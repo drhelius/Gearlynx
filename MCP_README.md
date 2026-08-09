@@ -342,7 +342,7 @@ The server exposes tools organized in the following categories:
 - `debug_step_into` - Step into next 6502 instruction (enters subroutines)
 - `debug_step_over` - Step over next 6502 instruction (skips subroutines like JSR)
 - `debug_step_out` - Step out of current subroutine (continues until RTS/RTI)
-- `debug_step_frame` - Step one or more video frames
+- `debug_step_frame` - Step one or more video frames. Optional `frames` is 1-1000 (default 1). Optional `mode` is `async` (default, returns after scheduling) or `sync` (returns after all requested frames complete at VBlank). Use `mode: "sync"` when issuing dependent tool calls.
 - `debug_run_to_cursor` - Continue execution until reaching specified address
 - `debug_reset` - Reset the Atari Lynx emulated system
 - `debug_get_status` - Get debugger status (paused, at_breakpoint, pc address)
