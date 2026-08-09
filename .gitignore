@@ -69,6 +69,7 @@ xcuserdata/
 #binaries
 platforms/**/gearlynx
 tests/**/gearlynx-tests
+tests/**/gearlynx-comlynx-tests
 binary_to_compressed_c
 
 #Switch
