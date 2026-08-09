@@ -47,7 +47,7 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(260, 560), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(228, 514), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();
@@ -65,73 +65,73 @@ void gui_debug_window_uart(void)
     bool irq_enabled = (mikey_state->uart.tx_int_en || mikey_state->uart.rx_int_en);
     bool irq_asserted = IS_SET_BIT(mikey_state->irq_pending, 4);
 
-    ImGui::TextColored(violet, "IRQ ENABLED  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "IRQ ENABLED   "); ImGui::SameLine();
     ImGui::TextColored(irq_enabled ? green : gray, irq_enabled ? "ON" : "OFF");
 
-    ImGui::TextColored(violet, "IRQ ASSERTED "); ImGui::SameLine();
+    ImGui::TextColored(violet, "IRQ ASSERTED  "); ImGui::SameLine();
     ImGui::TextColored(irq_asserted ? green : gray, irq_asserted ? "ON" : "OFF");
 
     ImGui::Separator();
 
-    ImGui::TextColored(violet, "TX IRQ       "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX IRQ        "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.tx_int_en ? green : gray, "%s", mikey_state->uart.tx_int_en ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "RX IRQ       "); ImGui::SameLine();
+    ImGui::TextColored(violet, "RX IRQ        "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.rx_int_en ? green : gray, "%s", mikey_state->uart.rx_int_en ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "PARITY       "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PARITY        "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.par_en ? green : gray, "%s", mikey_state->uart.par_en ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "TX OPEN      "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX OPEN       "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.tx_open ? green : gray, "%s", mikey_state->uart.tx_open ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "TX BREAK     "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX BREAK      "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.tx_brk ? green : gray, "%s", mikey_state->uart.tx_brk ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "PARITY EVEN  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PARITY EVEN   "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.par_even ? green : gray, "%s", mikey_state->uart.par_even ? "YES" : "NO");
 
     ImGui::Separator();
 
-    ImGui::TextColored(violet, "TX READY     "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX READY      "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.tx_ready ? green : gray, "%s", mikey_state->uart.tx_ready ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "RX READY     "); ImGui::SameLine();
+    ImGui::TextColored(violet, "RX READY      "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.rx_ready ? green : gray, "%s", mikey_state->uart.rx_ready ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "TX EMPTY     "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX EMPTY      "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.tx_empty ? green : gray, "%s", mikey_state->uart.tx_empty ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "PARITY ERR   "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PARITY ERR    "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.par_err ? green : gray, "%s", mikey_state->uart.par_err ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "OVERRUN ERR  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "OVERRUN ERR   "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.ovr_err ? green : gray, "%s", mikey_state->uart.ovr_err ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "FRAMING ERR  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "FRAMING ERR   "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.fram_err ? green : gray, "%s", mikey_state->uart.fram_err ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "RX BREAK     "); ImGui::SameLine();
+    ImGui::TextColored(violet, "RX BREAK      "); ImGui::SameLine();
     ImGui::TextColored(mikey_state->uart.rx_break ? green : gray, "%s", mikey_state->uart.rx_break ? "YES" : "NO");
 
-    ImGui::TextColored(violet, "PARITY BIT   "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PARITY BIT    "); ImGui::SameLine();
     ImGui::TextColored(white, "%s", mikey_state->uart.par_bit ? "1" : "0");
 
     ImGui::Separator();
 
-    ImGui::TextColored(violet, "HOLDING REG  "); ImGui::SameLine();
+    ImGui::TextColored(violet, "HOLDING REG   "); ImGui::SameLine();
     ImGui::Text("$%02X ", mikey_state->uart.tx_hold_data); ImGui::SameLine(0, 0);
     ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->uart.tx_hold_data));
 
-    ImGui::TextColored(violet, "TX DATA      "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX DATA       "); ImGui::SameLine();
     ImGui::Text("$%02X ", mikey_state->uart.tx_data); ImGui::SameLine(0, 0);
     ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->uart.tx_data));
 
-    ImGui::TextColored(violet, "RX DATA      "); ImGui::SameLine();
+    ImGui::TextColored(violet, "RX DATA       "); ImGui::SameLine();
     ImGui::Text("$%02X ", mikey_state->uart.rx_data); ImGui::SameLine(0, 0);
     ImGui::TextColored(gray, "(" BYTE_TO_BINARY_PATTERN_SPACED ")", BYTE_TO_BINARY(mikey_state->uart.rx_data));
 
-    ImGui::TextColored(violet, "TX BIT IDX   "); ImGui::SameLine();
+    ImGui::TextColored(violet, "TX BIT IDX    "); ImGui::SameLine();
     ImGui::TextColored(white, "%d", mikey_state->uart.tx_bit_index);
 
     ImGui::Separator();
@@ -147,16 +147,16 @@ void gui_debug_window_uart(void)
     else if (comlynx.mode == ComLynxModeFault)
         mode = "FAULT";
 
-    ImGui::TextColored(violet, "CABLE        "); ImGui::SameLine();
+    ImGui::TextColored(violet, "CABLE         "); ImGui::SameLine();
     ImGui::TextColored(comlynx.cable_connected ? green : gray, "%s", comlynx.cable_connected ? "CONNECTED" : "DISCONNECTED");
-    ImGui::TextColored(violet, "NETWORK      "); ImGui::SameLine();
+    ImGui::TextColored(violet, "NETWORK       "); ImGui::SameLine();
     ImGui::TextColored(comlynx.mode == ComLynxModeFault ? red : white, "%s", mode);
-    ImGui::TextColored(violet, "PEER         "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PEER          "); ImGui::SameLine();
     ImGui::TextColored(white, "%d / %d", comlynx.local_peer_id, comlynx.peer_count);
-    ImGui::TextColored(violet, "FRAMES TX/RX "); ImGui::SameLine();
+    ImGui::TextColored(violet, "FRAMES TX/RX  "); ImGui::SameLine();
     ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.frames_sent,
         (unsigned long long)comlynx.frames_received);
-    ImGui::TextColored(violet, "LOSS/OVERFLOW"); ImGui::SameLine();
+    ImGui::TextColored(violet, "LOSS/OVERFLOW "); ImGui::SameLine();
     ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.sequence_gaps,
         (unsigned long long)comlynx.queue_overflows);
 
