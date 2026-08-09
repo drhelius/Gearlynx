@@ -2113,6 +2113,12 @@ ComLynxStatus emu_comlynx_get_status(void)
     return status;
 }
 
+void emu_comlynx_reset_metrics(void)
+{
+    if (comlynx_manager)
+        comlynx_manager->ResetMetrics();
+}
+
 static void comlynx_tx_callback(u8 data, bool parity_bit, void* user_data)
 {
     ComLynxManager* manager = (ComLynxManager*)user_data;

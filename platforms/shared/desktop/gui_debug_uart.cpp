@@ -150,7 +150,7 @@ void gui_debug_window_comlynx(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(450, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(220, 234), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(342, 332), ImGuiCond_FirstUseEver);
     ImGui::Begin("ComLynx", &config_debug.show_comlynx);
 
     ComLynxStatus comlynx = emu_comlynx_get_status();
@@ -180,18 +180,26 @@ void gui_debug_window_comlynx(void)
     ImGui::TextColored(white, "%d / %d", comlynx.local_peer_id, comlynx.peer_count);
 
     ImGui::Separator();
-    ImGui::TextColored(violet, "FRAMES GEN/TX/RX"); ImGui::SameLine();
-    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.frames_generated,
-        (unsigned long long)comlynx.frames_sent, (unsigned long long)comlynx.frames_received);
+    ImGui::TextColored(violet, "FRAME GEN/TX    "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.frames_generated,
+        (unsigned long long)comlynx.frames_sent);
+    ImGui::TextColored(violet, "FRAME RX NET/Q/C"); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.frames_received_network,
+        (unsigned long long)comlynx.frames_queued, (unsigned long long)comlynx.frames_consumed);
+    ImGui::TextColored(violet, "DROP DIS/CLEAR  "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.frames_dropped_disabled,
+        (unsigned long long)comlynx.frames_dropped_clear);
     ImGui::TextColored(violet, "DGRAM TX/RX     "); ImGui::SameLine();
     ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.datagrams_sent,
         (unsigned long long)comlynx.datagrams_received);
-    ImGui::TextColored(violet, "SEND WAIT/ERR   "); ImGui::SameLine();
-    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.send_would_block,
+    ImGui::TextColored(violet, "SEND EAGAIN/ERR "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.send_eagain,
         (unsigned long long)comlynx.send_errors);
     ImGui::TextColored(violet, "QUEUE MAX TX/RX "); ImGui::SameLine();
     ImGui::TextColored(white, "%u / %u", comlynx.max_outgoing_queue_depth,
         comlynx.max_incoming_queue_depth);
+    ImGui::TextColored(violet, "PENDING MAX     "); ImGui::SameLine();
+    ImGui::TextColored(white, "%u", comlynx.max_pending_packet_depth);
 
     ImGui::Separator();
     ImGui::TextColored(violet, "GAPS/OOO/DUP    "); ImGui::SameLine();
@@ -202,18 +210,27 @@ void gui_debug_window_comlynx(void)
     ImGui::TextColored(white, "%llu", (unsigned long long)comlynx.queue_overflows);
 
     ImGui::Separator();
-    ImGui::TextColored(violet, "INTERVAL US     "); ImGui::SameLine();
-    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.packet_interarrival_min_us,
-        (unsigned long long)comlynx.packet_interarrival_avg_us,
-        (unsigned long long)comlynx.packet_interarrival_max_us);
-    ImGui::TextColored(violet, "JITTER US       "); ImGui::SameLine();
-    ImGui::TextColored(white, "%llu", (unsigned long long)comlynx.network_jitter_us);
+    ImGui::TextColored(violet, "RX INTERVAL US  "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.frame_rx_interval_min_us,
+        (unsigned long long)comlynx.frame_rx_interval_avg_us,
+        (unsigned long long)comlynx.frame_rx_interval_max_us);
+    ImGui::TextColored(violet, "RX INTERVAL VAR "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu", (unsigned long long)comlynx.frame_rx_interval_variation_us);
+    ImGui::TextColored(violet, "RX BURST AVG/MAX"); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %u", comlynx.rx_bursts ?
+        (unsigned long long)(comlynx.rx_burst_total_packets / comlynx.rx_bursts) : 0ULL,
+        comlynx.rx_burst_max);
 
     if (comlynx.mode == ComLynxModeFault)
     {
         ImGui::Separator();
         ImGui::TextColored(red, "%s", comlynx.last_error);
     }
+
+    ImGui::Separator();
+
+    if (ImGui::Button("RESET METRICS"))
+        emu_comlynx_reset_metrics();
 
     ImGui::PopFont();
 

@@ -60,13 +60,14 @@ ComLynxManager::ComLynxManager()
     m_receive_enabled = false;
     m_sync_valid = false;
     m_sync_cycles = 0;
-    m_packet_arrival_valid = false;
-    m_packet_interarrival_samples = 0;
-    m_packet_interarrival_total_us = 0;
-    m_packet_interarrival_min_us = 0;
-    m_packet_interarrival_max_us = 0;
-    m_last_packet_interarrival_us = 0;
-    m_network_jitter_us = 0;
+    m_frame_rx_interval_valid = false;
+    m_last_frame_rx_time_us = 0;
+    m_frame_rx_interval_samples = 0;
+    m_frame_rx_interval_total_us = 0;
+    m_frame_rx_interval_min_us = 0;
+    m_frame_rx_interval_max_us = 0;
+    m_last_frame_rx_interval_us = 0;
+    m_frame_rx_interval_variation_us = 0;
     ResetStatus();
 }
 
@@ -285,7 +286,11 @@ bool ComLynxManager::SendFrame(u8 data, bool parity_bit)
 
 bool ComLynxManager::ReceiveFrame(ComLynxFrame& frame)
 {
-    return m_incoming_frames.Pop(frame);
+    if (!m_incoming_frames.Pop(frame))
+        return false;
+
+    IncrementFrameConsumed();
+    return true;
 }
 
 void ComLynxManager::SetReceiveEnabled(bool enabled)
@@ -296,6 +301,7 @@ void ComLynxManager::SetReceiveEnabled(bool enabled)
         return;
 
     m_receive_enabled = enabled;
+    IncrementFramesDroppedClear(m_incoming_frames.Size());
     m_incoming_frames.Clear();
 }
 
@@ -390,6 +396,8 @@ void ComLynxManager::WorkerLoop()
 
         if (ready > 0 && FD_ISSET(m_socket, &read_set))
         {
+            u32 burst_frame_count = 0;
+
             while (!m_stop_requested.load())
             {
                 u8 buffer[COMLYNX_PACKET_MAX_SIZE];
@@ -402,9 +410,8 @@ void ComLynxManager::WorkerLoop()
                 if (received <= 0)
                     break;
 
+                u64 local_receive_time_us = GetClockMicroseconds();
                 RecordDatagramReceived();
-                RecordPacketArrival();
-
                 ComLynxPacket packet;
 
                 if (!comlynx_packet_decode(buffer, received, &packet))
@@ -413,10 +420,19 @@ void ComLynxManager::WorkerLoop()
                 IncrementPacketReceived();
 
                 if (GetMode() == ComLynxModeHosting)
-                    HostReceive(packet, source);
+                {
+                    if (HostReceive(packet, source, local_receive_time_us))
+                        burst_frame_count++;
+                }
                 else
-                    ClientReceive(packet, source);
+                {
+                    if (ClientReceive(packet, source, local_receive_time_us))
+                        burst_frame_count++;
+                }
             }
+
+            if (burst_frame_count > 0)
+                RecordReceiveBurst(burst_frame_count);
         }
         else if (ready < 0 && !m_stop_requested.load())
         {
@@ -435,7 +451,7 @@ void ComLynxManager::WorkerLoop()
     CloseSocket();
 }
 
-void ComLynxManager::HostReceive(const ComLynxPacket& packet, const sockaddr_in& source)
+bool ComLynxManager::HostReceive(const ComLynxPacket& packet, const sockaddr_in& source, u64 local_receive_time_us)
 {
     if (packet.type == ComLynxPacketJoinRequest)
     {
@@ -448,7 +464,7 @@ void ComLynxManager::HostReceive(const ComLynxPacket& packet, const sockaddr_in&
             if (index < 0)
             {
                 SendJoinReject(source, packet.peer_token, ComLynxRejectSessionFull);
-                return;
+                return false;
             }
 
             Peer& peer = m_peers[index];
@@ -472,38 +488,41 @@ void ComLynxManager::HostReceive(const ComLynxPacket& packet, const sockaddr_in&
 
         SendJoinAccept(m_peers[index]);
 
-        return;
+        return false;
     }
 
     int index = FindPeer(source, packet.peer_token, packet.sender_id);
 
     if (index < 0 || packet.session_id != m_session_id)
-        return;
+        return false;
 
     Peer& peer = m_peers[index];
 
     if (!AcceptSequence(peer, packet.sequence))
-        return;
+        return false;
 
     peer.last_seen = std::chrono::steady_clock::now();
 
     if (packet.type == ComLynxPacketFrame)
     {
         ComLynxFrame frame = { packet.payload[0], (packet.flags & 0x01) != 0 };
-    
-        if (QueueIncomingFrame(frame))
-            IncrementFrameReceived();
 
+        RecordFrameReceive(local_receive_time_us);
+        IncrementFrameReceivedNetwork();
+        QueueIncomingFrame(frame);
         BroadcastFrame(frame, peer.id);
+        return true;
     }
     else if (packet.type == ComLynxPacketLeave)
         RemovePeer(index);
+
+    return false;
 }
 
-void ComLynxManager::ClientReceive(const ComLynxPacket& packet, const sockaddr_in& source)
+bool ComLynxManager::ClientReceive(const ComLynxPacket& packet, const sockaddr_in& source, u64 local_receive_time_us)
 {
     if (!IsHostSource(source) || packet.peer_token != m_peer_token)
-        return;
+        return false;
 
     ComLynxMode mode = GetMode();
 
@@ -512,11 +531,11 @@ void ComLynxManager::ClientReceive(const ComLynxPacket& packet, const sockaddr_i
         if (packet.type == ComLynxPacketJoinReject)
         {
             SetFault("ComLynx host rejected the session");
-            return;
+            return false;
         }
 
         if (packet.type != ComLynxPacketJoinAccept)
-            return;
+            return false;
 
         m_session_id = packet.session_id;
         m_local_peer_id = packet.sender_id;
@@ -526,27 +545,31 @@ void ComLynxManager::ClientReceive(const ComLynxPacket& packet, const sockaddr_i
 
         SetMode(ComLynxModeConnected);
 
-        return;
+        return false;
     }
 
     if (mode != ComLynxModeConnected || packet.session_id != m_session_id ||
         !AcceptClientSequence(packet.sequence))
-        return;
+        return false;
 
     m_last_host_packet = std::chrono::steady_clock::now();
 
     if (packet.type == ComLynxPacketFrame)
     {
         if (packet.sender_id == m_local_peer_id)
-            return;
+            return false;
 
         ComLynxFrame frame = { packet.payload[0], (packet.flags & 0x01) != 0 };
 
-        if (QueueIncomingFrame(frame))
-            IncrementFrameReceived();
+        RecordFrameReceive(local_receive_time_us);
+        IncrementFrameReceivedNetwork();
+        QueueIncomingFrame(frame);
+        return true;
     }
     else if (packet.type == ComLynxPacketLeave && packet.sender_id == 1)
         SetFault("ComLynx host closed the session");
+
+    return false;
 }
 
 bool ComLynxManager::QueueIncomingFrame(const ComLynxFrame& frame)
@@ -554,10 +577,14 @@ bool ComLynxManager::QueueIncomingFrame(const ComLynxFrame& frame)
     std::lock_guard<std::mutex> lock(m_receive_mutex);
 
     if (!m_receive_enabled)
+    {
+        IncrementFramesDroppedDisabled();
         return false;
+    }
 
     if (m_incoming_frames.Push(frame))
     {
+        IncrementFrameQueued();
         UpdateMaxIncomingQueueDepth(m_incoming_frames.Size());
         return true;
     }
@@ -626,7 +653,7 @@ void ComLynxManager::ProcessPendingPackets()
 
         if (sent < 0 && SendWouldBlock())
         {
-            IncrementSendWouldBlock();
+            IncrementSendEagain();
             return;
         }
 
@@ -832,7 +859,7 @@ bool ComLynxManager::SendPacket(const ComLynxPacket& packet, const sockaddr_in& 
 
     if (sent < 0 && SendWouldBlock())
     {
-        IncrementSendWouldBlock();
+        IncrementSendEagain();
         QueuePendingPacket(buffer, size, is_frame, destination);
         return false;
     }
@@ -861,6 +888,7 @@ bool ComLynxManager::QueuePendingPacket(const u8* data, int size, bool is_frame,
     memcpy(pending.data, data, size);
 
     m_pending_packet_count++;
+    UpdateMaxPendingPacketDepth((u32)m_pending_packet_count);
 
     return true;
 }
@@ -1098,18 +1126,61 @@ void ComLynxManager::SetEndpoint(const char* address, int port)
 
 void ComLynxManager::ResetStatus()
 {
-    m_packet_arrival_valid = false;
-    m_packet_interarrival_samples = 0;
-    m_packet_interarrival_total_us = 0;
-    m_packet_interarrival_min_us = 0;
-    m_packet_interarrival_max_us = 0;
-    m_last_packet_interarrival_us = 0;
-    m_network_jitter_us = 0;
+    m_frame_rx_interval_valid = false;
+    m_last_frame_rx_time_us = 0;
+    m_frame_rx_interval_samples = 0;
+    m_frame_rx_interval_total_us = 0;
+    m_frame_rx_interval_min_us = 0;
+    m_frame_rx_interval_max_us = 0;
+    m_last_frame_rx_interval_us = 0;
+    m_frame_rx_interval_variation_us = 0;
 
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
     memset(&m_status, 0, sizeof(m_status));
     m_status.mode = ComLynxModeDisabled;
+}
+
+void ComLynxManager::ResetMetrics()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.packets_sent = 0;
+    m_status.packets_received = 0;
+    m_status.datagrams_sent = 0;
+    m_status.datagrams_received = 0;
+    m_status.frames_generated = 0;
+    m_status.frames_sent = 0;
+    m_status.frames_received_network = 0;
+    m_status.frames_queued = 0;
+    m_status.frames_consumed = 0;
+    m_status.frames_dropped_disabled = 0;
+    m_status.frames_dropped_clear = 0;
+    m_status.send_eagain = 0;
+    m_status.send_errors = 0;
+    m_status.duplicate_packets = 0;
+    m_status.out_of_order_packets = 0;
+    m_status.sequence_gaps = 0;
+    m_status.queue_overflows = 0;
+    m_status.max_outgoing_queue_depth = 0;
+    m_status.max_incoming_queue_depth = 0;
+    m_status.max_pending_packet_depth = 0;
+    m_status.frame_rx_interval_min_us = 0;
+    m_status.frame_rx_interval_avg_us = 0;
+    m_status.frame_rx_interval_max_us = 0;
+    m_status.frame_rx_interval_variation_us = 0;
+    m_status.rx_bursts = 0;
+    m_status.rx_burst_max = 0;
+    m_status.rx_burst_total_packets = 0;
+
+    m_frame_rx_interval_valid = false;
+    m_last_frame_rx_time_us = 0;
+    m_frame_rx_interval_samples = 0;
+    m_frame_rx_interval_total_us = 0;
+    m_frame_rx_interval_min_us = 0;
+    m_frame_rx_interval_max_us = 0;
+    m_last_frame_rx_interval_us = 0;
+    m_frame_rx_interval_variation_us = 0;
 }
 
 void ComLynxManager::IncrementPacketSent()
@@ -1148,18 +1219,46 @@ void ComLynxManager::IncrementFrameSent()
     m_status.frames_sent++;
 }
 
-void ComLynxManager::IncrementFrameReceived()
+void ComLynxManager::IncrementFrameReceivedNetwork()
 {
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
-    m_status.frames_received++;
+    m_status.frames_received_network++;
 }
 
-void ComLynxManager::IncrementSendWouldBlock()
+void ComLynxManager::IncrementFrameQueued()
 {
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
-    m_status.send_would_block++;
+    m_status.frames_queued++;
+}
+
+void ComLynxManager::IncrementFrameConsumed()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.frames_consumed++;
+}
+
+void ComLynxManager::IncrementFramesDroppedDisabled()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.frames_dropped_disabled++;
+}
+
+void ComLynxManager::IncrementFramesDroppedClear(u32 count)
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.frames_dropped_clear += count;
+}
+
+void ComLynxManager::IncrementSendEagain()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.send_eagain++;
 }
 
 void ComLynxManager::IncrementSendError()
@@ -1213,47 +1312,67 @@ void ComLynxManager::UpdateMaxIncomingQueueDepth(u32 depth)
         m_status.max_incoming_queue_depth = depth;
 }
 
-void ComLynxManager::RecordPacketArrival()
+void ComLynxManager::UpdateMaxPendingPacketDepth(u32 depth)
 {
-    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(m_status_mutex);
 
-    if (!m_packet_arrival_valid)
+    if (depth > m_status.max_pending_packet_depth)
+        m_status.max_pending_packet_depth = depth;
+}
+
+void ComLynxManager::RecordFrameReceive(u64 local_receive_time_us)
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    if (!m_frame_rx_interval_valid)
     {
-        m_packet_arrival_valid = true;
-        m_last_packet_arrival = now;
+        m_frame_rx_interval_valid = true;
+        m_last_frame_rx_time_us = local_receive_time_us;
         return;
     }
 
-    u64 interval = (u64)std::chrono::duration_cast<std::chrono::microseconds>(now - m_last_packet_arrival).count();
-    m_last_packet_arrival = now;
-    m_packet_interarrival_samples++;
-    m_packet_interarrival_total_us += interval;
+    u64 interval = local_receive_time_us >= m_last_frame_rx_time_us ?
+        local_receive_time_us - m_last_frame_rx_time_us : 0;
+    m_last_frame_rx_time_us = local_receive_time_us;
+    m_frame_rx_interval_samples++;
+    m_frame_rx_interval_total_us += interval;
 
-    if (m_packet_interarrival_min_us == 0 || interval < m_packet_interarrival_min_us)
-        m_packet_interarrival_min_us = interval;
-    if (interval > m_packet_interarrival_max_us)
-        m_packet_interarrival_max_us = interval;
+    if (m_frame_rx_interval_samples == 1 || interval < m_frame_rx_interval_min_us)
+        m_frame_rx_interval_min_us = interval;
+    if (interval > m_frame_rx_interval_max_us)
+        m_frame_rx_interval_max_us = interval;
 
-    if (m_packet_interarrival_samples > 1)
+    if (m_frame_rx_interval_samples > 1)
     {
-        u64 variation = interval > m_last_packet_interarrival_us ?
-            interval - m_last_packet_interarrival_us :
-            m_last_packet_interarrival_us - interval;
+        u64 variation = interval > m_last_frame_rx_interval_us ?
+            interval - m_last_frame_rx_interval_us :
+            m_last_frame_rx_interval_us - interval;
 
-        if (variation > m_network_jitter_us)
-            m_network_jitter_us += (variation - m_network_jitter_us) / 16;
+        if (variation > m_frame_rx_interval_variation_us)
+            m_frame_rx_interval_variation_us +=
+                (variation - m_frame_rx_interval_variation_us) / 16;
         else
-            m_network_jitter_us -= (m_network_jitter_us - variation) / 16;
+            m_frame_rx_interval_variation_us -=
+                (m_frame_rx_interval_variation_us - variation) / 16;
     }
 
-    m_last_packet_interarrival_us = interval;
+    m_last_frame_rx_interval_us = interval;
 
+    m_status.frame_rx_interval_min_us = m_frame_rx_interval_min_us;
+    m_status.frame_rx_interval_avg_us =
+        m_frame_rx_interval_total_us / m_frame_rx_interval_samples;
+    m_status.frame_rx_interval_max_us = m_frame_rx_interval_max_us;
+    m_status.frame_rx_interval_variation_us = m_frame_rx_interval_variation_us;
+}
+
+void ComLynxManager::RecordReceiveBurst(u32 frame_count)
+{
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
-    m_status.packet_interarrival_min_us = m_packet_interarrival_min_us;
-    m_status.packet_interarrival_avg_us = m_packet_interarrival_total_us / m_packet_interarrival_samples;
-    m_status.packet_interarrival_max_us = m_packet_interarrival_max_us;
-    m_status.network_jitter_us = m_network_jitter_us;
+    m_status.rx_bursts++;
+    m_status.rx_burst_total_packets += frame_count;
+    if (frame_count > m_status.rx_burst_max)
+        m_status.rx_burst_max = frame_count;
 }
 
 bool ComLynxManager::SameAddress(const sockaddr_in& left, const sockaddr_in& right)
@@ -1269,6 +1388,12 @@ bool ComLynxManager::SendWouldBlock()
 #else
     return errno == EAGAIN || errno == EWOULDBLOCK;
 #endif
+}
+
+u64 ComLynxManager::GetClockMicroseconds()
+{
+    return (u64)std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 u64 ComLynxManager::MakeToken()

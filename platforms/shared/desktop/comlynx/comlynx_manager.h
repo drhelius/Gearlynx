@@ -58,8 +58,12 @@ struct ComLynxStatus
     u64 datagrams_received;
     u64 frames_generated;
     u64 frames_sent;
-    u64 frames_received;
-    u64 send_would_block;
+    u64 frames_received_network;
+    u64 frames_queued;
+    u64 frames_consumed;
+    u64 frames_dropped_disabled;
+    u64 frames_dropped_clear;
+    u64 send_eagain;
     u64 send_errors;
     u64 duplicate_packets;
     u64 out_of_order_packets;
@@ -67,10 +71,14 @@ struct ComLynxStatus
     u64 queue_overflows;
     u32 max_outgoing_queue_depth;
     u32 max_incoming_queue_depth;
-    u64 packet_interarrival_min_us;
-    u64 packet_interarrival_avg_us;
-    u64 packet_interarrival_max_us;
-    u64 network_jitter_us;
+    u32 max_pending_packet_depth;
+    u64 frame_rx_interval_min_us;
+    u64 frame_rx_interval_avg_us;
+    u64 frame_rx_interval_max_us;
+    u64 frame_rx_interval_variation_us;
+    u64 rx_bursts;
+    u32 rx_burst_max;
+    u64 rx_burst_total_packets;
     char endpoint[128];
     char last_error[128];
 };
@@ -94,6 +102,7 @@ public:
     bool IsCableConnected() const;
     ComLynxMode GetMode() const;
     ComLynxStatus GetStatus() const;
+    void ResetMetrics();
 
 private:
     struct PendingPacket
@@ -128,8 +137,8 @@ private:
     };
 
     void WorkerLoop();
-    void HostReceive(const ComLynxPacket& packet, const sockaddr_in& source);
-    void ClientReceive(const ComLynxPacket& packet, const sockaddr_in& source);
+    bool HostReceive(const ComLynxPacket& packet, const sockaddr_in& source, u64 local_receive_time_us);
+    bool ClientReceive(const ComLynxPacket& packet, const sockaddr_in& source, u64 local_receive_time_us);
     bool QueueIncomingFrame(const ComLynxFrame& frame);
     void ProcessOutgoingFrames();
     void ProcessPendingPackets();
@@ -165,8 +174,12 @@ private:
     void RecordDatagramReceived();
     void IncrementFrameGenerated();
     void IncrementFrameSent();
-    void IncrementFrameReceived();
-    void IncrementSendWouldBlock();
+    void IncrementFrameReceivedNetwork();
+    void IncrementFrameQueued();
+    void IncrementFrameConsumed();
+    void IncrementFramesDroppedDisabled();
+    void IncrementFramesDroppedClear(u32 count);
+    void IncrementSendEagain();
     void IncrementSendError();
     void IncrementDuplicate();
     void IncrementOutOfOrder();
@@ -174,9 +187,12 @@ private:
     void IncrementQueueOverflow();
     void UpdateMaxOutgoingQueueDepth(u32 depth);
     void UpdateMaxIncomingQueueDepth(u32 depth);
-    void RecordPacketArrival();
+    void UpdateMaxPendingPacketDepth(u32 depth);
+    void RecordFrameReceive(u64 local_receive_time_us);
+    void RecordReceiveBurst(u32 frame_count);
     static bool SameAddress(const sockaddr_in& left, const sockaddr_in& right);
     static bool SendWouldBlock();
+    static u64 GetClockMicroseconds();
     static u64 MakeToken();
 
     glynx_socket_t m_socket;
@@ -211,14 +227,14 @@ private:
     bool m_sync_valid;
     u64 m_sync_cycles;
     std::chrono::steady_clock::time_point m_sync_time;
-    bool m_packet_arrival_valid;
-    std::chrono::steady_clock::time_point m_last_packet_arrival;
-    u64 m_packet_interarrival_samples;
-    u64 m_packet_interarrival_total_us;
-    u64 m_packet_interarrival_min_us;
-    u64 m_packet_interarrival_max_us;
-    u64 m_last_packet_interarrival_us;
-    u64 m_network_jitter_us;
+    bool m_frame_rx_interval_valid;
+    u64 m_last_frame_rx_time_us;
+    u64 m_frame_rx_interval_samples;
+    u64 m_frame_rx_interval_total_us;
+    u64 m_frame_rx_interval_min_us;
+    u64 m_frame_rx_interval_max_us;
+    u64 m_last_frame_rx_interval_us;
+    u64 m_frame_rx_interval_variation_us;
     mutable std::mutex m_status_mutex;
     ComLynxStatus m_status;
 };

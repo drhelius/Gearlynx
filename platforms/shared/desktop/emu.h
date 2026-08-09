@@ -168,6 +168,7 @@ EXTERN void emu_comlynx_pump(void);
 EXTERN bool emu_comlynx_is_active(void);
 EXTERN bool emu_comlynx_is_cable_connected(void);
 EXTERN ComLynxStatus emu_comlynx_get_status(void);
+EXTERN void emu_comlynx_reset_metrics(void);
 EXTERN void emu_debug_monitor_start(int port);
 EXTERN void emu_debug_monitor_stop(void);
 EXTERN bool emu_debug_monitor_is_running(void);

@@ -94,6 +94,20 @@ static bool WaitForPacketsReceived(ComLynxManager& manager, u64 packets, int tim
     return false;
 }
 
+static bool WaitForFramesQueued(ComLynxManager& manager, u64 frames, int timeout_ms)
+{
+    std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() +
+        std::chrono::milliseconds(timeout_ms);
+
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        if (manager.GetStatus().frames_queued >= frames)
+            return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    return false;
+}
+
 static void TestProtocol()
 {
     ComLynxPacket packet = {};
@@ -222,8 +236,16 @@ static void TestLoopback()
     ComLynxFrame frame = {};
     Check(WaitForFrame(host, frame, 1000), "host receive client A");
     Check(frame.data == 0x42 && frame.parity_bit, "host frame contents");
+    Check(host.GetStatus().frames_received_network == 1, "host network frame count");
+    Check(host.GetStatus().frames_queued == 1, "host queued frame count");
+    Check(host.GetStatus().frames_consumed == 1, "host consumed frame count");
     Check(WaitForFrame(client_b, frame, 1000), "client B receive client A");
     Check(frame.data == 0x42 && frame.parity_bit, "client B frame contents");
+    Check(client_b.GetStatus().frames_received_network == 1, "client network frame count");
+    Check(client_b.GetStatus().frames_queued == 1, "client queued frame count");
+    Check(client_b.GetStatus().frames_consumed == 1, "client consumed frame count");
+    Check(client_b.GetStatus().rx_bursts >= 1, "client receive burst count");
+    Check(client_b.GetStatus().rx_burst_max >= 1, "client receive burst maximum");
     Check(!client_a.ReceiveFrame(frame), "sender receives no network echo");
 
     Check(host.SendFrame(0x99, false), "host send");
@@ -299,11 +321,15 @@ static void TestReceiveReadiness()
     Check(WaitForMode(client, ComLynxModeConnected, 2000), "readiness client connected");
 
     u64 packets = client.GetStatus().packets_received;
+    u64 network_frames = client.GetStatus().frames_received_network;
     Check(host.SendFrame(0x11, false), "send frame before client ready");
     Check(WaitForPacketsReceived(client, packets + 1, 1000), "client receives startup packet");
 
     ComLynxFrame frame = {};
     Check(!client.ReceiveFrame(frame), "client discards frame before UART ready");
+    Check(client.GetStatus().frames_received_network == network_frames + 1, "disabled frame reaches network metric");
+    Check(client.GetStatus().frames_queued == 0, "disabled frame is not queued");
+    Check(client.GetStatus().frames_dropped_disabled == 1, "disabled frame drop count");
     Check(client.GetMode() == ComLynxModeConnected, "startup traffic keeps client connected");
     Check(client.GetStatus().queue_overflows == 0, "startup traffic does not overflow queue");
 
@@ -311,6 +337,65 @@ static void TestReceiveReadiness()
     Check(host.SendFrame(0x22, true), "send frame after client ready");
     Check(WaitForFrame(client, frame, 1000), "client receives frame after UART ready");
     Check(frame.data == 0x22 && frame.parity_bit, "ready client frame contents");
+
+    u64 queued_before_clear = client.GetStatus().frames_queued;
+    Check(host.SendFrame(0x33, false), "send frame before receive clear");
+    Check(WaitForFramesQueued(client, queued_before_clear + 1, 1000), "queue frame before receive clear");
+    client.SetReceiveEnabled(false);
+    Check(client.GetStatus().frames_dropped_clear >= 1, "receive clear drop count");
+
+    client.Stop();
+    host.Stop();
+}
+
+static void TestResetMetrics()
+{
+    ComLynxManager host;
+    ComLynxManager client;
+
+    Check(host.Host("127.0.0.1", 0), "start metrics reset host");
+    Check(client.Join("127.0.0.1", host.GetStatus().port), "start metrics reset client");
+    Check(WaitForMode(client, ComLynxModeConnected, 2000), "metrics reset client connected");
+    client.SetReceiveEnabled(true);
+
+    Check(host.SendFrame(0x5A, true), "send frame for metrics reset");
+    Check(WaitForFramesQueued(client, 1, 1000), "queue frame for metrics reset");
+
+    ComLynxStatus before = client.GetStatus();
+    Check(before.packets_received > 0, "metrics reset has received packets");
+    Check(before.frames_received_network > 0, "metrics reset has received frames");
+    Check(before.frames_queued > 0, "metrics reset has queued frames");
+    Check(before.rx_bursts > 0, "metrics reset has receive bursts");
+
+    ComLynxMode mode_before = client.GetMode();
+    bool cable_before = client.IsCableConnected();
+    client.ResetMetrics();
+
+    ComLynxStatus after = client.GetStatus();
+    Check(client.GetMode() == mode_before, "metrics reset preserves mode");
+    Check(client.IsCableConnected() == cable_before, "metrics reset preserves cable state");
+    Check(after.packets_sent == 0 && after.packets_received == 0, "metrics reset packet counters");
+    Check(after.datagrams_sent == 0 && after.datagrams_received == 0, "metrics reset datagram counters");
+    Check(after.frames_generated == 0 && after.frames_sent == 0, "metrics reset transmit frame counters");
+    Check(after.frames_received_network == 0 && after.frames_queued == 0 && after.frames_consumed == 0,
+        "metrics reset receive frame counters");
+    Check(after.frames_dropped_disabled == 0 && after.frames_dropped_clear == 0,
+        "metrics reset drop counters");
+    Check(after.send_eagain == 0 && after.send_errors == 0, "metrics reset send error counters");
+    Check(after.duplicate_packets == 0 && after.out_of_order_packets == 0 && after.sequence_gaps == 0,
+        "metrics reset sequence counters");
+    Check(after.queue_overflows == 0, "metrics reset overflow counter");
+    Check(after.max_outgoing_queue_depth == 0 && after.max_incoming_queue_depth == 0 &&
+        after.max_pending_packet_depth == 0, "metrics reset queue high water marks");
+    Check(after.frame_rx_interval_min_us == 0 && after.frame_rx_interval_avg_us == 0 &&
+        after.frame_rx_interval_max_us == 0 && after.frame_rx_interval_variation_us == 0,
+        "metrics reset interval statistics");
+    Check(after.rx_bursts == 0 && after.rx_burst_max == 0 && after.rx_burst_total_packets == 0,
+        "metrics reset burst statistics");
+
+    ComLynxFrame frame = {};
+    Check(client.ReceiveFrame(frame), "metrics reset preserves incoming queue");
+    Check(frame.data == 0x5A && frame.parity_bit, "metrics reset preserves queued frame contents");
 
     client.Stop();
     host.Stop();
@@ -337,6 +422,7 @@ int main()
     TestSessionCapacity();
     TestSynchronization();
     TestReceiveReadiness();
+    TestResetMetrics();
     TestRestart();
 
     if (failures == 0)
