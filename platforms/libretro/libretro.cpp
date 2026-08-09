@@ -340,7 +340,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 void retro_get_system_info(struct retro_system_info *info)
 {
     memset(info, 0, sizeof(*info));
-    info->library_name     = "Gearlynx";
+    info->library_name     = GLYNX_TITLE;
     info->library_version  = GLYNX_VERSION;
     info->need_fullpath    = false;
     info->valid_extensions = "lnx|lyx|o";

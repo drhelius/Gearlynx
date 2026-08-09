@@ -237,7 +237,7 @@ void GearlynxCore::ResetROM(bool preserve_ram)
     if (preserve_ram)
         m_media->SaveRam(stream);
 
-    Log("Gearlynx RESET");
+    Log(GLYNX_TITLE " RESET");
     Reset();
     m_m6502->DisassembleNextOPCode();
 

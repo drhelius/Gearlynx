@@ -311,9 +311,9 @@ void McpServer::HandleInitialize(const json& request)
         }},
         {"serverInfo", {
             {"name", "gearlynx-mcp-server"},
-            {"title", "Gearlynx MCP Server"},
+            {"title", GLYNX_TITLE " MCP Server"},
             {"version", GLYNX_VERSION},
-            {"description", "Debug/control Gearlynx Atari Lynx: execution, breakpoints, IRQ timers, memory, 6502 CPU, Mikey, Suzy, UART, cartridge, EEPROM, LCD, disassembly, symbols, sprites, frame buffers, save states, rewind, input, screenshots."}
+            {"description", "Debug/control " GLYNX_TITLE " Atari Lynx: execution, breakpoints, IRQ timers, memory, 6502 CPU, Mikey, Suzy, UART, cartridge, EEPROM, LCD, disassembly, symbols, sprites, frame buffers, save states, rewind, input, screenshots."}
         }}
     };
 

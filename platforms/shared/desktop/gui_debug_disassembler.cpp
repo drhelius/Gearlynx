@@ -1699,7 +1699,7 @@ static void disassembler_menu(void)
 
         if (ImGui::BeginMenu("Syntax"))
         {
-            static const char* syntax_names[GLYNX_Disassembler_Syntax_Count] = { "Gearlynx", "cc65", "lyxass", "mads" };
+            static const char* syntax_names[GLYNX_Disassembler_Syntax_Count] = { GLYNX_TITLE, "cc65", "lyxass", "mads" };
 
             for (int i = 0; i < GLYNX_Disassembler_Syntax_Count; i++)
             {
