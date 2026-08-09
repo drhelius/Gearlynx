@@ -89,7 +89,7 @@ void rewind_reset(void)
 
 void rewind_push(void)
 {
-    if (!config_rewind.enabled)
+    if (!config_rewind.enabled || emu_comlynx_is_active())
         return;
     if (!IsValidPointer(buffer))
         return;
@@ -119,7 +119,7 @@ void rewind_push(void)
 
 bool rewind_pop(void)
 {
-    if (count == 0)
+    if (emu_comlynx_is_active() || count == 0)
         return false;
     if (!IsValidPointer(buffer))
         return false;
@@ -168,7 +168,7 @@ size_t rewind_get_memory_usage(void)
 
 bool rewind_seek(int age)
 {
-    if (age < 0 || age >= count)
+    if (emu_comlynx_is_active() || age < 0 || age >= count)
         return false;
     if (!IsValidPointer(buffer))
         return false;

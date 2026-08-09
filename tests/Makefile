@@ -1,6 +1,7 @@
 include Makefile.sources
 
 TARGET_NAME = gearlynx-tests
+COMLYNX_TARGET_NAME = gearlynx-comlynx-tests
 GIT_VERSION := $(shell git describe --abbrev=7 --dirty --always --tags)
 UNAME_S := $(shell uname -s)
 PLATFORM = "undefined"
@@ -57,6 +58,12 @@ endif
 all: $(TARGET)
 	@echo Build complete for $(PLATFORM)
 
+comlynx: $(COMLYNX_TARGET_NAME)
+	@echo ComLynx tests build complete for $(PLATFORM)
+
+$(COMLYNX_TARGET_NAME): comlynx_tests.cpp ../platforms/shared/desktop/comlynx/comlynx_protocol.cpp ../platforms/shared/desktop/comlynx/comlynx_manager.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I../platforms/shared/desktop -pthread -o $@ $^ $(LDFLAGS)
+
 $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS)
 
@@ -70,4 +77,4 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET) $(COMLYNX_TARGET_NAME)

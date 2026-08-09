@@ -28,6 +28,15 @@
 #include "mikey.h"
 #include "suzy.h"
 
+INLINE void GearlynxCore::SynchronizeComLynx()
+{
+    if (m_comlynx_sync_callback && m_total_cycles >= m_comlynx_next_sync_cycle)
+    {
+        m_comlynx_sync_callback(m_total_cycles, m_comlynx_sync_user_data);
+        m_comlynx_next_sync_cycle = m_total_cycles + COMLYNX_SYNC_CYCLES;
+    }
+}
+
 INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
     if (!m_media->IsBiosLoaded())
@@ -91,6 +100,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             u32 lynx_cycles = cpu_cycles + bus_cycles;
             u32 suzy_cycles = m_suzy->ApplyBusStall(&lynx_cycles, suzy_stolen_cycles);
             m_total_cycles += lynx_cycles;
+            SynchronizeComLynx();
 
             //Debug("-> CPU cycles=%u, Lynx cycles=%u", cpu_cycles, lynx_cycles);
 
@@ -156,6 +166,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
             u32 lynx_cycles = cpu_cycles + bus_cycles;
             u32 suzy_cycles = m_suzy->ApplyBusStall(&lynx_cycles, suzy_stolen_cycles);
             m_total_cycles += lynx_cycles;
+            SynchronizeComLynx();
 
             if (m_m6502->IsHalted())
             {

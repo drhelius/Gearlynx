@@ -22,6 +22,7 @@
 
 #include <SDL3/SDL.h>
 #include "gearlynx.h"
+#include "comlynx.h"
 #define MINI_CASE_SENSITIVE
 #include "ini.h"
 #include "imgui.h"
@@ -113,6 +114,9 @@ struct config_Emulator
     bool allow_screensaver = false;
     int mcp_tcp_port = 7777;
     std::string mcp_http_address = "127.0.0.1";
+    std::string comlynx_host = "127.0.0.1";
+    std::string comlynx_bind_address = "0.0.0.0";
+    int comlynx_port = COMLYNX_DEFAULT_PORT;
     int console_type = 0;
     int eeprom = config_EEPROM_Auto;
     int cartridge_hardware = config_CartridgeHardware_Auto;

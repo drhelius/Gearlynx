@@ -58,6 +58,31 @@ inline u32 read_u32_be(const u8* p)
     return (u32)p[3] | ((u32)p[2] << 8) | ((u32)p[1] << 16) | ((u32)p[0] << 24);
 }
 
+inline u64 read_u64_be(const u8* p)
+{
+    return ((u64)read_u32_be(p) << 32) | read_u32_be(p + 4);
+}
+
+inline void write_u16_be(u8* p, u16 value)
+{
+    p[0] = (u8)(value >> 8);
+    p[1] = (u8)value;
+}
+
+inline void write_u32_be(u8* p, u32 value)
+{
+    p[0] = (u8)(value >> 24);
+    p[1] = (u8)(value >> 16);
+    p[2] = (u8)(value >> 8);
+    p[3] = (u8)value;
+}
+
+inline void write_u64_be(u8* p, u64 value)
+{
+    write_u32_be(p, (u32)(value >> 32));
+    write_u32_be(p + 4, (u32)value);
+}
+
 inline u8 hi(u16 a)
 {
     return (u8)(a >> 8);

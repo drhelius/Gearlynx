@@ -21,6 +21,7 @@
 #define EMU_H
 
 #include "gearlynx.h"
+#include "comlynx/comlynx_manager.h"
 
 #ifdef EMU_IMPORT
     #define EXTERN
@@ -160,6 +161,13 @@ EXTERN void emu_mcp_stop(void);
 EXTERN bool emu_mcp_is_running(void);
 EXTERN int emu_mcp_get_transport_mode(void);
 EXTERN void emu_mcp_pump_commands(void);
+EXTERN bool emu_comlynx_host(const char* bind_address, int port);
+EXTERN bool emu_comlynx_join(const char* host, int port);
+EXTERN void emu_comlynx_stop(void);
+EXTERN void emu_comlynx_pump(void);
+EXTERN bool emu_comlynx_is_active(void);
+EXTERN bool emu_comlynx_is_cable_connected(void);
+EXTERN ComLynxStatus emu_comlynx_get_status(void);
 EXTERN void emu_debug_monitor_start(int port);
 EXTERN void emu_debug_monitor_stop(void);
 EXTERN bool emu_debug_monitor_is_running(void);

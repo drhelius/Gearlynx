@@ -66,6 +66,7 @@ static bool shader_parameter_is_integer(const ShaderPresetParameter* parameter);
 static int shader_parameter_round_to_int(float value);
 static void menu_input(void);
 static void menu_audio(void);
+static void menu_comlynx(void);
 static void menu_debug(void);
 static void menu_about(void);
 static void draw_background_color_menu(const char* label, int theme);
@@ -112,6 +113,7 @@ void gui_main_menu(void)
         menu_video();
         menu_input();
         menu_audio();
+        menu_comlynx();
         menu_debug();
         menu_about();
         draw_server_status();
@@ -177,12 +179,14 @@ static void menu_gearlynx(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Fast Forward", config_hotkeys[config_HotkeyIndex_FFWD].str, &config_emulator.ffwd, media_actions_enabled))
+        bool comlynx_active = emu_comlynx_is_active();
+
+        if (ImGui::MenuItem("Fast Forward", config_hotkeys[config_HotkeyIndex_FFWD].str, &config_emulator.ffwd, media_actions_enabled && !comlynx_active))
         {
             gui_action_ffwd();
         }
 
-        if (ImGui::BeginMenu("Fast Forward Speed"))
+        if (ImGui::BeginMenu("Fast Forward Speed", !comlynx_active))
         {
             ImGui::PushItemWidth(100.0f);
             ImGui::Combo("##fwd", &config_emulator.ffwd_speed, "X 1.5\0X 2\0X 2.5\0X 3\0Unlimited\0\0");
@@ -190,7 +194,7 @@ static void menu_gearlynx(void)
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Rewind"))
+        if (ImGui::BeginMenu("Rewind", !comlynx_active))
         {
             if (ImGui::MenuItem("Enabled", config_hotkeys[config_HotkeyIndex_Rewind].str, &config_rewind.enabled))
                 rewind_reset();
@@ -202,7 +206,7 @@ static void menu_gearlynx(void)
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Run-Ahead"))
+        if (ImGui::BeginMenu("Run-Ahead", !comlynx_active))
         {
             ImGui::PushItemWidth(140.0f);
             ImGui::Combo("##runahead", &config_emulator.runahead, "Disabled\0" "1 Frame\0" "2 Frames\0" "3 Frames\0\0");
@@ -241,7 +245,7 @@ static void menu_gearlynx(void)
             save_state = true;
         }
 
-        if (ImGui::MenuItem("Load State From...", "", false, media_actions_enabled))
+        if (ImGui::MenuItem("Load State From...", "", false, media_actions_enabled && !comlynx_active))
         {
             open_state = true;
         }
@@ -268,7 +272,7 @@ static void menu_gearlynx(void)
             emu_save_state_slot(config_emulator.save_slot + 1);
         }
 
-        if (ImGui::MenuItem("Load State", config_hotkeys[config_HotkeyIndex_LoadState].str, false, media_actions_enabled))
+        if (ImGui::MenuItem("Load State", config_hotkeys[config_HotkeyIndex_LoadState].str, false, media_actions_enabled && !comlynx_active))
         {
             std::string message("Loading state from slot ");
             message += std::to_string(config_emulator.save_slot + 1);
@@ -1382,6 +1386,91 @@ static void menu_debug(void)
 #endif
 }
 
+static void menu_comlynx(void)
+{
+    if (!ImGui::BeginMenu("ComLynx"))
+        return;
+
+    gui_in_use = true;
+    ComLynxStatus status = emu_comlynx_get_status();
+    bool active = emu_comlynx_is_active();
+    const ImVec4 cornflower_blue(0.39f, 0.58f, 0.93f, 1.0f);
+    const ImVec4 error_red(0.98f, 0.15f, 0.45f, 1.0f);
+
+    if (ImGui::MenuItem("Host Session", NULL, false, !active))
+        emu_comlynx_host(config_emulator.comlynx_bind_address.c_str(), config_emulator.comlynx_port);
+    if (ImGui::MenuItem("Join Session", NULL, false, !active))
+        emu_comlynx_join(config_emulator.comlynx_host.c_str(), config_emulator.comlynx_port);
+    if (ImGui::MenuItem("Disconnect", NULL, false, status.mode != ComLynxModeDisabled))
+        emu_comlynx_stop();
+
+    ImGui::Separator();
+
+    switch (status.mode)
+    {
+        case ComLynxModeHosting:
+            ImGui::TextColored(cornflower_blue, "Hosting on %s", status.endpoint);
+            ImGui::TextDisabled("%d connected peer%s", status.peer_count,
+                status.peer_count == 1 ? "" : "s");
+            break;
+        case ComLynxModeJoining:
+            ImGui::TextColored(cornflower_blue, "Joining %s...", status.endpoint);
+            break;
+        case ComLynxModeConnected:
+            ImGui::TextColored(cornflower_blue, "Connected to %s", status.endpoint);
+            ImGui::TextDisabled("Local peer %d", status.local_peer_id);
+            break;
+        case ComLynxModeFault:
+            ImGui::TextColored(error_red, "%s", status.last_error);
+            break;
+        default:
+            ImGui::TextColored(error_red, "Disconnected");
+            break;
+    }
+
+    ImGui::Separator();
+
+    char host[128];
+    char bind_address[64];
+    strncpy_fit(host, config_emulator.comlynx_host.c_str(), sizeof(host));
+    strncpy_fit(bind_address, config_emulator.comlynx_bind_address.c_str(), sizeof(bind_address));
+
+    ImGui::BeginDisabled(active);
+
+    ImGui::Text("Host Address:");
+    ImGui::SameLine(110.0f);
+    ImGui::SetNextItemWidth(150.0f);
+    if (ImGui::InputText("##comlynx_host", host, sizeof(host), ImGuiInputTextFlags_AutoSelectAll))
+        config_emulator.comlynx_host = host;
+
+    ImGui::Text("Bind Address:");
+    ImGui::SameLine(110.0f);
+    ImGui::SetNextItemWidth(150.0f);
+    if (ImGui::InputText("##comlynx_bind", bind_address, sizeof(bind_address), ImGuiInputTextFlags_AutoSelectAll))
+        config_emulator.comlynx_bind_address = bind_address;
+
+    ImGui::Text("UDP Port:");
+    ImGui::SameLine(110.0f);
+    ImGui::SetNextItemWidth(60.0f);
+    if (ImGui::InputInt("##comlynx_port", &config_emulator.comlynx_port, 0, 0))
+        config_emulator.comlynx_port = CLAMP(config_emulator.comlynx_port, 1, 65535);
+
+    ImGui::EndDisabled();
+
+    if (status.mode != ComLynxModeDisabled)
+    {
+        ImGui::Separator();
+
+        ImGui::TextDisabled("TX: %llu  RX: %llu", (unsigned long long)status.frames_sent,
+            (unsigned long long)status.frames_received);
+        if (status.sequence_gaps > 0 || status.queue_overflows > 0)
+            ImGui::TextDisabled("Lost: %llu  Overflow: %llu", (unsigned long long)status.sequence_gaps,
+                (unsigned long long)status.queue_overflows);
+    }
+
+    ImGui::EndMenu();
+}
+
 static void menu_about(void)
 {
     if (ImGui::BeginMenu("About"))
@@ -1400,16 +1489,38 @@ static void draw_server_status(void)
 {
     bool mcp_running = emu_mcp_is_running();
     bool debug_monitor_running = emu_debug_monitor_is_running();
+    ComLynxStatus comlynx = emu_comlynx_get_status();
+    bool comlynx_active = comlynx.mode == ComLynxModeHosting ||
+        comlynx.mode == ComLynxModeJoining || comlynx.mode == ComLynxModeConnected;
 
-    if (!mcp_running && !debug_monitor_running)
+    if (!mcp_running && !debug_monitor_running && !comlynx_active)
         return;
 
+    char comlynx_status[64];
     char mcp_status[128];
     char debug_monitor_status[64];
+    bool show_comlynx_status = false;
     bool show_mcp_status = false;
     bool show_debug_monitor_status = false;
+    ImVec4 comlynx_color(0.39f, 0.58f, 0.93f, 1.0f);
     ImVec4 mcp_color(0.10f, 0.90f, 0.10f, 1.0f);
     ImVec4 debug_monitor_color(0.20f, 0.70f, 1.0f, 1.0f);
+
+    if (comlynx.mode == ComLynxModeHosting)
+    {
+        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: HOST (%d)", comlynx.peer_count);
+        show_comlynx_status = true;
+    }
+    else if (comlynx.mode == ComLynxModeJoining)
+    {
+        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: JOINING");
+        show_comlynx_status = true;
+    }
+    else if (comlynx.mode == ComLynxModeConnected)
+    {
+        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: PEER %d", comlynx.local_peer_id);
+        show_comlynx_status = true;
+    }
 
     if (mcp_running)
     {
@@ -1437,8 +1548,14 @@ static void draw_server_status(void)
     float spacing = style.ItemSpacing.x * 2.0f;
     float text_width = 0.0f;
 
+    if (show_comlynx_status)
+        text_width += ImGui::CalcTextSize(comlynx_status).x;
     if (show_mcp_status)
+    {
+        if (text_width > 0.0f)
+            text_width += spacing;
         text_width += ImGui::CalcTextSize(mcp_status).x;
+    }
     if (show_debug_monitor_status)
     {
         if (text_width > 0.0f)
@@ -1455,12 +1572,19 @@ static void draw_server_status(void)
     ImGui::SameLine(status_x);
     ImGui::AlignTextToFramePadding();
 
+    if (show_comlynx_status)
+        ImGui::TextColored(comlynx_color, "%s", comlynx_status);
+
     if (show_mcp_status)
+    {
+        if (show_comlynx_status)
+            ImGui::SameLine(0.0f, spacing);
         ImGui::TextColored(mcp_color, "%s", mcp_status);
+    }
 
     if (show_debug_monitor_status)
     {
-        if (show_mcp_status)
+        if (show_comlynx_status || show_mcp_status)
             ImGui::SameLine(0.0f, spacing);
         ImGui::TextColored(debug_monitor_color, "%s", debug_monitor_status);
     }

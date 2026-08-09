@@ -39,6 +39,8 @@ int main(int argc, char* argv[])
     bool mcp_http_set = false;
     bool headless = false;
     bool portable = false;
+    bool comlynx_host_set = false;
+    bool comlynx_join_set = false;
 
     for (int i = 1; i < argc; i++)
     {
@@ -138,6 +140,50 @@ int main(int argc, char* argv[])
                 }
                 app_params.debug_monitor_port = (int)port;
             }
+            else if (strcmp(argv[i], "--comlynx-host") == 0)
+            {
+                comlynx_host_set = true;
+                app_params.comlynx_mode = 0;
+            }
+            else if (strcmp(argv[i], "--comlynx-join") == 0)
+            {
+                if (i + 1 >= argc || argv[i + 1][0] == '-')
+                {
+                    fprintf(stderr, "Missing value for --comlynx-join\n");
+                    return -1;
+                }
+                comlynx_join_set = true;
+                app_params.comlynx_mode = 1;
+                app_params.comlynx_host = argv[++i];
+            }
+            else if (strcmp(argv[i], "--comlynx-port") == 0)
+            {
+                if (i + 1 >= argc || argv[i + 1][0] == '-')
+                {
+                    fprintf(stderr, "Missing value for --comlynx-port\n");
+                    return -1;
+                }
+
+                char* end = NULL;
+                long port = strtol(argv[++i], &end, 10);
+                if (!end || *end != '\0' || port <= 0 || port > 65535)
+                {
+                    fprintf(stderr, "Invalid ComLynx port: %s\n", argv[i]);
+                    return -1;
+                }
+                app_params.comlynx_port = (int)port;
+                app_params.comlynx_port_set = true;
+            }
+            else if (strcmp(argv[i], "--comlynx-bind") == 0)
+            {
+                if (i + 1 >= argc || argv[i + 1][0] == '-')
+                {
+                    fprintf(stderr, "Missing value for --comlynx-bind\n");
+                    return -1;
+                }
+                app_params.comlynx_bind_address = argv[++i];
+                app_params.comlynx_bind_address_set = true;
+            }
             else
             {
                 printf("Unknown option: %s\n", argv[i]);
@@ -152,7 +198,10 @@ int main(int argc, char* argv[])
     {
         if ((strcmp(argv[i], "--mcp-http-port") == 0) ||
             (strcmp(argv[i], "--mcp-http-address") == 0) ||
-            (strcmp(argv[i], "--debug-monitor-port") == 0))
+            (strcmp(argv[i], "--debug-monitor-port") == 0) ||
+            (strcmp(argv[i], "--comlynx-join") == 0) ||
+            (strcmp(argv[i], "--comlynx-port") == 0) ||
+            (strcmp(argv[i], "--comlynx-bind") == 0))
         {
             if (i + 1 < argc)
                 i++;
@@ -183,6 +232,12 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    if (comlynx_host_set && comlynx_join_set)
+    {
+        printf("Error: Cannot use both --comlynx-host and --comlynx-join at the same time\n");
+        return -1;
+    }
+
     if (show_usage)
     {
         printf("Usage: %s [options] [game_file] [symbol_file]\n", argv[0]);
@@ -197,7 +252,11 @@ int main(int argc, char* argv[])
         printf("      --mcp-http-port N HTTP port for MCP server (default: 7777)\n");
         printf("      --debug-monitor       Start debug monitor TCP server (default port: 6502)\n");
         printf("      --debug-monitor-port N Debug monitor port, 1-65534 (default: 6502)\n");
-        printf("      --headless        Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)\n");
+        printf("      --comlynx-host    Host a ComLynx UDP session\n");
+        printf("      --comlynx-join HOST Join a ComLynx UDP session\n");
+        printf("      --comlynx-port N  ComLynx UDP port (default: %d)\n", COMLYNX_DEFAULT_PORT);
+        printf("      --comlynx-bind ADDRESS ComLynx host bind address (default: 0.0.0.0)\n");
+        printf("      --headless        Run without GUI (requires MCP, debug monitor, or ComLynx)\n");
         printf("      --portable        Store configuration and user data beside the application\n");
         printf("  -v, --version         Display version information\n");
         printf("  -h, --help            Display this help message\n");
@@ -219,6 +278,19 @@ int main(int argc, char* argv[])
         config_emulator.mcp_http_address = app_params.mcp_http_address;
     else
         app_params.mcp_http_address = config_emulator.mcp_http_address;
+
+    if (app_params.comlynx_port_set)
+        config_emulator.comlynx_port = app_params.comlynx_port;
+    else
+        app_params.comlynx_port = config_emulator.comlynx_port;
+
+    if (app_params.comlynx_bind_address_set)
+        config_emulator.comlynx_bind_address = app_params.comlynx_bind_address;
+    else
+        app_params.comlynx_bind_address = config_emulator.comlynx_bind_address;
+
+    if (app_params.comlynx_mode == 1)
+        config_emulator.comlynx_host = app_params.comlynx_host;
 
     if (headless)
     {

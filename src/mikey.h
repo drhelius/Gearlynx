@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include "common.h"
+#include "comlynx.h"
 #include "mikey_defines.h"
 #include "random.h"
 
@@ -92,6 +93,10 @@ public:
     bool IsDebugOutputEnabled();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream, int version);
+    void SetComLynxCallbacks(GLYNX_ComLynx_TX_Callback tx_callback,
+        GLYNX_ComLynx_RX_Callback rx_callback, void* user_data);
+    void SetComLynxCableConnected(bool connected);
+    bool IsComLynxCableConnected() const;
 
 private:
     void ResetTimers();
@@ -141,6 +146,11 @@ private:
     bool m_debug_output_enabled;
     TraceLogger* m_trace_logger;
     u32 m_cpu_read_cycles;
+    GLYNX_ComLynx_TX_Callback m_comlynx_tx_callback;
+    GLYNX_ComLynx_RX_Callback m_comlynx_rx_callback;
+    void* m_comlynx_user_data;
+    bool m_comlynx_cable_connected;
+    u8 m_comlynx_rx_spacing_bits;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

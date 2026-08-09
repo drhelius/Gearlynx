@@ -101,6 +101,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - Save states with preview and rewind support.
 - Run-ahead support to reduce input latency.
 - Very accurate audio emulation with configurable low-pass filter (mimics original Lynx audio hardware).
+- ComLynx multiplayer over UDP for up to eight emulator instances on the same machine or a LAN.
 - VGM recorder.
 - Internal database for automatic ROM detection and hardware selection if `Auto` options are selected.
 - Bank switching (BANK1 + AUDIN) and EEPROM.
@@ -157,8 +158,12 @@ Options:
       --mcp-http-port N    HTTP port for MCP server (default: 7777)
       --debug-monitor      Start debug monitor TCP server (default port: 6502)
       --debug-monitor-port N Debug monitor port (default: 6502)
-      --headless           Run without GUI (requires --mcp-stdio, --mcp-http, or --debug-monitor)
-        --portable           Store configuration and user data beside the application
+      --comlynx-host       Host a ComLynx UDP session
+      --comlynx-join HOST  Join a ComLynx UDP session
+      --comlynx-port N     ComLynx UDP port (default: 7800)
+      --comlynx-bind ADDRESS ComLynx host bind address (default: 0.0.0.0)
+      --headless           Run without GUI (requires MCP, debug monitor, or ComLynx)
+      --portable           Store configuration and user data beside the application
   -v, --version            Display version information
   -h, --help               Display this help message
 ```
@@ -168,6 +173,12 @@ Options:
 Gearlynx includes a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server that enables AI-assisted debugging through AI agents like GitHub Copilot, Claude, Codex and similar. The server provides tools for execution control, memory inspection, breakpoints, disassembly, hardware status, rewind and more. STDIO and HTTP transports are supported, with STDIO preferred.
 
 For complete setup instructions and tool documentation, see [MCP_README.md](MCP_README.md).
+
+### ComLynx Multiplayer
+
+Open the `ComLynx` menu on one instance and select `Host Session`. On each additional instance, enter the host address and matching UDP port, then select `Join Session`. For command-line use, start the host with `--comlynx-host` and clients with `--comlynx-join HOST`; use `--comlynx-port` on every instance when changing the default port. Independent instances should use separate application copies or `--portable` data directories so configuration, saves, and single-instance handling do not conflict.
+
+The transport is intended only for trusted local networks: it uses manual addresses, has no Internet discovery or NAT traversal, encryption, authentication, packet retransmission, or electrical collision/break emulation.
 
 ### VS Code Extension
 

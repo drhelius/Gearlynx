@@ -2094,7 +2094,7 @@ json DebugAdapter::ToggleFastForward(bool enabled)
     gui_action_ffwd();
 
     result["success"] = true;
-    result["enabled"] = enabled;
+    result["enabled"] = config_emulator.ffwd;
     result["speed"] = config_emulator.ffwd_speed;
 
     return result;

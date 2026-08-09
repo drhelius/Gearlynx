@@ -161,6 +161,11 @@ int application_init(const ApplicationParams& params)
         emu_debug_monitor_start(params.debug_monitor_port);
     }
 
+    if (params.comlynx_mode == 0)
+        emu_comlynx_host(params.comlynx_bind_address.c_str(), params.comlynx_port);
+    else if (params.comlynx_mode == 1)
+        emu_comlynx_join(params.comlynx_host.c_str(), params.comlynx_port);
+
     application_refocus_window();
 
     return 0;
@@ -531,7 +536,7 @@ static void sdl_events_app(const SDL_Event* event)
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         {
             display_disable_vsync();
-            if (config_emulator.pause_when_inactive)
+            if (config_emulator.pause_when_inactive && !emu_comlynx_is_active())
             {
                 paused_when_focus_lost = emu_is_paused();
                 emu_pause();

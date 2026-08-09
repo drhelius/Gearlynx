@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include "common.h"
+#include "comlynx.h"
 
 class Audio;
 class Bus;
@@ -89,6 +90,11 @@ public:
     Bus* GetBus();
     u64 GetTotalCycles();
     TraceLogger* GetTraceLogger();
+    void SetComLynxCallbacks(GLYNX_ComLynx_TX_Callback tx_callback,
+        GLYNX_ComLynx_RX_Callback rx_callback, GLYNX_ComLynx_Sync_Callback sync_callback,
+        void* user_data);
+    void SetComLynxCableConnected(bool connected);
+    bool IsComLynxCableConnected() const;
 
 private:
     void Reset();
@@ -99,6 +105,7 @@ private:
     bool SaveState(std::ostream& stream, size_t& size, bool screenshot);
     bool LoadState(std::istream& stream);
     std::string GetSaveStatePath(const char* path, int index);
+    void SynchronizeComLynx();
 
 private:
     Memory* m_memory;
@@ -113,6 +120,9 @@ private:
     TraceLogger* m_trace_logger;
     bool m_paused;
     u64 m_total_cycles;
+    GLYNX_ComLynx_Sync_Callback m_comlynx_sync_callback;
+    void* m_comlynx_sync_user_data;
+    u64 m_comlynx_next_sync_cycle;
 };
 
 #include "gearlynx_core_inline.h"

@@ -123,7 +123,7 @@ INLINE u8 Mikey::Read(u16 address)
             if (IS_SET_BIT(m_state.IODIR, 2))
                 ret |= IS_SET_BIT(m_state.IODAT, 2) ? 0x04 : 0x00;
             else
-                ret |= 0x04;  // Input defaults to high (no cable present)
+                ret |= m_comlynx_cable_connected ? 0x00 : 0x04;
 
             // Bit 3: Rest signal (output with REST signal gating)
             if (IS_SET_BIT(m_state.IODIR, 3))
@@ -1284,6 +1284,27 @@ inline void Mikey::UartClock()
     if (m_state.uart.prescaler != 0)
         return;
 
+    if (m_comlynx_rx_spacing_bits > 0)
+        m_comlynx_rx_spacing_bits--;
+
+    if (m_comlynx_cable_connected && m_comlynx_rx_callback && m_comlynx_rx_spacing_bits == 0)
+    {
+        u8 data;
+        bool parity_bit;
+
+        if (m_comlynx_rx_callback(&data, &parity_bit, m_comlynx_user_data))
+        {
+            bool odd = (parity8(data) != 0);
+            bool expected_parity = m_state.uart.par_even ? odd : !odd;
+            bool parity_error = parity_bit != expected_parity;
+
+            UartRxPush(data, parity_bit, parity_error, false, false);
+            UartRelevelIRQ();
+
+            m_comlynx_rx_spacing_bits = 11;
+        }
+    }
+
     if (!m_state.uart.tx_active)
     {
         if (m_state.uart.tx_hold_valid)
@@ -1358,6 +1379,9 @@ inline void Mikey::UartClock()
             m_state.uart.tx_suppress_eof_loopback = false;
         else
             UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break);
+
+        if (m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_tx_callback)
+            m_comlynx_tx_callback(new_data, new_parbit, m_comlynx_user_data);
 
         // If there is a holding byte queued, start it now
         if (m_state.uart.tx_hold_valid)

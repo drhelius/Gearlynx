@@ -47,7 +47,7 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(230, 426), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(260, 560), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();
@@ -133,6 +133,32 @@ void gui_debug_window_uart(void)
 
     ImGui::TextColored(violet, "TX BIT IDX   "); ImGui::SameLine();
     ImGui::TextColored(white, "%d", mikey_state->uart.tx_bit_index);
+
+    ImGui::Separator();
+
+    ComLynxStatus comlynx = emu_comlynx_get_status();
+    const char* mode = "DISABLED";
+    if (comlynx.mode == ComLynxModeHosting)
+        mode = "HOST";
+    else if (comlynx.mode == ComLynxModeJoining)
+        mode = "JOINING";
+    else if (comlynx.mode == ComLynxModeConnected)
+        mode = "CLIENT";
+    else if (comlynx.mode == ComLynxModeFault)
+        mode = "FAULT";
+
+    ImGui::TextColored(violet, "CABLE        "); ImGui::SameLine();
+    ImGui::TextColored(comlynx.cable_connected ? green : gray, "%s", comlynx.cable_connected ? "CONNECTED" : "DISCONNECTED");
+    ImGui::TextColored(violet, "NETWORK      "); ImGui::SameLine();
+    ImGui::TextColored(comlynx.mode == ComLynxModeFault ? red : white, "%s", mode);
+    ImGui::TextColored(violet, "PEER         "); ImGui::SameLine();
+    ImGui::TextColored(white, "%d / %d", comlynx.local_peer_id, comlynx.peer_count);
+    ImGui::TextColored(violet, "FRAMES TX/RX "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.frames_sent,
+        (unsigned long long)comlynx.frames_received);
+    ImGui::TextColored(violet, "LOSS/OVERFLOW"); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.sequence_gaps,
+        (unsigned long long)comlynx.queue_overflows);
 
     ImGui::PopFont();
 
