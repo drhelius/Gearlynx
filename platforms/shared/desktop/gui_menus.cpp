@@ -1398,6 +1398,12 @@ static void menu_comlynx(void)
     const ImVec4 cornflower_blue(0.39f, 0.58f, 0.93f, 1.0f);
     const ImVec4 error_red(0.98f, 0.15f, 0.45f, 1.0f);
 
+#if defined(__APPLE__)
+    if (ImGui::MenuItem("New " GLYNX_TITLE " Window", "", false, application_can_launch_new_instance()))
+        application_launch_new_instance();
+    ImGui::Separator();
+#endif
+
     if (ImGui::MenuItem("Host Session", NULL, false, !active))
         emu_comlynx_host(config_emulator.comlynx_bind_address.c_str(), config_emulator.comlynx_port);
     if (ImGui::MenuItem("Join Session", NULL, false, !active))
