@@ -29,6 +29,7 @@
 EXTERN void gui_debug_uart_init(void);
 EXTERN void gui_debug_uart_destroy(void);
 EXTERN void gui_debug_window_uart(void);
+EXTERN void gui_debug_window_comlynx(void);
 
 #undef GUI_DEBUG_UART_IMPORT
 #undef EXTERN

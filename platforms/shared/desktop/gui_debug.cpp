@@ -107,6 +107,8 @@ void gui_debug_windows(void)
             gui_debug_window_lcd();
         if (config_debug.show_uart)
             gui_debug_window_uart();
+        if (config_debug.show_comlynx)
+            gui_debug_window_comlynx();
         if (config_debug.show_eeprom)
             gui_debug_window_eeprom();
         if (config_debug.show_cart)

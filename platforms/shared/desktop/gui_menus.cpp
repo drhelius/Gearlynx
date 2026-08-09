@@ -1271,6 +1271,7 @@ static void menu_debug(void)
             ImGui::MenuItem("Show Color Registers", "", &config_debug.show_mikey_colors);
             ImGui::MenuItem("Show Audio", "", &config_debug.show_psg);
             ImGui::MenuItem("Show UART", "", &config_debug.show_uart);
+            ImGui::MenuItem("Show ComLynx", "", &config_debug.show_comlynx);
             ImGui::EndMenu();
         }
 
@@ -1456,17 +1457,6 @@ static void menu_comlynx(void)
         config_emulator.comlynx_port = CLAMP(config_emulator.comlynx_port, 1, 65535);
 
     ImGui::EndDisabled();
-
-    if (status.mode != ComLynxModeDisabled)
-    {
-        ImGui::Separator();
-
-        ImGui::TextDisabled("TX: %llu  RX: %llu", (unsigned long long)status.frames_sent,
-            (unsigned long long)status.frames_received);
-        if (status.sequence_gaps > 0 || status.queue_overflows > 0)
-            ImGui::TextDisabled("Lost: %llu  Overflow: %llu", (unsigned long long)status.sequence_gaps,
-                (unsigned long long)status.queue_overflows);
-    }
 
     ImGui::EndMenu();
 }

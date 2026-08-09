@@ -235,6 +235,7 @@ void config_read(void)
     config_debug.frame_buffer_custom_address = read_int("Debug", "FrameBufferCustomAddress", 0x0000);
     config_debug.show_lcd = read_bool("Debug", "LCD", false);
     config_debug.show_uart = read_bool("Debug", "UART", false);
+    config_debug.show_comlynx = read_bool("Debug", "ComLynx", false);
     config_debug.show_eeprom = read_bool("Debug", "EEPROM", false);
     config_debug.show_cart = read_bool("Debug", "Cart", false);
     config_debug.show_rewind = read_bool("Debug", "Rewind", false);
@@ -502,6 +503,7 @@ void config_write(void)
     write_int("Debug", "FrameBufferCustomAddress", config_debug.frame_buffer_custom_address);
     write_bool("Debug", "LCD", config_debug.show_lcd);
     write_bool("Debug", "UART", config_debug.show_uart);
+    write_bool("Debug", "ComLynx", config_debug.show_comlynx);
     write_bool("Debug", "EEPROM", config_debug.show_eeprom);
     write_bool("Debug", "Cart", config_debug.show_cart);
     write_bool("Debug", "Rewind", config_debug.show_rewind);

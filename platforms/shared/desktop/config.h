@@ -257,6 +257,7 @@ struct config_Debug
     int frame_buffer_custom_address = 0x0000;
     bool show_lcd = false;
     bool show_uart = false;
+    bool show_comlynx = false;
     bool show_eeprom = false;
     bool show_cart = false;
     bool show_rewind = false;

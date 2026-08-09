@@ -47,7 +47,7 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(228, 514), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(228, 448), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();
@@ -137,6 +137,29 @@ void gui_debug_window_uart(void)
     ImGui::Separator();
 
     ComLynxStatus comlynx = emu_comlynx_get_status();
+    ImGui::TextColored(violet, "CABLE         "); ImGui::SameLine();
+    ImGui::TextColored(comlynx.cable_connected ? green : gray, "%s", comlynx.cable_connected ? "CONNECTED" : "DISCONNECTED");
+
+    ImGui::PopFont();
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
+void gui_debug_window_comlynx(void)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::SetNextWindowPos(ImVec2(450, 90), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(220, 234), ImGuiCond_FirstUseEver);
+    ImGui::Begin("ComLynx", &config_debug.show_comlynx);
+
+    ComLynxStatus comlynx = emu_comlynx_get_status();
+    const ImVec4 green(0.10f, 0.90f, 0.10f, 1.0f);
+    const ImVec4 gray(0.55f, 0.55f, 0.55f, 1.0f);
+    const ImVec4 red(0.98f, 0.15f, 0.45f, 1.0f);
+    const ImVec4 white(1.0f, 1.0f, 1.0f, 1.0f);
+    const ImVec4 violet(0.75f, 0.50f, 1.0f, 1.0f);
+
     const char* mode = "DISABLED";
     if (comlynx.mode == ComLynxModeHosting)
         mode = "HOST";
@@ -147,18 +170,50 @@ void gui_debug_window_uart(void)
     else if (comlynx.mode == ComLynxModeFault)
         mode = "FAULT";
 
-    ImGui::TextColored(violet, "CABLE         "); ImGui::SameLine();
+    ImGui::PushFont(gui_default_font);
+
+    ImGui::TextColored(violet, "CABLE           "); ImGui::SameLine();
     ImGui::TextColored(comlynx.cable_connected ? green : gray, "%s", comlynx.cable_connected ? "CONNECTED" : "DISCONNECTED");
-    ImGui::TextColored(violet, "NETWORK       "); ImGui::SameLine();
+    ImGui::TextColored(violet, "NETWORK         "); ImGui::SameLine();
     ImGui::TextColored(comlynx.mode == ComLynxModeFault ? red : white, "%s", mode);
-    ImGui::TextColored(violet, "PEER          "); ImGui::SameLine();
+    ImGui::TextColored(violet, "PEER            "); ImGui::SameLine();
     ImGui::TextColored(white, "%d / %d", comlynx.local_peer_id, comlynx.peer_count);
-    ImGui::TextColored(violet, "FRAMES TX/RX  "); ImGui::SameLine();
-    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.frames_sent,
-        (unsigned long long)comlynx.frames_received);
-    ImGui::TextColored(violet, "LOSS/OVERFLOW "); ImGui::SameLine();
-    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.sequence_gaps,
-        (unsigned long long)comlynx.queue_overflows);
+
+    ImGui::Separator();
+    ImGui::TextColored(violet, "FRAMES GEN/TX/RX"); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.frames_generated,
+        (unsigned long long)comlynx.frames_sent, (unsigned long long)comlynx.frames_received);
+    ImGui::TextColored(violet, "DGRAM TX/RX     "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.datagrams_sent,
+        (unsigned long long)comlynx.datagrams_received);
+    ImGui::TextColored(violet, "SEND WAIT/ERR   "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.send_would_block,
+        (unsigned long long)comlynx.send_errors);
+    ImGui::TextColored(violet, "QUEUE MAX TX/RX "); ImGui::SameLine();
+    ImGui::TextColored(white, "%u / %u", comlynx.max_outgoing_queue_depth,
+        comlynx.max_incoming_queue_depth);
+
+    ImGui::Separator();
+    ImGui::TextColored(violet, "GAPS/OOO/DUP    "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.sequence_gaps,
+        (unsigned long long)comlynx.out_of_order_packets,
+        (unsigned long long)comlynx.duplicate_packets);
+    ImGui::TextColored(violet, "QUEUE OVERFLOW  "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu", (unsigned long long)comlynx.queue_overflows);
+
+    ImGui::Separator();
+    ImGui::TextColored(violet, "INTERVAL US     "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu / %llu", (unsigned long long)comlynx.packet_interarrival_min_us,
+        (unsigned long long)comlynx.packet_interarrival_avg_us,
+        (unsigned long long)comlynx.packet_interarrival_max_us);
+    ImGui::TextColored(violet, "JITTER US       "); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu", (unsigned long long)comlynx.network_jitter_us);
+
+    if (comlynx.mode == ComLynxModeFault)
+    {
+        ImGui::Separator();
+        ImGui::TextColored(red, "%s", comlynx.last_error);
+    }
 
     ImGui::PopFont();
 

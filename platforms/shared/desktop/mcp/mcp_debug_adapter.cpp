@@ -1401,6 +1401,26 @@ json DebugAdapter::GetUARTStatus()
     data["tx_bit_index"] = mikey_state->uart.tx_bit_index;
     status["data"] = data;
 
+    ComLynxStatus comlynx = emu_comlynx_get_status();
+    json network;
+    network["frames_generated"] = comlynx.frames_generated;
+    network["frames_sent"] = comlynx.frames_sent;
+    network["frames_received"] = comlynx.frames_received;
+    network["datagrams_sent"] = comlynx.datagrams_sent;
+    network["datagrams_received"] = comlynx.datagrams_received;
+    network["send_would_block"] = comlynx.send_would_block;
+    network["send_errors"] = comlynx.send_errors;
+    network["sequence_gaps"] = comlynx.sequence_gaps;
+    network["out_of_order_packets"] = comlynx.out_of_order_packets;
+    network["duplicate_packets"] = comlynx.duplicate_packets;
+    network["max_outgoing_queue_depth"] = comlynx.max_outgoing_queue_depth;
+    network["max_incoming_queue_depth"] = comlynx.max_incoming_queue_depth;
+    network["packet_interarrival_min_us"] = comlynx.packet_interarrival_min_us;
+    network["packet_interarrival_avg_us"] = comlynx.packet_interarrival_avg_us;
+    network["packet_interarrival_max_us"] = comlynx.packet_interarrival_max_us;
+    network["network_jitter_us"] = comlynx.network_jitter_us;
+    status["comlynx"] = network;
+
     return status;
 }
 

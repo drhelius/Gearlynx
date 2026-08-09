@@ -55,9 +55,18 @@ ComLynxManager::ComLynxManager()
     m_client_receive_sequence = 0;
     m_port = COMLYNX_DEFAULT_PORT;
     m_peer_count = 0;
+    m_pending_packet_head = 0;
+    m_pending_packet_count = 0;
     m_receive_enabled = false;
     m_sync_valid = false;
     m_sync_cycles = 0;
+    m_packet_arrival_valid = false;
+    m_packet_interarrival_samples = 0;
+    m_packet_interarrival_total_us = 0;
+    m_packet_interarrival_min_us = 0;
+    m_packet_interarrival_max_us = 0;
+    m_last_packet_interarrival_us = 0;
+    m_network_jitter_us = 0;
     ResetStatus();
 }
 
@@ -131,6 +140,7 @@ bool ComLynxManager::Host(const char* bind_address, int port)
 
     m_incoming_frames.Clear();
     m_outgoing_frames.Clear();
+    ClearPendingPackets();
 
     m_stop_requested.store(false);
 
@@ -204,6 +214,7 @@ bool ComLynxManager::Join(const char* host, int port)
 
     m_incoming_frames.Clear();
     m_outgoing_frames.Clear();
+    ClearPendingPackets();
 
     m_stop_requested.store(false);
 
@@ -235,6 +246,8 @@ void ComLynxManager::Stop()
     SetReceiveEnabled(false);
 
     m_outgoing_frames.Clear();
+    ClearPendingPackets();
+
     m_session_id = 0;
     m_peer_token = 0;
     m_local_peer_id = 0;
@@ -254,9 +267,11 @@ bool ComLynxManager::SendFrame(u8 data, bool parity_bit)
         return false;
 
     ComLynxFrame frame = {data, parity_bit};
+    IncrementFrameGenerated();
 
     if (m_outgoing_frames.Push(frame))
     {
+        UpdateMaxOutgoingQueueDepth(m_outgoing_frames.Size());
         WakeWorker();
         return true;
     }
@@ -348,16 +363,24 @@ void ComLynxManager::WorkerLoop()
         ProcessOutgoingFrames();
 
         fd_set read_set;
+        fd_set write_set;
         FD_ZERO(&read_set);
+        FD_ZERO(&write_set);
         FD_SET(m_socket, &read_set);
         FD_SET(m_wake_receive_socket, &read_set);
+
+        if (m_pending_packet_count > 0)
+            FD_SET(m_socket, &write_set);
 
         timeval timeout;
         timeout.tv_sec = 0;
         timeout.tv_usec = k_comlynx_select_timeout_ms * 1000;
 
         int highest_socket = (int)MAX(m_socket, m_wake_receive_socket);
-        int ready = select(highest_socket + 1, &read_set, NULL, NULL, &timeout);
+        int ready = select(highest_socket + 1, &read_set, &write_set, NULL, &timeout);
+
+        if (ready > 0 && FD_ISSET(m_socket, &write_set))
+            ProcessPendingPackets();
 
         if (ready > 0 && FD_ISSET(m_wake_receive_socket, &read_set))
         {
@@ -378,6 +401,9 @@ void ComLynxManager::WorkerLoop()
 
                 if (received <= 0)
                     break;
+
+                RecordDatagramReceived();
+                RecordPacketArrival();
 
                 ComLynxPacket packet;
 
@@ -531,7 +557,10 @@ bool ComLynxManager::QueueIncomingFrame(const ComLynxFrame& frame)
         return false;
 
     if (m_incoming_frames.Push(frame))
+    {
+        UpdateMaxIncomingQueueDepth(m_incoming_frames.Size());
         return true;
+    }
 
     IncrementQueueOverflow();
     SetFault("ComLynx receive queue overflow");
@@ -541,6 +570,13 @@ bool ComLynxManager::QueueIncomingFrame(const ComLynxFrame& frame)
 
 void ComLynxManager::ProcessOutgoingFrames()
 {
+    if (m_pending_packet_count > 0)
+    {
+        ProcessPendingPackets();
+        if (m_pending_packet_count > 0)
+            return;
+    }
+
     ComLynxFrame frame;
 
     while (m_outgoing_frames.Pop(frame))
@@ -561,9 +597,44 @@ void ComLynxManager::ProcessOutgoingFrames()
             packet.payload_size = 1;
             packet.payload[0] = frame.data;
 
-            if (SendPacket(packet, m_host_address))
-                IncrementFrameSent();
+            SendPacket(packet, m_host_address);
         }
+
+        if (m_pending_packet_count > 0)
+            return;
+    }
+}
+
+void ComLynxManager::ProcessPendingPackets()
+{
+    while (m_pending_packet_count > 0)
+    {
+        PendingPacket& pending = m_pending_packets[m_pending_packet_head];
+
+        int sent = sendto(m_socket, (const char*)pending.data, pending.size, 0,
+            (const sockaddr*)&pending.destination, sizeof(pending.destination));
+
+        if (sent == pending.size)
+        {
+            m_pending_packet_head = (m_pending_packet_head + 1) % COMLYNX_PENDING_PACKET_COUNT;
+            m_pending_packet_count--;
+            IncrementPacketSent();
+            if (pending.is_frame)
+                IncrementFrameSent();
+            continue;
+        }
+
+        if (sent < 0 && SendWouldBlock())
+        {
+            IncrementSendWouldBlock();
+            return;
+        }
+
+        IncrementSendError();
+
+        m_pending_packet_head = (m_pending_packet_head + 1) % COMLYNX_PENDING_PACKET_COUNT;
+        m_pending_packet_count--;
+        return;
     }
 }
 
@@ -730,8 +801,7 @@ void ComLynxManager::BroadcastFrame(const ComLynxFrame& frame, u8 sender_id)
         packet.payload_size = 1;
         packet.payload[0] = frame.data;
 
-        if (SendPacket(packet, peer.address))
-            IncrementFrameSent();
+        SendPacket(packet, peer.address);
     }
 }
 
@@ -742,12 +812,55 @@ bool ComLynxManager::SendPacket(const ComLynxPacket& packet, const sockaddr_in& 
     if (!comlynx_packet_encode(packet, buffer, sizeof(buffer), &size))
         return false;
 
+    bool is_frame = packet.type == ComLynxPacketFrame;
+
+    if (m_pending_packet_count > 0)
+    {
+        QueuePendingPacket(buffer, size, is_frame, destination);
+        return false;
+    }
+
     int sent = sendto(m_socket, (const char*)buffer, size, 0, (const sockaddr*)&destination, sizeof(destination));
 
-    if (sent != size)
-        return false;
+    if (sent == size)
+    {
+        IncrementPacketSent();
+        if (is_frame)
+            IncrementFrameSent();
+        return true;
+    }
 
-    IncrementPacketSent();
+    if (sent < 0 && SendWouldBlock())
+    {
+        IncrementSendWouldBlock();
+        QueuePendingPacket(buffer, size, is_frame, destination);
+        return false;
+    }
+
+    IncrementSendError();
+
+    return false;
+}
+
+bool ComLynxManager::QueuePendingPacket(const u8* data, int size, bool is_frame, const sockaddr_in& destination)
+{
+    if (m_pending_packet_count >= COMLYNX_PENDING_PACKET_COUNT)
+    {
+        IncrementQueueOverflow();
+        SetFault("ComLynx pending packet queue overflow");
+        return false;
+    }
+
+    int index = (m_pending_packet_head + m_pending_packet_count) % COMLYNX_PENDING_PACKET_COUNT;
+
+    PendingPacket& pending = m_pending_packets[index];
+    pending.destination = destination;
+    pending.size = size;
+    pending.is_frame = is_frame;
+
+    memcpy(pending.data, data, size);
+
+    m_pending_packet_count++;
 
     return true;
 }
@@ -765,7 +878,10 @@ bool ComLynxManager::AcceptSequence(Peer& peer, u32 sequence)
 
     if (difference <= 0)
     {
-        IncrementDuplicate();
+        if (difference == 0)
+            IncrementDuplicate();
+        else
+            IncrementOutOfOrder();
         return false;
     }
 
@@ -790,7 +906,10 @@ bool ComLynxManager::AcceptClientSequence(u32 sequence)
 
     if (difference <= 0)
     {
-        IncrementDuplicate();
+        if (difference == 0)
+            IncrementDuplicate();
+        else
+            IncrementOutOfOrder();
         return false;
     }
 
@@ -908,6 +1027,12 @@ void ComLynxManager::DrainWakeSocket()
     }
 }
 
+void ComLynxManager::ClearPendingPackets()
+{
+    m_pending_packet_head = 0;
+    m_pending_packet_count = 0;
+}
+
 void ComLynxManager::CloseSocket()
 {
     if (m_socket != GLYNX_INVALID_SOCKET)
@@ -973,6 +1098,14 @@ void ComLynxManager::SetEndpoint(const char* address, int port)
 
 void ComLynxManager::ResetStatus()
 {
+    m_packet_arrival_valid = false;
+    m_packet_interarrival_samples = 0;
+    m_packet_interarrival_total_us = 0;
+    m_packet_interarrival_min_us = 0;
+    m_packet_interarrival_max_us = 0;
+    m_last_packet_interarrival_us = 0;
+    m_network_jitter_us = 0;
+
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
     memset(&m_status, 0, sizeof(m_status));
@@ -984,6 +1117,7 @@ void ComLynxManager::IncrementPacketSent()
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
     m_status.packets_sent++;
+    m_status.datagrams_sent++;
 }
 
 void ComLynxManager::IncrementPacketReceived()
@@ -991,6 +1125,20 @@ void ComLynxManager::IncrementPacketReceived()
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
     m_status.packets_received++;
+}
+
+void ComLynxManager::RecordDatagramReceived()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.datagrams_received++;
+}
+
+void ComLynxManager::IncrementFrameGenerated()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.frames_generated++;
 }
 
 void ComLynxManager::IncrementFrameSent()
@@ -1007,11 +1155,32 @@ void ComLynxManager::IncrementFrameReceived()
     m_status.frames_received++;
 }
 
+void ComLynxManager::IncrementSendWouldBlock()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.send_would_block++;
+}
+
+void ComLynxManager::IncrementSendError()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.send_errors++;
+}
+
 void ComLynxManager::IncrementDuplicate()
 {
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
     m_status.duplicate_packets++;
+}
+
+void ComLynxManager::IncrementOutOfOrder()
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.out_of_order_packets++;
 }
 
 void ComLynxManager::IncrementSequenceGaps(u32 count)
@@ -1028,10 +1197,78 @@ void ComLynxManager::IncrementQueueOverflow()
     m_status.queue_overflows++;
 }
 
+void ComLynxManager::UpdateMaxOutgoingQueueDepth(u32 depth)
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    if (depth > m_status.max_outgoing_queue_depth)
+        m_status.max_outgoing_queue_depth = depth;
+}
+
+void ComLynxManager::UpdateMaxIncomingQueueDepth(u32 depth)
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    if (depth > m_status.max_incoming_queue_depth)
+        m_status.max_incoming_queue_depth = depth;
+}
+
+void ComLynxManager::RecordPacketArrival()
+{
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+    if (!m_packet_arrival_valid)
+    {
+        m_packet_arrival_valid = true;
+        m_last_packet_arrival = now;
+        return;
+    }
+
+    u64 interval = (u64)std::chrono::duration_cast<std::chrono::microseconds>(now - m_last_packet_arrival).count();
+    m_last_packet_arrival = now;
+    m_packet_interarrival_samples++;
+    m_packet_interarrival_total_us += interval;
+
+    if (m_packet_interarrival_min_us == 0 || interval < m_packet_interarrival_min_us)
+        m_packet_interarrival_min_us = interval;
+    if (interval > m_packet_interarrival_max_us)
+        m_packet_interarrival_max_us = interval;
+
+    if (m_packet_interarrival_samples > 1)
+    {
+        u64 variation = interval > m_last_packet_interarrival_us ?
+            interval - m_last_packet_interarrival_us :
+            m_last_packet_interarrival_us - interval;
+
+        if (variation > m_network_jitter_us)
+            m_network_jitter_us += (variation - m_network_jitter_us) / 16;
+        else
+            m_network_jitter_us -= (m_network_jitter_us - variation) / 16;
+    }
+
+    m_last_packet_interarrival_us = interval;
+
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.packet_interarrival_min_us = m_packet_interarrival_min_us;
+    m_status.packet_interarrival_avg_us = m_packet_interarrival_total_us / m_packet_interarrival_samples;
+    m_status.packet_interarrival_max_us = m_packet_interarrival_max_us;
+    m_status.network_jitter_us = m_network_jitter_us;
+}
+
 bool ComLynxManager::SameAddress(const sockaddr_in& left, const sockaddr_in& right)
 {
     return left.sin_family == right.sin_family && left.sin_port == right.sin_port &&
         left.sin_addr.s_addr == right.sin_addr.s_addr;
+}
+
+bool ComLynxManager::SendWouldBlock()
+{
+#ifdef _WIN32
+    return WSAGetLastError() == WSAEWOULDBLOCK;
+#else
+    return errno == EAGAIN || errno == EWOULDBLOCK;
+#endif
 }
 
 u64 ComLynxManager::MakeToken()
