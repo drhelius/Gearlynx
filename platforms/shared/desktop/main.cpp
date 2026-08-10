@@ -241,25 +241,27 @@ int main(int argc, char* argv[])
     if (show_usage)
     {
         printf("Usage: %s [options] [game_file] [symbol_file]\n", argv[0]);
-        printf("  [game_file]         Game file: accepts ROMs (.lyx, .lnx, .o) or ZIP (.zip)\n");
+        printf("\nArguments:\n");
+        printf("  [game_file]                 Game file: accepts ROMs (.lyx, .lnx, .o) or ZIP (.zip)\n");
+        printf("  [symbol_file]               Optional symbol file for debugging\n");
         printf("\nOptions:\n");
-        printf("  -f, --fullscreen      Start in fullscreen mode\n");
-        printf("  -w, --windowed        Start in windowed mode with menu visible\n");
-        printf("      --mcp-stdio       Auto-start MCP server with stdio transport\n");
-        printf("      --mcp-http        Auto-start MCP server with HTTP transport\n");
-        printf("      --mcp-router      Enable compact MCP tool routing\n");
-        printf("      --mcp-http-address A HTTP bind address (default: 127.0.0.1)\n");
-        printf("      --mcp-http-port N HTTP port for MCP server (default: 7777)\n");
-        printf("      --debug-monitor       Start debug monitor TCP server (default port: 6502)\n");
-        printf("      --debug-monitor-port N Debug monitor port, 1-65534 (default: 6502)\n");
-        printf("      --comlynx-host    Host a ComLynx UDP session\n");
-        printf("      --comlynx-join HOST Join a ComLynx UDP session\n");
-        printf("      --comlynx-port N  ComLynx UDP port (default: %d)\n", COMLYNX_DEFAULT_PORT);
-        printf("      --comlynx-bind ADDRESS ComLynx host bind address (default: 0.0.0.0)\n");
-        printf("      --headless        Run without GUI (requires MCP, debug monitor, or ComLynx)\n");
-        printf("      --portable        Store configuration and user data beside the application\n");
-        printf("  -v, --version         Display version information\n");
-        printf("  -h, --help            Display this help message\n");
+        printf("  -f, --fullscreen            Start in fullscreen mode\n");
+        printf("  -w, --windowed              Start in windowed mode with menu visible\n");
+        printf("      --mcp-stdio             Auto-start MCP server with stdio transport\n");
+        printf("      --mcp-http              Auto-start MCP server with HTTP transport\n");
+        printf("      --mcp-router            Enable compact MCP tool routing\n");
+        printf("      --mcp-http-address A    HTTP bind address (default: 127.0.0.1)\n");
+        printf("      --mcp-http-port N       HTTP port for MCP server (default: 7777)\n");
+        printf("      --debug-monitor         Start debug monitor TCP server (default port: 6502)\n");
+        printf("      --debug-monitor-port N  Debug monitor port, 1-65534 (default: 6502)\n");
+        printf("      --comlynx-host          Host a ComLynx UDP session\n");
+        printf("      --comlynx-join HOST     Join a ComLynx UDP session using the specified host\n");
+        printf("      --comlynx-port N        ComLynx UDP port (default: %d)\n", COMLYNX_DEFAULT_PORT);
+        printf("      --comlynx-bind A        ComLynx host bind address (default: 0.0.0.0)\n");
+        printf("      --headless              Run without GUI (requires MCP, debug monitor, or ComLynx)\n");
+        printf("      --portable              Store configuration and user data beside the application\n");
+        printf("  -v, --version               Display version information\n");
+        printf("  -h, --help                  Display this help message\n");
         return ret;
     }
 

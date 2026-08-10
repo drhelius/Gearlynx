@@ -145,27 +145,27 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 gearlynx [options] [game_file] [symbol_file]
 
 Arguments:
-  [game_file]              Game file: accepts ROMs (.lyx, .lnx, .o) or ZIP (.zip)
-  [symbol_file]            Optional symbol file for debugging
+  [game_file]                 Game file: accepts ROMs (.lyx, .lnx, .o) or ZIP (.zip)
+  [symbol_file]               Optional symbol file for debugging
 
 Options:
-  -f, --fullscreen         Start in fullscreen mode
-  -w, --windowed           Start in windowed mode with menu visible
-      --mcp-stdio          Auto-start MCP server with stdio transport
-      --mcp-http           Auto-start MCP server with HTTP transport
-      --mcp-router         Enable compact MCP tool routing
-      --mcp-http-address A HTTP bind address (default: 127.0.0.1)
-      --mcp-http-port N    HTTP port for MCP server (default: 7777)
-      --debug-monitor      Start debug monitor TCP server (default port: 6502)
-      --debug-monitor-port N Debug monitor port (default: 6502)
-      --comlynx-host       Host a ComLynx UDP session
-      --comlynx-join HOST  Join a ComLynx UDP session
-      --comlynx-port N     ComLynx UDP port (default: 7800)
-      --comlynx-bind ADDRESS ComLynx host bind address (default: 0.0.0.0)
-      --headless           Run without GUI (requires MCP, debug monitor, or ComLynx)
-      --portable           Store configuration and user data beside the application
-  -v, --version            Display version information
-  -h, --help               Display this help message
+  -f, --fullscreen            Start in fullscreen mode
+  -w, --windowed              Start in windowed mode with menu visible
+      --mcp-stdio             Auto-start MCP server with stdio transport
+      --mcp-http              Auto-start MCP server with HTTP transport
+      --mcp-router            Enable compact MCP tool routing
+      --mcp-http-address A    HTTP bind address (default: 127.0.0.1)
+      --mcp-http-port N       HTTP port for MCP server (default: 7777)
+      --debug-monitor         Start debug monitor TCP server (default port: 6502)
+      --debug-monitor-port N  Debug monitor port, 1-65534 (default: 6502)
+      --comlynx-host          Host a ComLynx UDP session
+      --comlynx-join HOST     Join a ComLynx UDP session
+      --comlynx-port N        ComLynx UDP port (default: 7800)
+      --comlynx-bind A        ComLynx host bind address (default: 0.0.0.0)
+      --headless              Run without GUI (requires MCP, debug monitor, or ComLynx)
+      --portable              Store configuration and user data beside the application
+  -v, --version               Display version information
+  -h, --help                  Display this help message
 ```
 
 ### MCP Server
