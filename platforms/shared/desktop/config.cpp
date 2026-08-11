@@ -272,6 +272,7 @@ void config_read(void)
     config_debug.font_size = read_int("Debug", "FontSize", 0);
     config_debug.font_size = CLAMP(config_debug.font_size, 0, 3);
     config_debug.scale = read_int("Debug", "Scale", 2);
+    config_debug.scale = CLAMP(config_debug.scale, 1, 20);
     config_debug.multi_viewport = read_bool("Debug", "MultiViewport", false);
     config_debug.single_instance = read_bool("Debug", "SingleInstance", false);
     config_debug.auto_debug_settings = read_bool("Debug", "AutoDebugSettings", false);
@@ -353,6 +354,7 @@ void config_read(void)
     if (config_video.scale > 3)
         config_video.scale -= 2;
     config_video.scale_manual = read_int("Video", "ScaleManual", 1);
+    config_video.scale_manual = CLAMP(config_video.scale_manual, 1, 20);
     config_video.ratio = read_int("Video", "AspectRatio", 0);
     config_video.rotation = read_int("Video", "Rotation", 0);
     config_video.rotation = CLAMP(config_video.rotation, GLYNX_ROTATION_AUTO, GLYNX_ROTATION_180);

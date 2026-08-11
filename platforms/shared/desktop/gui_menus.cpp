@@ -668,7 +668,7 @@ static void menu_video(void)
             ImGui::PushItemWidth(250.0f);
             ImGui::Combo("##scale", &config_video.scale, "Integer Scale (Auto)\0Integer Scale (Manual)\0Scale to Window Height\0Scale to Window Width & Height\0\0");
             if (config_video.scale == 1)
-                ImGui::SliderInt("##scale_manual", &config_video.scale_manual, 1, 10);
+                ImGui::SliderInt("##scale_manual", &config_video.scale_manual, 1, 20);
             ImGui::PopItemWidth();
             ImGui::EndMenu();
         }
@@ -1248,7 +1248,7 @@ static void menu_debug(void)
         if (ImGui::BeginMenu("Output Scale", config_debug.debug))
         {
             ImGui::PushItemWidth(200.0f);
-            ImGui::SliderInt("##debug_scale", &config_debug.scale, 1, 10);
+            ImGui::SliderInt("##debug_scale", &config_debug.scale, 1, 20);
             ImGui::PopItemWidth();
             ImGui::EndMenu();
         }
