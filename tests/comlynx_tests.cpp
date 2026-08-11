@@ -426,7 +426,7 @@ static void TestSynchronizationRecovery()
     std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start);
 
-    Check(elapsed.count() < 10, "late synchronization catches up without rebasing");
+    Check(elapsed.count() >= 8, "late synchronization rebases without catch-up burst");
     manager.Stop();
 }
 

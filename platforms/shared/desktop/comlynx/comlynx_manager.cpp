@@ -334,6 +334,11 @@ void ComLynxManager::Synchronize(u64 cycles)
     {
         std::this_thread::sleep_until(target);
     }
+    else if (now - target > std::chrono::milliseconds(6))
+    {
+        m_sync_cycles = cycles;
+        m_sync_time = now;
+    }
 }
 
 bool ComLynxManager::IsActive() const

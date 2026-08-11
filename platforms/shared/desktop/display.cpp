@@ -130,6 +130,9 @@ bool display_should_use_vsync(void)
     if (display_is_vsync_forced_off())
         return false;
 
+    if (emu_comlynx_is_cable_connected())
+        return false;
+
     if (config_video.sync_mode == config_VideoSync_Disabled)
         return false;
 
@@ -147,7 +150,8 @@ bool display_should_use_vsync(void)
 
 void display_use_vsync_if_enabled(void)
 {
-    bool effective = config_video.sync_mode != config_VideoSync_Disabled && !display_is_vsync_forced_off();
+    bool effective = config_video.sync_mode != config_VideoSync_Disabled &&
+        !display_is_vsync_forced_off() && !emu_comlynx_is_cable_connected();
     display_set_swap_interval(effective);
     display_update_frame_pacing();
 }
