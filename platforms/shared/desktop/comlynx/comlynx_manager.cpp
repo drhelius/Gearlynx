@@ -36,6 +36,7 @@ static const int k_comlynx_join_retry_ms = 250;
 static const int k_comlynx_join_timeout_ms = 5000;
 static const int k_comlynx_heartbeat_ms = 1000;
 static const int k_comlynx_peer_timeout_ms = 5000;
+static const u32 k_comlynx_receive_batch_limit = 256;
 
 ComLynxManager::ComLynxManager()
 {
@@ -248,6 +249,7 @@ void ComLynxManager::Stop()
 
     m_outgoing_frames.Clear();
     ClearPendingPackets();
+    m_sync_valid = false;
 
     m_session_id = 0;
     m_peer_token = 0;
@@ -332,11 +334,6 @@ void ComLynxManager::Synchronize(u64 cycles)
     {
         std::this_thread::sleep_until(target);
     }
-    else if (now - target > std::chrono::milliseconds(5))
-    {
-        m_sync_cycles = cycles;
-        m_sync_time = now;
-    }
 }
 
 bool ComLynxManager::IsActive() const
@@ -397,8 +394,9 @@ void ComLynxManager::WorkerLoop()
         if (ready > 0 && FD_ISSET(m_socket, &read_set))
         {
             u32 burst_frame_count = 0;
+            u32 datagram_count = 0;
 
-            while (!m_stop_requested.load())
+            while (!m_stop_requested.load() && datagram_count < k_comlynx_receive_batch_limit)
             {
                 u8 buffer[COMLYNX_PACKET_MAX_SIZE];
                 sockaddr_in source = {};
@@ -410,6 +408,7 @@ void ComLynxManager::WorkerLoop()
                 if (received <= 0)
                     break;
 
+                datagram_count++;
                 u64 local_receive_time_us = GetClockMicroseconds();
                 RecordDatagramReceived();
                 ComLynxPacket packet;

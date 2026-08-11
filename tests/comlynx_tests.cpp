@@ -274,10 +274,110 @@ static void TestLoopback()
     Check(host.GetMode() == ComLynxModeDisabled, "host stopped");
 }
 
+static void TestReceiveBacklogRecovery()
+{
+    const int frame_count = 2048;
+    const int batch_size = 128;
+    ComLynxManager host;
+    ComLynxManager client;
+
+    Check(host.Host("127.0.0.1", 0), "start backlog host");
+    Check(client.Join("127.0.0.1", host.GetStatus().port), "start backlog client");
+    Check(WaitForMode(client, ComLynxModeConnected, 2000), "backlog client connected");
+    client.SetReceiveEnabled(true);
+
+    for (int start = 0; start < frame_count; start += batch_size)
+    {
+        for (int i = start; i < start + batch_size; i++)
+            Check(host.SendFrame((u8)i, (i & 1) != 0), "send backlog frame");
+
+        Check(WaitForFramesQueued(client, start + batch_size, 2000), "queue backlog frame batch");
+    }
+
+    ComLynxStatus status = client.GetStatus();
+    Check(client.GetMode() == ComLynxModeConnected, "backlog client remains connected");
+    Check(status.queue_overflows == 0, "backlog does not overflow receive queue");
+    Check(status.max_incoming_queue_depth >= frame_count, "backlog exceeds old receive queue capacity");
+
+    ComLynxFrame frame = {};
+    for (int i = 0; i < frame_count; i++)
+    {
+        Check(client.ReceiveFrame(frame), "drain backlog frame");
+        Check(frame.data == (u8)i && frame.parity_bit == ((i & 1) != 0), "backlog frame order");
+    }
+    Check(!client.ReceiveFrame(frame), "backlog queue drained");
+
+    client.Stop();
+    host.Stop();
+}
+
+static void TestSixPlayerRelayBacklog()
+{
+    const int client_count = 5;
+    const int frames_per_client = 320;
+    const int batch_size = 32;
+    ComLynxManager host;
+    ComLynxManager* clients = new ComLynxManager[client_count];
+
+    Check(host.Host("127.0.0.1", 0), "start six-player host");
+    host.SetReceiveEnabled(true);
+
+    for (int client = 0; client < client_count; client++)
+    {
+        Check(clients[client].Join("127.0.0.1", host.GetStatus().port), "start six-player client");
+        Check(WaitForMode(clients[client], ComLynxModeConnected, 2000), "six-player client connected");
+        clients[client].SetReceiveEnabled(true);
+    }
+    Check(WaitForPeerCount(host, client_count, 2000), "six-player host peer count");
+
+    for (int start = 0; start < frames_per_client; start += batch_size)
+    {
+        for (int frame = start; frame < start + batch_size; frame++)
+        {
+            for (int client = 0; client < client_count; client++)
+                Check(clients[client].SendFrame((u8)(frame + client), (client & 1) != 0),
+                    "send six-player frame");
+        }
+
+        int frames_sent_per_client = start + batch_size;
+        Check(WaitForFramesQueued(host, frames_sent_per_client * client_count, 5000),
+            "queue six-player host batch");
+        for (int client = 0; client < client_count; client++)
+        {
+            Check(WaitForFramesQueued(clients[client], frames_sent_per_client * (client_count - 1), 5000),
+                "queue six-player client batch");
+        }
+    }
+
+    Check(host.GetMode() == ComLynxModeHosting, "six-player host remains connected");
+    Check(host.GetStatus().queue_overflows == 0, "six-player host queue does not overflow");
+    Check(host.GetStatus().max_incoming_queue_depth > 1024, "six-player host exceeds old queue capacity");
+
+    ComLynxFrame frame = {};
+    for (int i = 0; i < frames_per_client * client_count; i++)
+        Check(host.ReceiveFrame(frame), "drain six-player host frame");
+
+    for (int client = 0; client < client_count; client++)
+    {
+        Check(clients[client].GetMode() == ComLynxModeConnected, "six-player client remains connected");
+        Check(clients[client].GetStatus().queue_overflows == 0, "six-player client queue does not overflow");
+        Check(clients[client].GetStatus().max_incoming_queue_depth > 1024,
+            "six-player client exceeds old queue capacity");
+
+        for (int i = 0; i < frames_per_client * (client_count - 1); i++)
+            Check(clients[client].ReceiveFrame(frame), "drain six-player client frame");
+    }
+
+    for (int client = 0; client < client_count; client++)
+        clients[client].Stop();
+    host.Stop();
+    delete[] clients;
+}
+
 static void TestSessionCapacity()
 {
     ComLynxManager host;
-    ComLynxManager clients[COMLYNX_MAX_PEERS];
+    ComLynxManager* clients = new ComLynxManager[COMLYNX_MAX_PEERS];
     Check(host.Host("127.0.0.1", 0), "capacity host start");
     int port = host.GetStatus().port;
 
@@ -294,6 +394,7 @@ static void TestSessionCapacity()
     host.Stop();
     for (int i = 0; i < COMLYNX_MAX_PEERS; i++)
         clients[i].Stop();
+    delete[] clients;
 }
 
 static void TestSynchronization()
@@ -308,6 +409,24 @@ static void TestSynchronization()
         std::chrono::steady_clock::now() - start);
 
     Check(elapsed.count() >= 8, "active session paces emulated cycles");
+    manager.Stop();
+}
+
+static void TestSynchronizationRecovery()
+{
+    ComLynxManager manager;
+    Check(manager.Host("127.0.0.1", 0), "start synchronization recovery host");
+
+    manager.Synchronize(0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    manager.Synchronize(GLYNX_MASTER_CLOCK / 100);
+
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    manager.Synchronize(GLYNX_MASTER_CLOCK / 50);
+    std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start);
+
+    Check(elapsed.count() < 10, "late synchronization catches up without rebasing");
     manager.Stop();
 }
 
@@ -419,8 +538,11 @@ int main()
     TestQueue();
     TestConcurrentQueue();
     TestLoopback();
+    TestReceiveBacklogRecovery();
+    TestSixPlayerRelayBacklog();
     TestSessionCapacity();
     TestSynchronization();
+    TestSynchronizationRecovery();
     TestReceiveReadiness();
     TestResetMetrics();
     TestRestart();

@@ -29,6 +29,7 @@
 #include "comlynx_queue.h"
 
 #define COMLYNX_PENDING_PACKET_COUNT 64
+#define COMLYNX_INCOMING_FRAME_QUEUE_COUNT 65536
 
 enum ComLynxMode
 {
@@ -217,7 +218,7 @@ private:
     std::chrono::steady_clock::time_point m_last_join_request;
     std::chrono::steady_clock::time_point m_last_heartbeat;
     std::chrono::steady_clock::time_point m_last_host_packet;
-    ComLynxQueue<ComLynxFrame, 1024> m_incoming_frames;
+    ComLynxQueue<ComLynxFrame, COMLYNX_INCOMING_FRAME_QUEUE_COUNT> m_incoming_frames;
     ComLynxQueue<ComLynxFrame, 1024> m_outgoing_frames;
     PendingPacket m_pending_packets[COMLYNX_PENDING_PACKET_COUNT];
     int m_pending_packet_head;
