@@ -185,6 +185,18 @@ public:
 
         if (m_frameStep.active)
         {
+            DebugCommand* pause_cmd = m_commandQueue.Pop("debug_pause");
+            if (pause_cmd)
+            {
+                m_debugAdapter->Pause();
+
+                DebugResponse* resp = new DebugResponse();
+                resp->requestId = pause_cmd->requestId;
+                resp->result = {{"success", true}};
+                m_responseQueue.Push(resp);
+                SafeDelete(pause_cmd);
+            }
+
             if (emu_frame_counter >= m_frameStep.target_frame ||
                 emu_frame_counter < m_frameStep.start_frame ||
                 emu_is_debug_idle() || emu_is_paused())
@@ -602,7 +614,7 @@ private:
         {
             if (emu_frame_counter < m_inputMacro.wait_target_frame)
             {
-                continue_input_macro_wait();
+                continue_input_macro_wait(core);
                 return;
             }
 
@@ -620,7 +632,7 @@ private:
                 m_inputMacro.waiting = true;
                 m_inputMacro.step_index++;
 
-                continue_input_macro_wait();
+                continue_input_macro_wait(core);
                 return;
             }
 
@@ -640,10 +652,16 @@ private:
         finish_input_macro_success();
     }
 
-    void continue_input_macro_wait()
+    void continue_input_macro_wait(GearlynxCore* core)
     {
         if (emu_is_debug_idle())
         {
+            if (core->GetM6502()->BreakpointHit())
+            {
+                finish_input_macro_error("Controller macro interrupted by breakpoint");
+                return;
+            }
+
             u64 frames = m_inputMacro.wait_target_frame - emu_frame_counter;
 
             if (frames > 1000)
