@@ -44,7 +44,6 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     m_comlynx_user_data = NULL;
     m_comlynx_cable_connected = false;
     m_comlynx_rx_spacing_bits = 0;
-    m_comlynx_tx_hold_bits = 0;
 }
 
 Mikey::~Mikey()
@@ -172,7 +171,6 @@ void Mikey::ResetUART()
     m_state.uart.tx_ready_bits = 0;
     m_state.uart.tx_started_from_chain = false;
     m_comlynx_rx_spacing_bits = 0;
-    m_comlynx_tx_hold_bits = 0;
 }
 
 void Mikey::ResetPalette()
@@ -261,7 +259,6 @@ void Mikey::SetComLynxCableConnected(bool connected)
     if (!connected)
     {
         m_comlynx_rx_spacing_bits = 0;
-        m_comlynx_tx_hold_bits = 0;
     }
 }
 

@@ -151,7 +151,6 @@ private:
     void* m_comlynx_user_data;
     bool m_comlynx_cable_connected;
     u8 m_comlynx_rx_spacing_bits;
-    u16 m_comlynx_tx_hold_bits;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

@@ -1306,16 +1306,11 @@ inline void Mikey::UartClock()
     // The link is one half-duplex bus: nothing can arrive while this Lynx drives
     // the line, and a frame is only latched if the 2 deep RX FIFO has room. Both
     // conditions hold the byte in the link queue instead of destroying it.
-    bool bus_held = m_state.uart.tx_active || m_state.uart.tx_hold_valid;
-
-    if (!bus_held)
-        m_comlynx_tx_hold_bits = 0;
-    else if (m_comlynx_tx_hold_bits < COMLYNX_TX_HOLD_MAX_BITS)
-    {
-        // Bounded so a node transmitting without pause cannot starve itself.
-        m_comlynx_tx_hold_bits++;
+    // The hold is unbounded on purpose: letting link bytes in mid transmission
+    // makes loopback and link each deliver at full bus rate, which is twice what
+    // one wire can carry and overruns the 2 deep FIFO.
+    if (m_state.uart.tx_active || m_state.uart.tx_hold_valid)
         m_comlynx_rx_spacing_bits = 11;
-    }
 
     if (m_comlynx_cable_connected && m_comlynx_rx_callback &&
         m_comlynx_rx_spacing_bits == 0 && m_state.uart.rxq_count < 2)
@@ -1410,7 +1405,14 @@ inline void Mikey::UartClock()
         if (m_state.uart.tx_suppress_eof_loopback)
             m_state.uart.tx_suppress_eof_loopback = false;
         else
+        {
             UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break, 0);
+
+            // Loopback and link traffic share one wire, so a local frame also
+            // occupies the bus for a frame time; without this the next link byte
+            // can arrive one bit later and overrun the 2 deep FIFO.
+            m_comlynx_rx_spacing_bits = 11;
+        }
 
         if (m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_tx_callback)
             m_comlynx_tx_callback(new_data, new_parbit, !m_state.uart.tx_hold_valid, m_comlynx_user_data);

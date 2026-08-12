@@ -25,7 +25,6 @@
 #define COMLYNX_DEFAULT_PORT 7800
 #define COMLYNX_MAX_PEERS 8
 #define COMLYNX_SYNC_CYCLES 4096
-#define COMLYNX_TX_HOLD_MAX_BITS 256
 
 // ComLynx is a single half-duplex open-collector bus, so a node holds the line
 // for a whole back-to-back byte burst. burst_end marks the last byte of a burst
