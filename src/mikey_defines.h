@@ -28,6 +28,17 @@
     #define DebugMikey(msg, ...)
 #endif
 
+// Writing SERDAT to an idle transmitter does not put the frame on the wire at
+// once: the holding register has to reach the shifter first. Hardware shows
+// this as one bit time, which is why an echo lands one bit before TXEMPTY
+// while back to back frames keep both events together
+#define GLYNX_UART_TX_START_BITS 1
+
+// A frame landing on top of one that has not been read destroys it, but only
+// if it turns up soon enough. Measured on hardware the changeover sits near
+// 800us of gap: below it a pair of frames leaves one byte, above it two
+#define GLYNX_UART_RX_HOLD_CYCLES (800 * (GLYNX_MASTER_CLOCK / 1000000))
+
 #define MIKEY_TIM0BKUP      0xFD00
 #define MIKEY_TIM0CTLA      0xFD01
 #define MIKEY_TIM0CNT       0xFD02

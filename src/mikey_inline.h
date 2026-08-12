@@ -374,6 +374,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             if (!m_state.uart.tx_active && !m_state.uart.tx_brk)
             {
                 UartBeginFrame(value);
+                m_state.uart.tx_start_bits = GLYNX_UART_TX_START_BITS;
                 m_state.uart.tx_ready_bits = 2;
                 m_state.uart.tx_started_from_chain = false;
             }
@@ -844,10 +845,17 @@ inline void Mikey::WriteAudioExtra(u16 address, u8 value)
 
 INLINE void Mikey::Advance(u32 cycles)
 {
+    UpdateUART(cycles);
     UpdateVideo(cycles);
     UpdateAudio(cycles);
     UpdateTimers(cycles);
     UpdateIRQs();
+}
+
+INLINE void Mikey::UpdateUART(u32 cycles)
+{
+    if (m_state.uart.rx_age_cycles < GLYNX_UART_RX_HOLD_CYCLES)
+        m_state.uart.rx_age_cycles += cycles;
 }
 
 INLINE void Mikey::SynchronizeCPURead()
@@ -1213,44 +1221,40 @@ inline void Mikey::UartRxReflectHead()
 
 inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source)
 {
-    if (m_state.uart.rxq_count < 2)
-    {
-        u8 tail = (m_state.uart.rxq_head + m_state.uart.rxq_count) & 1;
-        u8 flags = (parbit ? 0x01 : 0) | (parerr ? 0x02 : 0) | (framerr ? 0x04 : 0) | (rxbreak ? 0x08 : 0);
-        m_state.uart.rxq_data[tail] = data;
-        m_state.uart.rxq_flags[tail] = flags;
+    u8 flags = (parbit ? 0x01 : 0) | (parerr ? 0x02 : 0) | (framerr ? 0x04 : 0) | (rxbreak ? 0x08 : 0);
+
+    // A frame that lands too soon after an unread one destroys it instead of
+    // queueing behind it, so at ComLynx speed only the newest byte survives
+    bool room = (m_state.uart.rxq_count == 0) ||
+                (m_state.uart.rxq_count == 1 && m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES);
+    bool lost = !room;
+
+    m_state.uart.rx_age_cycles = 0;
+
+    if (lost)
+        m_state.uart.ovr_err = true;
+
+    u8 slot = room ? ((m_state.uart.rxq_head + m_state.uart.rxq_count) & 1)
+                   : ((m_state.uart.rxq_head + m_state.uart.rxq_count - 1) & 1);
+
+    m_state.uart.rxq_data[slot] = data;
+    m_state.uart.rxq_flags[slot] = flags;
+
+    if (room)
         m_state.uart.rxq_count++;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
-        {
-            GLYNX_Trace_Entry e = {};
-            e.type = TRACE_MIKEY_UART;
-            e.uart.data = data;
-            e.uart.flags = flags;
-            e.uart.source = source;
-            e.uart.is_tx = false;
-            m_trace_logger->TraceLog(e);
-        }
-#endif
-    }
-    else
+    if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
     {
-        m_state.uart.ovr_err = true;
-
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
-        {
-            GLYNX_Trace_Entry e = {};
-            e.type = TRACE_MIKEY_UART;
-            e.uart.data = data;
-            e.uart.flags = 0x10;
-            e.uart.source = source;
-            e.uart.is_tx = false;
-            m_trace_logger->TraceLog(e);
-        }
-#endif
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_MIKEY_UART;
+        e.uart.data = data;
+        e.uart.flags = lost ? 0x10 : flags;
+        e.uart.source = source;
+        e.uart.is_tx = false;
+        m_trace_logger->TraceLog(e);
     }
+#endif
 
     UartRxReflectHead();
 }
@@ -1321,9 +1325,16 @@ inline void Mikey::UartClock()
 
         if (m_comlynx_rx_callback(&data, &parity_bit, &source, m_comlynx_user_data))
         {
-            bool odd = (parity8(data) != 0);
-            bool expected_parity = m_state.uart.par_even ? odd : !odd;
-            bool parity_error = parity_bit != expected_parity;
+            bool parity_error;
+
+            if (m_state.uart.par_en)
+            {
+                bool odd = (parity8(data) != 0);
+                bool expected_parity = m_state.uart.par_even ? odd : !odd;
+                parity_error = (parity_bit != expected_parity);
+            }
+            else
+                parity_error = (parity_bit != m_state.uart.par_even);
 
             UartRxPush(data, parity_bit, parity_error, false, false, source);
             UartRelevelIRQ();
@@ -1376,6 +1387,12 @@ inline void Mikey::UartClock()
     }
 
     // Skip synthesizing the TX line level per bit for now
+
+    if (m_state.uart.tx_start_bits > 0)
+    {
+        m_state.uart.tx_start_bits--;
+        return;
+    }
 
     m_state.uart.tx_bit_index++;
 
@@ -1431,7 +1448,7 @@ inline void Mikey::UartClock()
         else
         {
             m_state.uart.tx_ready = true;
-            m_state.uart.tx_empty_bits = (m_state.uart.tx_started_from_chain ? 0 : 2);
+            m_state.uart.tx_empty_bits = (m_state.uart.tx_started_from_chain ? 0 : 1);
             m_state.uart.tx_started_from_chain = false;
             m_state.uart.tx_empty = (m_state.uart.tx_empty_bits == 0);
         }

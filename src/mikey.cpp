@@ -170,6 +170,8 @@ void Mikey::ResetUART()
     m_state.uart.tx_empty_bits = 0;
     m_state.uart.tx_ready_bits = 0;
     m_state.uart.tx_started_from_chain = false;
+    m_state.uart.tx_start_bits = 0;
+    m_state.uart.rx_age_cycles = 0;
     m_comlynx_rx_spacing_bits = 0;
 }
 
@@ -356,6 +358,17 @@ void Mikey::Serialize(StateSerializer& s, int version)
     G_SERIALIZE(s, m_state.uart.rxq_count);
     G_SERIALIZE_ARRAY(s, m_state.uart.rxq_data, 2);
     G_SERIALIZE_ARRAY(s, m_state.uart.rxq_flags, 2);
+
+    if (version >= 22)
+    {
+        G_SERIALIZE(s, m_state.uart.tx_start_bits);
+        G_SERIALIZE(s, m_state.uart.rx_age_cycles);
+    }
+    else if (s.IsLoading())
+    {
+        m_state.uart.tx_start_bits = 0;
+        m_state.uart.rx_age_cycles = 0;
+    }
 
     G_SERIALIZE(s, m_state.ATTEN_A);
     G_SERIALIZE(s, m_state.ATTEN_B);

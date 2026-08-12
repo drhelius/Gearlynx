@@ -323,6 +323,12 @@ struct GLYNX_Uart
     u8 rxq_flags[2];
     u8 rxq_head;      // 0..1
     u8 rxq_count;     // 0..2
+
+    // Bit times left before an idle transmitter puts the frame on the wire
+    u8 tx_start_bits;
+
+    // Cycles since the last frame was latched, saturating
+    u32 rx_age_cycles;
 };
 
 #endif /* TYPES_H */
