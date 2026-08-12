@@ -25,7 +25,9 @@
 #include "eeprom.h"
 #include "game_drive.h"
 #include "el_cheapo_sd.h"
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "miniz.h"
+#undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "crc.h"
 #include "game_db.h"
 #include "state_serializer.h"
