@@ -174,6 +174,19 @@ INLINE u8 Mikey::Read(u16 address)
 
             if (!debug)
             {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+                if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART) && m_state.uart.rx_ready)
+                {
+                    GLYNX_Trace_Entry e = {};
+                    e.type = TRACE_MIKEY_UART;
+                    e.uart.kind = GLYNX_UART_TRACE_RD;
+                    e.uart.data = ret;
+                    e.uart.flags = m_state.uart.rxq_flags[m_state.uart.rxq_head & 1];
+                    e.uart.gap_us = UartCyclesToMicros(m_state.uart.rx_age_cycles);
+                    m_trace_logger->TraceLog(e);
+                }
+#endif
+
                 if (m_state.uart.rxq_count > 0)
                 {
                     m_state.uart.rxq_head ^= 1;
@@ -363,6 +376,27 @@ INLINE void Mikey::Write(u16 address, u8 value)
                 m_state.irq_mask = SET_BIT(m_state.irq_mask, 4);
             else
                 m_state.irq_mask = UNSET_BIT(m_state.irq_mask, 4);
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+            {
+                u8 cfg = value & 0xD7;
+                u8 backup = m_state.timers[4].backup;
+
+                if (cfg != m_uart_trace_cfg || backup != m_uart_trace_backup)
+                {
+                    m_uart_trace_cfg = cfg;
+                    m_uart_trace_backup = backup;
+
+                    GLYNX_Trace_Entry e = {};
+                    e.type = TRACE_MIKEY_UART;
+                    e.uart.kind = GLYNX_UART_TRACE_CFG;
+                    e.uart.data = cfg;
+                    e.uart.backup = backup;
+                    m_trace_logger->TraceLog(e);
+                }
+            }
+#endif
 
             UartRelevelIRQ();
             break;
@@ -1196,6 +1230,66 @@ INLINE void Mikey::UartRelevelIRQ()
     UpdateIRQs();
 }
 
+INLINE u16 Mikey::UartCyclesToMicros(u32 cycles)
+{
+    u32 us = cycles / (GLYNX_MASTER_CLOCK / 1000000);
+    return (us > 0xFFFF) ? 0xFFFF : (u16)us;
+}
+
+INLINE void Mikey::RedEyeFeed(u8 dir, u8 data)
+{
+    RedEyeStream* s = &m_redeye[dir & 1];
+
+    if (s->count == 0)
+    {
+        if (data == 0 || data > 32)
+            return;
+
+        s->total = (u8)(data + 2);
+    }
+
+    if (s->count < sizeof(s->buffer))
+        s->buffer[s->count] = data;
+
+    s->count++;
+
+    if (s->count < s->total)
+        return;
+
+    u8 size = s->buffer[0];
+    u8 header = s->buffer[1];
+
+    u32 sum = 0;
+    for (u8 i = 0; i < size + 1u; i++)
+        sum += s->buffer[i];
+
+    u8 want = (u8)((255u - sum) & 0xFFu);
+
+    GLYNX_Trace_Entry e = {};
+    e.type = TRACE_REDEYE;
+    e.redeye.dir = dir;
+    e.redeye.msg = header & 0x07;
+    e.redeye.player = (header & 0x78) >> 3;
+    e.redeye.seq = (header & 0x80) ? 1 : 0;
+    e.redeye.size = size;
+    e.redeye.checksum_ok = (want == s->buffer[s->total - 1]);
+
+    for (u8 i = 0; i < 8; i++)
+    {
+        u8 index = (u8)(i + 2);
+        if (index + 1u < s->total)
+        {
+            e.redeye.payload[i] = s->buffer[index];
+            e.redeye.len++;
+        }
+    }
+
+    m_trace_logger->TraceLog(e);
+
+    s->count = 0;
+    s->total = 0;
+}
+
 inline void Mikey::UartRxReflectHead()
 {
     if (m_state.uart.rxq_count > 0)
@@ -1229,6 +1323,7 @@ inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
                 (m_state.uart.rxq_count == 1 && m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES);
     bool lost = !room;
 
+    u32 age_cycles = m_state.uart.rx_age_cycles;
     m_state.uart.rx_age_cycles = 0;
 
     if (lost)
@@ -1237,43 +1332,39 @@ inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
     u8 slot = room ? ((m_state.uart.rxq_head + m_state.uart.rxq_count) & 1)
                    : ((m_state.uart.rxq_head + m_state.uart.rxq_count - 1) & 1);
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_MIKEY_UART;
+        e.uart.kind = GLYNX_UART_TRACE_RX;
+        e.uart.data = data;
+        e.uart.flags = lost ? (u8)(flags | 0x10) : flags;
+        e.uart.lost = m_state.uart.rxq_data[slot];
+        e.uart.gap_us = UartCyclesToMicros(age_cycles);
+        e.uart.source = source;
+        m_trace_logger->TraceLog(e);
+    }
+
+    if (source != 0 && m_trace_logger->IsEnabled(TRACE_REDEYE))
+        RedEyeFeed(1, data);
+#endif
+
     m_state.uart.rxq_data[slot] = data;
     m_state.uart.rxq_flags[slot] = flags;
 
     if (room)
         m_state.uart.rxq_count++;
 
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
-    {
-        GLYNX_Trace_Entry e = {};
-        e.type = TRACE_MIKEY_UART;
-        e.uart.data = data;
-        e.uart.flags = lost ? 0x10 : flags;
-        e.uart.source = source;
-        e.uart.is_tx = false;
-        m_trace_logger->TraceLog(e);
-    }
-#endif
-
     UartRxReflectHead();
 }
 
 inline void Mikey::UartBeginFrame(u8 data)
 {
+    bool chained = m_state.uart.tx_active;
+
     m_state.uart.tx_data = data;
     m_state.uart.tx_bit_index = 0;
-
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
-    {
-        GLYNX_Trace_Entry e = {};
-        e.type = TRACE_MIKEY_UART;
-        e.uart.data = data;
-        e.uart.is_tx = true;
-        m_trace_logger->TraceLog(e);
-    }
-#endif
 
     if (m_state.uart.par_en)
     {
@@ -1283,6 +1374,22 @@ inline void Mikey::UartBeginFrame(u8 data)
     }
     else
         m_state.uart.tx_parbit = m_state.uart.par_even ? 1 : 0;
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+    {
+        GLYNX_Trace_Entry e = {};
+        e.type = TRACE_MIKEY_UART;
+        e.uart.kind = GLYNX_UART_TRACE_TX;
+        e.uart.data = data;
+        e.uart.flags = m_state.uart.tx_parbit ? 0x01 : 0x00;
+        e.uart.chained = chained;
+        m_trace_logger->TraceLog(e);
+    }
+
+    if (m_trace_logger->IsEnabled(TRACE_REDEYE))
+        RedEyeFeed(0, data);
+#endif
 
     m_state.uart.tx_active = true;
     m_state.uart.tx_empty = false;

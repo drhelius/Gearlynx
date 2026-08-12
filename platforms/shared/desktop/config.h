@@ -272,6 +272,7 @@ struct config_Debug
     bool trace_suzy_input = true;
     bool trace_mikey_timers = true;
     bool trace_mikey_uart = true;
+    bool trace_redeye = true;
     bool trace_mikey_audio = true;
     bool trace_cart = true;
     bool trace_debug_messages = true;

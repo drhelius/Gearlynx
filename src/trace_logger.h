@@ -33,6 +33,7 @@ enum GLYNX_Trace_Type : u8
     TRACE_SUZY_INPUT,
     TRACE_MIKEY_TIMER,
     TRACE_MIKEY_UART,
+    TRACE_REDEYE,
     TRACE_MIKEY_AUDIO,
     TRACE_CART_SHIFT,
     TRACE_DEBUG_MESSAGE,
@@ -46,10 +47,11 @@ enum GLYNX_Trace_Type : u8
 #define TRACE_FLAG_SUZY_INPUT   (1 << TRACE_SUZY_INPUT)
 #define TRACE_FLAG_MIKEY_TIMER  (1 << TRACE_MIKEY_TIMER)
 #define TRACE_FLAG_MIKEY_UART   (1 << TRACE_MIKEY_UART)
+#define TRACE_FLAG_REDEYE       (1 << TRACE_REDEYE)
 #define TRACE_FLAG_MIKEY_AUDIO  (1 << TRACE_MIKEY_AUDIO)
 #define TRACE_FLAG_CART_SHIFT   (1 << TRACE_CART_SHIFT)
 #define TRACE_FLAG_DEBUG_MSG    (1 << TRACE_DEBUG_MESSAGE)
-#define TRACE_FLAG_ALL          0x3FF
+#define TRACE_FLAG_ALL          0x7FF
 
 struct GLYNX_Trace_Entry
 {
@@ -115,8 +117,24 @@ struct GLYNX_Trace_Entry
             u8 data;
             u8 flags;
             u8 source;
-            bool is_tx;
+            u8 lost;        // byte an overrun destroyed
+            u8 kind;        // GLYNX_UART_TRACE_*
+            u8 backup;      // TIM4 backup, so the configured baud can be shown
+            u16 gap_us;     // since the previous frame was latched
+            bool chained;   // TX followed straight on from the previous frame
         } uart;
+
+        struct
+        {
+            u8 dir;         // 0 sent, 1 received
+            u8 msg;         // header bits 0-2
+            u8 player;      // header bits 3-6
+            u8 seq;         // header bit 7
+            u8 size;        // first byte of the packet
+            u8 len;         // payload bytes captured below
+            u8 payload[8];
+            bool checksum_ok;
+        } redeye;
 
         struct
         {

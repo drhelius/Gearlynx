@@ -3261,14 +3261,85 @@ json DebugAdapter::GetTraceLog(int start, int count)
             case TRACE_MIKEY_UART:
             {
                 char source[16] = "";
-                if (!entry.uart.is_tx)
-                    snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
-                snprintf(buf, sizeof(buf), "  [MIKEY] UART %s  Data:$%02X%s%s%s%s%s",
-                         entry.uart.is_tx ? "TX" : "RX", entry.uart.data, source,
-                         (entry.uart.flags & 0x10) ? "  [OVERRUN]" : "",
+                char gap[24] = "";
+                char lost[24] = "";
+
+                if (entry.uart.kind == GLYNX_UART_TRACE_CFG)
+                {
+                    u32 baud = 1000000u / ((entry.uart.backup + 1u) * 8u);
+                    snprintf(buf, sizeof(buf), "  [MIKEY] UART CFG SERCTL:$%02X  %lu baud  %s  TX:%s RX:%s%s%s",
+                             entry.uart.data, (unsigned long)baud,
+                             (entry.uart.data & 0x10) ? ((entry.uart.data & 0x01) ? "PAR:EVEN" : "PAR:ODD ") : "PAR:OFF ",
+                             (entry.uart.data & 0x80) ? "IRQ" : "-  ",
+                             (entry.uart.data & 0x40) ? "IRQ" : "-  ",
+                             (entry.uart.data & 0x04) ? "  TXOPEN" : "",
+                             (entry.uart.data & 0x02) ? "  BREAK" : "");
+                    break;
+                }
+
+                if (entry.uart.kind == GLYNX_UART_TRACE_TX)
+                {
+                    if (entry.uart.chained)
+                        snprintf(source, sizeof(source), "  [CHAINED]");
+                }
+                else
+                {
+                    if (entry.uart.kind == GLYNX_UART_TRACE_RX)
+                        snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
+
+                    snprintf(gap, sizeof(gap), entry.uart.kind == GLYNX_UART_TRACE_RD ? "  HELD:%uus" : "  GAP:%uus",
+                             (unsigned)entry.uart.gap_us);
+
+                    if (entry.uart.flags & 0x10)
+                        snprintf(lost, sizeof(lost), "  [OVERRUN lost:$%02X]", entry.uart.lost);
+                }
+
+                static const char* k_kind[] = { "TX", "RX", "RD" };
+
+                snprintf(buf, sizeof(buf), "  [MIKEY] UART %s  Data:$%02X  BIT9:%d%s%s%s%s%s%s",
+                         k_kind[entry.uart.kind < 3 ? entry.uart.kind : 0], entry.uart.data,
+                         (entry.uart.flags & 0x01) ? 1 : 0, source, gap, lost,
                          (entry.uart.flags & 0x02) ? "  [PARERR]" : "",
                          (entry.uart.flags & 0x04) ? "  [FRAMERR]" : "",
                          (entry.uart.flags & 0x08) ? "  [BREAK]" : "");
+                break;
+            }
+            case TRACE_REDEYE:
+            {
+                static const char* k_msg[] = { "LOGON  ", "MSG1   ", "START  ", "DATA   ",
+                                               "REQUEST", "RESEND ", "MSG6   ", "MSG7   " };
+                const char* csum = entry.redeye.checksum_ok ? "" : "  [BAD CSUM]";
+                u8 msg = entry.redeye.msg & 7;
+                const char* dir = entry.redeye.dir ? "RX" : "TX";
+
+                if (entry.redeye.size == 5 && (msg == 0 || msg == 2) && entry.redeye.len >= 4)
+                {
+                    snprintf(buf, sizeof(buf), "  [REDEYE] %s %s plr:%d  players:$%02X  game:$%02X%02X%s",
+                             dir, k_msg[msg], entry.redeye.payload[0], entry.redeye.payload[1],
+                             entry.redeye.payload[3], entry.redeye.payload[2], csum);
+                    break;
+                }
+
+                if (msg == 5 && entry.redeye.len >= 1)
+                {
+                    snprintf(buf, sizeof(buf), "  [REDEYE] %s %s p%d seq%d  players:$%02X%s",
+                             dir, k_msg[msg], entry.redeye.player, entry.redeye.seq,
+                             entry.redeye.payload[0], csum);
+                    break;
+                }
+
+                char payload[48] = "";
+                int at = 0;
+
+                if (entry.redeye.len > 0)
+                    at = snprintf(payload, sizeof(payload), "  data:");
+
+                for (int i = 0; i < entry.redeye.len && at < (int)sizeof(payload) - 4; i++)
+                    at += snprintf(payload + at, sizeof(payload) - at, " %02X", entry.redeye.payload[i]);
+
+                snprintf(buf, sizeof(buf), "  [REDEYE] %s %s p%d seq%d  size:%d%s%s",
+                         dir, k_msg[msg], entry.redeye.player, entry.redeye.seq,
+                         entry.redeye.size, payload, csum);
                 break;
             }
             case TRACE_MIKEY_AUDIO:
@@ -3331,6 +3402,7 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output)
         if (flags & TRACE_FLAG_SUZY_INPUT) enabled_list.push_back("suzy_input");
         if (flags & TRACE_FLAG_MIKEY_TIMER) enabled_list.push_back("mikey_timers");
         if (flags & TRACE_FLAG_MIKEY_UART) enabled_list.push_back("mikey_uart");
+        if (flags & TRACE_FLAG_REDEYE) enabled_list.push_back("redeye");
         if (flags & TRACE_FLAG_MIKEY_AUDIO) enabled_list.push_back("mikey_audio");
         if (flags & TRACE_FLAG_CART_SHIFT) enabled_list.push_back("cart");
         if (flags & TRACE_FLAG_DEBUG_MSG) enabled_list.push_back("debug_messages");

@@ -39,6 +39,11 @@
 // 800us of gap: below it a pair of frames leaves one byte, above it two
 #define GLYNX_UART_RX_HOLD_CYCLES (800 * (GLYNX_MASTER_CLOCK / 1000000))
 
+#define GLYNX_UART_TRACE_TX  0
+#define GLYNX_UART_TRACE_RX  1
+#define GLYNX_UART_TRACE_RD  2
+#define GLYNX_UART_TRACE_CFG 3
+
 #define MIKEY_TIM0BKUP      0xFD00
 #define MIKEY_TIM0CTLA      0xFD01
 #define MIKEY_TIM0CNT       0xFD02

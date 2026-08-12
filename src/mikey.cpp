@@ -172,6 +172,12 @@ void Mikey::ResetUART()
     m_state.uart.tx_started_from_chain = false;
     m_state.uart.tx_start_bits = 0;
     m_state.uart.rx_age_cycles = 0;
+    m_uart_trace_cfg = 0xFF;
+    m_uart_trace_backup = 0xFF;
+    m_redeye[0].count = 0;
+    m_redeye[0].total = 0;
+    m_redeye[1].count = 0;
+    m_redeye[1].total = 0;
     m_comlynx_rx_spacing_bits = 0;
 }
 

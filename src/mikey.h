@@ -126,6 +126,8 @@ private:
     void UartRelevelIRQ();
     void UartRxReflectHead();
     void UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source);
+    u16 UartCyclesToMicros(u32 cycles);
+    void RedEyeFeed(u8 dir, u8 data);
     void UartBeginFrame(u8 data);
     void UartClock();
     void HorizontalBlank();
@@ -152,6 +154,17 @@ private:
     void* m_comlynx_user_data;
     bool m_comlynx_cable_connected;
     u8 m_comlynx_rx_spacing_bits;
+    u8 m_uart_trace_cfg;
+    u8 m_uart_trace_backup;
+
+    struct RedEyeStream
+    {
+        u8 buffer[64];
+        u8 count;
+        u8 total;
+    };
+
+    RedEyeStream m_redeye[2];
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

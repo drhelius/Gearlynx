@@ -250,6 +250,7 @@ void config_read(void)
     config_debug.trace_suzy_input = read_bool("Debug", "TraceSuzyInput", true);
     config_debug.trace_mikey_timers = read_bool("Debug", "TraceMikeyTimers", true);
     config_debug.trace_mikey_uart = read_bool("Debug", "TraceMikeyUart", true);
+    config_debug.trace_redeye = read_bool("Debug", "TraceRedEye", true);
     config_debug.trace_mikey_audio = read_bool("Debug", "TraceMikeyAudio", true);
     config_debug.trace_cart = read_bool("Debug", "TraceCart", true);
     config_debug.trace_debug_messages = read_bool("Debug", "TraceDebugMessages", true);
@@ -520,6 +521,7 @@ void config_write(void)
     write_bool("Debug", "TraceSuzyInput", config_debug.trace_suzy_input);
     write_bool("Debug", "TraceMikeyTimers", config_debug.trace_mikey_timers);
     write_bool("Debug", "TraceMikeyUart", config_debug.trace_mikey_uart);
+    write_bool("Debug", "TraceRedEye", config_debug.trace_redeye);
     write_bool("Debug", "TraceMikeyAudio", config_debug.trace_mikey_audio);
     write_bool("Debug", "TraceCart", config_debug.trace_cart);
     write_bool("Debug", "TraceDebugMessages", config_debug.trace_debug_messages);

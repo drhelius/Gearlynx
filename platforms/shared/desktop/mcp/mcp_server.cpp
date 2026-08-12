@@ -1699,7 +1699,11 @@ json McpServer::BuildToolList()
                         }},
                         {"mikey_uart", {
                             {"type", "boolean"},
-                            {"description", "Mikey UART TX/RX. Default true."}
+                            {"description", "Mikey UART frames, reads and config. Default true."}
+                        }},
+                        {"redeye", {
+                            {"type", "boolean"},
+                            {"description", "RedEye packets reassembled from ComLynx traffic. Default true."}
                         }},
                         {"mikey_audio", {
                             {"type", "boolean"},
@@ -2791,6 +2795,7 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
             if (filters.value("suzy_input", true)) flags |= TRACE_FLAG_SUZY_INPUT;
             if (filters.value("mikey_timers", true)) flags |= TRACE_FLAG_MIKEY_TIMER;
             if (filters.value("mikey_uart", true)) flags |= TRACE_FLAG_MIKEY_UART;
+            if (filters.value("redeye", true)) flags |= TRACE_FLAG_REDEYE;
             if (filters.value("mikey_audio", true)) flags |= TRACE_FLAG_MIKEY_AUDIO;
             if (filters.value("cart", true)) flags |= TRACE_FLAG_CART_SHIFT;
             if (filters.value("debug_messages", true)) flags |= TRACE_FLAG_DEBUG_MSG;

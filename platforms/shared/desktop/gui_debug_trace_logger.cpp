@@ -181,6 +181,7 @@ static void trace_logger_menu(void)
         ImGui::MenuItem("Suzy Input", "", &config_debug.trace_suzy_input);
         ImGui::MenuItem("Mikey Timers", "", &config_debug.trace_mikey_timers);
         ImGui::MenuItem("Mikey UART", "", &config_debug.trace_mikey_uart);
+        ImGui::MenuItem("RedEye", "", &config_debug.trace_redeye);
         ImGui::MenuItem("Mikey Audio", "", &config_debug.trace_mikey_audio);
         ImGui::MenuItem("Cart", "", &config_debug.trace_cart);
         ImGui::MenuItem("Debug Messages", "", &config_debug.trace_debug_messages);
@@ -201,6 +202,7 @@ static void trace_logger_sync_flags(void)
     if (config_debug.trace_suzy_input)   flags |= TRACE_FLAG_SUZY_INPUT;
     if (config_debug.trace_mikey_timers) flags |= TRACE_FLAG_MIKEY_TIMER;
     if (config_debug.trace_mikey_uart)   flags |= TRACE_FLAG_MIKEY_UART;
+    if (config_debug.trace_redeye)       flags |= TRACE_FLAG_REDEYE;
     if (config_debug.trace_mikey_audio)  flags |= TRACE_FLAG_MIKEY_AUDIO;
     if (config_debug.trace_cart)         flags |= TRACE_FLAG_CART_SHIFT;
     if (config_debug.trace_debug_messages) flags |= TRACE_FLAG_DEBUG_MSG;
@@ -314,14 +316,87 @@ static void format_entry_text(const GLYNX_Trace_Entry& entry, char* buf, int buf
         case TRACE_MIKEY_UART:
         {
             char source[16] = "";
-            if (!entry.uart.is_tx)
-                snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
-            snprintf(buf, buf_size, "  [MIKEY] UART %s  Data:$%02X%s%s%s%s%s",
-                     entry.uart.is_tx ? "TX" : "RX", entry.uart.data, source,
-                     (entry.uart.flags & 0x10) ? "  [OVERRUN]" : "",
+            char gap[24] = "";
+            char lost[24] = "";
+
+            if (entry.uart.kind == GLYNX_UART_TRACE_CFG)
+            {
+                u32 baud = 1000000u / ((entry.uart.backup + 1u) * 8u);
+                snprintf(buf, buf_size, "  [MIKEY] UART CFG SERCTL:$%02X  %lu baud  %s  TX:%s RX:%s%s%s",
+                         entry.uart.data, (unsigned long)baud,
+                         (entry.uart.data & 0x10) ? ((entry.uart.data & 0x01) ? "PAR:EVEN" : "PAR:ODD ") : "PAR:OFF ",
+                         (entry.uart.data & 0x80) ? "IRQ" : "-  ",
+                         (entry.uart.data & 0x40) ? "IRQ" : "-  ",
+                         (entry.uart.data & 0x04) ? "  TXOPEN" : "",
+                         (entry.uart.data & 0x02) ? "  BREAK" : "");
+                break;
+            }
+
+            if (entry.uart.kind == GLYNX_UART_TRACE_TX)
+            {
+                if (entry.uart.chained)
+                    snprintf(source, sizeof(source), "  [CHAINED]");
+            }
+            else
+            {
+                if (entry.uart.kind == GLYNX_UART_TRACE_RX)
+                    snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
+
+                snprintf(gap, sizeof(gap), entry.uart.kind == GLYNX_UART_TRACE_RD ? "  HELD:%uus" : "  GAP:%uus",
+                         (unsigned)entry.uart.gap_us);
+
+                if (entry.uart.flags & 0x10)
+                    snprintf(lost, sizeof(lost), "  [OVERRUN lost:$%02X]", entry.uart.lost);
+            }
+
+            static const char* k_kind[] = { "TX", "RX", "RD" };
+
+            snprintf(buf, buf_size, "  [MIKEY] UART %s  Data:$%02X  BIT9:%d%s%s%s%s%s%s",
+                     k_kind[entry.uart.kind < 3 ? entry.uart.kind : 0], entry.uart.data,
+                     (entry.uart.flags & 0x01) ? 1 : 0, source, gap, lost,
                      (entry.uart.flags & 0x02) ? "  [PARERR]" : "",
                      (entry.uart.flags & 0x04) ? "  [FRAMERR]" : "",
                      (entry.uart.flags & 0x08) ? "  [BREAK]" : "");
+            break;
+        }
+        case TRACE_REDEYE:
+        {
+            static const char* k_msg[] = { "LOGON  ", "MSG1   ", "START  ", "DATA   ",
+                                           "REQUEST", "RESEND ", "MSG6   ", "MSG7   " };
+            const char* csum = entry.redeye.checksum_ok ? "" : "  [BAD CSUM]";
+            u8 msg = entry.redeye.msg & 7;
+            const char* dir = entry.redeye.dir ? "RX" : "TX";
+
+            // Logon packets carry player, player mask and game id rather than a
+            // packed header.
+            if (entry.redeye.size == 5 && (msg == 0 || msg == 2) && entry.redeye.len >= 4)
+            {
+                snprintf(buf, buf_size, "  [REDEYE] %s %s plr:%d  players:$%02X  game:$%02X%02X%s",
+                         dir, k_msg[msg], entry.redeye.payload[0], entry.redeye.payload[1],
+                         entry.redeye.payload[3], entry.redeye.payload[2], csum);
+                break;
+            }
+
+            if (msg == 5 && entry.redeye.len >= 1)
+            {
+                snprintf(buf, buf_size, "  [REDEYE] %s %s p%d seq%d  players:$%02X%s",
+                         dir, k_msg[msg], entry.redeye.player, entry.redeye.seq,
+                         entry.redeye.payload[0], csum);
+                break;
+            }
+
+            char payload[48] = "";
+            int at = 0;
+
+            if (entry.redeye.len > 0)
+                at = snprintf(payload, sizeof(payload), "  data:");
+
+            for (int i = 0; i < entry.redeye.len && at < (int)sizeof(payload) - 4; i++)
+                at += snprintf(payload + at, sizeof(payload) - at, " %02X", entry.redeye.payload[i]);
+
+            snprintf(buf, buf_size, "  [REDEYE] %s %s p%d seq%d  size:%d%s%s",
+                     dir, k_msg[msg], entry.redeye.player, entry.redeye.seq,
+                     entry.redeye.size, payload, csum);
             break;
         }
         case TRACE_MIKEY_AUDIO:
@@ -459,6 +534,10 @@ static void render_entry_colored(const GLYNX_Trace_Entry& entry, u32 index)
             format_entry_text(entry, buf, sizeof(buf));
             ImGui::TextColored(violet, "%s", buf);
             break;
+        case TRACE_REDEYE:
+            format_entry_text(entry, buf, sizeof(buf));
+            ImGui::TextColored(brown, "%s", buf);
+            break;
         case TRACE_MIKEY_AUDIO:
             format_entry_text(entry, buf, sizeof(buf));
             ImGui::TextColored(blue, "%s", buf);
@@ -469,7 +548,7 @@ static void render_entry_colored(const GLYNX_Trace_Entry& entry, u32 index)
             break;
         case TRACE_DEBUG_MESSAGE:
             format_entry_text(entry, buf, sizeof(buf));
-            ImGui::TextColored(green, "%s", buf);
+            ImGui::TextColored(white, "%s", buf);
             break;
         default:
             break;
