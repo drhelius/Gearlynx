@@ -59,6 +59,10 @@ ComLynxManager::ComLynxManager()
     m_pending_packet_head = 0;
     m_pending_packet_count = 0;
     m_receive_enabled = false;
+    m_delivery_sender = 0;
+    m_delivery_next_sender = 1;
+    m_delivery_stall_count = 0;
+    m_delivery_burst_length = 0;
     m_sync_valid = false;
     m_sync_cycles = 0;
     m_frame_rx_interval_valid = false;
@@ -140,7 +144,7 @@ bool ComLynxManager::Host(const char* bind_address, int port)
     for (int i = 0; i < COMLYNX_MAX_PEERS - 1; i++)
         m_peers[i] = Peer();
 
-    m_incoming_frames.Clear();
+    ClearIncomingFrames();
     m_outgoing_frames.Clear();
     ClearPendingPackets();
 
@@ -214,7 +218,7 @@ bool ComLynxManager::Join(const char* host, int port)
     m_port = port;
     m_peer_count = 0;
 
-    m_incoming_frames.Clear();
+    ClearIncomingFrames();
     m_outgoing_frames.Clear();
     ClearPendingPackets();
 
@@ -246,6 +250,7 @@ void ComLynxManager::Stop()
 
     CloseSocket();
     SetReceiveEnabled(false);
+    ClearIncomingFrames();
 
     m_outgoing_frames.Clear();
     ClearPendingPackets();
@@ -262,14 +267,14 @@ void ComLynxManager::Stop()
     SetMode(ComLynxModeDisabled);
 }
 
-bool ComLynxManager::SendFrame(u8 data, bool parity_bit)
+bool ComLynxManager::SendFrame(u8 data, bool parity_bit, bool burst_end)
 {
     ComLynxMode mode = GetMode();
 
     if (mode != ComLynxModeHosting && mode != ComLynxModeConnected)
         return false;
 
-    ComLynxFrame frame = {data, parity_bit};
+    ComLynxFrame frame = {data, m_local_peer_id, parity_bit, burst_end};
     IncrementFrameGenerated();
 
     if (m_outgoing_frames.Push(frame))
@@ -288,23 +293,97 @@ bool ComLynxManager::SendFrame(u8 data, bool parity_bit)
 
 bool ComLynxManager::ReceiveFrame(ComLynxFrame& frame)
 {
-    if (!m_incoming_frames.Pop(frame))
+    // A sender owns the bus for a whole burst, so never interleave two senders:
+    // splitting a burst would corrupt the framing of the game level protocol.
+    if (m_delivery_sender != 0)
+    {
+        if (m_incoming_frames[m_delivery_sender].Pop(frame))
+        {
+            m_delivery_stall_count = 0;
+            m_delivery_burst_length++;
+
+            if (frame.burst_end)
+            {
+                RecordBurstDelivered(m_delivery_burst_length, false);
+                m_delivery_sender = 0;
+                m_delivery_burst_length = 0;
+            }
+
+            IncrementFrameConsumed();
+            return true;
+        }
+
+        if (++m_delivery_stall_count < COMLYNX_BURST_STALL_LIMIT)
+            return false;
+
+        RecordBurstDelivered(m_delivery_burst_length, true);
+        m_delivery_sender = 0;
+        m_delivery_stall_count = 0;
+        m_delivery_burst_length = 0;
+    }
+
+    u8 sender = SelectDeliverySender();
+
+    if (sender == 0 || !m_incoming_frames[sender].Pop(frame))
         return false;
+
+    m_delivery_next_sender = (u8)((sender % COMLYNX_MAX_PEERS) + 1);
+
+    if (frame.burst_end)
+        RecordBurstDelivered(1, false);
+    else
+    {
+        m_delivery_sender = sender;
+        m_delivery_burst_length = 1;
+    }
 
     IncrementFrameConsumed();
     return true;
+}
+
+u8 ComLynxManager::SelectDeliverySender()
+{
+    for (int i = 0; i < COMLYNX_MAX_PEERS; i++)
+    {
+        u8 sender = (u8)(((m_delivery_next_sender - 1 + i) % COMLYNX_MAX_PEERS) + 1);
+
+        if (m_incoming_frames[sender].Size() > 0)
+            return sender;
+    }
+
+    return 0;
+}
+
+void ComLynxManager::ClearIncomingFrames()
+{
+    IncrementFramesDroppedClear(IncomingFrameCount());
+
+    for (int i = 0; i <= COMLYNX_MAX_PEERS; i++)
+        m_incoming_frames[i].Clear();
+
+    m_delivery_sender = 0;
+    m_delivery_next_sender = 1;
+    m_delivery_stall_count = 0;
+    m_delivery_burst_length = 0;
+}
+
+u32 ComLynxManager::IncomingFrameCount() const
+{
+    u32 total = 0;
+
+    for (int i = 0; i <= COMLYNX_MAX_PEERS; i++)
+        total += m_incoming_frames[i].Size();
+
+    return total;
 }
 
 void ComLynxManager::SetReceiveEnabled(bool enabled)
 {
     std::lock_guard<std::mutex> lock(m_receive_mutex);
 
-    if (enabled == m_receive_enabled)
-        return;
-
+    // Buffered frames are never discarded here: dropping a single link byte
+    // permanently desynchronizes the game level protocol on every peer.
     m_receive_enabled = enabled;
-    IncrementFramesDroppedClear(m_incoming_frames.Size());
-    m_incoming_frames.Clear();
 }
 
 void ComLynxManager::Synchronize(u64 cycles)
@@ -509,7 +588,9 @@ bool ComLynxManager::HostReceive(const ComLynxPacket& packet, const sockaddr_in&
 
     if (packet.type == ComLynxPacketFrame)
     {
-        ComLynxFrame frame = { packet.payload[0], (packet.flags & 0x01) != 0 };
+        ComLynxFrame frame = { packet.payload[0], peer.id,
+            (packet.flags & COMLYNX_FRAME_FLAG_PARITY) != 0,
+            (packet.flags & COMLYNX_FRAME_FLAG_BURST_END) != 0 };
 
         RecordFrameReceive(local_receive_time_us);
         IncrementFrameReceivedNetwork();
@@ -563,7 +644,9 @@ bool ComLynxManager::ClientReceive(const ComLynxPacket& packet, const sockaddr_i
         if (packet.sender_id == m_local_peer_id)
             return false;
 
-        ComLynxFrame frame = { packet.payload[0], (packet.flags & 0x01) != 0 };
+        ComLynxFrame frame = { packet.payload[0], packet.sender_id,
+            (packet.flags & COMLYNX_FRAME_FLAG_PARITY) != 0,
+            (packet.flags & COMLYNX_FRAME_FLAG_BURST_END) != 0 };
 
         RecordFrameReceive(local_receive_time_us);
         IncrementFrameReceivedNetwork();
@@ -586,10 +669,13 @@ bool ComLynxManager::QueueIncomingFrame(const ComLynxFrame& frame)
         return false;
     }
 
-    if (m_incoming_frames.Push(frame))
+    if (frame.sender_id < 1 || frame.sender_id > COMLYNX_MAX_PEERS)
+        return false;
+
+    if (m_incoming_frames[frame.sender_id].Push(frame))
     {
         IncrementFrameQueued();
-        UpdateMaxIncomingQueueDepth(m_incoming_frames.Size());
+        UpdateMaxIncomingQueueDepth(IncomingFrameCount());
         return true;
     }
 
@@ -624,7 +710,8 @@ void ComLynxManager::ProcessOutgoingFrames()
             packet.peer_token = m_peer_token;
             packet.sequence = ++m_client_send_sequence;
             packet.sender_id = m_local_peer_id;
-            packet.flags = frame.parity_bit ? 0x01 : 0;
+            packet.flags = (frame.parity_bit ? COMLYNX_FRAME_FLAG_PARITY : 0) |
+                (frame.burst_end ? COMLYNX_FRAME_FLAG_BURST_END : 0);
             packet.payload_size = 1;
             packet.payload[0] = frame.data;
 
@@ -828,7 +915,8 @@ void ComLynxManager::BroadcastFrame(const ComLynxFrame& frame, u8 sender_id)
         packet.peer_token = peer.token;
         packet.sequence = ++peer.send_sequence;
         packet.sender_id = sender_id;
-        packet.flags = frame.parity_bit ? 0x01 : 0;
+        packet.flags = (frame.parity_bit ? COMLYNX_FRAME_FLAG_PARITY : 0) |
+            (frame.burst_end ? COMLYNX_FRAME_FLAG_BURST_END : 0);
         packet.payload_size = 1;
         packet.payload[0] = frame.data;
 
@@ -1160,6 +1248,9 @@ void ComLynxManager::ResetMetrics()
     m_status.frames_consumed = 0;
     m_status.frames_dropped_disabled = 0;
     m_status.frames_dropped_clear = 0;
+    m_status.bursts_delivered = 0;
+    m_status.bursts_forced = 0;
+    m_status.max_burst_length = 0;
     m_status.send_eagain = 0;
     m_status.send_errors = 0;
     m_status.duplicate_packets = 0;
@@ -1256,6 +1347,19 @@ void ComLynxManager::IncrementFramesDroppedClear(u32 count)
     std::lock_guard<std::mutex> lock(m_status_mutex);
 
     m_status.frames_dropped_clear += count;
+}
+
+void ComLynxManager::RecordBurstDelivered(u32 length, bool forced)
+{
+    std::lock_guard<std::mutex> lock(m_status_mutex);
+
+    m_status.bursts_delivered++;
+
+    if (forced)
+        m_status.bursts_forced++;
+
+    if (length > m_status.max_burst_length)
+        m_status.max_burst_length = length;
 }
 
 void ComLynxManager::IncrementSendEagain()

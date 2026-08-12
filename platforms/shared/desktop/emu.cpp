@@ -85,8 +85,8 @@ static int get_rewind_pop_budget(void);
 static bool is_direction_key(GLYNX_Keys key);
 static u16 filter_direction_input(u16 state);
 static void update_direction_input(GLYNX_Keys key, bool pressed);
-static void comlynx_tx_callback(u8 data, bool parity_bit, void* user_data);
-static bool comlynx_rx_callback(u8* data, bool* parity_bit, void* user_data);
+static void comlynx_tx_callback(u8 data, bool parity_bit, bool burst_end, void* user_data);
+static bool comlynx_rx_callback(u8* data, bool* parity_bit, u8* source, void* user_data);
 static void comlynx_sync_callback(u64 cycles, void* user_data);
 
 bool emu_init(void)
@@ -2084,10 +2084,9 @@ void emu_comlynx_pump(void)
     if (!comlynx_manager || !core)
         return;
 
-    Mikey::Mikey_State* mikey_state = core->GetMikey()->GetState();
-
-    bool receive_enabled = !emu_is_empty() && !emu_is_paused() && !emu_is_debug_idle() &&
-        IS_SET_BIT(mikey_state->timers[4].control_a, 3);
+    // Link bytes are only refused when nothing can ever consume them; the baud
+    // timer state must not gate this because it is sampled once per frame.
+    bool receive_enabled = !emu_is_empty();
 
     comlynx_manager->SetReceiveEnabled(receive_enabled);
 
@@ -2127,19 +2126,19 @@ void emu_comlynx_reset_metrics(void)
         comlynx_manager->ResetMetrics();
 }
 
-static void comlynx_tx_callback(u8 data, bool parity_bit, void* user_data)
+static void comlynx_tx_callback(u8 data, bool parity_bit, bool burst_end, void* user_data)
 {
     ComLynxManager* manager = (ComLynxManager*)user_data;
 
     if (manager)
-        manager->SendFrame(data, parity_bit);
+        manager->SendFrame(data, parity_bit, burst_end);
 }
 
-static bool comlynx_rx_callback(u8* data, bool* parity_bit, void* user_data)
+static bool comlynx_rx_callback(u8* data, bool* parity_bit, u8* source, void* user_data)
 {
     ComLynxManager* manager = (ComLynxManager*)user_data;
 
-    if (!manager || !data || !parity_bit)
+    if (!manager || !data || !parity_bit || !source)
         return false;
 
     ComLynxFrame frame;
@@ -2149,6 +2148,7 @@ static bool comlynx_rx_callback(u8* data, bool* parity_bit, void* user_data)
 
     *data = frame.data;
     *parity_bit = frame.parity_bit;
+    *source = frame.sender_id;
 
     return true;
 }

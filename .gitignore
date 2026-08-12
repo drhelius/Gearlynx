@@ -4,6 +4,7 @@
 *.app/
 platforms/macos/mcp
 docs/
+tools/
 
 # Visual Studio files
 .vscode/mcp.json

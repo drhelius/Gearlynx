@@ -232,7 +232,7 @@ static void TestLoopback()
     client_a.SetReceiveEnabled(true);
     client_b.SetReceiveEnabled(true);
 
-    Check(client_a.SendFrame(0x42, true), "client A send");
+    Check(client_a.SendFrame(0x42, true, true), "client A send");
     ComLynxFrame frame = {};
     Check(WaitForFrame(host, frame, 1000), "host receive client A");
     Check(frame.data == 0x42 && frame.parity_bit, "host frame contents");
@@ -248,7 +248,7 @@ static void TestLoopback()
     Check(client_b.GetStatus().rx_burst_max >= 1, "client receive burst maximum");
     Check(!client_a.ReceiveFrame(frame), "sender receives no network echo");
 
-    Check(host.SendFrame(0x99, false), "host send");
+    Check(host.SendFrame(0x99, false, true), "host send");
     Check(WaitForFrame(client_a, frame, 1000), "client A receive host");
     Check(frame.data == 0x99 && !frame.parity_bit, "client A host frame contents");
     Check(WaitForFrame(client_b, frame, 1000), "client B receive host");
@@ -257,7 +257,7 @@ static void TestLoopback()
     std::chrono::steady_clock::time_point relay_start = std::chrono::steady_clock::now();
     for (int value = 0; value < 256; value++)
     {
-        Check(client_a.SendFrame((u8)value, (value & 1) != 0), "ordered frame send");
+        Check(client_a.SendFrame((u8)value, (value & 1) != 0, true), "ordered frame send");
         Check(WaitForFrame(host, frame, 1000), "host ordered frame receive");
         Check(frame.data == (u8)value && frame.parity_bit == ((value & 1) != 0), "host frame order");
         Check(WaitForFrame(client_b, frame, 1000), "client ordered frame receive");
@@ -289,7 +289,7 @@ static void TestReceiveBacklogRecovery()
     for (int start = 0; start < frame_count; start += batch_size)
     {
         for (int i = start; i < start + batch_size; i++)
-            Check(host.SendFrame((u8)i, (i & 1) != 0), "send backlog frame");
+            Check(host.SendFrame((u8)i, (i & 1) != 0, true), "send backlog frame");
 
         Check(WaitForFramesQueued(client, start + batch_size, 2000), "queue backlog frame batch");
     }
@@ -335,7 +335,7 @@ static void TestSixPlayerRelayBacklog()
         for (int frame = start; frame < start + batch_size; frame++)
         {
             for (int client = 0; client < client_count; client++)
-                Check(clients[client].SendFrame((u8)(frame + client), (client & 1) != 0),
+                Check(clients[client].SendFrame((u8)(frame + client), (client & 1) != 0, true),
                     "send six-player frame");
         }
 
@@ -372,6 +372,58 @@ static void TestSixPlayerRelayBacklog()
         clients[client].Stop();
     host.Stop();
     delete[] clients;
+}
+
+static void TestBurstAtomicDelivery()
+{
+    const int burst_length = 6;
+    ComLynxManager host;
+    ComLynxManager client_a;
+    ComLynxManager client_b;
+
+    Check(host.Host("127.0.0.1", 0), "start burst host");
+    int port = host.GetStatus().port;
+    Check(client_a.Join("127.0.0.1", port), "start burst client A");
+    Check(client_b.Join("127.0.0.1", port), "start burst client B");
+    Check(WaitForMode(client_a, ComLynxModeConnected, 2000), "burst client A connected");
+    Check(WaitForMode(client_b, ComLynxModeConnected, 2000), "burst client B connected");
+    host.SetReceiveEnabled(true);
+
+    // Both clients drive the bus at once; the host must never split a burst.
+    for (int i = 0; i < burst_length; i++)
+    {
+        bool last = (i == burst_length - 1);
+        Check(client_a.SendFrame((u8)(0xA0 + i), false, last), "burst client A send");
+        Check(client_b.SendFrame((u8)(0xB0 + i), false, last), "burst client B send");
+    }
+
+    Check(WaitForFramesQueued(host, burst_length * 2, 2000), "queue interleaved bursts");
+
+    ComLynxFrame frame = {};
+    u8 received[burst_length * 2] = {};
+    for (int i = 0; i < burst_length * 2; i++)
+    {
+        Check(WaitForFrame(host, frame, 2000), "drain burst frame");
+        received[i] = frame.data;
+    }
+
+    for (int start = 0; start < burst_length * 2; start += burst_length)
+    {
+        u8 base = received[start] & 0xF0;
+        Check(base == 0xA0 || base == 0xB0, "burst base value");
+
+        for (int i = 0; i < burst_length; i++)
+            Check(received[start + i] == (u8)(base + i), "burst delivered whole and in order");
+    }
+
+    ComLynxStatus status = host.GetStatus();
+    Check(status.bursts_delivered >= 2, "burst delivery count");
+    Check(status.bursts_forced == 0, "no burst needed forcing");
+    Check(status.max_burst_length == burst_length, "burst length high water mark");
+
+    client_a.Stop();
+    client_b.Stop();
+    host.Stop();
 }
 
 static void TestSessionCapacity()
@@ -441,7 +493,7 @@ static void TestReceiveReadiness()
 
     u64 packets = client.GetStatus().packets_received;
     u64 network_frames = client.GetStatus().frames_received_network;
-    Check(host.SendFrame(0x11, false), "send frame before client ready");
+    Check(host.SendFrame(0x11, false, true), "send frame before client ready");
     Check(WaitForPacketsReceived(client, packets + 1, 1000), "client receives startup packet");
 
     ComLynxFrame frame = {};
@@ -453,15 +505,17 @@ static void TestReceiveReadiness()
     Check(client.GetStatus().queue_overflows == 0, "startup traffic does not overflow queue");
 
     client.SetReceiveEnabled(true);
-    Check(host.SendFrame(0x22, true), "send frame after client ready");
+    Check(host.SendFrame(0x22, true, true), "send frame after client ready");
     Check(WaitForFrame(client, frame, 1000), "client receives frame after UART ready");
     Check(frame.data == 0x22 && frame.parity_bit, "ready client frame contents");
 
     u64 queued_before_clear = client.GetStatus().frames_queued;
-    Check(host.SendFrame(0x33, false), "send frame before receive clear");
-    Check(WaitForFramesQueued(client, queued_before_clear + 1, 1000), "queue frame before receive clear");
+    Check(host.SendFrame(0x33, false, true), "send frame before receive disable");
+    Check(WaitForFramesQueued(client, queued_before_clear + 1, 1000), "queue frame before receive disable");
     client.SetReceiveEnabled(false);
-    Check(client.GetStatus().frames_dropped_clear >= 1, "receive clear drop count");
+    Check(client.GetStatus().frames_dropped_clear == 0, "receive disable preserves buffered frames");
+    Check(client.ReceiveFrame(frame), "receive disable keeps queued frame");
+    Check(frame.data == 0x33, "buffered frame survives receive disable");
 
     client.Stop();
     host.Stop();
@@ -477,7 +531,7 @@ static void TestResetMetrics()
     Check(WaitForMode(client, ComLynxModeConnected, 2000), "metrics reset client connected");
     client.SetReceiveEnabled(true);
 
-    Check(host.SendFrame(0x5A, true), "send frame for metrics reset");
+    Check(host.SendFrame(0x5A, true, true), "send frame for metrics reset");
     Check(WaitForFramesQueued(client, 1, 1000), "queue frame for metrics reset");
 
     ComLynxStatus before = client.GetStatus();
@@ -540,6 +594,7 @@ int main()
     TestLoopback();
     TestReceiveBacklogRecovery();
     TestSixPlayerRelayBacklog();
+    TestBurstAtomicDelivery();
     TestSessionCapacity();
     TestSynchronization();
     TestSynchronizationRecovery();

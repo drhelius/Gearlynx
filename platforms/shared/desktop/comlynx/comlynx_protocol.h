@@ -26,6 +26,7 @@
 #define COMLYNX_PACKET_HEADER_SIZE 32
 #define COMLYNX_PACKET_MAX_PAYLOAD_SIZE 32
 #define COMLYNX_PACKET_MAX_SIZE (COMLYNX_PACKET_HEADER_SIZE + COMLYNX_PACKET_MAX_PAYLOAD_SIZE)
+
 enum ComLynxPacketType
 {
     ComLynxPacketJoinRequest = 0x01,
@@ -42,6 +43,9 @@ enum ComLynxRejectReason
     ComLynxRejectSessionFull = 2,
     ComLynxRejectIncompatibleVersion = 3
 };
+
+#define COMLYNX_FRAME_FLAG_PARITY 0x01
+#define COMLYNX_FRAME_FLAG_BURST_END 0x02
 
 struct ComLynxPacket
 {

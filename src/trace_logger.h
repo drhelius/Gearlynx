@@ -114,6 +114,7 @@ struct GLYNX_Trace_Entry
         {
             u8 data;
             u8 flags;
+            u8 source;
             bool is_tx;
         } uart;
 

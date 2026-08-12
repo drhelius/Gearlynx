@@ -1211,7 +1211,7 @@ inline void Mikey::UartRxReflectHead()
     }
 }
 
-inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak)
+inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source)
 {
     if (m_state.uart.rxq_count < 2)
     {
@@ -1228,13 +1228,29 @@ inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
             e.type = TRACE_MIKEY_UART;
             e.uart.data = data;
             e.uart.flags = flags;
+            e.uart.source = source;
             e.uart.is_tx = false;
             m_trace_logger->TraceLog(e);
         }
 #endif
     }
     else
+    {
         m_state.uart.ovr_err = true;
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+        {
+            GLYNX_Trace_Entry e = {};
+            e.type = TRACE_MIKEY_UART;
+            e.uart.data = data;
+            e.uart.flags = 0x10;
+            e.uart.source = source;
+            e.uart.is_tx = false;
+            m_trace_logger->TraceLog(e);
+        }
+#endif
+    }
 
     UartRxReflectHead();
 }
@@ -1287,18 +1303,34 @@ inline void Mikey::UartClock()
     if (m_comlynx_rx_spacing_bits > 0)
         m_comlynx_rx_spacing_bits--;
 
-    if (m_comlynx_cable_connected && m_comlynx_rx_callback && m_comlynx_rx_spacing_bits == 0)
+    // The link is one half-duplex bus: nothing can arrive while this Lynx drives
+    // the line, and a frame is only latched if the 2 deep RX FIFO has room. Both
+    // conditions hold the byte in the link queue instead of destroying it.
+    bool bus_held = m_state.uart.tx_active || m_state.uart.tx_hold_valid;
+
+    if (!bus_held)
+        m_comlynx_tx_hold_bits = 0;
+    else if (m_comlynx_tx_hold_bits < COMLYNX_TX_HOLD_MAX_BITS)
+    {
+        // Bounded so a node transmitting without pause cannot starve itself.
+        m_comlynx_tx_hold_bits++;
+        m_comlynx_rx_spacing_bits = 11;
+    }
+
+    if (m_comlynx_cable_connected && m_comlynx_rx_callback &&
+        m_comlynx_rx_spacing_bits == 0 && m_state.uart.rxq_count < 2)
     {
         u8 data;
         bool parity_bit;
+        u8 source = 0;
 
-        if (m_comlynx_rx_callback(&data, &parity_bit, m_comlynx_user_data))
+        if (m_comlynx_rx_callback(&data, &parity_bit, &source, m_comlynx_user_data))
         {
             bool odd = (parity8(data) != 0);
             bool expected_parity = m_state.uart.par_even ? odd : !odd;
             bool parity_error = parity_bit != expected_parity;
 
-            UartRxPush(data, parity_bit, parity_error, false, false);
+            UartRxPush(data, parity_bit, parity_error, false, false, source);
             UartRelevelIRQ();
 
             m_comlynx_rx_spacing_bits = 11;
@@ -1378,10 +1410,10 @@ inline void Mikey::UartClock()
         if (m_state.uart.tx_suppress_eof_loopback)
             m_state.uart.tx_suppress_eof_loopback = false;
         else
-            UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break);
+            UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break, 0);
 
         if (m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_tx_callback)
-            m_comlynx_tx_callback(new_data, new_parbit, m_comlynx_user_data);
+            m_comlynx_tx_callback(new_data, new_parbit, !m_state.uart.tx_hold_valid, m_comlynx_user_data);
 
         // If there is a holding byte queued, start it now
         if (m_state.uart.tx_hold_valid)

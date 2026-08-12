@@ -49,7 +49,8 @@ static bool validate_packet(const ComLynxPacket& packet)
         case ComLynxPacketFrame:
             return packet.session_id != 0 && packet.peer_token != 0 &&
                 packet.sender_id >= 1 && packet.sender_id <= COMLYNX_MAX_PEERS &&
-                (packet.flags & 0xFE) == 0 && packet.payload_size == 1;
+                (packet.flags & ~(COMLYNX_FRAME_FLAG_PARITY | COMLYNX_FRAME_FLAG_BURST_END)) == 0 &&
+                packet.payload_size == 1;
         default:
             return false;
     }

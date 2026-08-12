@@ -220,6 +220,11 @@ void gui_debug_window_comlynx(void)
     ImGui::TextColored(white, "%llu / %u", comlynx.rx_bursts ?
         (unsigned long long)(comlynx.rx_burst_total_packets / comlynx.rx_bursts) : 0ULL,
         comlynx.rx_burst_max);
+    ImGui::TextColored(violet, "BUS BURST OK/FRC"); ImGui::SameLine();
+    ImGui::TextColored(white, "%llu / %llu", (unsigned long long)comlynx.bursts_delivered,
+        (unsigned long long)comlynx.bursts_forced);
+    ImGui::TextColored(violet, "BUS BURST MAXLEN"); ImGui::SameLine();
+    ImGui::TextColored(white, "%u", comlynx.max_burst_length);
 
     if (comlynx.mode == ComLynxModeFault)
     {

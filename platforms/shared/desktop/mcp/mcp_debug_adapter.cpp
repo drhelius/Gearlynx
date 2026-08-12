@@ -179,6 +179,7 @@ json DebugAdapter::GetDebugStatus()
     bool is_paused = emu_is_debug_idle();
 
     result["paused"] = is_paused;
+    result["total_cycles"] = m_core->GetTotalCycles();
 
     if (is_paused)
     {
@@ -1410,6 +1411,9 @@ json DebugAdapter::GetUARTStatus()
     network["frames_consumed"] = comlynx.frames_consumed;
     network["frames_dropped_disabled"] = comlynx.frames_dropped_disabled;
     network["frames_dropped_clear"] = comlynx.frames_dropped_clear;
+    network["bursts_delivered"] = comlynx.bursts_delivered;
+    network["bursts_forced"] = comlynx.bursts_forced;
+    network["max_burst_length"] = comlynx.max_burst_length;
     network["datagrams_sent"] = comlynx.datagrams_sent;
     network["datagrams_received"] = comlynx.datagrams_received;
     network["send_eagain"] = comlynx.send_eagain;
@@ -3255,10 +3259,18 @@ json DebugAdapter::GetTraceLog(int start, int count)
                          entry.timer.timer_id, entry.timer.backup);
                 break;
             case TRACE_MIKEY_UART:
-                snprintf(buf, sizeof(buf), "  [MIKEY] UART %s  Data:$%02X%s",
-                         entry.uart.is_tx ? "TX" : "RX", entry.uart.data,
-                         (!entry.uart.is_tx && entry.uart.flags) ? "  [ERR]" : "");
+            {
+                char source[16] = "";
+                if (!entry.uart.is_tx)
+                    snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
+                snprintf(buf, sizeof(buf), "  [MIKEY] UART %s  Data:$%02X%s%s%s%s%s",
+                         entry.uart.is_tx ? "TX" : "RX", entry.uart.data, source,
+                         (entry.uart.flags & 0x10) ? "  [OVERRUN]" : "",
+                         (entry.uart.flags & 0x02) ? "  [PARERR]" : "",
+                         (entry.uart.flags & 0x04) ? "  [FRAMERR]" : "",
+                         (entry.uart.flags & 0x08) ? "  [BREAK]" : "");
                 break;
+            }
             case TRACE_MIKEY_AUDIO:
             {
                 static const char* k_audio_regs[] = {"VOL","FDBK","OUT","LFSR","BKUP","CTL","CNT","MISC"};

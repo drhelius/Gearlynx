@@ -312,10 +312,18 @@ static void format_entry_text(const GLYNX_Trace_Entry& entry, char* buf, int buf
                      entry.timer.timer_id, entry.timer.backup);
             break;
         case TRACE_MIKEY_UART:
-            snprintf(buf, buf_size, "  [MIKEY] UART %s  Data:$%02X%s",
-                     entry.uart.is_tx ? "TX" : "RX", entry.uart.data,
-                     (!entry.uart.is_tx && entry.uart.flags) ? "  [ERR]" : "");
+        {
+            char source[16] = "";
+            if (!entry.uart.is_tx)
+                snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
+            snprintf(buf, buf_size, "  [MIKEY] UART %s  Data:$%02X%s%s%s%s%s",
+                     entry.uart.is_tx ? "TX" : "RX", entry.uart.data, source,
+                     (entry.uart.flags & 0x10) ? "  [OVERRUN]" : "",
+                     (entry.uart.flags & 0x02) ? "  [PARERR]" : "",
+                     (entry.uart.flags & 0x04) ? "  [FRAMERR]" : "",
+                     (entry.uart.flags & 0x08) ? "  [BREAK]" : "");
             break;
+        }
         case TRACE_MIKEY_AUDIO:
         {
             static const char* k_audio_regs[] = {"VOL","FDBK","OUT","LFSR","BKUP","CTL","CNT","MISC"};

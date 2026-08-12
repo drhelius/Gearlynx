@@ -29,7 +29,8 @@
 #include "comlynx_queue.h"
 
 #define COMLYNX_PENDING_PACKET_COUNT 64
-#define COMLYNX_INCOMING_FRAME_QUEUE_COUNT 65536
+#define COMLYNX_INCOMING_FRAME_QUEUE_COUNT 16384
+#define COMLYNX_BURST_STALL_LIMIT 1024
 
 enum ComLynxMode
 {
@@ -43,7 +44,9 @@ enum ComLynxMode
 struct ComLynxFrame
 {
     u8 data;
+    u8 sender_id;
     bool parity_bit;
+    bool burst_end;
 };
 
 struct ComLynxStatus
@@ -64,6 +67,9 @@ struct ComLynxStatus
     u64 frames_consumed;
     u64 frames_dropped_disabled;
     u64 frames_dropped_clear;
+    u64 bursts_delivered;
+    u64 bursts_forced;
+    u32 max_burst_length;
     u64 send_eagain;
     u64 send_errors;
     u64 duplicate_packets;
@@ -94,7 +100,7 @@ public:
     bool Join(const char* host, int port);
     void Stop();
 
-    bool SendFrame(u8 data, bool parity_bit);
+    bool SendFrame(u8 data, bool parity_bit, bool burst_end);
     bool ReceiveFrame(ComLynxFrame& frame);
     void SetReceiveEnabled(bool enabled);
     void Synchronize(u64 cycles);
@@ -141,6 +147,9 @@ private:
     bool HostReceive(const ComLynxPacket& packet, const sockaddr_in& source, u64 local_receive_time_us);
     bool ClientReceive(const ComLynxPacket& packet, const sockaddr_in& source, u64 local_receive_time_us);
     bool QueueIncomingFrame(const ComLynxFrame& frame);
+    void ClearIncomingFrames();
+    u8 SelectDeliverySender();
+    u32 IncomingFrameCount() const;
     void ProcessOutgoingFrames();
     void ProcessPendingPackets();
     void ProcessTimers();
@@ -180,6 +189,7 @@ private:
     void IncrementFrameConsumed();
     void IncrementFramesDroppedDisabled();
     void IncrementFramesDroppedClear(u32 count);
+    void RecordBurstDelivered(u32 length, bool forced);
     void IncrementSendEagain();
     void IncrementSendError();
     void IncrementDuplicate();
@@ -218,8 +228,12 @@ private:
     std::chrono::steady_clock::time_point m_last_join_request;
     std::chrono::steady_clock::time_point m_last_heartbeat;
     std::chrono::steady_clock::time_point m_last_host_packet;
-    ComLynxQueue<ComLynxFrame, COMLYNX_INCOMING_FRAME_QUEUE_COUNT> m_incoming_frames;
+    ComLynxQueue<ComLynxFrame, COMLYNX_INCOMING_FRAME_QUEUE_COUNT> m_incoming_frames[COMLYNX_MAX_PEERS + 1];
     ComLynxQueue<ComLynxFrame, 1024> m_outgoing_frames;
+    u8 m_delivery_sender;
+    u8 m_delivery_next_sender;
+    u32 m_delivery_stall_count;
+    u32 m_delivery_burst_length;
     PendingPacket m_pending_packets[COMLYNX_PENDING_PACKET_COUNT];
     int m_pending_packet_head;
     int m_pending_packet_count;

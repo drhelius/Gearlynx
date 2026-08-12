@@ -434,7 +434,7 @@ json McpServer::BuildToolList()
     tools.push_back({
         {"name", "debug_get_status"},
         {"title", "Get Debug Status"},
-        {"description", "Read debugger state: paused, breakpoint hit, current PC."},
+        {"description", "Read debugger state: paused, breakpoint hit, current PC, total emulated cycles."},
         {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
