@@ -39,6 +39,9 @@
 // 800us of gap: below it a pair of frames leaves one byte, above it two
 #define GLYNX_UART_RX_HOLD_CYCLES (800 * (GLYNX_MASTER_CLOCK / 1000000))
 
+// Saturation bound for traced receive gaps; it does not affect FIFO behavior
+#define GLYNX_UART_RX_AGE_MAX_CYCLES (GLYNX_MASTER_CLOCK)
+
 #define GLYNX_UART_TRACE_TX  0
 #define GLYNX_UART_TRACE_RX  1
 #define GLYNX_UART_TRACE_RD  2

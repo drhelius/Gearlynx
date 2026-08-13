@@ -888,7 +888,7 @@ INLINE void Mikey::Advance(u32 cycles)
 
 INLINE void Mikey::UpdateUART(u32 cycles)
 {
-    if (m_state.uart.rx_age_cycles < GLYNX_UART_RX_HOLD_CYCLES)
+    if (m_state.uart.rx_age_cycles < GLYNX_UART_RX_AGE_MAX_CYCLES)
         m_state.uart.rx_age_cycles += cycles;
 }
 
@@ -1306,10 +1306,6 @@ inline void Mikey::UartRxReflectHead()
     else
     {
         m_state.uart.rx_ready = false;
-        m_state.uart.par_err  = false;
-        m_state.uart.fram_err = false;
-        m_state.uart.rx_break = false;
-        m_state.uart.par_bit  = false;
     }
 }
 
@@ -1414,17 +1410,17 @@ inline void Mikey::UartClock()
     if (m_comlynx_rx_spacing_bits > 0)
         m_comlynx_rx_spacing_bits--;
 
-    // The link is one half-duplex bus: nothing can arrive while this Lynx drives
-    // the line, and a frame is only latched if the 2 deep RX FIFO has room. Both
-    // conditions hold the byte in the link queue instead of destroying it.
-    // The hold is unbounded on purpose: letting link bytes in mid transmission
-    // makes loopback and link each deliver at full bus rate, which is twice what
-    // one wire can carry and overruns the 2 deep FIFO.
     if (m_state.uart.tx_active || m_state.uart.tx_hold_valid)
         m_comlynx_rx_spacing_bits = 11;
 
+    // Room has to be judged exactly as UartRxPush will, or a byte gets pulled
+    // off the link queue only to destroy the one already waiting to be read.
+    bool rx_has_room = (m_state.uart.rxq_count == 0) ||
+                       (m_state.uart.rxq_count == 1 &&
+                        m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES);
+
     if (m_comlynx_cable_connected && m_comlynx_rx_callback &&
-        m_comlynx_rx_spacing_bits == 0 && m_state.uart.rxq_count < 2)
+        m_comlynx_rx_spacing_bits == 0 && rx_has_room)
     {
         u8 data;
         bool parity_bit;
