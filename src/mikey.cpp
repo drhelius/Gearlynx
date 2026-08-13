@@ -245,7 +245,7 @@ void Mikey::HorizontalBlank()
         m_lcd_screen->ResetVisibleLine(visible_line);
     }
 
-    m_lcd_screen->ResetLine();
+    m_lcd_screen->ResetLine(m_video_line_remainder);
 }
 
 bool Mikey::SwitchAudInValue()

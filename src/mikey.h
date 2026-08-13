@@ -161,6 +161,7 @@ private:
     u8 m_comlynx_rx_spacing_bits;
     u8 m_uart_trace_cfg;
     u8 m_uart_trace_backup;
+    u32 m_video_line_remainder;
 
     struct RedEyeStream
     {

@@ -49,9 +49,9 @@ INLINE void LcdScreen::Update(u32 cycles)
     }
 }
 
-INLINE void LcdScreen::ResetLine()
+INLINE void LcdScreen::ResetLine(u32 cycles)
 {
-    m_state.current_cycle = 0;
+    m_state.current_cycle = cycles;
 }
 
 INLINE void LcdScreen::ResetVisibleLine(u8 line)

@@ -872,6 +872,7 @@ inline void Mikey::WriteAudioExtra(u16 address, u8 value)
 
 INLINE void Mikey::Advance(u32 cycles)
 {
+    UpdateVideo(cycles);
     UpdateUART(cycles);
     UpdateTimerHardware(cycles);
     UpdateIRQs();
@@ -908,9 +909,10 @@ INLINE void Mikey::SynchronizeCPURead()
 
 INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 {
+    m_video_line_remainder = 0;
+
     while (cycles-- > 0)
     {
-        UpdateVideo(1);
         m_state.timer_source_phase = (m_state.timer_source_phase + 1) & 1023;
 
         for (int prescaler = 0; prescaler < 7; prescaler++)
@@ -925,7 +927,12 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
             {
                 GLYNX_Mikey_Timer* t = &m_state.timers[timer];
                 if (IS_SET_BIT(t->control_a, 3) && t->internal_period_cycles == period)
+                {
+                    if (timer == 0 && t->counter == 0)
+                        m_video_line_remainder = cycles;
+
                     ClockTimer(timer);
+                }
             }
 
             for (int channel = 0; channel < 4; channel++)
@@ -943,6 +950,8 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
         else if (slot < 12)
             ServiceAudio(slot - 8);
     }
+
+    m_video_line_remainder = 0;
 }
 
 INLINE void Mikey::ClockTimer(int i)
