@@ -355,16 +355,13 @@ INLINE void Mikey::Write(u16 address, u8 value)
 
             if (m_state.uart.tx_brk)
             {
-                if (!was_tx_brk)
-                    m_state.uart.prescaler = 0;
-
                 m_state.uart.tx_empty = false;
                 m_state.uart.tx_ready = false;
             }
             else
             {
                 if (was_tx_brk && !m_state.uart.tx_active && m_state.uart.tx_hold_valid)
-                    m_state.uart.tx_ready_bits = 1;
+                    m_state.uart.tx_ready_bits = 3;
                 else if (!m_state.uart.tx_active && !m_state.uart.tx_hold_valid)
                 {
                     m_state.uart.tx_empty = true;
@@ -555,20 +552,28 @@ inline void Mikey::WriteColor(u16 address, u8 value)
     m_lcd_screen->UpdatePalette(color_index, ((m_state.colors[color_index].green & 0x0F) << 8) | (m_state.colors[color_index].bluered & 0xFF));
 }
 
+INLINE u32 Mikey::GetTimerAccessCycles(int timer)
+{
+    u32 elapsed = m_m6502->GetInstructionTicks() + m_bus->GetCycles();
+    u32 phase = (m_state.timer_source_phase + elapsed) & 0x0F;
+    u32 slot = (u32)timer;
+    return (slot - phase) & 0x0F;
+}
 
 template<bool debug>
 inline u8 Mikey::ReadTimer(u16 address)
 {
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
+    int reg = address & 3;
+    int i = (address >> 2) & 7;
+
     if (!debug)
     {
-        m_bus->InjectCycles(k_bus_cycles_timer);
+        m_bus->InjectCycles(GetTimerAccessCycles(i));
         SynchronizeCPURead();
     }
 
-    int reg = address & 3;
-    int i = (address >> 2) & 7;
     GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
     switch (reg)
@@ -595,13 +600,15 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
 {
     assert(address >= MIKEY_TIM0BKUP && address <= MIKEY_TIM7CTLB);
 
-    if (!debug)
-    {
-        m_bus->InjectCycles(k_bus_cycles_timer);
-    }
-
     int reg = address & 3;
     int i = (address >> 2) & 7;
+
+    if (!debug)
+    {
+        m_bus->InjectCycles(GetTimerAccessCycles(i));
+        SynchronizeCPURead();
+    }
+
     GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
     switch (reg)
@@ -624,22 +631,12 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
 
         t->internal_period_cycles = k_mikey_timer_period_cycles[new_prescaler];
 
-        // Re-sync ONLY when clock source changes or when enabling counting from disabled
+        // Re-sync only when clock source changes or when enabling counting from disabled
         bool prescaler_changed = (old_prescaler != new_prescaler);
         bool enable_count_rising = IS_NOT_SET_BIT(old_control_a, 3) && IS_SET_BIT(value, 3);
 
         if (prescaler_changed || enable_count_rising)
         {
-            if (enable_count_rising)
-            {
-                if (i == 0 || i == 2)
-                    t->internal_cycles = (t->internal_period_cycles > 0) ? m_random->NextMask(t->internal_period_cycles - 1) : 0;
-                else
-                    t->internal_cycles = (t->internal_period_cycles / 2) + 1;
-            }
-            else
-                t->internal_cycles = 0;
-
             t->internal_pending_ticks = 0;
 
             if (i == 0) // HCOUNT timer
@@ -664,7 +661,6 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
     case 2:
         DebugMikey("Setting Timer %d Counter to %02X (was %02X)", i, value, m_state.timers[i].counter);
         t->counter = value;
-        t->internal_cycles = (t->internal_period_cycles / 2) + 1;
         break;
     case 3:
         DebugMikey("Setting Timer %d Control B to %02X (was %02X)", i, value, m_state.timers[i].control_b);
@@ -682,14 +678,14 @@ inline u8 Mikey::ReadAudio(u16 address)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
-    if (!debug)
-    {
-        m_bus->InjectCycles(k_bus_cycles_audio);
-        SynchronizeCPURead();
-    }
-
     int reg = address & 7;
     int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
+
+    if (!debug)
+    {
+        m_bus->InjectCycles(GetTimerAccessCycles(i + 8));
+    }
+
     GLYNX_Mikey_Audio* c = &m_state.audio[i];
 
     switch (reg)
@@ -720,9 +716,13 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
 {
     assert(address >= MIKEY_AUD0VOL && address <= MIKEY_AUD3MISC);
 
+    int reg = address & 7;
+    int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
+
     if (!debug)
     {
-        m_bus->InjectCycles(k_bus_cycles_audio);
+        m_bus->InjectCycles(GetTimerAccessCycles(i + 8));
+        SynchronizeCPURead();
     }
 
 #ifndef GLYNX_DISABLE_VGMRECORDER
@@ -730,8 +730,6 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
         m_audio->GetVgmRecorder()->WriteMikey(address, value);
 #endif
 
-    int reg = address & 7;
-    int i = ((address - MIKEY_AUD0VOL) >> 3) & 3;
     GLYNX_Mikey_Audio* c = &m_state.audio[i];
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
@@ -780,10 +778,6 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
 
         if (prescaler_changed || enable_count_rising)
         {
-            if (enable_count_rising)
-                c->internal_cycles = (c->internal_period_cycles / 2) + 1;
-            else
-                c->internal_cycles = 0;
             c->internal_pending_ticks = 0;
             CalculateCutoff(i);
         }
@@ -799,7 +793,6 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
     }
     case 6:
         c->counter = value;
-        c->internal_cycles = (c->internal_period_cycles / 2) + 1;
         break;
     case 7:
         if (IS_NOT_SET_BIT(c->other, 1) && IS_SET_BIT(value, 1))
@@ -880,9 +873,7 @@ inline void Mikey::WriteAudioExtra(u16 address, u8 value)
 INLINE void Mikey::Advance(u32 cycles)
 {
     UpdateUART(cycles);
-    UpdateVideo(cycles);
-    UpdateAudio(cycles);
-    UpdateTimers(cycles);
+    UpdateTimerHardware(cycles);
     UpdateIRQs();
 }
 
@@ -890,6 +881,17 @@ INLINE void Mikey::UpdateUART(u32 cycles)
 {
     if (m_state.uart.rx_age_cycles < GLYNX_UART_RX_AGE_MAX_CYCLES)
         m_state.uart.rx_age_cycles += cycles;
+
+    if (m_state.uart.tx_empty_cycles > 0)
+    {
+        if (cycles >= m_state.uart.tx_empty_cycles)
+        {
+            m_state.uart.tx_empty_cycles = 0;
+            m_state.uart.tx_empty = true;
+        }
+        else
+            m_state.uart.tx_empty_cycles -= cycles;
+    }
 }
 
 INLINE void Mikey::SynchronizeCPURead()
@@ -904,57 +906,105 @@ INLINE void Mikey::SynchronizeCPURead()
     }
 }
 
-INLINE void Mikey::UpdateTimers(u32 cycles)
+INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 {
-    for (int i = 0; i < 8; i++)
+    while (cycles-- > 0)
     {
-        GLYNX_Mikey_Timer* t = &m_state.timers[i];
+        UpdateVideo(1);
+        m_state.timer_source_phase = (m_state.timer_source_phase + 1) & 1023;
 
-        // Is not enabled?
-        if (IS_NOT_SET_BIT(t->control_a, 3))
-            continue;
-
-        // Clear transient status bits for this update
-        t->control_b = UNSET_BIT(t->control_b, 0); // Borrow Out
-        t->control_b = UNSET_BIT(t->control_b, 1); // Borrow In
-
-        // Reset Timer Done is level-triggered
-        if (IS_SET_BIT(t->control_a, 6))
-            t->control_b = UNSET_BIT(t->control_b, 3);
-
-        // One-shot already done?
-        if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
-            continue;
-
-        int tick = 0;
-
-        // Linked mode: consume pending ticks queued by the previous timer
-        if (t->internal_period_cycles == 0)
+        for (int prescaler = 0; prescaler < 7; prescaler++)
         {
-            tick = t->internal_pending_ticks;
-            t->internal_pending_ticks = 0;
-        }
-        // Prescaled/free-running mode
-        else
-        {
-            t->internal_cycles += cycles;
+            u32 period = k_mikey_timer_period_cycles[prescaler];
+            u32 alignment = (period == 1024) ? 127 : ((period >= 64) ? 136 : 143);
 
-            if (t->internal_cycles >= t->internal_period_cycles)
+            if (((m_state.timer_source_phase + alignment) & (period - 1)) != 0)
+                continue;
+
+            for (int timer = 0; timer < 8; timer++)
             {
-                tick = t->internal_cycles / t->internal_period_cycles;
-                t->internal_cycles -= tick * t->internal_period_cycles;
+                GLYNX_Mikey_Timer* t = &m_state.timers[timer];
+                if (IS_SET_BIT(t->control_a, 3) && t->internal_period_cycles == period)
+                    ClockTimer(timer);
+            }
+
+            for (int channel = 0; channel < 4; channel++)
+            {
+                GLYNX_Mikey_Audio* c = &m_state.audio[channel];
+                if (IS_SET_BIT(c->control, 3) && c->internal_period_cycles == period)
+                    ClockAudio(channel);
             }
         }
 
-        // Any clocks this update? Reflect it on BORROW-IN
-        if (tick > 0)
-            t->control_b = SET_BIT(t->control_b, 1);
+        int slot = m_state.timer_source_phase & 0x0F;
 
-        while (tick-- > 0)
-        {
-            if (!BorrowInTimer(i, t))
-                break;
-        }
+        if (slot < 8)
+            ServiceTimer(slot);
+        else if (slot < 12)
+            ServiceAudio(slot - 8);
+    }
+}
+
+INLINE void Mikey::ClockTimer(int i)
+{
+    GLYNX_Mikey_Timer* t = &m_state.timers[i];
+
+    t->control_b = UNSET_BIT(t->control_b, 0);
+    t->control_b = UNSET_BIT(t->control_b, 1);
+
+    if (IS_SET_BIT(t->control_a, 6))
+        t->control_b = UNSET_BIT(t->control_b, 3);
+
+    if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
+        return;
+
+    t->control_b = SET_BIT(t->control_b, 1);
+    BorrowInTimer(i, t);
+}
+
+INLINE void Mikey::ClockAudio(int i)
+{
+    GLYNX_Mikey_Audio* c = &m_state.audio[i];
+
+    c->other = UNSET_BIT(c->other, 0);
+    c->other = UNSET_BIT(c->other, 1);
+
+    if (IS_SET_BIT(c->control, 6))
+        c->other = UNSET_BIT(c->other, 3);
+
+    if (IS_NOT_SET_BIT(c->control, 4) && IS_SET_BIT(c->other, 3))
+        return;
+
+    c->other = SET_BIT(c->other, 1);
+    BorrowInChannel(i, c);
+}
+
+INLINE void Mikey::ServiceTimer(int i)
+{
+    GLYNX_Mikey_Timer* t = &m_state.timers[i];
+
+    t->control_b = UNSET_BIT(t->control_b, 0);
+    t->control_b = UNSET_BIT(t->control_b, 1);
+
+    if (IS_NOT_SET_BIT(t->control_a, 3) || t->internal_period_cycles != 0)
+        return;
+
+    if (IS_SET_BIT(t->control_a, 6))
+        t->control_b = UNSET_BIT(t->control_b, 3);
+
+    if (IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3))
+        return;
+
+    int tick = t->internal_pending_ticks;
+    t->internal_pending_ticks = 0;
+
+    if (tick > 0)
+        t->control_b = SET_BIT(t->control_b, 1);
+
+    while (tick-- > 0)
+    {
+        if (!BorrowInTimer(i, t))
+            break;
     }
 }
 
@@ -1025,57 +1075,32 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
     return true;
 }
 
-INLINE void Mikey::UpdateAudio(u32 cycles)
+INLINE void Mikey::ServiceAudio(int i)
 {
-    for (int i = 0; i < 4; i++)
+    GLYNX_Mikey_Audio* c = &m_state.audio[i];
+
+    c->other = UNSET_BIT(c->other, 0);
+    c->other = UNSET_BIT(c->other, 1);
+
+    if (IS_NOT_SET_BIT(c->control, 3) || c->internal_period_cycles != 0)
+        return;
+
+    if (IS_SET_BIT(c->control, 6))
+        c->other = UNSET_BIT(c->other, 3);
+
+    if (IS_NOT_SET_BIT(c->control, 4) && IS_SET_BIT(c->other, 3))
+        return;
+
+    int tick = c->internal_pending_ticks;
+    c->internal_pending_ticks = 0;
+
+    if (tick > 0)
+        c->other = SET_BIT(c->other, 1);
+
+    while (tick-- > 0)
     {
-        GLYNX_Mikey_Audio* c = &m_state.audio[i];
-
-        // Is not enabled?
-        if (IS_NOT_SET_BIT(c->control, 3))
-            continue;
-
-        // Clear transient status bits for this update
-        c->other = UNSET_BIT(c->other, 0); // Borrow Out
-        c->other = UNSET_BIT(c->other, 1); // Borrow In
-
-        // Reset Timer Done is level-triggered
-        if (IS_SET_BIT(c->control, 6))
-            c->other = UNSET_BIT(c->other, 3);
-
-        // One-shot already done?
-        if (IS_NOT_SET_BIT(c->control, 4) && IS_SET_BIT(c->other, 3))
-            continue;
-
-        int tick = 0;
-
-        // Linked mode: consume pending ticks queued by the previous timer
-        if (c->internal_period_cycles == 0)
-        {
-            tick = c->internal_pending_ticks;
-            c->internal_pending_ticks = 0;
-        }
-        // Prescaled/free-running mode
-        else
-        {
-            c->internal_cycles += cycles;
-
-            if (c->internal_cycles >= c->internal_period_cycles)
-            {
-                tick = c->internal_cycles / c->internal_period_cycles;
-                c->internal_cycles -= tick * c->internal_period_cycles;
-            }
-        }
-
-        // Any clocks this update? Reflect it on BORROW-IN
-        if (tick > 0)
-            c->other = SET_BIT(c->other, 1);
-
-        while (tick-- > 0)
-        {
-            if (!BorrowInChannel(i, c))
-                break;
-        }
+        if (!BorrowInChannel(i, c))
+            break;
     }
 }
 
@@ -1391,6 +1416,7 @@ inline void Mikey::UartBeginFrame(u8 data)
     m_state.uart.tx_empty = false;
     m_state.uart.tx_ready = false;
     m_state.uart.tx_empty_bits = 0;
+    m_state.uart.tx_empty_cycles = 0;
     m_state.uart.tx_started_from_chain = false;
 }
 
@@ -1552,8 +1578,9 @@ inline void Mikey::UartClock()
         {
             m_state.uart.tx_ready = true;
             m_state.uart.tx_empty_bits = (m_state.uart.tx_started_from_chain ? 0 : 1);
+            m_state.uart.tx_empty_cycles = (m_state.uart.tx_started_from_chain ? 1 : 0);
             m_state.uart.tx_started_from_chain = false;
-            m_state.uart.tx_empty = (m_state.uart.tx_empty_bits == 0);
+            m_state.uart.tx_empty = (m_state.uart.tx_empty_bits == 0) && (m_state.uart.tx_empty_cycles == 0);
         }
 
         UartRelevelIRQ();

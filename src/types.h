@@ -249,7 +249,6 @@ struct GLYNX_Mikey_Timer
     u8 control_b;
     u8 counter;
 
-    u32 internal_cycles;
     u32 internal_period_cycles;
     u32 internal_pending_ticks;
 };
@@ -265,7 +264,6 @@ struct GLYNX_Mikey_Audio
     u8 counter;
     u8 other;
 
-    u32 internal_cycles;
     u32 internal_period_cycles;
     u32 internal_pending_ticks;
     u16 internal_lfsr;
@@ -316,6 +314,7 @@ struct GLYNX_Uart
     u8 tx_empty_bits;
     u8 tx_ready_bits;
     bool tx_started_from_chain;
+    u8 tx_empty_cycles;
 
     // 2-deep RX queue (head + holding)
     // flags bits: 0=PARBIT, 1=PARERR, 2=FRAMERR, 3=RXBREAK

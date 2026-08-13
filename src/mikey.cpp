@@ -98,6 +98,8 @@ void Mikey::Reset(bool is_lynx2)
 
 void Mikey::ResetTimers()
 {
+    m_state.timer_source_phase = m_random->Next(7) + 1;
+
     for (int i = 0; i < 8; i++)
     {
         m_state.timers[i].backup = 0;
@@ -105,7 +107,6 @@ void Mikey::ResetTimers()
         m_state.timers[i].control_a = 0;
         m_state.timers[i].control_b = 0;
 
-        m_state.timers[i].internal_cycles = 0;
         m_state.timers[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
         m_state.timers[i].internal_pending_ticks = 0;
     }
@@ -126,7 +127,6 @@ void Mikey::ResetAudio()
         m_state.audio[i].counter = 0;
         m_state.audio[i].other = 0;
 
-        m_state.audio[i].internal_cycles = 0;
         m_state.audio[i].internal_period_cycles = k_mikey_timer_period_cycles[0];
         m_state.audio[i].internal_pending_ticks = 0;
         m_state.audio[i].internal_lfsr = 0;
@@ -170,6 +170,7 @@ void Mikey::ResetUART()
     m_state.uart.tx_empty_bits = 0;
     m_state.uart.tx_ready_bits = 0;
     m_state.uart.tx_started_from_chain = false;
+    m_state.uart.tx_empty_cycles = 0;
     m_state.uart.tx_start_bits = 0;
     m_state.uart.rx_age_cycles = 0;
     m_uart_trace_cfg = 0xFF;
@@ -244,7 +245,7 @@ void Mikey::HorizontalBlank()
         m_lcd_screen->ResetVisibleLine(visible_line);
     }
 
-    m_lcd_screen->ResetLine(m_state.timers[0].internal_cycles);
+    m_lcd_screen->ResetLine();
 }
 
 bool Mikey::SwitchAudInValue()
@@ -294,6 +295,8 @@ void Mikey::LoadState(std::istream& stream, int version)
 
 void Mikey::Serialize(StateSerializer& s, int version)
 {
+    u32 legacy_timer0_cycles = 0;
+
     if (version >= 13)
         G_SERIALIZE(s, m_is_lynx2);
 
@@ -304,7 +307,13 @@ void Mikey::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.timers[i].control_b);
         G_SERIALIZE(s, m_state.timers[i].counter);
 
-        G_SERIALIZE(s, m_state.timers[i].internal_cycles);
+        if (version < 24)
+        {
+            u32 legacy_cycles = 0;
+            G_SERIALIZE(s, legacy_cycles);
+            if (i == 0)
+                legacy_timer0_cycles = legacy_cycles;
+        }
         G_SERIALIZE(s, m_state.timers[i].internal_period_cycles);
         G_SERIALIZE(s, m_state.timers[i].internal_pending_ticks);
     }
@@ -326,7 +335,11 @@ void Mikey::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.audio[i].counter);
         G_SERIALIZE(s, m_state.audio[i].other);
 
-        G_SERIALIZE(s, m_state.audio[i].internal_cycles);
+        if (version < 24)
+        {
+            u32 legacy_cycles = 0;
+            G_SERIALIZE(s, legacy_cycles);
+        }
         G_SERIALIZE(s, m_state.audio[i].internal_period_cycles);
         G_SERIALIZE(s, m_state.audio[i].internal_pending_ticks);
         G_SERIALIZE(s, m_state.audio[i].internal_lfsr);
@@ -376,6 +389,11 @@ void Mikey::Serialize(StateSerializer& s, int version)
         m_state.uart.rx_age_cycles = 0;
     }
 
+    if (version >= 23)
+        G_SERIALIZE(s, m_state.uart.tx_empty_cycles);
+    else if (s.IsLoading())
+        m_state.uart.tx_empty_cycles = 0;
+
     G_SERIALIZE(s, m_state.ATTEN_A);
     G_SERIALIZE(s, m_state.ATTEN_B);
     G_SERIALIZE(s, m_state.ATTEN_C);
@@ -400,6 +418,11 @@ void Mikey::Serialize(StateSerializer& s, int version)
     G_SERIALIZE(s, m_state.dispadr_latch);
     G_SERIALIZE(s, m_state.rest);
     G_SERIALIZE(s, m_state.refresh_cycle_counter);
+
+    if (version >= 23)
+        G_SERIALIZE(s, m_state.timer_source_phase);
+    else if (s.IsLoading())
+        m_state.timer_source_phase = legacy_timer0_cycles & 1023;
 
     if (version >= 20)
         G_SERIALIZE(s, m_state.suzy_done_pending);

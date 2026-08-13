@@ -57,7 +57,7 @@ public:
     void Init(GLYNX_Pixel_Format pixel_format);
     void Reset();
     void Update(u32 cycles);
-    void ResetLine(u32 cycles);
+    void ResetLine();
     void ResetVisibleLine(u8 line);
     void ClearLine(u8 line);
     void FinishLine();

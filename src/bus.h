@@ -46,8 +46,6 @@ static const u32 k_bus_cycles_cart_read         = 3;    // Cart read
 static const u32 k_bus_cycles_mikey_read        = 0;    // Mikey register read
 static const u32 k_bus_cycles_mikey_write       = 0;    // Mikey register write
 static const u32 k_bus_cycles_int_tick_factor   = 5;    // Internal CPU cycle to tick scaling
-static const u32 k_bus_cycles_timer             = 7;
-static const u32 k_bus_cycles_audio             = 7;
 
 #include "bus_inline.h"
 

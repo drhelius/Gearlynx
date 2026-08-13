@@ -69,6 +69,7 @@ public:
         u16 dispadr_latch;
         bool rest;
         u32 refresh_cycle_counter;
+        u32 timer_source_phase;
         char debug_msg_buffer[GLYNX_DEBUG_MSG_MAX_SIZE];
         int debug_msg_pos;
         u16_union debug_str_addr;
@@ -103,6 +104,7 @@ private:
     void ResetAudio();
     void ResetUART();
     void ResetPalette();
+    u32 GetTimerAccessCycles(int timer);
     u8 ReadColor(u16 address);
     void WriteColor(u16 address, u8 value);
     template<bool debug = false> u8 ReadTimer(u16 address);
@@ -114,9 +116,12 @@ private:
     void Advance(u32 cycles);
     void SynchronizeCPURead();
     void UpdateUART(u32 cycles);
-    void UpdateTimers(u32 cycles);
+    void UpdateTimerHardware(u32 cycles);
+    void ClockTimer(int timer);
+    void ClockAudio(int channel);
+    void ServiceTimer(int timer);
+    void ServiceAudio(int channel);
     bool BorrowInTimer(int i, GLYNX_Mikey_Timer* t);
-    void UpdateAudio(u32 cycles);
     bool BorrowInChannel(int i, GLYNX_Mikey_Audio* c);
     void AdvanceLFSR(u8 channel);
     void RebuildTapsMask(GLYNX_Mikey_Audio* channel);
