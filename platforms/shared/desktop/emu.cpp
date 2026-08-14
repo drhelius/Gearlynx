@@ -85,8 +85,9 @@ static int get_rewind_pop_budget(void);
 static bool is_direction_key(GLYNX_Keys key);
 static u16 filter_direction_input(u16 state);
 static void update_direction_input(GLYNX_Keys key, bool pressed);
-static void comlynx_tx_callback(u8 data, bool parity_bit, bool burst_end, void* user_data);
-static bool comlynx_rx_callback(u8* data, bool* parity_bit, u8* source, void* user_data);
+static void comlynx_publish_callback(u64 start_cycle, u32 bit_cycles, u16 bits, void* user_data);
+static bool comlynx_sample_callback(u64 cycle, void* user_data);
+static void comlynx_break_callback(bool asserted, u64 cycle, void* user_data);
 static void comlynx_sync_callback(u64 cycles, void* user_data);
 
 bool emu_init(void)
@@ -119,8 +120,8 @@ bool emu_init(void)
 
     comlynx_manager = new ComLynxManager();
     comlynx_cable_applied = false;
-    core->SetComLynxCallbacks(comlynx_tx_callback, comlynx_rx_callback,
-        comlynx_sync_callback, comlynx_manager);
+    core->SetComLynxCallbacks(comlynx_publish_callback, comlynx_sample_callback,
+        comlynx_break_callback, comlynx_sync_callback, comlynx_manager);
 
     sound_queue_init();
 
@@ -393,7 +394,9 @@ void emu_update(void)
 
     if ((sampleCount > 0) && !core->IsPaused())
     {
-        sound_queue_write(audio_buffer, sampleCount, emu_audio_sync);
+        bool sync_audio = emu_audio_sync &&
+            (!emu_comlynx_is_active() || comlynx_manager->IsPacingPeer());
+        sound_queue_write(audio_buffer, sampleCount, sync_audio);
     }
     else if (core->IsPaused())
     {
@@ -2033,7 +2036,7 @@ void emu_mcp_pump_commands(void)
         mcp_manager->PumpCommands(core);
 }
 
-bool emu_comlynx_host(const char* bind_address, int port)
+bool emu_comlynx_connect(int session)
 {
     if (!comlynx_manager)
         return false;
@@ -2043,24 +2046,7 @@ bool emu_comlynx_host(const char* bind_address, int port)
 
     rewind_reset();
 
-    bool started = comlynx_manager->Host(bind_address, port);
-
-    emu_comlynx_pump();
-
-    return started;
-}
-
-bool emu_comlynx_join(const char* host, int port)
-{
-    if (!comlynx_manager)
-        return false;
-
-    config_emulator.ffwd = false;
-    config_audio.sync = true;
-
-    rewind_reset();
-
-    bool started = comlynx_manager->Join(host, port);
+    bool started = comlynx_manager->Connect((u8)session, core->GetComLynxCycle());
 
     emu_comlynx_pump();
 
@@ -2083,12 +2069,6 @@ void emu_comlynx_pump(void)
 {
     if (!comlynx_manager || !core)
         return;
-
-    // Link bytes are only refused when nothing can ever consume them; the baud
-    // timer state must not gate this because it is sampled once per frame.
-    bool receive_enabled = !emu_is_empty();
-
-    comlynx_manager->SetReceiveEnabled(receive_enabled);
 
     bool cable_connected = comlynx_manager->IsCableConnected();
 
@@ -2126,31 +2106,26 @@ void emu_comlynx_reset_metrics(void)
         comlynx_manager->ResetMetrics();
 }
 
-static void comlynx_tx_callback(u8 data, bool parity_bit, bool burst_end, void* user_data)
+static void comlynx_publish_callback(u64 start_cycle, u32 bit_cycles, u16 bits, void* user_data)
 {
     ComLynxManager* manager = (ComLynxManager*)user_data;
 
     if (manager)
-        manager->SendFrame(data, parity_bit, burst_end);
+        manager->PublishFrame(start_cycle, bit_cycles, bits);
 }
 
-static bool comlynx_rx_callback(u8* data, bool* parity_bit, u8* source, void* user_data)
+static bool comlynx_sample_callback(u64 cycle, void* user_data)
+{
+    ComLynxManager* manager = (ComLynxManager*)user_data;
+    return manager ? manager->SampleLine(cycle) : true;
+}
+
+static void comlynx_break_callback(bool asserted, u64 cycle, void* user_data)
 {
     ComLynxManager* manager = (ComLynxManager*)user_data;
 
-    if (!manager || !data || !parity_bit || !source)
-        return false;
-
-    ComLynxFrame frame;
-
-    if (!manager->ReceiveFrame(frame))
-        return false;
-
-    *data = frame.data;
-    *parity_bit = frame.parity_bit;
-    *source = frame.sender_id;
-
-    return true;
+    if (manager)
+        manager->SetBreak(asserted, cycle);
 }
 
 static void comlynx_sync_callback(u64 cycles, void* user_data)

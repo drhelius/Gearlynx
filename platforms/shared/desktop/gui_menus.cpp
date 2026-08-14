@@ -1404,10 +1404,8 @@ static void menu_comlynx(void)
     ImGui::Separator();
 #endif
 
-    if (ImGui::MenuItem("Host Session", NULL, false, !active))
-        emu_comlynx_host(config_emulator.comlynx_bind_address.c_str(), config_emulator.comlynx_port);
-    if (ImGui::MenuItem("Join Session", NULL, false, !active))
-        emu_comlynx_join(config_emulator.comlynx_host.c_str(), config_emulator.comlynx_port);
+    if (ImGui::MenuItem("Connect", NULL, false, !active))
+        emu_comlynx_connect(config_emulator.comlynx_session);
     if (ImGui::MenuItem("Disconnect", NULL, false, status.mode != ComLynxModeDisabled))
         emu_comlynx_stop();
 
@@ -1415,17 +1413,9 @@ static void menu_comlynx(void)
 
     switch (status.mode)
     {
-        case ComLynxModeHosting:
-            ImGui::TextColored(cornflower_blue, "Hosting on %s", status.endpoint);
-            ImGui::TextDisabled("%d connected peer%s", status.peer_count,
-                status.peer_count == 1 ? "" : "s");
-            break;
-        case ComLynxModeJoining:
-            ImGui::TextColored(cornflower_blue, "Joining %s...", status.endpoint);
-            break;
         case ComLynxModeConnected:
-            ImGui::TextColored(cornflower_blue, "Connected to %s", status.endpoint);
-            ImGui::TextDisabled("Local peer %d", status.local_peer_id);
+            ImGui::TextColored(cornflower_blue, "%s", status.endpoint);
+            ImGui::TextDisabled("Peer %d of %d", status.local_peer_id, status.peer_count);
             break;
         case ComLynxModeFault:
             ImGui::TextColored(error_red, "%s", status.last_error);
@@ -1437,30 +1427,13 @@ static void menu_comlynx(void)
 
     ImGui::Separator();
 
-    char host[128];
-    char bind_address[64];
-    strncpy_fit(host, config_emulator.comlynx_host.c_str(), sizeof(host));
-    strncpy_fit(bind_address, config_emulator.comlynx_bind_address.c_str(), sizeof(bind_address));
-
     ImGui::BeginDisabled(active);
 
-    ImGui::Text("Host Address:");
-    ImGui::SameLine(110.0f);
-    ImGui::SetNextItemWidth(150.0f);
-    if (ImGui::InputText("##comlynx_host", host, sizeof(host), ImGuiInputTextFlags_AutoSelectAll))
-        config_emulator.comlynx_host = host;
-
-    ImGui::Text("Bind Address:");
-    ImGui::SameLine(110.0f);
-    ImGui::SetNextItemWidth(150.0f);
-    if (ImGui::InputText("##comlynx_bind", bind_address, sizeof(bind_address), ImGuiInputTextFlags_AutoSelectAll))
-        config_emulator.comlynx_bind_address = bind_address;
-
-    ImGui::Text("UDP Port:");
+    ImGui::Text("Session:");
     ImGui::SameLine(110.0f);
     ImGui::SetNextItemWidth(60.0f);
-    if (ImGui::InputInt("##comlynx_port", &config_emulator.comlynx_port, 0, 0))
-        config_emulator.comlynx_port = CLAMP(config_emulator.comlynx_port, 1, 65535);
+    if (ImGui::InputInt("##comlynx_session", &config_emulator.comlynx_session, 0, 0))
+        config_emulator.comlynx_session = CLAMP(config_emulator.comlynx_session, 1, 255);
 
     ImGui::EndDisabled();
 
@@ -1486,8 +1459,7 @@ static void draw_server_status(void)
     bool mcp_running = emu_mcp_is_running();
     bool debug_monitor_running = emu_debug_monitor_is_running();
     ComLynxStatus comlynx = emu_comlynx_get_status();
-    bool comlynx_active = comlynx.mode == ComLynxModeHosting ||
-        comlynx.mode == ComLynxModeJoining || comlynx.mode == ComLynxModeConnected;
+    bool comlynx_active = comlynx.mode == ComLynxModeConnected;
 
     if (!mcp_running && !debug_monitor_running && !comlynx_active)
         return;
@@ -1502,19 +1474,10 @@ static void draw_server_status(void)
     ImVec4 mcp_color(0.10f, 0.90f, 0.10f, 1.0f);
     ImVec4 debug_monitor_color(0.20f, 0.70f, 1.0f, 1.0f);
 
-    if (comlynx.mode == ComLynxModeHosting)
+    if (comlynx.mode == ComLynxModeConnected)
     {
-        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: HOST (%d)", comlynx.peer_count);
-        show_comlynx_status = true;
-    }
-    else if (comlynx.mode == ComLynxModeJoining)
-    {
-        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: JOINING");
-        show_comlynx_status = true;
-    }
-    else if (comlynx.mode == ComLynxModeConnected)
-    {
-        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: PEER %d", comlynx.local_peer_id);
+        snprintf(comlynx_status, sizeof(comlynx_status), "COMLYNX: S%u P%d/%d",
+            comlynx.session, comlynx.local_peer_id, comlynx.peer_count);
         show_comlynx_status = true;
     }
 

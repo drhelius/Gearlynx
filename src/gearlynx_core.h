@@ -90,18 +90,19 @@ public:
     Bus* GetBus();
     u64 GetTotalCycles();
     TraceLogger* GetTraceLogger();
-    void SetComLynxCallbacks(GLYNX_ComLynx_TX_Callback tx_callback,
-        GLYNX_ComLynx_RX_Callback rx_callback, GLYNX_ComLynx_Sync_Callback sync_callback,
-        void* user_data);
+    void SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
+        GLYNX_ComLynx_Sample_Callback sample_callback,
+        GLYNX_ComLynx_Break_Callback break_callback,
+        GLYNX_ComLynx_Sync_Callback sync_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
     bool IsComLynxCableConnected() const;
+    u64 GetComLynxCycle() const;
 
 private:
     void Reset();
     template<bool debugger>
     bool RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug);
     void PrepareForHomebrew();
-    void RotateFrameBuffer(u8* frame_buffer, GLYNX_Rotation rotation);
     bool SaveState(std::ostream& stream, size_t& size, bool screenshot);
     bool LoadState(std::istream& stream);
     std::string GetSaveStatePath(const char* path, int index);

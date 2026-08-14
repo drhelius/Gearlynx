@@ -40,7 +40,7 @@ int application_headless_init(const ApplicationParams& params)
     Log("\n%s", GLYNX_TITLE_ASCII);
     Log("%s %s Headless Mode", GLYNX_TITLE, GLYNX_VERSION);
 
-    if (params.mcp_mode < 0 && params.debug_monitor_port <= 0 && params.comlynx_mode < 0)
+    if (params.mcp_mode < 0 && params.debug_monitor_port <= 0 && !params.comlynx_session_set)
     {
         Error("Headless mode requires MCP, debug monitor, or ComLynx");
         return 1;
@@ -110,10 +110,8 @@ int application_headless_init(const ApplicationParams& params)
         emu_debug_monitor_start(params.debug_monitor_port);
     }
 
-    if (params.comlynx_mode == 0)
-        emu_comlynx_host(params.comlynx_bind_address.c_str(), params.comlynx_port);
-    else if (params.comlynx_mode == 1)
-        emu_comlynx_join(params.comlynx_host.c_str(), params.comlynx_port);
+    if (params.comlynx_session_set)
+        emu_comlynx_connect(params.comlynx_session);
 
     signal(SIGINT, headless_signal_handler);
     signal(SIGTERM, headless_signal_handler);

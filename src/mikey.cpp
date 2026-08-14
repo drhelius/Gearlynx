@@ -39,11 +39,22 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     InitPointer(m_trace_logger);
     m_debug_output_enabled = false;
     m_cpu_read_cycles = 0;
-    m_comlynx_tx_callback = NULL;
-    m_comlynx_rx_callback = NULL;
+    m_comlynx_publish_callback = NULL;
+    m_comlynx_sample_callback = NULL;
+    m_comlynx_break_callback = NULL;
     m_comlynx_user_data = NULL;
     m_comlynx_cable_connected = false;
-    m_comlynx_rx_spacing_bits = 0;
+    m_comlynx_cycle = 0;
+    m_uart_last_bit_cycle = 0;
+    m_uart_tx_wire_start = 0;
+    m_uart_tx_wire_bit_cycles = 0;
+    m_uart_tx_wire_bits = 0x07FF;
+    m_uart_tx_wire_published = false;
+    m_uart_rx_wire_state = 0;
+    m_uart_rx_wire_bit = 0;
+    m_uart_rx_wire_data = 0;
+    m_uart_rx_wire_parity = false;
+    m_uart_rx_wire_link = false;
 }
 
 Mikey::~Mikey()
@@ -81,6 +92,12 @@ bool Mikey::IsDebugOutputEnabled()
 
 void Mikey::Reset(bool is_lynx2)
 {
+    if (m_state.uart.tx_open && m_state.uart.tx_brk &&
+        m_comlynx_cable_connected && m_comlynx_break_callback)
+    {
+        m_comlynx_break_callback(false, m_comlynx_cycle, m_comlynx_user_data);
+    }
+
     memset(&m_state, 0, sizeof(Mikey_State));
     m_state.suzy_done_pending = true;
     m_cpu_read_cycles = 0;
@@ -179,7 +196,16 @@ void Mikey::ResetUART()
     m_redeye[0].total = 0;
     m_redeye[1].count = 0;
     m_redeye[1].total = 0;
-    m_comlynx_rx_spacing_bits = 0;
+    m_uart_last_bit_cycle = 0;
+    m_uart_tx_wire_start = 0;
+    m_uart_tx_wire_bit_cycles = 0;
+    m_uart_tx_wire_bits = 0x07FF;
+    m_uart_tx_wire_published = false;
+    m_uart_rx_wire_state = 0;
+    m_uart_rx_wire_bit = 0;
+    m_uart_rx_wire_data = 0;
+    m_uart_rx_wire_parity = false;
+    m_uart_rx_wire_link = false;
 }
 
 void Mikey::ResetPalette()
@@ -253,11 +279,13 @@ bool Mikey::SwitchAudInValue()
     return IS_SET_BIT(m_state.IODIR, 4) && IS_SET_BIT(m_state.IODAT, 4);
 }
 
-void Mikey::SetComLynxCallbacks(GLYNX_ComLynx_TX_Callback tx_callback,
-    GLYNX_ComLynx_RX_Callback rx_callback, void* user_data)
+void Mikey::SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
+    GLYNX_ComLynx_Sample_Callback sample_callback,
+    GLYNX_ComLynx_Break_Callback break_callback, void* user_data)
 {
-    m_comlynx_tx_callback = tx_callback;
-    m_comlynx_rx_callback = rx_callback;
+    m_comlynx_publish_callback = publish_callback;
+    m_comlynx_sample_callback = sample_callback;
+    m_comlynx_break_callback = break_callback;
     m_comlynx_user_data = user_data;
 }
 
@@ -267,13 +295,18 @@ void Mikey::SetComLynxCableConnected(bool connected)
 
     if (!connected)
     {
-        m_comlynx_rx_spacing_bits = 0;
+        m_uart_rx_wire_state = 0;
     }
 }
 
 bool Mikey::IsComLynxCableConnected() const
 {
     return m_comlynx_cable_connected;
+}
+
+u64 Mikey::GetComLynxCycle() const
+{
+    return m_comlynx_cycle;
 }
 
 void Mikey::SaveState(std::ostream& stream)
@@ -289,6 +322,12 @@ void Mikey::LoadState(std::istream& stream, int version)
     StateSerializer serializer(stream);
     Serialize(serializer, version);
     m_cpu_read_cycles = 0;
+    m_uart_tx_wire_start = 0;
+    m_uart_tx_wire_bit_cycles = 0;
+    m_uart_tx_wire_bits = 0x07FF;
+    m_uart_tx_wire_published = false;
+    m_uart_rx_wire_state = 0;
+    m_uart_rx_wire_link = false;
 
     m_lcd_screen->LoadState(stream);
 }

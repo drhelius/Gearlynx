@@ -44,7 +44,6 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/mcp/mcp_debug_adapter.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_tool_registry.cpp \
     $(DESKTOP_SRC_DIR)/mcp/mcp_server.cpp \
-    $(DESKTOP_SRC_DIR)/comlynx/comlynx_protocol.cpp \
     $(DESKTOP_SRC_DIR)/comlynx/comlynx_manager.cpp \
     $(DESKTOP_SRC_DIR)/vscode/debug_monitor_server.cpp \
     $(DESKTOP_SRC_DIR)/vscode/framebuffer_server.cpp \

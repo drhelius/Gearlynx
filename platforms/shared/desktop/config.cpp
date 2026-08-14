@@ -318,14 +318,8 @@ void config_read(void)
     config_emulator.mcp_http_address = read_string("Emulator", "MCPHTTPAddress");
     if (config_emulator.mcp_http_address.empty())
         config_emulator.mcp_http_address = "127.0.0.1";
-    config_emulator.comlynx_host = read_string("Emulator", "ComLynxHost");
-    if (config_emulator.comlynx_host.empty())
-        config_emulator.comlynx_host = "127.0.0.1";
-    config_emulator.comlynx_bind_address = read_string("Emulator", "ComLynxBindAddress");
-    if (config_emulator.comlynx_bind_address.empty())
-        config_emulator.comlynx_bind_address = "0.0.0.0";
-    config_emulator.comlynx_port = read_int("Emulator", "ComLynxPort", COMLYNX_DEFAULT_PORT);
-    config_emulator.comlynx_port = CLAMP(config_emulator.comlynx_port, 1, 65535);
+    config_emulator.comlynx_session = read_int("Emulator", "ComLynxSession", 1);
+    config_emulator.comlynx_session = CLAMP(config_emulator.comlynx_session, 1, 255);
     config_emulator.console_type = read_int("Emulator", "ConsoleType", 0);
     config_emulator.eeprom = read_int("Emulator", "EEPROM", config_EEPROM_Auto);
     config_emulator.eeprom = CLAMP(config_emulator.eeprom, config_EEPROM_Auto, config_EEPROM_Count - 1);
@@ -580,9 +574,7 @@ void config_write(void)
     write_bool("Emulator", "AllowScreenSaver", config_emulator.allow_screensaver);
     write_int("Emulator", "MCPTCPPort", config_emulator.mcp_tcp_port);
     write_string("Emulator", "MCPHTTPAddress", config_emulator.mcp_http_address);
-    write_string("Emulator", "ComLynxHost", config_emulator.comlynx_host);
-    write_string("Emulator", "ComLynxBindAddress", config_emulator.comlynx_bind_address);
-    write_int("Emulator", "ComLynxPort", config_emulator.comlynx_port);
+    write_int("Emulator", "ComLynxSession", config_emulator.comlynx_session);
     write_int("Emulator", "ConsoleType", config_emulator.console_type);
     write_int("Emulator", "EEPROM", config_emulator.eeprom);
     write_int("Emulator", "CartridgeHardware", config_emulator.cartridge_hardware);

@@ -78,8 +78,7 @@
     <ClInclude Include="..\shared\desktop\vscode\framebuffer_server.h" />
     <ClInclude Include="..\shared\desktop\socket_types.h" />
     <ClInclude Include="..\shared\desktop\comlynx\comlynx_manager.h" />
-    <ClInclude Include="..\shared\desktop\comlynx\comlynx_protocol.h" />
-    <ClInclude Include="..\shared\desktop\comlynx\comlynx_queue.h" />
+    <ClInclude Include="..\shared\desktop\comlynx\comlynx_wire.h" />
     <ClInclude Include="..\shared\desktop\emu.h" />
     <ClInclude Include="..\shared\desktop\gui.h" />
     <ClInclude Include="..\shared\desktop\gui_actions.h" />
@@ -166,7 +165,6 @@
     <ClCompile Include="..\shared\desktop\events.cpp" />
     <ClCompile Include="..\shared\desktop\config.cpp" />
     <ClCompile Include="..\shared\desktop\comlynx\comlynx_manager.cpp" />
-    <ClCompile Include="..\shared\desktop\comlynx\comlynx_protocol.cpp" />
     <ClCompile Include="..\shared\desktop\vscode\debug_monitor_server.cpp" />
     <ClCompile Include="..\shared\desktop\vscode\framebuffer_server.cpp" />
     <ClCompile Include="..\shared\desktop\emu.cpp" />

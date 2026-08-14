@@ -114,6 +114,7 @@ public:
     json GetSuzyRegisters(u16 address = 0xFFFF);
     json WriteSuzyRegister(u16 address, u8 value);
     json GetUARTStatus();
+    json ResetComLynxMetrics();
     json GetCartStatus();
     json GetEepromStatus();
     json GetScreenshot();

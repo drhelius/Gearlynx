@@ -2,6 +2,7 @@ include Makefile.sources
 
 TARGET_NAME = gearlynx-tests
 COMLYNX_TARGET_NAME = gearlynx-comlynx-tests
+COMLYNX_WIRE_TARGET_NAME = gearlynx-comlynx-wire-tests
 GIT_VERSION := $(shell git describe --abbrev=7 --dirty --always --tags)
 UNAME_S := $(shell uname -s)
 PLATFORM = "undefined"
@@ -61,7 +62,13 @@ all: $(TARGET)
 comlynx: $(COMLYNX_TARGET_NAME)
 	@echo ComLynx tests build complete for $(PLATFORM)
 
-$(COMLYNX_TARGET_NAME): comlynx_tests.cpp ../platforms/shared/desktop/comlynx/comlynx_protocol.cpp ../platforms/shared/desktop/comlynx/comlynx_manager.cpp
+comlynx-wire: $(COMLYNX_WIRE_TARGET_NAME)
+	@echo ComLynx wire tests build complete for $(PLATFORM)
+
+$(COMLYNX_WIRE_TARGET_NAME): comlynx_wire_tests.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I../platforms/shared/desktop -o $@ $^ $(LDFLAGS)
+
+$(COMLYNX_TARGET_NAME): comlynx_tests.cpp ../platforms/shared/desktop/comlynx/comlynx_manager.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I../platforms/shared/desktop -pthread -o $@ $^ $(LDFLAGS)
 
 $(TARGET): $(OBJECTS)
@@ -77,4 +84,4 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) $(COMLYNX_TARGET_NAME)
+	rm -f $(OBJECTS) $(TARGET) $(COMLYNX_TARGET_NAME) $(COMLYNX_WIRE_TARGET_NAME)

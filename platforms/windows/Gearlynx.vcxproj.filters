@@ -36,10 +36,7 @@
     <ClInclude Include="..\shared\desktop\comlynx\comlynx_manager.h">
       <Filter>desktop\comlynx</Filter>
     </ClInclude>
-    <ClInclude Include="..\shared\desktop\comlynx\comlynx_protocol.h">
-      <Filter>desktop\comlynx</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shared\desktop\comlynx\comlynx_queue.h">
+    <ClInclude Include="..\shared\desktop\comlynx\comlynx_wire.h">
       <Filter>desktop\comlynx</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\desktop\application.h">
@@ -470,9 +467,6 @@
       <Filter>desktop\vscode</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\comlynx\comlynx_manager.cpp">
-      <Filter>desktop\comlynx</Filter>
-    </ClCompile>
-    <ClCompile Include="..\shared\desktop\comlynx\comlynx_protocol.cpp">
       <Filter>desktop\comlynx</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\vscode\framebuffer_server.cpp">

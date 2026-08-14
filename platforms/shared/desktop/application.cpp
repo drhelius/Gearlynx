@@ -165,10 +165,8 @@ int application_init(const ApplicationParams& params)
         emu_debug_monitor_start(params.debug_monitor_port);
     }
 
-    if (params.comlynx_mode == 0)
-        emu_comlynx_host(params.comlynx_bind_address.c_str(), params.comlynx_port);
-    else if (params.comlynx_mode == 1)
-        emu_comlynx_join(params.comlynx_host.c_str(), params.comlynx_port);
+    if (params.comlynx_session_set)
+        emu_comlynx_connect(params.comlynx_session);
 
     application_refocus_window();
 

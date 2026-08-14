@@ -36,12 +36,8 @@ struct ApplicationParams
     std::string mcp_http_address = "127.0.0.1";
     bool mcp_http_address_set = false;
     int debug_monitor_port = -1;
-    int comlynx_mode = -1;
-    std::string comlynx_host = "127.0.0.1";
-    std::string comlynx_bind_address = "0.0.0.0";
-    int comlynx_port = COMLYNX_DEFAULT_PORT;
-    bool comlynx_bind_address_set = false;
-    bool comlynx_port_set = false;
+    int comlynx_session = 1;
+    bool comlynx_session_set = false;
 };
 
 #ifdef APPLICATION_IMPORT

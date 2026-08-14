@@ -1404,37 +1404,34 @@ json DebugAdapter::GetUARTStatus()
 
     ComLynxStatus comlynx = emu_comlynx_get_status();
     json network;
-    network["frames_generated"] = comlynx.frames_generated;
-    network["frames_sent"] = comlynx.frames_sent;
-    network["frames_received_network"] = comlynx.frames_received_network;
-    network["frames_queued"] = comlynx.frames_queued;
-    network["frames_consumed"] = comlynx.frames_consumed;
-    network["frames_dropped_disabled"] = comlynx.frames_dropped_disabled;
-    network["frames_dropped_clear"] = comlynx.frames_dropped_clear;
-    network["bursts_delivered"] = comlynx.bursts_delivered;
-    network["bursts_forced"] = comlynx.bursts_forced;
-    network["max_burst_length"] = comlynx.max_burst_length;
-    network["datagrams_sent"] = comlynx.datagrams_sent;
-    network["datagrams_received"] = comlynx.datagrams_received;
-    network["send_eagain"] = comlynx.send_eagain;
-    network["send_errors"] = comlynx.send_errors;
-    network["sequence_gaps"] = comlynx.sequence_gaps;
-    network["out_of_order_packets"] = comlynx.out_of_order_packets;
-    network["duplicate_packets"] = comlynx.duplicate_packets;
-    network["queue_overflows"] = comlynx.queue_overflows;
-    network["max_outgoing_queue_depth"] = comlynx.max_outgoing_queue_depth;
-    network["max_incoming_queue_depth"] = comlynx.max_incoming_queue_depth;
-    network["max_pending_packet_depth"] = comlynx.max_pending_packet_depth;
-    network["frame_rx_interval_min_us"] = comlynx.frame_rx_interval_min_us;
-    network["frame_rx_interval_avg_us"] = comlynx.frame_rx_interval_avg_us;
-    network["frame_rx_interval_max_us"] = comlynx.frame_rx_interval_max_us;
-    network["frame_rx_interval_variation_us"] = comlynx.frame_rx_interval_variation_us;
-    network["rx_bursts"] = comlynx.rx_bursts;
-    network["rx_burst_max"] = comlynx.rx_burst_max;
-    network["rx_burst_total_packets"] = comlynx.rx_burst_total_packets;
+    network["transport"] = "shared_memory";
+    network["session"] = comlynx.session;
+    network["local_peer_id"] = comlynx.local_peer_id;
+    network["peer_count"] = comlynx.peer_count;
+    network["frames_published"] = comlynx.frames_published;
+    network["line_samples"] = comlynx.line_samples;
+    network["low_samples"] = comlynx.low_samples;
+    network["barrier_waits"] = comlynx.barrier_waits;
+    network["barrier_wait_us"] = comlynx.barrier_wait_us;
+    network["barrier_wait_max_us"] = comlynx.barrier_wait_max_us;
+    network["barrier_wait_over_1ms"] = comlynx.barrier_wait_over_1ms;
+    network["barrier_wait_over_10ms"] = comlynx.barrier_wait_over_10ms;
+    network["barrier_wait_over_50ms"] = comlynx.barrier_wait_over_50ms;
+    network["sync_gap_max_us"] = comlynx.sync_gap_max_us;
+    network["sync_gap_over_50ms"] = comlynx.sync_gap_over_50ms;
+    network["peer_detaches"] = comlynx.peer_detaches;
+    network["peer_detach_max_age_us"] = comlynx.peer_detach_max_age_us;
+    network["reattachments"] = comlynx.reattachments;
+    network["pacing_peer"] = comlynx.pacing_peer;
     status["comlynx"] = network;
 
     return status;
+}
+
+json DebugAdapter::ResetComLynxMetrics()
+{
+    emu_comlynx_reset_metrics();
+    return {{"success", true}};
 }
 
 static const char* get_eeprom_type_name(GLYNX_EEPROM type)

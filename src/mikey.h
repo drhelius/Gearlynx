@@ -94,10 +94,12 @@ public:
     bool IsDebugOutputEnabled();
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream, int version);
-    void SetComLynxCallbacks(GLYNX_ComLynx_TX_Callback tx_callback,
-        GLYNX_ComLynx_RX_Callback rx_callback, void* user_data);
+    void SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
+        GLYNX_ComLynx_Sample_Callback sample_callback,
+        GLYNX_ComLynx_Break_Callback break_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
     bool IsComLynxCableConnected() const;
+    u64 GetComLynxCycle() const;
 
 private:
     void ResetTimers();
@@ -133,7 +135,9 @@ private:
     void UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source);
     u16 UartCyclesToMicros(u32 cycles);
     void RedEyeFeed(u8 dir, u8 data);
-    void UartBeginFrame(u8 data);
+    void UartBeginFrame(u8 data, bool chained);
+    bool UartWireLevel() const;
+    void UartReceiveWire(bool level, bool peer_low);
     void UartClock();
     void HorizontalBlank();
     void UpdateVideo(u32 cycles);
@@ -154,11 +158,22 @@ private:
     bool m_debug_output_enabled;
     TraceLogger* m_trace_logger;
     u32 m_cpu_read_cycles;
-    GLYNX_ComLynx_TX_Callback m_comlynx_tx_callback;
-    GLYNX_ComLynx_RX_Callback m_comlynx_rx_callback;
+    GLYNX_ComLynx_Publish_Callback m_comlynx_publish_callback;
+    GLYNX_ComLynx_Sample_Callback m_comlynx_sample_callback;
+    GLYNX_ComLynx_Break_Callback m_comlynx_break_callback;
     void* m_comlynx_user_data;
     bool m_comlynx_cable_connected;
-    u8 m_comlynx_rx_spacing_bits;
+    u64 m_comlynx_cycle;
+    u64 m_uart_last_bit_cycle;
+    u64 m_uart_tx_wire_start;
+    u32 m_uart_tx_wire_bit_cycles;
+    u16 m_uart_tx_wire_bits;
+    bool m_uart_tx_wire_published;
+    u8 m_uart_rx_wire_state;
+    u8 m_uart_rx_wire_bit;
+    u8 m_uart_rx_wire_data;
+    bool m_uart_rx_wire_parity;
+    bool m_uart_rx_wire_link;
     u8 m_uart_trace_cfg;
     u8 m_uart_trace_backup;
     u32 m_video_line_remainder;

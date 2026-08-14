@@ -857,6 +857,17 @@ json McpServer::BuildToolList()
     });
 
     tools.push_back({
+        {"name", "reset_comlynx_metrics"},
+        {"title", "Reset ComLynx Metrics"},
+        {"description", "Reset ComLynx transport and stall diagnostics."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
+        {"inputSchema", {
+            {"type", "object"},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
         {"name", "get_cart_status"},
         {"title", "Get Cartridge Status"},
         {"description", "Read cartridge status: address generation, banks, AUDIN."},
@@ -2507,6 +2518,10 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     else if (normalizedTool == "get_uart_status")
     {
         return m_debugAdapter.GetUARTStatus();
+    }
+    else if (normalizedTool == "reset_comlynx_metrics")
+    {
+        return m_debugAdapter.ResetComLynxMetrics();
     }
     else if (normalizedTool == "get_cart_status")
     {

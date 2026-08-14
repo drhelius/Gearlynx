@@ -28,14 +28,6 @@
 #include "mikey.h"
 #include "suzy.h"
 
-INLINE void GearlynxCore::SynchronizeComLynx()
-{
-    if (m_comlynx_sync_callback && m_total_cycles >= m_comlynx_next_sync_cycle)
-    {
-        m_comlynx_sync_callback(m_total_cycles, m_comlynx_sync_user_data);
-        m_comlynx_next_sync_cycle = m_total_cycles + COMLYNX_SYNC_CYCLES;
-    }
-}
 
 INLINE bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug)
 {
@@ -200,6 +192,15 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
     }
 }
 
+INLINE void GearlynxCore::SynchronizeComLynx()
+{
+    if (m_comlynx_sync_callback && m_total_cycles >= m_comlynx_next_sync_cycle)
+    {
+        m_comlynx_sync_callback(m_mikey->GetComLynxCycle(), m_comlynx_sync_user_data);
+        m_comlynx_next_sync_cycle = m_total_cycles + COMLYNX_SYNC_CYCLES;
+    }
+}
+
 INLINE Memory* GearlynxCore::GetMemory()
 {
     return m_memory;
@@ -238,6 +239,11 @@ INLINE Mikey* GearlynxCore::GetMikey()
 INLINE Bus* GearlynxCore::GetBus()
 {
     return m_bus;
+}
+
+INLINE u64 GearlynxCore::GetComLynxCycle() const
+{
+    return m_mikey->GetComLynxCycle();
 }
 
 #endif /* GEARLYNX_CORE_INLINE_H */

@@ -101,7 +101,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - Save states with preview and rewind support.
 - Run-ahead support to reduce input latency.
 - Very accurate audio emulation with configurable low-pass filter (mimics original Lynx audio hardware).
-- ComLynx multiplayer over UDP for up to eight emulator instances on the same machine or a LAN.
+- ComLynx multiplayer for up to eight emulator instances on the same machine.
 - VGM recorder.
 - Internal database for automatic ROM detection and hardware selection if `Auto` options are selected.
 - Bank switching (BANK1 + AUDIN) and EEPROM.
@@ -158,10 +158,7 @@ Options:
       --mcp-http-port N       HTTP port for MCP server (default: 7777)
       --debug-monitor         Start debug monitor TCP server (default port: 6502)
       --debug-monitor-port N  Debug monitor port, 1-65534 (default: 6502)
-      --comlynx-host          Host a ComLynx UDP session
-      --comlynx-join HOST     Join a ComLynx UDP session
-      --comlynx-port N        ComLynx UDP port (default: 7800)
-      --comlynx-bind A        ComLynx host bind address (default: 0.0.0.0)
+      --comlynx-join N        Join local ComLynx shared session 1-255
       --headless              Run without GUI (requires MCP, debug monitor, or ComLynx)
       --portable              Store configuration and user data beside the application
   -v, --version               Display version information
@@ -176,9 +173,7 @@ For complete setup instructions and tool documentation, see [MCP_README.md](MCP_
 
 ### ComLynx Multiplayer
 
-Open the `ComLynx` menu on one instance and select `Host Session`. On each additional instance, enter the host address and matching UDP port, then select `Join Session`. For command-line use, start the host with `--comlynx-host` and clients with `--comlynx-join HOST`; use `--comlynx-port` on every instance when changing the default port. Independent instances should use separate application copies or `--portable` data directories so configuration, saves, and single-instance handling do not conflict.
-
-The transport is intended only for trusted local networks: it uses manual addresses, has no Internet discovery or NAT traversal, encryption, authentication, packet retransmission, or electrical collision/break emulation.
+Choose the same session number in the `ComLynx` menu on every instance and select `Connect`, or start each process with `--comlynx-join N`. Sessions use local shared memory and support up to eight peers on one computer. Independent instances should use separate application copies or `--portable` data directories so configuration, saves, and single-instance handling do not conflict.
 
 ### VS Code Extension
 

@@ -336,6 +336,8 @@ INLINE void Mikey::Write(u16 address, u8 value)
         {
             DebugMikey("Setting SERCTL to %02X (was %02X)", value, m_state.SERCTL);
             bool was_tx_brk = m_state.uart.tx_brk;
+            bool was_break_asserted = m_state.uart.tx_open && m_state.uart.tx_brk;
+
             m_state.SERCTL = value;
 
             m_state.uart.tx_int_en = IS_SET_BIT(value, 7);
@@ -344,6 +346,15 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.uart.tx_open = IS_SET_BIT(value, 2);
             m_state.uart.tx_brk = IS_SET_BIT(value, 1);
             m_state.uart.par_even = IS_SET_BIT(value, 0);
+
+            bool break_asserted = m_state.uart.tx_open && m_state.uart.tx_brk;
+
+            if (was_break_asserted != break_asserted && m_comlynx_cable_connected &&
+                m_comlynx_break_callback)
+            {
+                m_comlynx_break_callback(break_asserted, m_comlynx_cycle,
+                    m_comlynx_user_data);
+            }
 
             if (IS_SET_BIT(value, 3)) // RESETERR
             {
@@ -404,7 +415,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
 
             if (!m_state.uart.tx_active && !m_state.uart.tx_brk)
             {
-                UartBeginFrame(value);
+                UartBeginFrame(value, false);
                 m_state.uart.tx_start_bits = GLYNX_UART_TX_START_BITS;
                 m_state.uart.tx_ready_bits = 2;
                 m_state.uart.tx_started_from_chain = false;
@@ -913,6 +924,7 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 
     while (cycles-- > 0)
     {
+        m_comlynx_cycle++;
         m_state.timer_source_phase = (m_state.timer_source_phase + 1) & 1023;
 
         for (int prescaler = 0; prescaler < 7; prescaler++)
@@ -1157,7 +1169,7 @@ INLINE bool Mikey::BorrowInChannel(int i, GLYNX_Mikey_Audio* c)
     return true;
 }
 
-inline void Mikey::AdvanceLFSR(u8 channel)
+INLINE void Mikey::AdvanceLFSR(u8 channel)
 {
     GLYNX_Mikey_Audio* c = &m_state.audio[channel];
 
@@ -1270,7 +1282,7 @@ INLINE u16 Mikey::UartCyclesToMicros(u32 cycles)
     return (us > 0xFFFF) ? 0xFFFF : (u16)us;
 }
 
-INLINE void Mikey::RedEyeFeed(u8 dir, u8 data)
+inline void Mikey::RedEyeFeed(u8 dir, u8 data)
 {
     RedEyeStream* s = &m_redeye[dir & 1];
 
@@ -1324,7 +1336,7 @@ INLINE void Mikey::RedEyeFeed(u8 dir, u8 data)
     s->total = 0;
 }
 
-inline void Mikey::UartRxReflectHead()
+INLINE void Mikey::UartRxReflectHead()
 {
     if (m_state.uart.rxq_count > 0)
     {
@@ -1343,14 +1355,12 @@ inline void Mikey::UartRxReflectHead()
     }
 }
 
-inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source)
+INLINE void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source)
 {
     u8 flags = (parbit ? 0x01 : 0) | (parerr ? 0x02 : 0) | (framerr ? 0x04 : 0) | (rxbreak ? 0x08 : 0);
 
-    // A frame that lands too soon after an unread one destroys it instead of
-    // queueing behind it, so at ComLynx speed only the newest byte survives
     bool room = (m_state.uart.rxq_count == 0) ||
-                (m_state.uart.rxq_count == 1 && m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES);
+                (m_state.uart.rxq_count == 1 && (source != 0 || m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES));
     bool lost = !room;
 
     u32 age_cycles = m_state.uart.rx_age_cycles;
@@ -1380,6 +1390,11 @@ inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
         RedEyeFeed(1, data);
 #endif
 
+#if defined(GLYNX_DISABLE_DISASSEMBLER)
+    UNUSED(age_cycles);
+    UNUSED(source);
+#endif
+
     m_state.uart.rxq_data[slot] = data;
     m_state.uart.rxq_flags[slot] = flags;
 
@@ -1389,10 +1404,8 @@ inline void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
     UartRxReflectHead();
 }
 
-inline void Mikey::UartBeginFrame(u8 data)
+INLINE void Mikey::UartBeginFrame(u8 data, bool chained)
 {
-    bool chained = m_state.uart.tx_active;
-
     m_state.uart.tx_data = data;
     m_state.uart.tx_bit_index = 0;
 
@@ -1404,6 +1417,27 @@ inline void Mikey::UartBeginFrame(u8 data)
     }
     else
         m_state.uart.tx_parbit = m_state.uart.par_even ? 1 : 0;
+
+    u32 timer_cycles = m_state.timers[4].internal_period_cycles;
+
+    if (timer_cycles == 0)
+        timer_cycles = 16;
+
+    m_uart_tx_wire_bit_cycles = timer_cycles * ((u32)m_state.timers[4].backup + 1) * 8;
+    m_uart_tx_wire_bits = (u16)(((u16)data << 1) |
+        ((u16)(m_state.uart.tx_parbit ? 1 : 0) << 9) | 0x0400);
+    m_uart_tx_wire_published = false;
+
+    if (chained)
+    {
+        m_uart_tx_wire_start = m_comlynx_cycle + m_uart_tx_wire_bit_cycles;
+        if (m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_publish_callback)
+        {
+            m_comlynx_publish_callback(m_uart_tx_wire_start, m_uart_tx_wire_bit_cycles,
+                m_uart_tx_wire_bits, m_comlynx_user_data);
+        }
+        m_uart_tx_wire_published = true;
+    }
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
@@ -1429,7 +1463,75 @@ inline void Mikey::UartBeginFrame(u8 data)
     m_state.uart.tx_started_from_chain = false;
 }
 
-inline void Mikey::UartClock()
+INLINE bool Mikey::UartWireLevel() const
+{
+    if (m_state.uart.tx_brk)
+        return false;
+
+    if (!m_state.uart.tx_active || m_state.uart.tx_start_bits > 0)
+        return true;
+
+    u8 bit = m_state.uart.tx_bit_index;
+    if (bit >= 11)
+        return true;
+
+    return (m_uart_tx_wire_bits & (1u << bit)) != 0;
+}
+
+INLINE void Mikey::UartReceiveWire(bool level, bool peer_low)
+{
+    if (m_uart_rx_wire_state == 0)
+    {
+        if (!level)
+        {
+            m_uart_rx_wire_state = 1;
+            m_uart_rx_wire_bit = 0;
+            m_uart_rx_wire_data = 0;
+            m_uart_rx_wire_parity = false;
+            m_uart_rx_wire_link = peer_low;
+        }
+        return;
+    }
+
+    m_uart_rx_wire_link = m_uart_rx_wire_link || peer_low;
+
+    if (m_uart_rx_wire_state == 1)
+    {
+        if (level)
+            m_uart_rx_wire_data |= (u8)(1u << m_uart_rx_wire_bit);
+
+        m_uart_rx_wire_bit++;
+        if (m_uart_rx_wire_bit >= 8)
+            m_uart_rx_wire_state = 2;
+        return;
+    }
+
+    if (m_uart_rx_wire_state == 2)
+    {
+        m_uart_rx_wire_parity = level;
+        m_uart_rx_wire_state = 3;
+        return;
+    }
+
+    bool parity_error;
+    if (m_state.uart.par_en)
+    {
+        bool odd = (parity8(m_uart_rx_wire_data) != 0);
+        bool expected = m_state.uart.par_even ? odd : !odd;
+        parity_error = m_uart_rx_wire_parity != expected;
+    }
+    else
+        parity_error = m_uart_rx_wire_parity != m_state.uart.par_even;
+
+    UartRxPush(m_uart_rx_wire_data, m_uart_rx_wire_parity, parity_error,
+        !level, !level && m_uart_rx_wire_data == 0, m_uart_rx_wire_link ? 1 : 0);
+
+    UartRelevelIRQ();
+
+    m_uart_rx_wire_state = 0;
+}
+
+INLINE void Mikey::UartClock()
 {
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
@@ -1442,44 +1544,21 @@ inline void Mikey::UartClock()
     if (m_state.uart.prescaler != 0)
         return;
 
-    if (m_comlynx_rx_spacing_bits > 0)
-        m_comlynx_rx_spacing_bits--;
+    u64 measured_bit_cycles = m_uart_last_bit_cycle == 0 ? 0 :
+        m_comlynx_cycle - m_uart_last_bit_cycle;
+    m_uart_last_bit_cycle = m_comlynx_cycle;
 
-    if (m_state.uart.tx_active || m_state.uart.tx_hold_valid)
-        m_comlynx_rx_spacing_bits = 11;
+    if (measured_bit_cycles > 0 && measured_bit_cycles <= 0xFFFFFFFFULL)
+        m_uart_tx_wire_bit_cycles = (u32)measured_bit_cycles;
 
-    // Room has to be judged exactly as UartRxPush will, or a byte gets pulled
-    // off the link queue only to destroy the one already waiting to be read.
-    bool rx_has_room = (m_state.uart.rxq_count == 0) ||
-                       (m_state.uart.rxq_count == 1 &&
-                        m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES);
+    bool local_level = UartWireLevel();
 
-    if (m_comlynx_cable_connected && m_comlynx_rx_callback &&
-        m_comlynx_rx_spacing_bits == 0 && rx_has_room)
-    {
-        u8 data;
-        bool parity_bit;
-        u8 source = 0;
+    bool wire_level = local_level;
 
-        if (m_comlynx_rx_callback(&data, &parity_bit, &source, m_comlynx_user_data))
-        {
-            bool parity_error;
+    if (m_comlynx_cable_connected && m_comlynx_sample_callback)
+        wire_level = wire_level && m_comlynx_sample_callback(m_comlynx_cycle, m_comlynx_user_data);
 
-            if (m_state.uart.par_en)
-            {
-                bool odd = (parity8(data) != 0);
-                bool expected_parity = m_state.uart.par_even ? odd : !odd;
-                parity_error = (parity_bit != expected_parity);
-            }
-            else
-                parity_error = (parity_bit != m_state.uart.par_even);
-
-            UartRxPush(data, parity_bit, parity_error, false, false, source);
-            UartRelevelIRQ();
-
-            m_comlynx_rx_spacing_bits = 11;
-        }
-    }
+    UartReceiveWire(wire_level, local_level && !wire_level);
 
     if (!m_state.uart.tx_active)
     {
@@ -1495,7 +1574,7 @@ inline void Mikey::UartClock()
             u8 next = m_state.uart.tx_hold_data;
             m_state.uart.tx_hold_valid = false;
             m_state.uart.tx_suppress_eof_loopback = false;
-            UartBeginFrame(next);
+            UartBeginFrame(next, true);
             m_state.uart.tx_ready = true;
             m_state.uart.tx_ready_bits = 0;
             UartRelevelIRQ();
@@ -1524,11 +1603,22 @@ inline void Mikey::UartClock()
         }
     }
 
-    // Skip synthesizing the TX line level per bit for now
-
     if (m_state.uart.tx_start_bits > 0)
     {
         m_state.uart.tx_start_bits--;
+
+        if (m_state.uart.tx_start_bits == 0 && !m_uart_tx_wire_published)
+        {
+            m_uart_tx_wire_start = m_comlynx_cycle + m_uart_tx_wire_bit_cycles;
+
+            if (m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_publish_callback)
+            {
+                m_comlynx_publish_callback(m_uart_tx_wire_start, m_uart_tx_wire_bit_cycles,
+                    m_uart_tx_wire_bits, m_comlynx_user_data);
+            }
+
+            m_uart_tx_wire_published = true;
+        }
         return;
     }
 
@@ -1539,45 +1629,15 @@ inline void Mikey::UartClock()
         // Frame complete on TX side
         m_state.uart.tx_active = false;
 
-        // Loopback RX: enqueue into 2-deep RX queue
-        u8 new_data = m_state.uart.tx_data;
-        bool new_parbit = (m_state.uart.tx_parbit != 0);
-        bool new_parerr = false;
-        bool new_fram = false;   // not synthesized here
-        bool new_break = false;
-
-        if (m_state.uart.par_en)
-        {
-            bool odd = (parity8(new_data) != 0);
-            bool expected_parbit = m_state.uart.par_even ? odd : !odd;
-            new_parerr = (new_parbit != expected_parbit);
-        }
-        else
-        {
-            new_parerr = (new_parbit != m_state.uart.par_even);
-        }
-
         if (m_state.uart.tx_suppress_eof_loopback)
             m_state.uart.tx_suppress_eof_loopback = false;
-        else
-        {
-            UartRxPush(new_data, new_parbit, new_parerr, new_fram, new_break, 0);
-
-            // Loopback and link traffic share one wire, so a local frame also
-            // occupies the bus for a frame time; without this the next link byte
-            // can arrive one bit later and overrun the 2 deep FIFO.
-            m_comlynx_rx_spacing_bits = 11;
-        }
-
-        if (m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_tx_callback)
-            m_comlynx_tx_callback(new_data, new_parbit, !m_state.uart.tx_hold_valid, m_comlynx_user_data);
 
         // If there is a holding byte queued, start it now
         if (m_state.uart.tx_hold_valid)
         {
             u8 next = m_state.uart.tx_hold_data;
             m_state.uart.tx_hold_valid = false;
-            UartBeginFrame(next);
+            UartBeginFrame(next, true);
             m_state.uart.tx_ready = true;
             m_state.uart.tx_ready_bits = 0;
             m_state.uart.tx_empty_bits = 0;
