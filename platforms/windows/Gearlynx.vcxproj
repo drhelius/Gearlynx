@@ -73,6 +73,9 @@
     <ClInclude Include="..\shared\desktop\events.h" />
     <ClInclude Include="..\shared\desktop\backers.h" />
     <ClInclude Include="..\shared\desktop\config.h" />
+    <ClInclude Include="..\shared\desktop\config_data.h" />
+    <ClInclude Include="..\shared\desktop\config_definitions.inc.h" />
+    <ClInclude Include="..\shared\desktop\config_macros.h" />
     <ClInclude Include="..\shared\desktop\console_utils.h" />
     <ClInclude Include="..\shared\desktop\vscode\debug_monitor_server.h" />
     <ClInclude Include="..\shared\desktop\vscode\framebuffer_server.h" />
