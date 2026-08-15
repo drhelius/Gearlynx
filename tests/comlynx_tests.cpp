@@ -54,6 +54,14 @@ int main()
         "newer concurrent heartbeat has zero age");
     Check(comlynx_heartbeat_age(151, 100) == 51,
         "older heartbeat reports elapsed age");
+    Check(comlynx_lease_is_unchanged_and_stale(COMLYNX_DETACH_US + 1, 0, 3, 0, 3),
+        "unchanged expired lease remains stale");
+    Check(!comlynx_lease_is_unchanged_and_stale(COMLYNX_DETACH_US, 0, 3, 0, 3),
+        "lease remains valid through its deadline");
+    Check(!comlynx_lease_is_unchanged_and_stale(COMLYNX_DETACH_US + 1, 0, 3, 1, 3),
+        "refreshed heartbeat cancels eviction");
+    Check(!comlynx_lease_is_unchanged_and_stale(COMLYNX_DETACH_US + 1, 0, 3, 0, 4),
+        "changed generation cancels eviction");
 
     u8 session = TestSession();
     ComLynxManager first;
@@ -130,7 +138,7 @@ int main()
     ComLynxStatus barrier_status = barrier_first.GetStatus();
     Check(barrier_status.peer_count == 1, "stale barrier peers are detached");
     Check(barrier_status.peer_detaches == 2, "both stale barrier peers are counted");
-    Check(wall_us < 500000, "stale barrier wait is bounded");
+    Check(wall_us < 1500000, "stale barrier wait is bounded");
     Check(cpu_us * 2 < wall_us, "stale barrier wait does not spin the CPU");
 
     barrier_third.Stop();
@@ -154,12 +162,39 @@ int main()
     barrier_status = turbo_barrier_first.GetStatus();
     Check(barrier_status.peer_count == 1, "stale turbo barrier peers are detached");
     Check(barrier_status.peer_detaches == 2, "both stale turbo barrier peers are counted");
-    Check(wall_us < 500000, "stale turbo barrier wait is bounded");
+    Check(wall_us < 1500000, "stale turbo barrier wait is bounded");
     Check(cpu_us * 2 < wall_us, "stale turbo barrier wait does not spin the CPU");
 
     turbo_barrier_third.Stop();
     turbo_barrier_second.Stop();
     turbo_barrier_first.Stop();
+
+    ComLynxManager live_first;
+    ComLynxManager live_second;
+    Check(live_first.Connect(session, 0), "connect first live lease peer");
+    Check(live_second.Connect(session, 0), "connect second live lease peer");
+
+    std::thread live_peer([&live_second]() {
+        for (int i = 0; i < 60; i++)
+        {
+            live_second.SampleLine((u64)i);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        live_second.Stop();
+    });
+
+    wall_start = std::chrono::steady_clock::now();
+    live_first.Synchronize(1024, COMLYNX_MAX_PROMISE_CYCLES);
+    wall_us = (u64)std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - wall_start).count();
+    live_peer.join();
+
+    Check(live_first.GetStatus().peer_detaches == 0,
+        "refreshed live peer is not detached after the lease duration");
+    Check(wall_us >= COMLYNX_DETACH_US,
+        "live peer remains attached beyond the lease duration");
+    Check(wall_us < 1500000, "orderly live peer stop releases the barrier");
+    live_first.Stop();
 
     printf("ComLynx SHM tests passed\n");
     return 0;

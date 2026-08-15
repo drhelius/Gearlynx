@@ -13,9 +13,19 @@
 
 #include "comlynx.h"
 
+#define COMLYNX_DETACH_US 500000
+
 inline u64 comlynx_heartbeat_age(u64 now, u64 heartbeat)
 {
     return heartbeat <= now ? now - heartbeat : 0;
+}
+
+inline bool comlynx_lease_is_unchanged_and_stale(u64 now, u64 observed_heartbeat,
+    u32 observed_generation, u64 current_heartbeat, u32 current_generation)
+{
+    return current_heartbeat == observed_heartbeat &&
+        current_generation == observed_generation &&
+        comlynx_heartbeat_age(now, current_heartbeat) > COMLYNX_DETACH_US;
 }
 
 enum ComLynxMode

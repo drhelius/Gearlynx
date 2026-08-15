@@ -30,7 +30,6 @@
 #define COMLYNX_SHM_MAGIC 0x584C4347
 #define COMLYNX_SHM_VERSION 1
 #define COMLYNX_SHARED_FRAME_COUNT 64
-#define COMLYNX_DETACH_US 50000
 #define COMLYNX_BARRIER_SPIN_US 250
 #define COMLYNX_BARRIER_SLEEP_US 100
 #define COMLYNX_TURBO_MAINTENANCE_CYCLES 4096
@@ -755,7 +754,7 @@ void ComLynxManager::MaintainTurbo(u64 local_cycle)
         u64 gap = now - m_last_sync_exit_us;
         m_status.sync_gap_max_us = MAX(m_status.sync_gap_max_us, gap);
 
-        if (gap >= COMLYNX_DETACH_US)
+        if (gap >= 50000)
             m_status.sync_gap_over_50ms++;
     }
 
@@ -778,6 +777,7 @@ void ComLynxManager::ReapStalePeers(u64 now_us, bool preserve_idle)
         Shared::Peer& peer = m_shared->peers[i];
 
         u64 heartbeat = peer.heartbeat_us.load(std::memory_order_acquire);
+        u32 generation = peer.generation.load(std::memory_order_acquire);
         u64 age = comlynx_heartbeat_age(now_us, heartbeat);
 
         if (peer.state.load(std::memory_order_acquire) != 1 || age <= COMLYNX_DETACH_US)
@@ -785,6 +785,18 @@ void ComLynxManager::ReapStalePeers(u64 now_us, bool preserve_idle)
 
         if (preserve_idle && peer.write_index.load(std::memory_order_acquire) == 0)
             continue;
+
+        if (peer.state.load(std::memory_order_acquire) != 1)
+            continue;
+
+        u32 current_generation = peer.generation.load(std::memory_order_acquire);
+        u64 current_heartbeat = peer.heartbeat_us.load(std::memory_order_acquire);
+
+        if (!comlynx_lease_is_unchanged_and_stale(now_us, heartbeat, generation,
+            current_heartbeat, current_generation))
+        {
+            continue;
+        }
 
         u32 expected = 1;
 
