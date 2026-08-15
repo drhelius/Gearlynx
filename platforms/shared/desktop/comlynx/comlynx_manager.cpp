@@ -28,7 +28,7 @@
 #include "log.h"
 
 #define COMLYNX_SHM_MAGIC 0x584C4347
-#define COMLYNX_SHM_VERSION 1
+#define COMLYNX_SHM_VERSION 2
 #define COMLYNX_SHARED_FRAME_COUNT 64
 #define COMLYNX_BARRIER_SPIN_US 250
 #define COMLYNX_BARRIER_SLEEP_US 100
@@ -36,17 +36,6 @@
 
 struct ComLynxManager::Shared
 {
-    struct Frame
-    {
-        std::atomic<u32> sequence;
-        u32 generation;
-        u64 start_cycle;
-        u32 bit_cycles;
-        u16 bits;
-
-        Frame() : sequence(0), generation(0), start_cycle(0), bit_cycles(0), bits(0) {}
-    };
-
     struct Peer
     {
         std::atomic<u32> state;
@@ -55,7 +44,7 @@ struct ComLynxManager::Shared
         std::atomic<u64> promise_cycle;
         std::atomic<u64> break_from;
         std::atomic<u32> write_index;
-        Frame frames[COMLYNX_SHARED_FRAME_COUNT];
+        ComLynxSharedFrame frames[COMLYNX_SHARED_FRAME_COUNT];
 
         Peer() : state(0), generation(0), heartbeat_us(0), promise_cycle(0),
             break_from(0), write_index(0) {}
@@ -159,19 +148,14 @@ void ComLynxManager::PublishFrame(u64 local_start_cycle, u32 bit_cycles, u16 bit
     peer.heartbeat_us.store(GetClockMicroseconds(), std::memory_order_release);
 
     u32 index = peer.write_index.load(std::memory_order_relaxed);
-    Shared::Frame& frame = peer.frames[index % COMLYNX_SHARED_FRAME_COUNT];
-    u32 sequence = frame.sequence.load(std::memory_order_relaxed);
+    ComLynxSharedFrame& frame = peer.frames[index % COMLYNX_SHARED_FRAME_COUNT];
+    u64 start_cycle = ToBusCycle(local_start_cycle);
 
-    frame.sequence.store(sequence + 1, std::memory_order_release);
-    frame.generation = m_generation;
-    frame.start_cycle = ToBusCycle(local_start_cycle);
-    frame.bit_cycles = bit_cycles;
-    frame.bits = bits & 0x07FF;
-    frame.sequence.store(sequence + 2, std::memory_order_release);
+    comlynx_publish_shared_frame(frame, m_generation, start_cycle, bit_cycles, bits);
 
     peer.write_index.store(index + 1, std::memory_order_release);
 
-    u64 frame_end = frame.start_cycle + (u64)bit_cycles * COMLYNX_FRAME_BITS;
+    u64 frame_end = start_cycle + (u64)bit_cycles * COMLYNX_FRAME_BITS;
     u64 promise = peer.promise_cycle.load(std::memory_order_relaxed);
 
     if (frame_end > promise)
@@ -227,24 +211,11 @@ bool ComLynxManager::SampleLine(u64 local_cycle)
 
         for (u32 offset = 0; offset < count; offset++)
         {
-            Shared::Frame& source = peer.frames[(write_index - 1 - offset) % COMLYNX_SHARED_FRAME_COUNT];
+            ComLynxSharedFrame& source = peer.frames[(write_index - 1 - offset) % COMLYNX_SHARED_FRAME_COUNT];
 
-            u32 before = source.sequence.load(std::memory_order_acquire);
+            ComLynxLocalFrame frame;
 
-            if ((before & 1) != 0)
-                continue;
-
-            ComLynxWireFrame frame;
-
-            u32 frame_generation = source.generation;
-
-            frame.start_cycle = source.start_cycle;
-            frame.bit_cycles = source.bit_cycles;
-            frame.bits = source.bits;
-
-            u32 after = source.sequence.load(std::memory_order_acquire);
-
-            if (before != after || (after & 1) != 0 || frame_generation != generation)
+            if (!comlynx_read_shared_frame(source, generation, frame))
                 continue;
 
             if (cycle >= frame.start_cycle + (u64)frame.bit_cycles * COMLYNX_FRAME_BITS)
@@ -298,20 +269,11 @@ bool ComLynxManager::SampleLineTurbo(u64 local_cycle)
 
         for (u32 offset = 0; offset < count; offset++)
         {
-            Shared::Frame& source = peer.frames[(write_index - 1 - offset) % COMLYNX_SHARED_FRAME_COUNT];
-            u32 before = source.sequence.load(std::memory_order_acquire);
+            ComLynxSharedFrame& source = peer.frames[(write_index - 1 - offset) % COMLYNX_SHARED_FRAME_COUNT];
 
-            if ((before & 1) != 0)
-                continue;
+            ComLynxLocalFrame frame;
 
-            ComLynxWireFrame frame;
-            u32 frame_generation = source.generation;
-            frame.start_cycle = source.start_cycle;
-            frame.bit_cycles = source.bit_cycles;
-            frame.bits = source.bits;
-            u32 after = source.sequence.load(std::memory_order_acquire);
-
-            if (before != after || (after & 1) != 0 || frame_generation != generation)
+            if (!comlynx_read_shared_frame(source, generation, frame))
                 continue;
 
             if (cycle >= frame.start_cycle + (u64)frame.bit_cycles * COMLYNX_FRAME_BITS)
@@ -657,6 +619,14 @@ bool ComLynxManager::Map(u8 session)
             return false;
         }
     }
+
+    if (!comlynx_shared_frame_atomics_lock_free(m_shared->peers[0].frames[0]))
+    {
+        Unmap();
+        SetFault("ComLynx shared frame atomics are not lock-free");
+        return false;
+    }
+
     return true;
 }
 

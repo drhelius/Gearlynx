@@ -32,24 +32,24 @@ static void Check(bool condition, const char* message)
 
 int main()
 {
-    ComLynxWireFrame idle[1] = {{100, 16, 0x07FF}};
+    ComLynxLocalFrame idle[1] = {{100, 16, 0x07FF}};
     Check(comlynx_wire_level(NULL, 0, 0), "empty wire is released");
     Check(comlynx_wire_level(idle, 1, 100), "released frame stays high");
 
-    ComLynxWireFrame frame = {100, 16, 0x060A};
+    ComLynxLocalFrame frame = {100, 16, 0x060A};
     Check(comlynx_frame_level(frame, 99), "frame is idle before start");
     Check(!comlynx_frame_level(frame, 100), "start bit drives low");
     Check(comlynx_frame_level(frame, 116), "first data bit is released");
     Check(comlynx_frame_level(frame, 276), "frame is idle after stop bit");
 
-    ComLynxWireFrame overlap[2] = {
+    ComLynxLocalFrame overlap[2] = {
         {100, 16, 0x07FE},
         {108, 16, 0x07FF}
     };
     Check(!comlynx_wire_level(overlap, 2, 100), "low dominates a released peer");
     Check(!comlynx_wire_level(overlap, 2, 108), "partial overlap remains low");
 
-    ComLynxWireFrame identical[2] = {
+    ComLynxLocalFrame identical[2] = {
         {200, 16, 0x06AA},
         {200, 16, 0x06AA}
     };
@@ -60,7 +60,7 @@ int main()
             "identical simultaneous frames do not collide");
     }
 
-    ComLynxWireFrame conflict[2] = {
+    ComLynxLocalFrame conflict[2] = {
         {300, 16, 0x07FE},
         {300, 16, 0x07FC}
     };

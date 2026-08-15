@@ -19,6 +19,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <thread>
@@ -50,6 +51,58 @@ static u8 TestSession()
 
 int main()
 {
+    ComLynxSharedFrame shared_frame;
+    Check(comlynx_shared_frame_atomics_lock_free(shared_frame),
+        "shared frame atomics are lock-free");
+
+    std::atomic<bool> frame_test_done(false);
+    std::atomic<bool> frame_test_failed(false);
+    std::atomic<u32> frame_test_reads(0);
+
+    std::thread frame_reader([&shared_frame, &frame_test_done,
+        &frame_test_failed, &frame_test_reads]() {
+        while (!frame_test_done.load(std::memory_order_acquire))
+        {
+            ComLynxLocalFrame frame;
+            if (!comlynx_read_shared_frame(shared_frame, 7, frame))
+                continue;
+
+            u32 expected_bit_cycles = ((u32)frame.start_cycle & 0x03FF) + 1;
+            u16 expected_bits = (u16)((frame.start_cycle ^ expected_bit_cycles) & 0x07FF);
+
+            if (frame.bit_cycles != expected_bit_cycles || frame.bits != expected_bits)
+                frame_test_failed.store(true, std::memory_order_release);
+
+            frame_test_reads.fetch_add(1, std::memory_order_relaxed);
+        }
+    });
+
+    for (u32 i = 1; i <= 200000; i++)
+    {
+        u32 bit_cycles = (i & 0x03FF) + 1;
+        u16 bits = (u16)((i ^ bit_cycles) & 0x07FF);
+        comlynx_publish_shared_frame(shared_frame, 7, i, bit_cycles, bits);
+
+        if ((i & 0xFF) == 0)
+            std::this_thread::yield();
+    }
+
+    frame_test_done.store(true, std::memory_order_release);
+    frame_reader.join();
+
+    Check(frame_test_reads.load(std::memory_order_acquire) > 0,
+        "concurrent shared frame reader accepts snapshots");
+    Check(!frame_test_failed.load(std::memory_order_acquire),
+        "concurrent shared frame snapshots are consistent");
+
+    shared_frame.sequence.store(1, std::memory_order_relaxed);
+    comlynx_publish_shared_frame(shared_frame, 9, 1234, 16, 0x0555);
+    ComLynxLocalFrame recovered_frame;
+    Check(comlynx_read_shared_frame(shared_frame, 9, recovered_frame),
+        "shared frame publication recovers an abandoned odd sequence");
+    Check(recovered_frame.start_cycle == 1234 && recovered_frame.bit_cycles == 16 &&
+        recovered_frame.bits == 0x0555, "recovered shared frame payload is complete");
+
     Check(comlynx_heartbeat_age(100, 101) == 0,
         "newer concurrent heartbeat has zero age");
     Check(comlynx_heartbeat_age(151, 100) == 51,
