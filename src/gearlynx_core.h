@@ -94,6 +94,8 @@ public:
         GLYNX_ComLynx_Sample_Callback sample_callback,
         GLYNX_ComLynx_Break_Callback break_callback,
         GLYNX_ComLynx_Sync_Callback sync_callback, void* user_data);
+    void SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_callback,
+        GLYNX_ComLynx_Turbo_Sync_Callback sync_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
     bool IsComLynxCableConnected() const;
     u64 GetComLynxCycle() const;

@@ -98,6 +98,8 @@ public:
     void SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
         GLYNX_ComLynx_Sample_Callback sample_callback, GLYNX_ComLynx_Break_Callback break_callback,
         GLYNX_ComLynx_Sync_Callback sync_callback, void* user_data);
+    void SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_callback,
+        GLYNX_ComLynx_Turbo_Sync_Callback sync_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
     bool IsComLynxCableConnected() const;
     bool IsUartTurbo() const;
@@ -143,7 +145,7 @@ private:
     void UartBeginFrame(u8 data, bool chained);
     bool UartWireLevel() const;
     void UartReceiveWire(bool level, bool peer_low);
-    void UartClock(bool turbo);
+    template<bool turbo> void UartClock();
     void HorizontalBlank();
     void UpdateVideo(u32 cycles);
     void Serialize(StateSerializer& s, int version);
@@ -192,6 +194,9 @@ private:
     };
 
     RedEyeStream m_redeye[2];
+    GLYNX_ComLynx_Turbo_Sample_Callback m_comlynx_turbo_sample_callback;
+    GLYNX_ComLynx_Turbo_Sync_Callback m_comlynx_turbo_sync_callback;
+    void* m_comlynx_turbo_user_data;
 };
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };

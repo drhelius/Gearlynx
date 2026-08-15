@@ -973,10 +973,10 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 
     while (cycles-- > 0)
     {
-        if (IsUartTurbo() && m_comlynx_cable_connected && m_comlynx_sync_callback &&
+        if (IsUartTurbo() && m_comlynx_cable_connected && m_comlynx_turbo_sync_callback &&
             (m_comlynx_cycle & (COMLYNX_TURBO_SYNC_CYCLES - 1)) == 0)
         {
-            m_comlynx_sync_callback(m_comlynx_cycle, COMLYNX_TURBO_PROMISE_CYCLES, m_comlynx_user_data);
+            m_comlynx_turbo_sync_callback(m_comlynx_cycle, m_comlynx_turbo_user_data);
         }
 
         m_comlynx_cycle++;
@@ -991,7 +991,7 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
                 continue;
 
             if (prescaler == 0 && IS_SET_BIT(m_state.MTEST0, 4))
-                UartClock(true);
+                UartClock<true>();
 
             for (int timer = 0; timer < 8; timer++)
             {
@@ -1144,7 +1144,7 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
         if (likely(i == 0))
             HorizontalBlank();
         else if (i == 4 && IS_NOT_SET_BIT(m_state.MTEST0, 4))
-            UartClock(false);
+            UartClock<false>();
 
         // In one-shot, after DONE we must not consume more clocks
         if (one_shot && IS_SET_BIT(t->control_b, 3))
@@ -1596,7 +1596,8 @@ INLINE void Mikey::UartReceiveWire(bool level, bool peer_low)
     m_uart_rx_wire_state = 0;
 }
 
-INLINE void Mikey::UartClock(bool turbo)
+template<bool turbo>
+INLINE void Mikey::UartClock()
 {
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
@@ -1624,8 +1625,13 @@ INLINE void Mikey::UartClock(bool turbo)
 
     bool wire_level = local_level;
 
-    if (m_comlynx_cable_connected && m_comlynx_sample_callback)
-        wire_level = wire_level && m_comlynx_sample_callback(m_comlynx_cycle, m_comlynx_user_data);
+    if (m_comlynx_cable_connected)
+    {
+        if (turbo && m_comlynx_turbo_sample_callback)
+            wire_level = wire_level && m_comlynx_turbo_sample_callback(m_comlynx_cycle, m_comlynx_turbo_user_data);
+        else if (!turbo && m_comlynx_sample_callback)
+            wire_level = wire_level && m_comlynx_sample_callback(m_comlynx_cycle, m_comlynx_user_data);
+    }
 
     UartReceiveWire(wire_level, local_level && !wire_level);
 

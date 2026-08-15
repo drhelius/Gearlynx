@@ -191,6 +191,12 @@ void GearlynxCore::SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_ca
     m_comlynx_sync_cycles = m_mikey->GetComLynxSyncCycles();
 }
 
+void GearlynxCore::SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_callback,
+    GLYNX_ComLynx_Turbo_Sync_Callback sync_callback, void* user_data)
+{
+    m_mikey->SetComLynxTurboCallbacks(sample_callback, sync_callback, user_data);
+}
+
 void GearlynxCore::SetComLynxCableConnected(bool connected)
 {
     m_mikey->SetComLynxCableConnected(connected);

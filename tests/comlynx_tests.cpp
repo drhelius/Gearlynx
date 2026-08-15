@@ -137,6 +137,30 @@ int main()
     barrier_second.Stop();
     barrier_first.Stop();
 
+    ComLynxManager turbo_barrier_first;
+    ComLynxManager turbo_barrier_second;
+    ComLynxManager turbo_barrier_third;
+    Check(turbo_barrier_first.Connect(session, 0), "connect first turbo barrier peer");
+    Check(turbo_barrier_second.Connect(session, 0), "connect second turbo barrier peer");
+    Check(turbo_barrier_third.Connect(session, 0), "connect third turbo barrier peer");
+
+    wall_start = std::chrono::steady_clock::now();
+    cpu_start = clock();
+    turbo_barrier_first.SynchronizeTurbo(1024);
+    wall_us = (u64)std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - wall_start).count();
+    cpu_us = (u64)(clock() - cpu_start) * 1000000ULL / CLOCKS_PER_SEC;
+
+    barrier_status = turbo_barrier_first.GetStatus();
+    Check(barrier_status.peer_count == 1, "stale turbo barrier peers are detached");
+    Check(barrier_status.peer_detaches == 2, "both stale turbo barrier peers are counted");
+    Check(wall_us < 500000, "stale turbo barrier wait is bounded");
+    Check(cpu_us * 2 < wall_us, "stale turbo barrier wait does not spin the CPU");
+
+    turbo_barrier_third.Stop();
+    turbo_barrier_second.Stop();
+    turbo_barrier_first.Stop();
+
     printf("ComLynx SHM tests passed\n");
     return 0;
 }

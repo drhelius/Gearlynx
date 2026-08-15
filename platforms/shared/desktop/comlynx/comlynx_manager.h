@@ -62,6 +62,8 @@ public:
     void SetBreak(bool asserted, u64 local_cycle);
     bool SampleLine(u64 local_cycle);
     void Synchronize(u64 local_cycle, u32 promise_cycles);
+    bool SampleLineTurbo(u64 local_cycle);
+    void SynchronizeTurbo(u64 local_cycle);
     bool IsActive() const;
     bool IsCableConnected() const;
     bool IsPacingPeer() const;
@@ -75,6 +77,7 @@ private:
     void Unmap();
     bool ClaimSlot(u64 local_cycle, bool reattach);
     bool EnsureAttached(u64 local_cycle);
+    void MaintainTurbo(u64 local_cycle);
     void ReapStalePeers(u64 now_us, bool preserve_idle = false);
     u64 ToBusCycle(u64 local_cycle) const;
     u64 GetClockMicroseconds() const;
@@ -92,6 +95,7 @@ private:
     u64 m_bus_anchor;
     u64 m_last_sync_exit_us;
     ComLynxStatus m_status;
+    u64 m_turbo_next_maintenance_cycle;
 };
 
 #endif /* COMLYNX_MANAGER_H */

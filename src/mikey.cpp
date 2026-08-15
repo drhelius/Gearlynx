@@ -44,6 +44,9 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     m_comlynx_break_callback = NULL;
     m_comlynx_sync_callback = NULL;
     m_comlynx_user_data = NULL;
+    m_comlynx_turbo_sample_callback = NULL;
+    m_comlynx_turbo_sync_callback = NULL;
+    m_comlynx_turbo_user_data = NULL;
     m_comlynx_cable_connected = false;
     m_comlynx_cycle = 0;
     m_uart_last_bit_cycle = 0;
@@ -290,6 +293,14 @@ void Mikey::SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
     m_comlynx_break_callback = break_callback;
     m_comlynx_sync_callback = sync_callback;
     m_comlynx_user_data = user_data;
+}
+
+void Mikey::SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_callback,
+    GLYNX_ComLynx_Turbo_Sync_Callback sync_callback, void* user_data)
+{
+    m_comlynx_turbo_sample_callback = sample_callback;
+    m_comlynx_turbo_sync_callback = sync_callback;
+    m_comlynx_turbo_user_data = user_data;
 }
 
 void Mikey::SetComLynxCableConnected(bool connected)

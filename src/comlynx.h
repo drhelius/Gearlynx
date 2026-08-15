@@ -32,5 +32,7 @@ typedef void (*GLYNX_ComLynx_Publish_Callback)(u64 start_cycle, u32 bit_cycles, 
 typedef bool (*GLYNX_ComLynx_Sample_Callback)(u64 cycle, void* user_data);
 typedef void (*GLYNX_ComLynx_Break_Callback)(bool asserted, u64 cycle, void* user_data);
 typedef void (*GLYNX_ComLynx_Sync_Callback)(u64 cycles, u32 promise_cycles, void* user_data);
+typedef bool (*GLYNX_ComLynx_Turbo_Sample_Callback)(u64 cycle, void* user_data);
+typedef void (*GLYNX_ComLynx_Turbo_Sync_Callback)(u64 cycles, void* user_data);
 
 #endif /* COMLYNX_H */

@@ -89,6 +89,8 @@ static void comlynx_publish_callback(u64 start_cycle, u32 bit_cycles, u16 bits, 
 static bool comlynx_sample_callback(u64 cycle, void* user_data);
 static void comlynx_break_callback(bool asserted, u64 cycle, void* user_data);
 static void comlynx_sync_callback(u64 cycles, u32 promise_cycles, void* user_data);
+static bool comlynx_turbo_sample_callback(u64 cycle, void* user_data);
+static void comlynx_turbo_sync_callback(u64 cycles, void* user_data);
 
 bool emu_init(void)
 {
@@ -122,6 +124,8 @@ bool emu_init(void)
     comlynx_cable_applied = false;
     core->SetComLynxCallbacks(comlynx_publish_callback, comlynx_sample_callback,
         comlynx_break_callback, comlynx_sync_callback, comlynx_manager);
+    core->SetComLynxTurboCallbacks(comlynx_turbo_sample_callback,
+        comlynx_turbo_sync_callback, comlynx_manager);
 
     sound_queue_init();
 
@@ -2134,6 +2138,20 @@ static void comlynx_sync_callback(u64 cycles, u32 promise_cycles, void* user_dat
 
     if (manager)
         manager->Synchronize(cycles, promise_cycles);
+}
+
+static bool comlynx_turbo_sample_callback(u64 cycle, void* user_data)
+{
+    ComLynxManager* manager = (ComLynxManager*)user_data;
+    return manager ? manager->SampleLineTurbo(cycle) : true;
+}
+
+static void comlynx_turbo_sync_callback(u64 cycles, void* user_data)
+{
+    ComLynxManager* manager = (ComLynxManager*)user_data;
+
+    if (manager)
+        manager->SynchronizeTurbo(cycles);
 }
 
 void emu_debug_monitor_start(int port)

@@ -26,13 +26,10 @@ static bool SampleLine(u64, void*)
     return true;
 }
 
-static void Synchronize(u64 cycle, u32 promise_cycles, void*)
+static void SynchronizeTurbo(u64 cycle, void*)
 {
-    if ((cycle & (COMLYNX_TURBO_SYNC_CYCLES - 1)) != 0 ||
-        promise_cycles != COMLYNX_TURBO_PROMISE_CYCLES)
-    {
+    if ((cycle & (COMLYNX_TURBO_SYNC_CYCLES - 1)) != 0)
         s_sync_valid = false;
-    }
     s_sync_count++;
 }
 
@@ -83,7 +80,8 @@ int main()
     mikey->Write<true>(MIKEY_TIM4CNT, 0x67);
     mikey->Write<true>(MIKEY_SERCTL, 0x0D);
     mikey->Write<true>(MIKEY_MTEST0, GLYNX_MTEST0_UART_TURBO);
-    core.SetComLynxCallbacks(PublishFrame, SampleLine, NULL, Synchronize, NULL);
+    core.SetComLynxCallbacks(PublishFrame, NULL, NULL, NULL, NULL);
+    core.SetComLynxTurboCallbacks(SampleLine, SynchronizeTurbo, NULL);
     core.SetComLynxCableConnected(true);
     mikey->Write<true>(MIKEY_SERDAT, 0x2A);
     u64 publish_cycle = mikey->GetComLynxCycle();
