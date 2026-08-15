@@ -47,7 +47,7 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(228, 466), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(230, 464), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();
@@ -59,9 +59,12 @@ void gui_debug_window_uart(void)
     EditableRegister8("SERCTL ", "FD8C", MIKEY_SERCTL, mikey_state->SERCTL, MikeyWriteCallback8, mikey);
     EditableRegister8("SERDAT ", "FD8D", MIKEY_SERDAT, mikey_state->SERDAT, MikeyWriteCallback8, mikey);
 
+    bool uart_enabled = mikey->IsUartTurbo() || IS_SET_BIT(mikey_state->timers[4].control_a, 3);
     u32 baud = GLYNX_MASTER_CLOCK / mikey->GetUartBitCycles();
     ImGui::TextColored(violet, "BAUD RATE     "); ImGui::SameLine();
-    ImGui::TextColored(yellow, "%u", baud);
+    ImGui::TextColored(uart_enabled ? yellow : gray, "%u", baud);
+    ImGui::TextColored(violet, "TIMER 4.      "); ImGui::SameLine();
+    ImGui::TextColored(uart_enabled ? green : gray, uart_enabled ? "ON" : "OFF");
 
     ImGui::Separator();
 
@@ -153,14 +156,10 @@ void gui_debug_window_comlynx(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(450, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(290, 276), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(292, 276), ImGuiCond_FirstUseEver);
     ImGui::Begin("ComLynx", &config_debug.show_comlynx);
 
     ComLynxStatus comlynx = emu_comlynx_get_status();
-    const ImVec4 green(0.10f, 0.90f, 0.10f, 1.0f);
-    const ImVec4 red(0.98f, 0.15f, 0.45f, 1.0f);
-    const ImVec4 white(1.0f, 1.0f, 1.0f, 1.0f);
-    const ImVec4 violet(0.75f, 0.50f, 1.0f, 1.0f);
 
     const char* mode = "DISABLED";
     if (comlynx.mode == ComLynxModeConnected)

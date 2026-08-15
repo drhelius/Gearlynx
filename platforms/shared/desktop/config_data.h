@@ -108,6 +108,7 @@ struct config_Emulator
     int mcp_tcp_port;
     std::string mcp_http_address;
     int comlynx_session;
+    int comlynx_stall_us;
     int console_type;
     int eeprom;
     int cartridge_hardware;

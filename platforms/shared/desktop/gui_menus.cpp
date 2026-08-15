@@ -1215,7 +1215,8 @@ static void menu_debug(void)
             if (stdio_running)
                 ImGui::TextColored(ImVec4(0.90f, 0.70f, 0.10f, 1.0f), "STDIO mode active");
             else if (http_running)
-                ImGui::TextColored(ImVec4(0.10f, 0.90f, 0.10f, 1.0f), "Listening on %s:%d", config_emulator.mcp_http_address.c_str(), config_emulator.mcp_tcp_port);
+                ImGui::TextColored(ImVec4(0.10f, 0.90f, 0.10f, 1.0f), "Listening on %s:%d",
+                    emu_mcp_get_http_address(), emu_mcp_get_http_port());
             else
                 ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "Stopped");
 
@@ -1436,6 +1437,46 @@ static void menu_comlynx(void)
         config_emulator.comlynx_session = CLAMP(config_emulator.comlynx_session, 1, 255);
 
     ImGui::EndDisabled();
+
+    ImGui::Separator();
+
+#if defined(_WIN32)
+    const int stall_min = 1000;
+    const int stall_max = 10000;
+    const int stall_step = 250;
+    const int stall_default = 5000;
+#elif defined(__APPLE__)
+    const int stall_min = 50;
+    const int stall_max = 1000;
+    const int stall_step = 50;
+    const int stall_default = 100;
+#else
+    const int stall_min = 50;
+    const int stall_max = 2000;
+    const int stall_step = 50;
+    const int stall_default = 250;
+#endif
+
+    if (ImGui::BeginMenu("Stall Threshold"))
+    {
+        ImGui::PushItemWidth(180.0f);
+        if (SliderIntWithSteps("##comlynx_stall", &config_emulator.comlynx_stall_us,
+            stall_min, stall_max, stall_step, "%d us"))
+        {
+            emu_comlynx_set_normal_barrier_stall_us((u32)config_emulator.comlynx_stall_us);
+        }
+        ImGui::PopItemWidth();
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Lower values reduce CPU usage but may cause stalls.");
+            ImGui::Text("Higher values tolerate scheduling delays but use more CPU.");
+            ImGui::NewLine();
+            ImGui::Text("Recommended: %d us", stall_default);
+            ImGui::EndTooltip();
+        }
+        ImGui::EndMenu();
+    }
 
     ImGui::EndMenu();
 }

@@ -121,6 +121,7 @@ bool emu_init(void)
     core->Init();
 
     comlynx_manager = new ComLynxManager();
+    comlynx_manager->SetNormalBarrierStallUs((u32)config_emulator.comlynx_stall_us);
     comlynx_cable_applied = false;
     core->SetComLynxCallbacks(comlynx_publish_callback, comlynx_sample_callback,
         comlynx_break_callback, comlynx_sync_callback, comlynx_manager);
@@ -2034,6 +2035,16 @@ int emu_mcp_get_transport_mode(void)
     return mcp_manager ? mcp_manager->GetTransportMode() : -1;
 }
 
+const char* emu_mcp_get_http_address(void)
+{
+    return mcp_manager ? mcp_manager->GetTcpAddress() : "";
+}
+
+int emu_mcp_get_http_port(void)
+{
+    return mcp_manager ? mcp_manager->GetTcpPort() : 0;
+}
+
 void emu_mcp_pump_commands(void)
 {
     if (mcp_manager && mcp_manager->IsRunning())
@@ -2108,6 +2119,12 @@ void emu_comlynx_reset_metrics(void)
 {
     if (comlynx_manager)
         comlynx_manager->ResetMetrics();
+}
+
+void emu_comlynx_set_normal_barrier_stall_us(u32 stall_us)
+{
+    if (comlynx_manager)
+        comlynx_manager->SetNormalBarrierStallUs(stall_us);
 }
 
 static void comlynx_publish_callback(u64 start_cycle, u32 bit_cycles, u16 bits, void* user_data)

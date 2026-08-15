@@ -149,6 +149,13 @@ static inline void process(config_Operation operation)
     CONFIG_INT("Emulator", "MCPTCPPort", config_emulator.mcp_tcp_port, 7777);
     CONFIG_STRING_NOT_EMPTY("Emulator", "MCPHTTPAddress", config_emulator.mcp_http_address, "127.0.0.1");
     CONFIG_INT_RANGE("Emulator", "ComLynxSession", config_emulator.comlynx_session, 1, 1, 255);
+#if defined(_WIN32)
+    CONFIG_INT_RANGE("Emulator", "ComLynxStallUs", config_emulator.comlynx_stall_us, 5000, 1000, 10000);
+#elif defined(__APPLE__)
+    CONFIG_INT_RANGE("Emulator", "ComLynxStallUs", config_emulator.comlynx_stall_us, 100, 50, 1000);
+#else
+    CONFIG_INT_RANGE("Emulator", "ComLynxStallUs", config_emulator.comlynx_stall_us, 250, 50, 2000);
+#endif
     CONFIG_INT("Emulator", "ConsoleType", config_emulator.console_type, 0);
     CONFIG_INT_RANGE("Emulator", "EEPROM", config_emulator.eeprom, config_EEPROM_Auto, config_EEPROM_Auto, config_EEPROM_Count - 1);
     CONFIG_INT_RANGE("Emulator", "CartridgeHardware", config_emulator.cartridge_hardware, config_CartridgeHardware_Auto, config_CartridgeHardware_Auto, config_CartridgeHardware_Count - 1);

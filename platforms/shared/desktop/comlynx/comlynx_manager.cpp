@@ -27,8 +27,8 @@
 #include "comlynx_wire.h"
 #include "log.h"
 
-#define COMLYNX_SHM_MAGIC 0x584C4347
-#define COMLYNX_SHM_VERSION 2
+#define COMLYNX_SHM_MAGIC 0x4C594E58
+#define COMLYNX_SHM_VERSION 3
 #define COMLYNX_SHARED_FRAME_COUNT 64
 #define COMLYNX_BARRIER_SPIN_US 250
 #define COMLYNX_BARRIER_SLEEP_US 100
@@ -74,6 +74,7 @@ ComLynxManager::ComLynxManager()
     m_bus_anchor = 0;
     m_last_sync_exit_us = 0;
     m_turbo_next_maintenance_cycle = 0;
+    m_normal_barrier_stall_us = comlynx_normal_barrier_stall_us();
     memset(&m_status, 0, sizeof(m_status));
     m_status.mode = ComLynxModeDisabled;
 }
@@ -356,7 +357,7 @@ void ComLynxManager::Synchronize(u64 local_cycle, u32 promise_cycles)
 
         local.heartbeat_us.store(now, std::memory_order_release);
 
-        if (now - progress_time >= COMLYNX_BARRIER_SPIN_US)
+        if (now - progress_time >= m_normal_barrier_stall_us)
             std::this_thread::sleep_for(std::chrono::microseconds(COMLYNX_BARRIER_SLEEP_US));
         else
             std::this_thread::yield();
@@ -506,6 +507,11 @@ void ComLynxManager::ResetMetrics()
     m_status.peer_detach_max_age_us = 0;
     m_status.reattachments = 0;
     m_last_sync_exit_us = GetClockMicroseconds();
+}
+
+void ComLynxManager::SetNormalBarrierStallUs(u32 stall_us)
+{
+    m_normal_barrier_stall_us = stall_us;
 }
 
 bool ComLynxManager::Map(u8 session)

@@ -15,19 +15,6 @@
 
 #define COMLYNX_DETACH_US 500000
 
-inline u64 comlynx_heartbeat_age(u64 now, u64 heartbeat)
-{
-    return heartbeat <= now ? now - heartbeat : 0;
-}
-
-inline bool comlynx_lease_is_unchanged_and_stale(u64 now, u64 observed_heartbeat,
-    u32 observed_generation, u64 current_heartbeat, u32 current_generation)
-{
-    return current_heartbeat == observed_heartbeat &&
-        current_generation == observed_generation &&
-        comlynx_heartbeat_age(now, current_heartbeat) > COMLYNX_DETACH_US;
-}
-
 enum ComLynxMode
 {
     ComLynxModeDisabled,
@@ -79,6 +66,7 @@ public:
     bool IsPacingPeer() const;
     ComLynxStatus GetStatus();
     void ResetMetrics();
+    void SetNormalBarrierStallUs(u32 stall_us);
 
 private:
     struct Shared;
@@ -106,6 +94,31 @@ private:
     u64 m_last_sync_exit_us;
     ComLynxStatus m_status;
     u64 m_turbo_next_maintenance_cycle;
+    u32 m_normal_barrier_stall_us;
 };
+
+inline u32 comlynx_normal_barrier_stall_us()
+{
+#if defined(_WIN32)
+    return 5000;
+#elif defined(__APPLE__)
+    return 100;
+#else
+    return 250;
+#endif
+}
+
+inline u64 comlynx_heartbeat_age(u64 now, u64 heartbeat)
+{
+    return heartbeat <= now ? now - heartbeat : 0;
+}
+
+inline bool comlynx_lease_is_unchanged_and_stale(u64 now, u64 observed_heartbeat,
+    u32 observed_generation, u64 current_heartbeat, u32 current_generation)
+{
+    return current_heartbeat == observed_heartbeat &&
+        current_generation == observed_generation &&
+        comlynx_heartbeat_age(now, current_heartbeat) > COMLYNX_DETACH_US;
+}
 
 #endif /* COMLYNX_MANAGER_H */

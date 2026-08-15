@@ -116,6 +116,17 @@ int main()
     Check(!comlynx_lease_is_unchanged_and_stale(COMLYNX_DETACH_US + 1, 0, 3, 0, 4),
         "changed generation cancels eviction");
 
+#if defined(_WIN32)
+    Check(comlynx_normal_barrier_stall_us() == 5000,
+        "Windows normal barrier uses scheduler-safe stall threshold");
+#elif defined(__APPLE__)
+    Check(comlynx_normal_barrier_stall_us() == 100,
+        "macOS normal barrier uses low-contention stall threshold");
+#else
+    Check(comlynx_normal_barrier_stall_us() == 250,
+        "other platforms retain the normal barrier stall threshold");
+#endif
+
     u8 session = TestSession();
     ComLynxManager first;
     ComLynxManager second;
