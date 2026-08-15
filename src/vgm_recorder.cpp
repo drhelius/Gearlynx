@@ -133,15 +133,15 @@ void VgmRecorder::Stop()
         header[0x36] = 0x00;
         header[0x37] = 0x00;
 
-        // Mikey clock (offset 0xEC - VGM 1.72 addition)
+        // Mikey clock (offset 0xE4 - VGM 1.72 addition)
         u32 mikey_clock = m_clock_rate;
-        header[0xEC] = (mikey_clock >> 0) & 0xFF;
-        header[0xED] = (mikey_clock >> 8) & 0xFF;
-        header[0xEE] = (mikey_clock >> 16) & 0xFF;
-        header[0xEF] = (mikey_clock >> 24) & 0xFF;
+        header[0xE4] = (mikey_clock >> 0) & 0xFF;
+        header[0xE5] = (mikey_clock >> 8) & 0xFF;
+        header[0xE6] = (mikey_clock >> 16) & 0xFF;
+        header[0xE7] = (mikey_clock >> 24) & 0xFF;
         
         Log("VGM: Stop recording, clock_rate=%d (0x%08X), total_samples=%d", m_clock_rate, m_clock_rate, m_total_samples);
-        Log("VGM: Header bytes at 0xEC: %02X %02X %02X %02X", header[0xEC], header[0xED], header[0xEE], header[0xEF]);
+        Log("VGM: Header bytes at 0xE4: %02X %02X %02X %02X", header[0xE4], header[0xE5], header[0xE6], header[0xE7]);
 
         // Write header
         file.write(reinterpret_cast<const char*>(header), 256);
@@ -177,15 +177,6 @@ void VgmRecorder::WriteMikey(u16 address, u8 data)
     {
         Debug("VGM: Skipping invalid address 0x%04X", address);
     }
-}
-
-void VgmRecorder::UpdateTiming(int elapsed_samples)
-{
-    if (!m_recording)
-        return;
-
-    m_pending_wait += elapsed_samples;
-    m_total_samples += elapsed_samples;
 }
 
 void VgmRecorder::WriteCommand(u8 command)

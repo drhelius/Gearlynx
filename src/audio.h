@@ -59,7 +59,7 @@ public:
 
 private:
     Mikey* m_mikey;
-    u32 m_cycles;
+    u32 m_sample_phase;
     bool m_mute;
     s32 m_lpf_left;
     s32 m_lpf_right;

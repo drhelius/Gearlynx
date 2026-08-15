@@ -62,7 +62,7 @@ void Audio::Init()
 void Audio::Reset(bool is_lynx2)
 {
     m_is_lynx2 = is_lynx2;
-    m_cycles = 0;
+    m_sample_phase = 0;
     m_buffer_pos = 0;
     m_frame_samples = 0;
     m_lpf_left = 0;
@@ -114,11 +114,6 @@ void Audio::EndFrame(s16* sample_buffer, int* sample_count)
             sample_buffer[i + 1] = (s16)out_right;
         }
     }
-
-#ifndef GLYNX_DISABLE_VGMRECORDER
-    if (m_vgm_recording_enabled)
-        m_vgm_recorder.UpdateTiming(m_frame_samples / 2);
-#endif
 
     m_buffer_pos = 0;
 }
@@ -172,7 +167,9 @@ void Audio::Serialize(StateSerializer& s, int version)
 {
     if (version >= 13)
         G_SERIALIZE(s, m_is_lynx2);
-    G_SERIALIZE(s, m_cycles);
+    G_SERIALIZE(s, m_sample_phase);
+    if (s.IsLoading() && version < 26)
+        m_sample_phase = 0;
     G_SERIALIZE(s, m_lpf_left);
     G_SERIALIZE(s, m_lpf_right);
     G_SERIALIZE(s, m_buffer_pos);

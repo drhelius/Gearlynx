@@ -25,11 +25,11 @@
 
 inline void Audio::Clock(u32 cycles)
 {
-    m_cycles += cycles;
+    u64 sample_phase = (u64)m_sample_phase + (u64)cycles * GLYNX_AUDIO_SAMPLE_RATE;
 
-    if (m_cycles >= GLYNX_AUDIO_CYCLES_PER_SAMPLE)
+    while (sample_phase >= GLYNX_MASTER_CLOCK)
     {
-        m_cycles -= GLYNX_AUDIO_CYCLES_PER_SAMPLE;
+        sample_phase -= GLYNX_MASTER_CLOCK;
         Mikey::Mikey_State* state = m_mikey->GetState();
 
         // Lynx II
@@ -80,12 +80,19 @@ inline void Audio::Clock(u32 cycles)
 
         m_buffer_pos += 2;
 
+#ifndef GLYNX_DISABLE_VGMRECORDER
+        if (m_vgm_recording_enabled)
+            m_vgm_recorder.UpdateTiming();
+#endif
+
         if (m_buffer_pos >= GLYNX_AUDIO_BUFFER_SIZE)
         {
             Debug("WARNING: Audio buffer overflow");
             m_buffer_pos = 0;
         }
     }
+
+    m_sample_phase = (u32)sample_phase;
 }
 
 inline void Audio::Mute(bool mute)
