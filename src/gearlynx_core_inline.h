@@ -194,10 +194,16 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer, int
 
 INLINE void GearlynxCore::SynchronizeComLynx()
 {
-    if (m_comlynx_sync_callback && m_total_cycles >= m_comlynx_next_sync_cycle)
+    if (m_mikey->IsUartTurbo())
+        return;
+
+    u32 sync_cycles = m_mikey->GetComLynxSyncCycles();
+
+    if (m_comlynx_sync_callback && (m_total_cycles >= m_comlynx_next_sync_cycle || sync_cycles != m_comlynx_sync_cycles))
     {
-        m_comlynx_sync_callback(m_mikey->GetComLynxCycle(), m_comlynx_sync_user_data);
-        m_comlynx_next_sync_cycle = m_total_cycles + COMLYNX_SYNC_CYCLES;
+        m_comlynx_sync_callback(m_mikey->GetComLynxCycle(), m_mikey->GetComLynxPromiseCycles(), m_comlynx_sync_user_data);
+        m_comlynx_sync_cycles = sync_cycles;
+        m_comlynx_next_sync_cycle = m_total_cycles + sync_cycles;
     }
 }
 

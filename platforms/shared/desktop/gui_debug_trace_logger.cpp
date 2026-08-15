@@ -321,7 +321,8 @@ static void format_entry_text(const GLYNX_Trace_Entry& entry, char* buf, int buf
 
             if (entry.uart.kind == GLYNX_UART_TRACE_CFG)
             {
-                u32 baud = 1000000u / ((entry.uart.backup + 1u) * 8u);
+                bool turbo = (entry.uart.flags & 0x20) != 0;
+                u32 baud = turbo ? 1000000u : 1000000u / ((entry.uart.backup + 1u) * 8u);
                 snprintf(buf, buf_size, "  [MIKEY] UART CFG SERCTL:$%02X  %lu baud  %s  TX:%s RX:%s%s%s",
                          entry.uart.data, (unsigned long)baud,
                          (entry.uart.data & 0x10) ? ((entry.uart.data & 0x01) ? "PAR:EVEN" : "PAR:ODD ") : "PAR:OFF ",

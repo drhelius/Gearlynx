@@ -23,12 +23,14 @@
 #include "types.h"
 
 #define COMLYNX_MAX_PEERS 8
-#define COMLYNX_SYNC_CYCLES 128
+#define COMLYNX_MAX_SYNC_CYCLES 128
+#define COMLYNX_MAX_PROMISE_CYCLES 256
+#define COMLYNX_TURBO_SYNC_CYCLES 8
+#define COMLYNX_TURBO_PROMISE_CYCLES 8
 
-typedef void (*GLYNX_ComLynx_Publish_Callback)(u64 start_cycle, u32 bit_cycles,
-	u16 bits, void* user_data);
+typedef void (*GLYNX_ComLynx_Publish_Callback)(u64 start_cycle, u32 bit_cycles, u16 bits, void* user_data);
 typedef bool (*GLYNX_ComLynx_Sample_Callback)(u64 cycle, void* user_data);
 typedef void (*GLYNX_ComLynx_Break_Callback)(bool asserted, u64 cycle, void* user_data);
-typedef void (*GLYNX_ComLynx_Sync_Callback)(u64 cycles, void* user_data);
+typedef void (*GLYNX_ComLynx_Sync_Callback)(u64 cycles, u32 promise_cycles, void* user_data);
 
 #endif /* COMLYNX_H */

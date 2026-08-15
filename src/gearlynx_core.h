@@ -124,6 +124,7 @@ private:
     GLYNX_ComLynx_Sync_Callback m_comlynx_sync_callback;
     void* m_comlynx_sync_user_data;
     u64 m_comlynx_next_sync_cycle;
+    u32 m_comlynx_sync_cycles;
 };
 
 #include "gearlynx_core_inline.h"

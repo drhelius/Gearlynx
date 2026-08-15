@@ -122,7 +122,7 @@ int main()
 
     std::chrono::steady_clock::time_point wall_start = std::chrono::steady_clock::now();
     clock_t cpu_start = clock();
-    barrier_first.Synchronize(1024);
+    barrier_first.Synchronize(1024, COMLYNX_MAX_PROMISE_CYCLES);
     u64 wall_us = (u64)std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - wall_start).count();
     u64 cpu_us = (u64)(clock() - cpu_start) * 1000000ULL / CLOCKS_PER_SEC;

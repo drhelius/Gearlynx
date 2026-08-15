@@ -42,10 +42,14 @@
 // Saturation bound for traced receive gaps; it does not affect FIFO behavior
 #define GLYNX_UART_RX_AGE_MAX_CYCLES (GLYNX_MASTER_CLOCK)
 
+#define GLYNX_UART_TURBO_BIT_CYCLES (GLYNX_MASTER_CLOCK / 1000000)
+
 #define GLYNX_UART_TRACE_TX  0
 #define GLYNX_UART_TRACE_RX  1
 #define GLYNX_UART_TRACE_RD  2
 #define GLYNX_UART_TRACE_CFG 3
+
+#define GLYNX_MTEST0_UART_TURBO 0x10
 
 #define MIKEY_TIM0BKUP      0xFD00
 #define MIKEY_TIM0CTLA      0xFD01

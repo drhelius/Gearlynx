@@ -61,6 +61,7 @@ public:
         u8 CPUSLEEP;
         u8 DISPCTL;
         u8 PBKUP;
+        u8 MTEST0;
         u16_union DISPADR;
         u8 irq_pending;
         u8 irq_mask;
@@ -95,10 +96,14 @@ public:
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream, int version);
     void SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
-        GLYNX_ComLynx_Sample_Callback sample_callback,
-        GLYNX_ComLynx_Break_Callback break_callback, void* user_data);
+        GLYNX_ComLynx_Sample_Callback sample_callback, GLYNX_ComLynx_Break_Callback break_callback,
+        GLYNX_ComLynx_Sync_Callback sync_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
     bool IsComLynxCableConnected() const;
+    bool IsUartTurbo() const;
+    u32 GetUartBitCycles() const;
+    u32 GetComLynxSyncCycles() const;
+    u32 GetComLynxPromiseCycles() const;
     u64 GetComLynxCycle() const;
 
 private:
@@ -138,7 +143,7 @@ private:
     void UartBeginFrame(u8 data, bool chained);
     bool UartWireLevel() const;
     void UartReceiveWire(bool level, bool peer_low);
-    void UartClock();
+    void UartClock(bool turbo);
     void HorizontalBlank();
     void UpdateVideo(u32 cycles);
     void Serialize(StateSerializer& s, int version);
@@ -161,6 +166,7 @@ private:
     GLYNX_ComLynx_Publish_Callback m_comlynx_publish_callback;
     GLYNX_ComLynx_Sample_Callback m_comlynx_sample_callback;
     GLYNX_ComLynx_Break_Callback m_comlynx_break_callback;
+    GLYNX_ComLynx_Sync_Callback m_comlynx_sync_callback;
     void* m_comlynx_user_data;
     bool m_comlynx_cable_connected;
     u64 m_comlynx_cycle;

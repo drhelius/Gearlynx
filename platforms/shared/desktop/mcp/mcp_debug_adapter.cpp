@@ -1344,11 +1344,14 @@ json DebugAdapter::WriteSuzyRegister(u16 address, u8 value)
 
 json DebugAdapter::GetUARTStatus()
 {
-    Mikey::Mikey_State* mikey_state = m_core->GetMikey()->GetState();
+    Mikey* mikey = m_core->GetMikey();
+    Mikey::Mikey_State* mikey_state = mikey->GetState();
 
     json status;
     std::ostringstream ss;
     ss << std::hex << std::uppercase << std::setfill('0');
+
+    status["baud_rate"] = GLYNX_MASTER_CLOCK / mikey->GetUartBitCycles();
 
     // Register values
     json registers;
@@ -3263,7 +3266,8 @@ json DebugAdapter::GetTraceLog(int start, int count)
 
                 if (entry.uart.kind == GLYNX_UART_TRACE_CFG)
                 {
-                    u32 baud = 1000000u / ((entry.uart.backup + 1u) * 8u);
+                    bool turbo = (entry.uart.flags & 0x20) != 0;
+                    u32 baud = turbo ? 1000000u : 1000000u / ((entry.uart.backup + 1u) * 8u);
                     snprintf(buf, sizeof(buf), "  [MIKEY] UART CFG SERCTL:$%02X  %lu baud  %s  TX:%s RX:%s%s%s",
                              entry.uart.data, (unsigned long)baud,
                              (entry.uart.data & 0x10) ? ((entry.uart.data & 0x01) ? "PAR:EVEN" : "PAR:ODD ") : "PAR:OFF ",

@@ -401,6 +401,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
                     e.uart.kind = GLYNX_UART_TRACE_CFG;
                     e.uart.data = cfg;
                     e.uart.backup = backup;
+                    e.uart.flags = IS_SET_BIT(m_state.MTEST0, 4) ? 0x20 : 0;
                     m_trace_logger->TraceLog(e);
                 }
             }
@@ -464,7 +465,21 @@ INLINE void Mikey::Write(u16 address, u8 value)
             m_state.DISPADR.high = value;
             break;
         case MIKEY_MTEST0:        // 0xFD9C
-            DebugMikey("Writing MTEST0 (unused): %02X", value);
+            DebugMikey("Setting MTEST0 to %02X (was %02X)", value, m_state.MTEST0);
+            m_state.MTEST0 = value;
+            m_uart_last_bit_cycle = 0;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (m_trace_logger->IsEnabled(TRACE_MIKEY_UART))
+            {
+                GLYNX_Trace_Entry e = {};
+                e.type = TRACE_MIKEY_UART;
+                e.uart.kind = GLYNX_UART_TRACE_CFG;
+                e.uart.data = m_state.SERCTL & 0xD7;
+                e.uart.backup = m_state.timers[4].backup;
+                e.uart.flags = IS_SET_BIT(value, 4) ? 0x20 : 0;
+                m_trace_logger->TraceLog(e);
+            }
+#endif
             break;
         case MIKEY_MTEST1:        // 0xFD9D
             DebugMikey("Writing MTEST1 (unused): %02X", value);
@@ -535,6 +550,40 @@ INLINE bool Mikey::IsPoweredOn()
 INLINE LcdScreen* Mikey::GetLcdScreen()
 {
     return m_lcd_screen;
+}
+
+INLINE bool Mikey::IsUartTurbo() const
+{
+    return IS_SET_BIT(m_state.MTEST0, 4);
+}
+
+INLINE u32 Mikey::GetUartBitCycles() const
+{
+    if (IsUartTurbo())
+        return GLYNX_UART_TURBO_BIT_CYCLES;
+
+    u32 timer_cycles = m_state.timers[4].internal_period_cycles;
+
+    if (timer_cycles == 0)
+        timer_cycles = 16;
+
+    return timer_cycles * ((u32)m_state.timers[4].backup + 1) * 8;
+}
+
+INLINE u32 Mikey::GetComLynxSyncCycles() const
+{
+    if (IsUartTurbo())
+        return COMLYNX_TURBO_SYNC_CYCLES;
+
+    return MIN(COMLYNX_MAX_SYNC_CYCLES, GetUartBitCycles() >> 1);
+}
+
+INLINE u32 Mikey::GetComLynxPromiseCycles() const
+{
+    if (IsUartTurbo())
+        return COMLYNX_TURBO_PROMISE_CYCLES;
+
+    return MIN(COMLYNX_MAX_PROMISE_CYCLES, GetUartBitCycles());
 }
 
 inline u8 Mikey::ReadColor(u16 address)
@@ -924,6 +973,12 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 
     while (cycles-- > 0)
     {
+        if (IsUartTurbo() && m_comlynx_cable_connected && m_comlynx_sync_callback &&
+            (m_comlynx_cycle & (COMLYNX_TURBO_SYNC_CYCLES - 1)) == 0)
+        {
+            m_comlynx_sync_callback(m_comlynx_cycle, COMLYNX_TURBO_PROMISE_CYCLES, m_comlynx_user_data);
+        }
+
         m_comlynx_cycle++;
         m_state.timer_source_phase = (m_state.timer_source_phase + 1) & 1023;
 
@@ -934,6 +989,9 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 
             if (((m_state.timer_source_phase + alignment) & (period - 1)) != 0)
                 continue;
+
+            if (prescaler == 0 && IS_SET_BIT(m_state.MTEST0, 4))
+                UartClock(true);
 
             for (int timer = 0; timer < 8; timer++)
             {
@@ -1085,8 +1143,8 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
 
         if (likely(i == 0))
             HorizontalBlank();
-        else if (i == 4)
-            UartClock();
+        else if (i == 4 && IS_NOT_SET_BIT(m_state.MTEST0, 4))
+            UartClock(false);
 
         // In one-shot, after DONE we must not consume more clocks
         if (one_shot && IS_SET_BIT(t->control_b, 3))
@@ -1418,15 +1476,22 @@ INLINE void Mikey::UartBeginFrame(u8 data, bool chained)
     else
         m_state.uart.tx_parbit = m_state.uart.par_even ? 1 : 0;
 
-    u32 timer_cycles = m_state.timers[4].internal_period_cycles;
-
-    if (timer_cycles == 0)
-        timer_cycles = 16;
-
-    m_uart_tx_wire_bit_cycles = timer_cycles * ((u32)m_state.timers[4].backup + 1) * 8;
+    m_uart_tx_wire_bit_cycles = GetUartBitCycles();
     m_uart_tx_wire_bits = (u16)(((u16)data << 1) |
         ((u16)(m_state.uart.tx_parbit ? 1 : 0) << 9) | 0x0400);
     m_uart_tx_wire_published = false;
+
+    if (!chained && IsUartTurbo() && m_comlynx_cable_connected && m_state.uart.tx_open && m_comlynx_publish_callback)
+    {
+        u32 cycles_to_clock = (1 - m_state.timer_source_phase) & 15;
+
+        if (cycles_to_clock == 0)
+            cycles_to_clock = GLYNX_UART_TURBO_BIT_CYCLES;
+
+        m_uart_tx_wire_start = m_comlynx_cycle + cycles_to_clock + GLYNX_UART_TURBO_BIT_CYCLES;
+        m_comlynx_publish_callback(m_uart_tx_wire_start, m_uart_tx_wire_bit_cycles, m_uart_tx_wire_bits, m_comlynx_user_data);
+        m_uart_tx_wire_published = true;
+    }
 
     if (chained)
     {
@@ -1531,7 +1596,7 @@ INLINE void Mikey::UartReceiveWire(bool level, bool peer_low)
     m_uart_rx_wire_state = 0;
 }
 
-INLINE void Mikey::UartClock()
+INLINE void Mikey::UartClock(bool turbo)
 {
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
@@ -1540,9 +1605,13 @@ INLINE void Mikey::UartClock()
         return;
     }
 
-    m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
-    if (m_state.uart.prescaler != 0)
-        return;
+    if (!turbo)
+    {
+        m_state.uart.prescaler = (m_state.uart.prescaler + 1) & 7;
+
+        if (m_state.uart.prescaler != 0)
+            return;
+    }
 
     u64 measured_bit_cycles = m_uart_last_bit_cycle == 0 ? 0 :
         m_comlynx_cycle - m_uart_last_bit_cycle;

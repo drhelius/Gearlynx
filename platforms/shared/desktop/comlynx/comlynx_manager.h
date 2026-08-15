@@ -56,14 +56,12 @@ class ComLynxManager
 public:
     ComLynxManager();
     ~ComLynxManager();
-
     bool Connect(u8 session, u64 local_cycle);
     void Stop();
     void PublishFrame(u64 local_start_cycle, u32 bit_cycles, u16 bits);
     void SetBreak(bool asserted, u64 local_cycle);
     bool SampleLine(u64 local_cycle);
-    void Synchronize(u64 local_cycle);
-
+    void Synchronize(u64 local_cycle, u32 promise_cycles);
     bool IsActive() const;
     bool IsCableConnected() const;
     bool IsPacingPeer() const;
@@ -83,6 +81,7 @@ private:
     void SetFault(const char* message);
     void RefreshStatus();
 
+private:
     Shared* m_shared;
     void* m_mapping_handle;
     int m_mapping_fd;

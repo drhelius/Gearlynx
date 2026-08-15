@@ -47,7 +47,7 @@ void gui_debug_window_uart(void)
 {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::SetNextWindowPos(ImVec2(200, 90), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(228, 448), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(228, 466), ImGuiCond_FirstUseEver);
     ImGui::Begin("Mikey UART", &config_debug.show_uart);
 
     GearlynxCore* core = emu_get_core();
@@ -56,9 +56,12 @@ void gui_debug_window_uart(void)
 
     ImGui::PushFont(gui_default_font);
 
-
     EditableRegister8("SERCTL ", "FD8C", MIKEY_SERCTL, mikey_state->SERCTL, MikeyWriteCallback8, mikey);
     EditableRegister8("SERDAT ", "FD8D", MIKEY_SERDAT, mikey_state->SERDAT, MikeyWriteCallback8, mikey);
+
+    u32 baud = GLYNX_MASTER_CLOCK / mikey->GetUartBitCycles();
+    ImGui::TextColored(violet, "BAUD RATE     "); ImGui::SameLine();
+    ImGui::TextColored(yellow, "%u", baud);
 
     ImGui::Separator();
 

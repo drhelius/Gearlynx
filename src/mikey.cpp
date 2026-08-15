@@ -42,6 +42,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     m_comlynx_publish_callback = NULL;
     m_comlynx_sample_callback = NULL;
     m_comlynx_break_callback = NULL;
+    m_comlynx_sync_callback = NULL;
     m_comlynx_user_data = NULL;
     m_comlynx_cable_connected = false;
     m_comlynx_cycle = 0;
@@ -104,6 +105,7 @@ void Mikey::Reset(bool is_lynx2)
 
     m_is_lynx2 = is_lynx2;
     m_state.SYSCTL1 = 0x02;
+    m_state.MTEST0 = 0;
 
     m_lcd_screen->Reset();
 
@@ -280,12 +282,13 @@ bool Mikey::SwitchAudInValue()
 }
 
 void Mikey::SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
-    GLYNX_ComLynx_Sample_Callback sample_callback,
-    GLYNX_ComLynx_Break_Callback break_callback, void* user_data)
+    GLYNX_ComLynx_Sample_Callback sample_callback, GLYNX_ComLynx_Break_Callback break_callback,
+    GLYNX_ComLynx_Sync_Callback sync_callback, void* user_data)
 {
     m_comlynx_publish_callback = publish_callback;
     m_comlynx_sample_callback = sample_callback;
     m_comlynx_break_callback = break_callback;
+    m_comlynx_sync_callback = sync_callback;
     m_comlynx_user_data = user_data;
 }
 
@@ -467,6 +470,11 @@ void Mikey::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.suzy_done_pending);
     else if (s.IsLoading())
         m_state.suzy_done_pending = false;
+
+    if (version >= 25)
+        G_SERIALIZE(s, m_state.MTEST0);
+    else if (s.IsLoading())
+        m_state.MTEST0 = 0;
 }
 
 void Mikey::DebugOutputFlush()
