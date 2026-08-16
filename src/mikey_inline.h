@@ -671,6 +671,11 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
 
     GLYNX_Mikey_Timer* t = &m_state.timers[i];
 
+#ifndef GLYNX_DISABLE_VGMRECORDER
+    if (!debug && (i & 1) && m_audio->IsVgmRecording())
+        m_audio->GetVgmRecorder()->WriteMikey(address, value);
+#endif
+
     switch (reg)
     {
     case 0:

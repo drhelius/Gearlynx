@@ -195,6 +195,16 @@ bool Audio::StartVgmRecording(const char* file_path, int clock_rate, const VgmMe
         // Get Mikey state
         Mikey::Mikey_State* mikey_state = m_mikey->GetState();
 
+        // Write initial state of timers used by the audio link ring
+        for (int i = 1; i < 8; i += 2)
+        {
+            u16 base = 0xFD00 + (i * 4);
+            m_vgm_recorder.WriteMikey(base + 0, mikey_state->timers[i].backup);
+            m_vgm_recorder.WriteMikey(base + 1, mikey_state->timers[i].control_a);
+            m_vgm_recorder.WriteMikey(base + 2, mikey_state->timers[i].counter);
+            m_vgm_recorder.WriteMikey(base + 3, mikey_state->timers[i].control_b & ~0x02);
+        }
+
         // Write audio channel registers (0xFD20-0xFD3F)
         for (int i = 0; i < 4; i++)
         {
@@ -222,7 +232,7 @@ bool Audio::StartVgmRecording(const char* file_path, int clock_rate, const VgmMe
             m_vgm_recorder.WriteMikey(base + 6, mikey_state->audio[i].counter);
 
             // AUDnMISC
-            m_vgm_recorder.WriteMikey(base + 7, mikey_state->audio[i].other);
+            m_vgm_recorder.WriteMikey(base + 7, mikey_state->audio[i].other & ~0x02);
         }
 
         // Write audio extra registers
