@@ -96,7 +96,7 @@ void gui_file_dialog_open_rom(void)
     if (!begin_dialog())
         return;
 
-    SDL_DialogFileFilter filters[] = { { "ROM Files", "lnx;lyx;o;zip" } };
+    SDL_DialogFileFilter filters[] = { { "ROM Files", "lnx;lyx;o;bin;zip" } };
     const char* default_path = config_emulator.last_open_path.empty() ? NULL : config_emulator.last_open_path.c_str();
     SDL_ShowOpenFileDialog(file_dialog_callback, (void*)(intptr_t)FileDialog_OpenROM, application_sdl_window, filters, 1, default_path, false);
 }

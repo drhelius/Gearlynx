@@ -1,7 +1,7 @@
 # Software Information
 display_name = "Atari - Lynx (GearLynx)"
 authors = "Ignacio Sanchez"
-supported_extensions = "lnx|lyx|o"
+supported_extensions = "lnx|lyx|o|bin"
 corename = "Gearlynx"
 license = "GPLv3"
 permissions = ""

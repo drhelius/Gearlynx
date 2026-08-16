@@ -238,9 +238,9 @@ void retro_set_environment(retro_environment_t cb)
     static const struct retro_system_content_info_override content_overrides[] =
     {
         {
-            "lnx|lyx|o",  // extensions
-            false,        // need_fullpath
-            false         // persistent_data
+            "lnx|lyx|o|bin",  // extensions
+            false,            // need_fullpath
+            false             // persistent_data
         },
         { NULL, false, false }
     };
@@ -343,7 +343,7 @@ void retro_get_system_info(struct retro_system_info *info)
     info->library_name     = GLYNX_TITLE;
     info->library_version  = GLYNX_VERSION;
     info->need_fullpath    = false;
-    info->valid_extensions = "lnx|lyx|o";
+    info->valid_extensions = "lnx|lyx|o|bin";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)

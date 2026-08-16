@@ -643,7 +643,7 @@ bool Media::LoadFromZipFile(const u8* buffer, int size)
         string extension = fn.substr(fn.find_last_of(".") + 1);
         transform(extension.begin(), extension.end(), extension.begin(), (int(*)(int)) tolower);
 
-        if ((extension == "lnx") || (extension == "lyx") || (extension == "o"))
+        if ((extension == "lnx") || (extension == "lyx") || (extension == "o") || (extension == "bin"))
         {
             void *p;
             size_t uncomp_size;
