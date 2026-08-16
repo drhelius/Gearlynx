@@ -110,6 +110,7 @@ void Media::HardReset()
     m_rom_size = 0;
     m_ready = false;
     m_is_in_game_database = false;
+    m_game_database_name = NULL;
     m_file_path[0] = 0;
     m_file_directory[0] = 0;
     m_file_name[0] = 0;
@@ -673,6 +674,7 @@ void Media::GatherInfoFromDB()
 {
     int i = 0;
     m_is_in_game_database = false;
+    m_game_database_name = NULL;
 
     while(!m_is_in_game_database && (k_game_database[i].title != 0))
     {
@@ -681,6 +683,7 @@ void Media::GatherInfoFromDB()
         if (db_crc == m_crc)
         {
             m_is_in_game_database = true;
+            m_game_database_name = k_game_database[i].title;
             Log("ROM found in database: %s. CRC: %08X", k_game_database[i].title, m_crc);
 
             if (m_is_lnx2)

@@ -52,7 +52,7 @@ public:
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream, int version);
     void Serialize(StateSerializer& s, int version);
-    bool StartVgmRecording(const char* file_path, int clock_rate);
+    bool StartVgmRecording(const char* file_path, int clock_rate, const VgmMetadata& metadata);
     void StopVgmRecording();
     bool IsVgmRecording() const;
     VgmRecorder* GetVgmRecorder();

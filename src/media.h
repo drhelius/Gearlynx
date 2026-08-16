@@ -65,6 +65,7 @@ public:
     int GetROMSize();
     u32 GetCRC();
     bool IsInGameDatabase();
+    const char* GetGameDatabaseName();
     void ForceRotation(GLYNX_Rotation rotation);
     GLYNX_Rotation GetRotation();
     void ForceConsoleType(GLYNX_Console_Type type);
@@ -177,6 +178,7 @@ private:
     bool m_is_bios_valid;
     bool m_ready;
     bool m_is_in_game_database;
+    const char* m_game_database_name;
     char m_file_path[512];
     char m_file_directory[512];
     char m_file_name[512];

@@ -41,6 +41,11 @@ INLINE bool Media::IsInGameDatabase()
     return m_is_in_game_database;
 }
 
+INLINE const char* Media::GetGameDatabaseName()
+{
+    return m_game_database_name;
+}
+
 INLINE bool Media::IsBiosLoaded()
 {
     return m_is_bios_loaded;

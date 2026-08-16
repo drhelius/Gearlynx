@@ -1986,8 +1986,13 @@ void emu_start_vgm_recording(const char* file_path)
 
     // Atari Lynx Mikey chip clock rate is 16 MHz
     const int clock_rate = 16000000;
+    Media* media = core->GetMedia();
+    VgmMetadata metadata;
+    metadata.game_name = media->IsInGameDatabase() ? media->GetGameDatabaseName() : media->GetFileName();
+    metadata.system_name = "Atari Lynx";
+    metadata.comment = "Created with " GLYNX_TITLE " " GLYNX_VERSION;
 
-    if (core->GetAudio()->StartVgmRecording(file_path, clock_rate))
+    if (core->GetAudio()->StartVgmRecording(file_path, clock_rate, metadata))
     {
         Log("VGM recording started: %s", file_path);
     }
