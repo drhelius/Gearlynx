@@ -22,6 +22,12 @@
 
 #include "gearlynx.h"
 
+enum gui_TraceOutput
+{
+    gui_TraceOutput_Memory = 0,
+    gui_TraceOutput_Disk
+};
+
 #ifdef GUI_DEBUG_TRACE_LOGGER_IMPORT
     #define EXTERN
 #else
@@ -29,7 +35,16 @@
 #endif
 
 EXTERN void gui_debug_window_trace_logger(void);
+EXTERN void gui_debug_trace_logger_init(void);
+EXTERN void gui_debug_trace_logger_update(void);
+EXTERN void gui_debug_trace_logger_shutdown(void);
 EXTERN void gui_debug_trace_logger_clear(void);
+EXTERN void gui_debug_trace_logger_set_output_directory(const char* path);
+EXTERN bool gui_debug_trace_logger_configure(int output, int memory_size, int disk_size, const char* output_path);
+EXTERN bool gui_debug_trace_logger_start(u32 flags);
+EXTERN void gui_debug_trace_logger_stop(void);
+EXTERN bool gui_debug_trace_logger_is_enabled(void);
+EXTERN const char* gui_debug_trace_logger_get_output_path(void);
 EXTERN void gui_debug_save_log(const char* file_path);
 
 #undef GUI_DEBUG_TRACE_LOGGER_IMPORT

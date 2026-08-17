@@ -49,12 +49,21 @@ void gui_action_reset(void)
 
 void gui_action_reload_rom(void)
 {
-    if (!emu_is_empty() && emu_is_bios_loaded())
+    if (!emu_is_bios_loaded())
+        return;
+
+    char rom_path[4096] = {};
+    if (!emu_is_empty())
     {
-        char rom_path[4096];
         strncpy_fit(rom_path, emu_get_core()->GetMedia()->GetFilePath(), sizeof(rom_path));
-        gui_load_rom(rom_path);
     }
+    else if (!config_emulator.recent_roms[0].empty())
+    {
+        strncpy_fit(rom_path, config_emulator.recent_roms[0].c_str(), sizeof(rom_path));
+    }
+
+    if (rom_path[0] != '\0')
+        gui_load_rom(rom_path);
 }
 
 void gui_action_pause(void)

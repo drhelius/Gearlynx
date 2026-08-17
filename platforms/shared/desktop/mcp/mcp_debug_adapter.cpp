@@ -28,6 +28,7 @@
 #include "../gui_debug_memory.h"
 #include "../gui_debug_memeditor.h"
 #include "../gui_debug_rewind.h"
+#include "../gui_debug_trace_logger.h"
 #include "../config.h"
 #include "../events.h"
 #include "../rewind.h"
@@ -56,6 +57,40 @@ static const char* cart_bank_type_name(GLYNX_Cartridge_Bank_Type type)
 static bool cart_bank_available(Media* media, int bank)
 {
     return media->GetCartBankData(bank) != NULL && media->GetCartBankSize(bank) > 0;
+}
+
+static int trace_memory_size_index(const std::string& size)
+{
+    if (size == "100K") return 0;
+    if (size == "500K") return 1;
+    if (size == "1M") return 2;
+    if (size == "2M") return 3;
+    if (size == "5M") return 4;
+    return -1;
+}
+
+static int trace_disk_size_index(const std::string& size)
+{
+    if (size == "10MB") return 0;
+    if (size == "50MB") return 1;
+    if (size == "100MB") return 2;
+    if (size == "250MB") return 3;
+    if (size == "500MB") return 4;
+    if (size == "1GB") return 5;
+    if (size == "unbounded") return 6;
+    return -1;
+}
+
+static const char* trace_memory_size_name(int index)
+{
+    static const char* names[] = {"100K", "500K", "1M", "2M", "5M"};
+    return index >= 0 && index < 5 ? names[index] : "100K";
+}
+
+static const char* trace_disk_size_name(int index)
+{
+    static const char* names[] = {"10MB", "50MB", "100MB", "250MB", "500MB", "1GB", "unbounded"};
+    return index >= 0 && index < 7 ? names[index] : "100MB";
 }
 
 static json make_cart_bank_json(Media* media, int bank, std::ostringstream& ss)
@@ -3338,7 +3373,8 @@ json DebugAdapter::GetTraceLog(int start, int count)
     return result;
 }
 
-json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output)
+json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output, const std::string& output,
+    const std::string& memory_size, const std::string& disk_size, const std::string& output_path)
 {
     json result;
 
@@ -3350,33 +3386,105 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output)
     }
 
     m_core->GetMikey()->SetDebugOutputEnabled(debug_output);
+    config_debug.debug_output_enabled = debug_output;
     result["debug_output"] = debug_output;
 
     if (enabled)
     {
-        if (flags == 0)
-            flags = TRACE_FLAG_CPU;
-        tl->SetEnabledFlags(flags);
+        bool was_enabled = gui_debug_trace_logger_is_enabled();
+        int output_value;
+        if (output.empty())
+            output_value = was_enabled ? config_debug.trace_output : gui_TraceOutput_Memory;
+        else if (output == "memory")
+            output_value = gui_TraceOutput_Memory;
+        else if (output == "disk")
+            output_value = gui_TraceOutput_Disk;
+        else
+        {
+            result["error"] = "Invalid trace output";
+            return result;
+        }
+
+        int memory_size_value = config_debug.trace_capacity;
+        if (!memory_size.empty())
+        {
+            memory_size_value = trace_memory_size_index(memory_size);
+            if (memory_size_value < 0)
+            {
+                result["error"] = "Invalid trace memory size";
+                return result;
+            }
+        }
+
+        int disk_size_value = config_debug.trace_disk_size;
+        if (!disk_size.empty())
+        {
+            disk_size_value = trace_disk_size_index(disk_size);
+            if (disk_size_value < 0)
+            {
+                result["error"] = "Invalid trace disk size";
+                return result;
+            }
+        }
+
+        bool configuration_changed = output_value != config_debug.trace_output;
+        if (output_value == gui_TraceOutput_Memory)
+            configuration_changed = configuration_changed || memory_size_value != config_debug.trace_capacity;
+        else
+        {
+            configuration_changed = configuration_changed || disk_size_value != config_debug.trace_disk_size;
+            if (!output_path.empty())
+            {
+                configuration_changed = configuration_changed ||
+                    config_debug.trace_disk_dir_option != Directory_Location_Custom ||
+                    output_path != config_debug.trace_disk_path;
+            }
+        }
+
+        if (was_enabled && configuration_changed)
+            gui_debug_trace_logger_stop();
+
+        if (!gui_debug_trace_logger_is_enabled())
+        {
+            if (!gui_debug_trace_logger_configure(output_value, memory_size_value, disk_size_value, output_path.c_str()))
+            {
+                result["error"] = "Unable to configure trace logger";
+                return result;
+            }
+        }
+
+        if (!gui_debug_trace_logger_start(flags))
+        {
+            result["error"] = "Unable to start trace logger";
+            return result;
+        }
 
         result["status"] = "started";
-        result["enabled_flags"] = flags;
+        result["enabled_flags"] = tl->GetEnabledFlags();
+        result["output"] = config_debug.trace_output == gui_TraceOutput_Disk ? "disk" : "memory";
+        result["memory_size"] = trace_memory_size_name(config_debug.trace_capacity);
+        result["disk_size"] = trace_disk_size_name(config_debug.trace_disk_size);
+        if (config_debug.trace_output == gui_TraceOutput_Disk)
+            result["output_path"] = gui_debug_trace_logger_get_output_path();
 
         json enabled_list = json::array();
-        if (flags & TRACE_FLAG_CPU) enabled_list.push_back("cpu");
-        if (flags & TRACE_FLAG_CPU_IRQ) enabled_list.push_back("cpu_irq");
-        if (flags & TRACE_FLAG_SUZY_MATH) enabled_list.push_back("suzy_math");
-        if (flags & TRACE_FLAG_SUZY_SPRITE) enabled_list.push_back("suzy_sprites");
-        if (flags & TRACE_FLAG_SUZY_INPUT) enabled_list.push_back("suzy_input");
-        if (flags & TRACE_FLAG_MIKEY_TIMER) enabled_list.push_back("mikey_timers");
-        if (flags & TRACE_FLAG_MIKEY_UART) enabled_list.push_back("mikey_uart");
-        if (flags & TRACE_FLAG_REDEYE) enabled_list.push_back("redeye");
-        if (flags & TRACE_FLAG_MIKEY_AUDIO) enabled_list.push_back("mikey_audio");
-        if (flags & TRACE_FLAG_CART_SHIFT) enabled_list.push_back("cart");
-        if (flags & TRACE_FLAG_DEBUG_MSG) enabled_list.push_back("debug_messages");
+        u32 enabled_flags = tl->GetEnabledFlags();
+        if (enabled_flags & TRACE_FLAG_CPU) enabled_list.push_back("cpu");
+        if (enabled_flags & TRACE_FLAG_CPU_IRQ) enabled_list.push_back("cpu_irq");
+        if (enabled_flags & TRACE_FLAG_SUZY_MATH) enabled_list.push_back("suzy_math");
+        if (enabled_flags & TRACE_FLAG_SUZY_SPRITE) enabled_list.push_back("suzy_sprites");
+        if (enabled_flags & TRACE_FLAG_SUZY_INPUT) enabled_list.push_back("suzy_input");
+        if (enabled_flags & TRACE_FLAG_MIKEY_TIMER) enabled_list.push_back("mikey_timers");
+        if (enabled_flags & TRACE_FLAG_MIKEY_UART) enabled_list.push_back("mikey_uart");
+        if (enabled_flags & TRACE_FLAG_REDEYE) enabled_list.push_back("redeye");
+        if (enabled_flags & TRACE_FLAG_MIKEY_AUDIO) enabled_list.push_back("mikey_audio");
+        if (enabled_flags & TRACE_FLAG_CART_SHIFT) enabled_list.push_back("cart");
+        if (enabled_flags & TRACE_FLAG_DEBUG_MSG) enabled_list.push_back("debug_messages");
         result["enabled"] = enabled_list;
     }
     else
     {
+        gui_debug_trace_logger_stop();
         tl->SetEnabledFlags(0);
         result["status"] = "stopped";
     }

@@ -1667,7 +1667,7 @@ json McpServer::BuildToolList()
     tools.push_back({
         {"name", "set_trace_log"},
         {"title", "Set Trace Logger"},
-        {"description", "Enable/disable trace log; filters CPU, IRQ, Suzy, Mikey, UART, audio, cart, debug messages; debug_output maps $FDC0-$FDC4 text registers."},
+        {"description", "Enable/disable trace logging to memory or disk; configure capacity, file limit, output directory, event filters, and debug output."},
         {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
@@ -1679,6 +1679,25 @@ json McpServer::BuildToolList()
                 {"debug_output", {
                     {"type", "boolean"},
                     {"description", "Enable $FDC0-$FDC4 debug output text registers. Default false."}
+                }},
+                {"output", {
+                    {"type", "string"},
+                    {"description", "Trace destination. Defaults to memory when starting a stopped logger."},
+                    {"enum", json::array({"memory", "disk"})}
+                }},
+                {"memory_size", {
+                    {"type", "string"},
+                    {"description", "Maximum entries retained in memory mode."},
+                    {"enum", json::array({"100K", "500K", "1M", "2M", "5M"})}
+                }},
+                {"disk_size", {
+                    {"type", "string"},
+                    {"description", "Maximum disk trace file size."},
+                    {"enum", json::array({"10MB", "50MB", "100MB", "250MB", "500MB", "1GB", "unbounded"})}
+                }},
+                {"output_path", {
+                    {"type", "string"},
+                    {"description", "Directory for the automatically named disk trace file."}
                 }},
                 {"filters", {
                     {"type", "object"},
@@ -2816,7 +2835,11 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
             if (filters.value("debug_messages", true)) flags |= TRACE_FLAG_DEBUG_MSG;
         }
         bool debug_output = arguments.value("debug_output", false);
-        return m_debugAdapter.SetTraceLog(enabled, flags, debug_output);
+        std::string output = arguments.value("output", "");
+        std::string memory_size = arguments.value("memory_size", "");
+        std::string disk_size = arguments.value("disk_size", "");
+        std::string output_path = arguments.value("output_path", "");
+        return m_debugAdapter.SetTraceLog(enabled, flags, debug_output, output, memory_size, disk_size, output_path);
     }
     else if (normalizedTool == "get_rewind_status")
     {
@@ -3075,4 +3098,3 @@ void McpServer::HandleResourcesRead(const json& request)
 
     SendResponse(response);
 }
-

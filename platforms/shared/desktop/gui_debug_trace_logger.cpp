@@ -28,12 +28,50 @@
 #include "config.h"
 #include "emu.h"
 #include "gui_debug.h"
+#include "utils.h"
+
+#define TRACE_DISK_BUFFER_SIZE (1024 * 1024)
+#define TRACE_DISK_STAGING_CAPACITY 100000
 
 static bool trace_logger_enabled = false;
+static bool trace_logger_follow_latest = true;
+static bool trace_logger_scroll_to_bottom = false;
+static bool trace_logger_wait_for_scroll_away = false;
 static u64 trace_logger_start_total = 0;
+static bool trace_logger_choose_output_path = false;
+static FILE* trace_logger_disk_file = NULL;
+static char trace_logger_disk_path[4096] = {};
+static char trace_logger_disk_directory[4096] = {};
+static char trace_logger_disk_buffer[TRACE_DISK_BUFFER_SIZE];
+static size_t trace_logger_disk_buffer_used = 0;
+static u64 trace_logger_disk_entries = 0;
+static u64 trace_logger_disk_flushed_total = 0;
+static u64 trace_logger_disk_bytes = 0;
+static bool trace_logger_disk_limit_reached = false;
+static bool trace_logger_disk_overflow = false;
+static Uint64 trace_logger_disk_last_flush = 0;
+
+static const u32 trace_logger_capacities[] = {100000, 500000, 1000000, 2000000, 5000000};
+static const char* trace_logger_capacity_names[] = {"100K", "500K", "1M", "2M", "5M"};
+static const u64 trace_logger_disk_sizes[] = {
+    10ULL * 1024ULL * 1024ULL,
+    50ULL * 1024ULL * 1024ULL,
+    100ULL * 1024ULL * 1024ULL,
+    250ULL * 1024ULL * 1024ULL,
+    500ULL * 1024ULL * 1024ULL,
+    1024ULL * 1024ULL * 1024ULL,
+    0
+};
 
 static void trace_logger_menu(void);
 static void trace_logger_sync_flags(void);
+static u32 trace_logger_get_config_flags(void);
+static void trace_logger_set_config_flags(u32 flags);
+static bool trace_logger_apply_capacity(void);
+static bool trace_logger_start_disk(void);
+static void trace_logger_stop_disk(bool show_status);
+static bool trace_logger_flush_disk_buffer(bool flush_file);
+static bool trace_logger_flush_disk_entries(void);
 static void format_entry_text(const GLYNX_Trace_Entry& entry, char* buf, int buf_size);
 static void format_cpu_entry(const GLYNX_Trace_Entry& entry, char* buf, int buf_size);
 static void render_entry_colored(const GLYNX_Trace_Entry& entry, u32 index);
@@ -52,37 +90,120 @@ void gui_debug_window_trace_logger(void)
 
     if (ImGui::Button(trace_logger_enabled ? "Stop" : "Start"))
     {
-        trace_logger_enabled = !trace_logger_enabled;
         if (trace_logger_enabled)
         {
-            trace_logger_start_total = tl->GetTotalLogged();
-            trace_logger_sync_flags();
+            gui_debug_trace_logger_stop();
         }
         else
-            tl->SetEnabledFlags(0);
+        {
+            gui_debug_trace_logger_start(trace_logger_get_config_flags());
+        }
     }
 
     ImGui::SameLine();
 
+    ImGui::BeginDisabled(trace_logger_enabled && config_debug.trace_output == gui_TraceOutput_Disk);
     if (ImGui::Button("Clear"))
     {
         gui_debug_trace_logger_clear();
     }
+    ImGui::EndDisabled();
 
     ImGui::SameLine();
-    ImGui::Text("Entries: %u / %d", tl->GetCount(), TRACE_BUFFER_SIZE);
+
+    ImGui::BeginDisabled(trace_logger_enabled);
+    ImGui::SetNextItemWidth(90.0f);
+    int previous_output = config_debug.trace_output;
+    if (ImGui::Combo("##trace_output", &config_debug.trace_output, "Memory\0Disk\0\0"))
+    {
+        if (!trace_logger_apply_capacity())
+            config_debug.trace_output = previous_output;
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(trace_logger_enabled);
+    ImGui::SetNextItemWidth(145.0f);
+    if (config_debug.trace_output == gui_TraceOutput_Memory)
+    {
+        int previous_capacity = config_debug.trace_capacity;
+        char capacity_labels[IM_ARRAYSIZE(trace_logger_capacities)][32];
+        const char* capacity_items[IM_ARRAYSIZE(trace_logger_capacities)];
+        for (int i = 0; i < IM_ARRAYSIZE(trace_logger_capacities); i++)
+        {
+            double memory_mib = ((double)trace_logger_capacities[i] * sizeof(GLYNX_Trace_Entry)) / (1024.0 * 1024.0);
+            snprintf(capacity_labels[i], sizeof(capacity_labels[i]), "%s (%.1f MiB)", trace_logger_capacity_names[i], memory_mib);
+            capacity_items[i] = capacity_labels[i];
+        }
+        if (ImGui::Combo("##trace_capacity", &config_debug.trace_capacity, capacity_items, IM_ARRAYSIZE(capacity_items)) && !trace_logger_apply_capacity())
+            config_debug.trace_capacity = previous_capacity;
+    }
+    else
+    {
+        ImGui::Combo("##trace_disk_size", &config_debug.trace_disk_size, "10 MB\0" "50 MB\0" "100 MB\0" "250 MB\0" "500 MB\0" "1 GB\0" "Unbounded\0\0");
+    }
+    ImGui::EndDisabled();
+    if (config_debug.trace_output == gui_TraceOutput_Memory && ImGui::IsItemHovered())
+    {
+        double memory_mib = ((double)trace_logger_capacities[config_debug.trace_capacity] * sizeof(GLYNX_Trace_Entry)) / (1024.0 * 1024.0);
+        ImGui::SetTooltip("Preallocated memory: %.1f MiB (%u bytes per entry).", memory_mib, (u32)sizeof(GLYNX_Trace_Entry));
+    }
+
+    if (config_debug.trace_output == gui_TraceOutput_Memory)
+    {
+        ImGui::SameLine();
+        ImGui::Text("Entries: %u / %u", tl->GetCount(), tl->GetCapacity());
+    }
+    if (config_debug.trace_output == gui_TraceOutput_Disk && trace_logger_disk_path[0] != '\0')
+    {
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        ImGui::InputText("##trace_disk_file", trace_logger_disk_path, sizeof(trace_logger_disk_path), ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_AutoSelectAll);
+    }
 
     if (trace_logger_enabled)
         trace_logger_sync_flags();
 
+    u32 count = tl->GetCount();
+    ImGui::PushFont(gui_default_font);
+    float line_height = ImGui::GetTextLineHeightWithSpacing();
+    float content_height = (float)count * line_height;
+    ImGui::SetNextWindowContentSize(ImVec2(0.0f, content_height));
+    if ((trace_logger_enabled && trace_logger_follow_latest) || trace_logger_scroll_to_bottom)
+        ImGui::SetNextWindowScroll(ImVec2(-1.0f, content_height));
+
     if (ImGui::BeginChild("##logger", ImVec2(ImGui::GetContentRegionAvail().x, 0), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        ImGui::PushFont(gui_default_font);
-
-        u32 count = tl->GetCount();
+        float scroll_y = ImGui::GetScrollY();
+        float scroll_max_y = ImGui::GetScrollMaxY();
+        bool at_bottom = scroll_y >= scroll_max_y - 0.5f;
+        bool user_scrolling = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+            (ImGui::GetIO().MouseWheel != 0.0f || ImGui::IsMouseDragging(ImGuiMouseButton_Left));
+        if (trace_logger_enabled)
+        {
+            if (trace_logger_scroll_to_bottom)
+            {
+                trace_logger_follow_latest = true;
+                trace_logger_wait_for_scroll_away = false;
+            }
+            else if (trace_logger_follow_latest && user_scrolling)
+            {
+                trace_logger_follow_latest = false;
+                trace_logger_wait_for_scroll_away = true;
+            }
+            else if (!trace_logger_follow_latest)
+            {
+                if (trace_logger_wait_for_scroll_away)
+                {
+                    if (!at_bottom)
+                        trace_logger_wait_for_scroll_away = false;
+                }
+                else if (at_bottom)
+                    trace_logger_follow_latest = true;
+            }
+        }
 
         ImGuiListClipper clipper;
-        clipper.Begin((int)count, ImGui::GetTextLineHeightWithSpacing());
+        clipper.Begin((int)count, line_height);
 
         while (clipper.Step())
         {
@@ -94,19 +215,181 @@ void gui_debug_window_trace_logger(void)
             }
         }
 
-        ImGui::PopFont();
+        trace_logger_scroll_to_bottom = false;
     }
 
     ImGui::EndChild();
+    ImGui::PopFont();
 
     ImGui::End();
     ImGui::PopStyleVar();
+
+    if (trace_logger_choose_output_path)
+    {
+        trace_logger_choose_output_path = false;
+        gui_file_dialog_choose_trace_path();
+    }
+}
+
+void gui_debug_trace_logger_init(void)
+{
+    strncpy_fit(trace_logger_disk_directory, config_debug.trace_disk_path.c_str(), sizeof(trace_logger_disk_directory));
+    if (!trace_logger_apply_capacity())
+    {
+        config_debug.trace_capacity = 0;
+        trace_logger_apply_capacity();
+    }
+}
+
+void gui_debug_trace_logger_update(void)
+{
+    if (trace_logger_enabled && config_debug.trace_output == gui_TraceOutput_Disk)
+    {
+        if (!trace_logger_flush_disk_entries())
+        {
+            trace_logger_stop_disk(false);
+            if (trace_logger_disk_overflow)
+                gui_set_error_message("Trace disk staging buffer overflow.");
+            else
+                gui_set_error_message("Error writing trace log to disk.");
+        }
+        else if (trace_logger_disk_limit_reached)
+        {
+            trace_logger_stop_disk(false);
+            gui_set_status_message("Trace recording stopped: maximum file size reached", 4000);
+        }
+        else
+        {
+            Uint64 now = SDL_GetTicks();
+            if ((now - trace_logger_disk_last_flush) >= 1000)
+            {
+                if (!trace_logger_flush_disk_buffer(true))
+                {
+                    trace_logger_stop_disk(false);
+                    gui_set_error_message("Error flushing trace log to disk.");
+                }
+                else
+                    trace_logger_disk_last_flush = now;
+            }
+        }
+    }
+}
+
+void gui_debug_trace_logger_shutdown(void)
+{
+    if (trace_logger_disk_file)
+        trace_logger_stop_disk(false);
 }
 
 void gui_debug_trace_logger_clear(void)
 {
-    emu_get_core()->GetTraceLogger()->Reset();
+    TraceLogger* tl = emu_get_core()->GetTraceLogger();
+    if (trace_logger_enabled && config_debug.trace_output == gui_TraceOutput_Disk)
+    {
+        if (!trace_logger_flush_disk_entries())
+            gui_set_error_message("Error writing trace log to disk.");
+        tl->Reset();
+        trace_logger_disk_flushed_total = 0;
+    }
+    else
+        tl->Reset();
     trace_logger_start_total = 0;
+}
+
+void gui_debug_trace_logger_set_output_directory(const char* path)
+{
+    strncpy_fit(trace_logger_disk_directory, path, sizeof(trace_logger_disk_directory));
+    config_debug.trace_disk_path.assign(path);
+}
+
+bool gui_debug_trace_logger_configure(int output, int memory_size, int disk_size, const char* output_path)
+{
+    if (trace_logger_enabled)
+        return false;
+    if (output < gui_TraceOutput_Memory || output > gui_TraceOutput_Disk)
+        return false;
+    if (memory_size < 0 || memory_size >= IM_ARRAYSIZE(trace_logger_capacities))
+        return false;
+    if (disk_size < 0 || disk_size >= IM_ARRAYSIZE(trace_logger_disk_sizes))
+        return false;
+
+    int previous_output = config_debug.trace_output;
+    int previous_memory_size = config_debug.trace_capacity;
+    int previous_disk_size = config_debug.trace_disk_size;
+    int previous_dir_option = config_debug.trace_disk_dir_option;
+    std::string previous_path = config_debug.trace_disk_path;
+
+    config_debug.trace_output = output;
+    config_debug.trace_capacity = memory_size;
+    config_debug.trace_disk_size = disk_size;
+    if (output == gui_TraceOutput_Disk && output_path && output_path[0] != '\0')
+    {
+        config_debug.trace_disk_dir_option = Directory_Location_Custom;
+        gui_debug_trace_logger_set_output_directory(output_path);
+    }
+
+    if (!trace_logger_apply_capacity())
+    {
+        config_debug.trace_output = previous_output;
+        config_debug.trace_capacity = previous_memory_size;
+        config_debug.trace_disk_size = previous_disk_size;
+        config_debug.trace_disk_dir_option = previous_dir_option;
+        config_debug.trace_disk_path = previous_path;
+        strncpy_fit(trace_logger_disk_directory, previous_path.c_str(), sizeof(trace_logger_disk_directory));
+        return false;
+    }
+
+    return true;
+}
+
+bool gui_debug_trace_logger_start(u32 flags)
+{
+    if (flags == 0)
+        flags = TRACE_FLAG_CPU;
+    trace_logger_set_config_flags(flags);
+
+    if (trace_logger_enabled)
+    {
+        emu_get_core()->GetTraceLogger()->SetEnabledFlags(flags);
+        return true;
+    }
+
+    if (config_debug.trace_output == gui_TraceOutput_Disk && !trace_logger_start_disk())
+        return false;
+
+    trace_logger_enabled = true;
+    trace_logger_follow_latest = true;
+    trace_logger_scroll_to_bottom = true;
+    trace_logger_wait_for_scroll_away = false;
+    trace_logger_start_total = emu_get_core()->GetTraceLogger()->GetTotalLogged();
+    emu_get_core()->GetTraceLogger()->SetEnabledFlags(flags);
+    return true;
+}
+
+void gui_debug_trace_logger_stop(void)
+{
+    if (!trace_logger_enabled)
+        return;
+
+    trace_logger_scroll_to_bottom = trace_logger_follow_latest;
+
+    if (config_debug.trace_output == gui_TraceOutput_Disk)
+        trace_logger_stop_disk(true);
+    else
+    {
+        trace_logger_enabled = false;
+        emu_get_core()->GetTraceLogger()->SetEnabledFlags(0);
+    }
+}
+
+bool gui_debug_trace_logger_is_enabled(void)
+{
+    return trace_logger_enabled;
+}
+
+const char* gui_debug_trace_logger_get_output_path(void)
+{
+    return trace_logger_disk_path;
 }
 
 void gui_debug_save_log(const char* file_path)
@@ -139,7 +422,7 @@ static void trace_logger_menu(void)
 
     if (ImGui::BeginMenu("File"))
     {
-        if (ImGui::MenuItem("Save Log As..."))
+        if (ImGui::MenuItem("Save Log As...", NULL, false, config_debug.trace_output == gui_TraceOutput_Memory))
         {
             gui_file_dialog_save_log();
         }
@@ -169,6 +452,35 @@ static void trace_logger_menu(void)
             ImGui::EndTooltip();
         }
 
+        if (ImGui::BeginMenu("Disk Output"))
+        {
+            ImGui::BeginDisabled(trace_logger_enabled);
+            ImGui::SetNextItemWidth(180.0f);
+            ImGui::Combo("##trace_disk_dir", &config_debug.trace_disk_dir_option, "Default Location\0Same as ROM\0Custom Location\0\0");
+
+            switch ((Directory_Location)config_debug.trace_disk_dir_option)
+            {
+                default:
+                case Directory_Location_Default:
+                    ImGui::Text("%s", config_root_path);
+                    break;
+                case Directory_Location_ROM:
+                    if (!emu_is_empty())
+                        ImGui::Text("%s", emu_get_core()->GetMedia()->GetFileDirectory());
+                    break;
+                case Directory_Location_Custom:
+                    if (ImGui::MenuItem("Choose..."))
+                        trace_logger_choose_output_path = true;
+                    ImGui::PushItemWidth(450.0f);
+                    if (ImGui::InputText("##trace_disk_path", trace_logger_disk_directory, sizeof(trace_logger_disk_directory), ImGuiInputTextFlags_AutoSelectAll))
+                        config_debug.trace_disk_path.assign(trace_logger_disk_directory);
+                    ImGui::PopItemWidth();
+                    break;
+            }
+            ImGui::EndDisabled();
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMenu();
     }
 
@@ -192,7 +504,185 @@ static void trace_logger_menu(void)
     ImGui::EndMenuBar();
 }
 
+static bool trace_logger_apply_capacity(void)
+{
+    TraceLogger* tl = emu_get_core()->GetTraceLogger();
+    u32 capacity = TRACE_DISK_STAGING_CAPACITY;
+    if (config_debug.trace_output == gui_TraceOutput_Memory)
+        capacity = trace_logger_capacities[config_debug.trace_capacity];
+
+    if (!tl->SetCapacity(capacity))
+    {
+        gui_set_error_message("Unable to allocate the selected trace logger capacity.");
+        return false;
+    }
+    return true;
+}
+
+static bool trace_logger_start_disk(void)
+{
+    if (!trace_logger_apply_capacity())
+        return false;
+
+    const char* directory = config_root_path;
+    switch ((Directory_Location)config_debug.trace_disk_dir_option)
+    {
+        case Directory_Location_ROM:
+            if (!emu_is_empty())
+                directory = emu_get_core()->GetMedia()->GetFileDirectory();
+            break;
+        case Directory_Location_Custom:
+            directory = config_debug.trace_disk_path.c_str();
+            break;
+        default:
+            break;
+    }
+
+    time_t now = time(0);
+    tm local_time;
+    char date_time[32] = {};
+    if (get_local_time(now, &local_time))
+        strftime(date_time, sizeof(date_time), "%Y-%m-%d %H%M%S", &local_time);
+
+    const char* rom_name = "Gearlynx";
+    if (!emu_is_empty())
+        rom_name = emu_get_core()->GetMedia()->GetFileName();
+
+    bool path_available = false;
+    for (int index = 0; index < 1000; index++)
+    {
+        char filename[1024];
+        if (index == 0)
+            snprintf(filename, sizeof(filename), "%s - Trace - %s.txt", rom_name, date_time);
+        else
+            snprintf(filename, sizeof(filename), "%s - Trace - %s (%d).txt", rom_name, date_time, index + 1);
+
+        if (!join_path(directory, filename, trace_logger_disk_path, sizeof(trace_logger_disk_path)))
+        {
+            gui_set_error_message("Trace log path is too long.");
+            return false;
+        }
+        if (!path_exists(trace_logger_disk_path))
+        {
+            path_available = true;
+            break;
+        }
+    }
+
+    if (!path_available)
+    {
+        gui_set_error_message("Unable to create a unique trace log filename.");
+        return false;
+    }
+
+    trace_logger_disk_file = fopen_utf8(trace_logger_disk_path, "wb");
+    if (!trace_logger_disk_file)
+    {
+        gui_set_error_message("Unable to create the trace log file.");
+        trace_logger_disk_path[0] = '\0';
+        return false;
+    }
+
+    trace_logger_disk_buffer_used = 0;
+    trace_logger_disk_entries = 0;
+    trace_logger_disk_flushed_total = 0;
+    trace_logger_disk_bytes = 0;
+    trace_logger_disk_limit_reached = false;
+    trace_logger_disk_overflow = false;
+    trace_logger_disk_last_flush = SDL_GetTicks();
+    emu_get_core()->GetTraceLogger()->Reset();
+    gui_set_status_message("Trace recording started", 3000);
+    return true;
+}
+
+static void trace_logger_stop_disk(bool show_status)
+{
+    if (trace_logger_disk_file)
+    {
+        trace_logger_flush_disk_entries();
+        trace_logger_flush_disk_buffer(true);
+        fclose(trace_logger_disk_file);
+        trace_logger_disk_file = NULL;
+    }
+
+    trace_logger_enabled = false;
+    emu_get_core()->GetTraceLogger()->SetEnabledFlags(0);
+    if (show_status)
+        gui_set_status_message("Trace recording stopped", 3000);
+}
+
+static bool trace_logger_flush_disk_buffer(bool flush_file)
+{
+    if (!trace_logger_disk_file)
+        return false;
+
+    if (trace_logger_disk_buffer_used > 0)
+    {
+        size_t written = fwrite(trace_logger_disk_buffer, 1, trace_logger_disk_buffer_used, trace_logger_disk_file);
+        if (written != trace_logger_disk_buffer_used)
+            return false;
+        trace_logger_disk_buffer_used = 0;
+    }
+
+    return !flush_file || fflush(trace_logger_disk_file) == 0;
+}
+
+static bool trace_logger_flush_disk_entries(void)
+{
+    if (!trace_logger_disk_file)
+        return false;
+    if (trace_logger_disk_limit_reached)
+        return true;
+
+    TraceLogger* tl = emu_get_core()->GetTraceLogger();
+    u32 count = tl->GetCount();
+    u64 total = tl->GetTotalLogged();
+    u64 oldest = total - (u64)count;
+    if (trace_logger_disk_flushed_total < oldest)
+    {
+        trace_logger_disk_overflow = true;
+        return false;
+    }
+    u32 first = (u32)(trace_logger_disk_flushed_total - oldest);
+    char entry_text[256];
+    char line[320];
+
+    for (u32 i = first; i < count; i++)
+    {
+        format_entry_text(tl->GetEntry(i), entry_text, sizeof(entry_text));
+        int length;
+        if (config_debug.trace_counter)
+            length = snprintf(line, sizeof(line), "%06llu %s\n", (unsigned long long)trace_logger_disk_entries, entry_text);
+        else
+            length = snprintf(line, sizeof(line), "%s\n", entry_text);
+        if (length < 0)
+            return false;
+
+        size_t line_size = MIN((size_t)length, sizeof(line) - 1);
+        u64 max_size = trace_logger_disk_sizes[config_debug.trace_disk_size];
+        if (max_size > 0 && trace_logger_disk_bytes + (u64)line_size > max_size)
+        {
+            trace_logger_disk_limit_reached = true;
+            break;
+        }
+        if (trace_logger_disk_buffer_used + line_size > sizeof(trace_logger_disk_buffer) && !trace_logger_flush_disk_buffer(false))
+            return false;
+        memcpy(trace_logger_disk_buffer + trace_logger_disk_buffer_used, line, line_size);
+        trace_logger_disk_buffer_used += line_size;
+        trace_logger_disk_entries++;
+        trace_logger_disk_bytes += (u64)line_size;
+    }
+
+    trace_logger_disk_flushed_total = total;
+    return true;
+}
+
 static void trace_logger_sync_flags(void)
+{
+    emu_get_core()->GetTraceLogger()->SetEnabledFlags(trace_logger_get_config_flags());
+}
+
+static u32 trace_logger_get_config_flags(void)
 {
     u32 flags = 0;
     if (config_debug.trace_cpu)          flags |= TRACE_FLAG_CPU;
@@ -206,7 +696,22 @@ static void trace_logger_sync_flags(void)
     if (config_debug.trace_mikey_audio)  flags |= TRACE_FLAG_MIKEY_AUDIO;
     if (config_debug.trace_cart)         flags |= TRACE_FLAG_CART_SHIFT;
     if (config_debug.trace_debug_messages) flags |= TRACE_FLAG_DEBUG_MSG;
-    emu_get_core()->GetTraceLogger()->SetEnabledFlags(flags);
+    return flags;
+}
+
+static void trace_logger_set_config_flags(u32 flags)
+{
+    config_debug.trace_cpu = (flags & TRACE_FLAG_CPU) != 0;
+    config_debug.trace_cpu_irq = (flags & TRACE_FLAG_CPU_IRQ) != 0;
+    config_debug.trace_suzy_math = (flags & TRACE_FLAG_SUZY_MATH) != 0;
+    config_debug.trace_suzy_sprites = (flags & TRACE_FLAG_SUZY_SPRITE) != 0;
+    config_debug.trace_suzy_input = (flags & TRACE_FLAG_SUZY_INPUT) != 0;
+    config_debug.trace_mikey_timers = (flags & TRACE_FLAG_MIKEY_TIMER) != 0;
+    config_debug.trace_mikey_uart = (flags & TRACE_FLAG_MIKEY_UART) != 0;
+    config_debug.trace_redeye = (flags & TRACE_FLAG_REDEYE) != 0;
+    config_debug.trace_mikey_audio = (flags & TRACE_FLAG_MIKEY_AUDIO) != 0;
+    config_debug.trace_cart = (flags & TRACE_FLAG_CART_SHIFT) != 0;
+    config_debug.trace_debug_messages = (flags & TRACE_FLAG_DEBUG_MSG) != 0;
 }
 
 static void format_cpu_entry(const GLYNX_Trace_Entry& entry, char* buf, int buf_size)

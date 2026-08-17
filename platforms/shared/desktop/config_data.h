@@ -263,6 +263,11 @@ struct config_Debug
     bool trace_cart;
     bool trace_debug_messages;
     bool debug_output_enabled;
+    int trace_output;
+    int trace_capacity;
+    int trace_disk_dir_option;
+    int trace_disk_size;
+    std::string trace_disk_path;
     bool dis_show_mem;
     bool dis_show_symbols;
     bool dis_show_segment;

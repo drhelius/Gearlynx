@@ -162,12 +162,14 @@ public:
     TraceLogger();
     ~TraceLogger();
     void Reset();
+    bool SetCapacity(u32 capacity);
     INLINE bool IsEnabled(GLYNX_Trace_Type type) const;
     INLINE void TraceLog(const GLYNX_Trace_Entry& entry);
     void SetEnabledFlags(u32 flags);
     u32 GetEnabledFlags() const;
     const GLYNX_Trace_Entry* GetBuffer() const;
     u32 GetCount() const;
+    u32 GetCapacity() const;
     u32 GetPosition() const;
     u64 GetTotalLogged() const;
     const GLYNX_Trace_Entry& GetEntry(u32 index) const;
@@ -176,6 +178,7 @@ private:
     GLYNX_Trace_Entry* m_buffer;
     u32 m_position;
     u32 m_count;
+    u32 m_capacity;
     u32 m_enabled_flags;
     u64 m_total_logged;
 };
@@ -183,7 +186,7 @@ private:
 INLINE bool TraceLogger::IsEnabled(GLYNX_Trace_Type type) const
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    return (m_enabled_flags & (1 << type)) != 0;
+    return m_buffer && (m_enabled_flags & (1 << type)) != 0;
 #else
     UNUSED(type);
     return false;
@@ -194,8 +197,10 @@ INLINE void TraceLogger::TraceLog(const GLYNX_Trace_Entry& entry)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_buffer[m_position] = entry;
-    m_position = (m_position + 1) % TRACE_BUFFER_SIZE;
-    if (m_count < TRACE_BUFFER_SIZE)
+    m_position++;
+    if (m_position == m_capacity)
+        m_position = 0;
+    if (m_count < m_capacity)
         m_count++;
     m_total_logged++;
 #else

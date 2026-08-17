@@ -135,6 +135,7 @@ void application_headless_mainloop(void)
         Uint64 frame_start = SDL_GetPerformanceCounter();
 
         emu_update();
+        gui_debug_update();
         gui_finish_loading_rom();
 
         if (!emu_mcp_is_running() && !emu_debug_monitor_is_running() && !emu_comlynx_is_active())

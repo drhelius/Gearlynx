@@ -107,7 +107,7 @@ addition to the event-specific fields shown above.
 | `memory_areas` | -- | `areas[]` |
 | `hardware_status` | -- | Mikey/audio/LCD/cart status |
 | `controller_button` | `button`, `action` | -- |
-| `trace_log_set` | `enabled`, `flags` | -- |
+| `trace_log_set` | `enabled`, `flags`, optional `debug_output`, `output`, `memory_size`, `disk_size`, `output_path` | trace status and active configuration |
 | `trace_log_get` | `start`, `count` | trace data |
 | `rewind_step_back` | -- | `ok` |
 

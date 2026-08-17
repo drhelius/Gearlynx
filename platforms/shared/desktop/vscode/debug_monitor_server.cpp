@@ -1010,6 +1010,10 @@ json DebugMonitorServer::HandleTraceLogSet(const json& params)
     bool enabled = true;
     u32 flags = 0xFF;
     bool debug_output = false;
+    std::string output;
+    std::string memory_size;
+    std::string disk_size;
+    std::string output_path;
 
     if (params.contains("enabled") && !JsonReadBool(params, "enabled", &enabled))
         return {{"error", "invalid enabled"}};
@@ -1017,8 +1021,16 @@ json DebugMonitorServer::HandleTraceLogSet(const json& params)
         return {{"error", "invalid flags"}};
     if (params.contains("debug_output") && !JsonReadBool(params, "debug_output", &debug_output))
         return {{"error", "invalid debug_output"}};
+    if (params.contains("output") && !JsonReadString(params, "output", &output))
+        return {{"error", "invalid output"}};
+    if (params.contains("memory_size") && !JsonReadString(params, "memory_size", &memory_size))
+        return {{"error", "invalid memory_size"}};
+    if (params.contains("disk_size") && !JsonReadString(params, "disk_size", &disk_size))
+        return {{"error", "invalid disk_size"}};
+    if (params.contains("output_path") && !JsonReadString(params, "output_path", &output_path))
+        return {{"error", "invalid output_path"}};
 
-    return m_debug_adapter->SetTraceLog(enabled, flags, debug_output);
+    return m_debug_adapter->SetTraceLog(enabled, flags, debug_output, output, memory_size, disk_size, output_path);
 }
 
 json DebugMonitorServer::HandleTraceLogGet(const json& params)

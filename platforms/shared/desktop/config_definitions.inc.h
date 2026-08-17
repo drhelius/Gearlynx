@@ -77,6 +77,11 @@ static inline void process(config_Operation operation)
     CONFIG_BOOL("Debug", "TraceCart", config_debug.trace_cart, true);
     CONFIG_BOOL("Debug", "TraceDebugMessages", config_debug.trace_debug_messages, true);
     CONFIG_BOOL("Debug", "DebugOutputEnabled", config_debug.debug_output_enabled, false);
+    CONFIG_INT_RANGE("Debug", "TraceOutput", config_debug.trace_output, 0, 0, 1);
+    CONFIG_INT_RANGE("Debug", "TraceCapacity", config_debug.trace_capacity, 0, 0, 4);
+    CONFIG_INT_RANGE("Debug", "TraceDiskDirOption", config_debug.trace_disk_dir_option, 0, 0, 2);
+    CONFIG_INT_RANGE("Debug", "TraceDiskSize", config_debug.trace_disk_size, 2, 0, 6);
+    CONFIG_STRING_NOT_EMPTY("Debug", "TraceDiskPath", config_debug.trace_disk_path, config_root_path);
 
     // Disassembler
     CONFIG_BOOL("Debug", "DisMem", config_debug.dis_show_mem, true);

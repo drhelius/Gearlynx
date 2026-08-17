@@ -1182,7 +1182,8 @@ static void menu_debug(void)
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Reload ROM", config_hotkeys[config_HotkeyIndex_ReloadROM].str, false, config_debug.debug && !emu_is_empty()))
+        bool can_reload_rom = !emu_is_empty() || !config_emulator.recent_roms[0].empty();
+        if (ImGui::MenuItem("Reload ROM", config_hotkeys[config_HotkeyIndex_ReloadROM].str, false, config_debug.debug && emu_is_bios_loaded() && can_reload_rom))
         {
             gui_action_reload_rom();
         }
