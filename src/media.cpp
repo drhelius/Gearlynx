@@ -1208,7 +1208,7 @@ void Media::ApplyCartridgeHardwareConfiguration()
     }
     else
     {
-        m_game_drive_instance->Reset(false);
+        m_game_drive_instance->Reset(true);
         if (m_active_cartridge_hardware == GLYNX_CARTRIDGE_HARDWARE_EL_CHEAPO_SD)
         {
             m_el_cheapo_sd_instance->Configure(true, m_file_directory,
