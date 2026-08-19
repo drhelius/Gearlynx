@@ -24,8 +24,7 @@
 #include <string>
 #include "gearlynx.h"
 
-static const char* config_application_name = GLYNX_TITLE;
-static const int config_version = 4;
+static const int config_version = 5;
 static const int config_minimum_version = 2;
 static const int config_max_recent_roms = 10;
 static const int config_memory_editor_count = 9;
@@ -248,20 +247,35 @@ struct config_Debug
     bool show_cart;
     bool show_rewind;
     bool trace_counter;
+    bool trace_cycles;
     bool trace_registers;
     bool trace_flags;
     bool trace_bytes;
+    bool trace_cpu_enabled;
     bool trace_cpu;
     bool trace_cpu_irq;
     bool trace_suzy_math;
     bool trace_suzy_sprites;
     bool trace_suzy_input;
     bool trace_mikey_timers;
+    bool trace_mikey_interrupts;
+    bool trace_mikey_display;
     bool trace_mikey_uart;
     bool trace_redeye;
     bool trace_mikey_audio;
     bool trace_cart;
     bool trace_debug_messages;
+    int trace_suzy_math_events;
+    int trace_suzy_sprite_events;
+    int trace_suzy_input_events;
+    int trace_mikey_timer_events;
+    int trace_mikey_interrupt_events;
+    int trace_mikey_display_events;
+    int trace_mikey_uart_events;
+    int trace_redeye_events;
+    int trace_mikey_audio_events;
+    int trace_cartridge_events;
+    int trace_debug_events;
     bool debug_output_enabled;
     int trace_output;
     int trace_capacity;

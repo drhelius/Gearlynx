@@ -86,7 +86,7 @@ void config_init(bool force_portable)
     if (portable_path)
         root_path = portable_path;
     else
-        root_path = SDL_GetPrefPath("Geardome", config_application_name);
+        root_path = SDL_GetPrefPath("Geardome", GLYNX_TITLE);
 
     if (root_path == NULL)
     {
@@ -208,7 +208,9 @@ static void process_bool(config_Operation operation, const char* section, const 
     if (operation == config_Operation_Write)
         write_bool(section, key, processed);
     else if (operation == config_Operation_Read)
+    {
         Debug("Load bool setting: [%s][%s]=%s", section, key, processed ? "true" : "false");
+    }
 }
 
 static void process_int(config_Operation operation, const char* section, const char* key,
@@ -243,7 +245,9 @@ static void process_int(config_Operation operation, const char* section, const c
     if (operation == config_Operation_Write)
         write_int(section, key, processed);
     else if (operation == config_Operation_Read)
+    {
         Debug("Load integer setting: [%s][%s]=%d", section, key, processed);
+    }
 }
 
 static void process_float(config_Operation operation, const char* section, const char* key,
@@ -286,7 +290,9 @@ static void process_float(config_Operation operation, const char* section, const
     if (operation == config_Operation_Write)
         write_float(section, key, processed);
     else if (operation == config_Operation_Read)
+    {
         Debug("Load float setting: [%s][%s]=%.2f", section, key, processed);
+    }
 }
 
 static void process_string(config_Operation operation, const char* section, const char* key,
@@ -316,7 +322,9 @@ static void process_string(config_Operation operation, const char* section, cons
     if (operation == config_Operation_Write)
         write_string(section, key, processed);
     else if (operation == config_Operation_Read)
+    {
         Debug("Load string setting: [%s][%s]=%s", section, key, processed.c_str());
+    }
 }
 
 static void process_scancode(config_Operation operation, const char* section, const char* key,

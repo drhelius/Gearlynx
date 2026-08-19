@@ -20,7 +20,7 @@
 #include "trace_logger.h"
 #include <new>
 
-TraceLogger::TraceLogger()
+TraceLogger::TraceLogger(const u64* total_cycles)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_buffer = new(std::nothrow) GLYNX_Trace_Entry[TRACE_BUFFER_SIZE];
@@ -31,7 +31,14 @@ TraceLogger::TraceLogger()
     m_position = 0;
     m_count = 0;
     m_enabled_flags = 0;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    UpdateEnabled();
+#endif
+    for (int i = 0; i < TRACE_TYPE_COUNT; i++)
+        m_event_filters[i] = 0xFFFFFFFFU;
     m_total_logged = 0;
+    m_sequence = 0;
+    m_total_cycles = total_cycles;
 }
 
 TraceLogger::~TraceLogger()
@@ -61,23 +68,49 @@ bool TraceLogger::SetCapacity(u32 capacity)
     SafeDeleteArray(m_buffer);
     m_buffer = buffer;
     m_capacity = capacity;
+    UpdateEnabled();
     Reset();
     return true;
 #else
+    if (capacity == 0)
+        return false;
     m_capacity = capacity;
     Reset();
-    return capacity > 0;
+    return true;
 #endif
 }
 
 void TraceLogger::SetEnabledFlags(u32 flags)
 {
     m_enabled_flags = flags;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    UpdateEnabled();
+#endif
+}
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+void TraceLogger::UpdateEnabled()
+{
+    m_enabled = IsValidPointer(m_buffer) && m_enabled_flags != 0;
+}
+#endif
+
+void TraceLogger::SetEventFilter(GLYNX_Trace_Type type, u32 filter)
+{
+    if (type < TRACE_TYPE_COUNT)
+        m_event_filters[type] = filter;
 }
 
 u32 TraceLogger::GetEnabledFlags() const
 {
     return m_enabled_flags;
+}
+
+u32 TraceLogger::GetEventFilter(GLYNX_Trace_Type type) const
+{
+    if (type < TRACE_TYPE_COUNT)
+        return m_event_filters[type];
+    return 0;
 }
 
 const GLYNX_Trace_Entry* TraceLogger::GetBuffer() const
@@ -105,18 +138,19 @@ u64 TraceLogger::GetTotalLogged() const
     return m_total_logged;
 }
 
+u64 TraceLogger::GetSequence() const
+{
+    return m_sequence;
+}
+
 const GLYNX_Trace_Entry& TraceLogger::GetEntry(u32 index) const
 {
     static const GLYNX_Trace_Entry k_empty = {};
-    if (!m_buffer || m_count == 0)
+    if (!m_buffer || index >= m_count)
         return k_empty;
     u32 actual;
     if (m_count < m_capacity)
-    {
-        if (index >= m_count)
-            return k_empty;
         actual = index;
-    }
     else
         actual = (m_position + index) % m_capacity;
     return m_buffer[actual];

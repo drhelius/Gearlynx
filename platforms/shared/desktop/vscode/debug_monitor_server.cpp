@@ -1054,7 +1054,7 @@ json DebugMonitorServer::HandleTraceLogGet(const json& params)
         count = count_value;
     }
 
-    return m_debug_adapter->GetTraceLog(start, count);
+    return m_debug_adapter->GetTraceLogLegacy(start, count);
 }
 
 json DebugMonitorServer::HandleRewindStepBack()

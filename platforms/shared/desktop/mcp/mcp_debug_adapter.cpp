@@ -29,6 +29,7 @@
 #include "../gui_debug_memeditor.h"
 #include "../gui_debug_rewind.h"
 #include "../gui_debug_trace_logger.h"
+#include "../trace_logger_formatter.h"
 #include "../config.h"
 #include "../events.h"
 #include "../rewind.h"
@@ -57,40 +58,6 @@ static const char* cart_bank_type_name(GLYNX_Cartridge_Bank_Type type)
 static bool cart_bank_available(Media* media, int bank)
 {
     return media->GetCartBankData(bank) != NULL && media->GetCartBankSize(bank) > 0;
-}
-
-static int trace_memory_size_index(const std::string& size)
-{
-    if (size == "100K") return 0;
-    if (size == "500K") return 1;
-    if (size == "1M") return 2;
-    if (size == "2M") return 3;
-    if (size == "5M") return 4;
-    return -1;
-}
-
-static int trace_disk_size_index(const std::string& size)
-{
-    if (size == "10MB") return 0;
-    if (size == "50MB") return 1;
-    if (size == "100MB") return 2;
-    if (size == "250MB") return 3;
-    if (size == "500MB") return 4;
-    if (size == "1GB") return 5;
-    if (size == "unbounded") return 6;
-    return -1;
-}
-
-static const char* trace_memory_size_name(int index)
-{
-    static const char* names[] = {"100K", "500K", "1M", "2M", "5M"};
-    return index >= 0 && index < 5 ? names[index] : "100K";
-}
-
-static const char* trace_disk_size_name(int index)
-{
-    static const char* names[] = {"10MB", "50MB", "100MB", "250MB", "500MB", "1GB", "unbounded"};
-    return index >= 0 && index < 7 ? names[index] : "100MB";
 }
 
 static json make_cart_bank_json(Media* media, int bank, std::ostringstream& ss)
@@ -3137,245 +3104,127 @@ void DebugAdapter::AddRegister16(json& registers, std::ostringstream& ss, const 
     registers.push_back(reg);
 }
 
-json DebugAdapter::GetTraceLog(int start, int count)
+json DebugAdapter::GetTraceLogLegacy(int start, int count)
 {
     json result;
+    TraceLogger* logger = m_core->GetTraceLogger();
+    if (!logger)
+        return {{"error", "Trace logger not available"}};
 
-    TraceLogger* tl = m_core->GetTraceLogger();
-    if (!tl)
-    {
-        result["error"] = "Trace logger not available";
-        return result;
-    }
-
-    u32 total = tl->GetCount();
-
-    if (count < 1) count = 100;
-    if (count > 1000) count = 1000;
-
-    u32 actual_start;
-    if (start < 0)
-        actual_start = (total > (u32)count) ? (total - (u32)count) : 0;
-    else
-        actual_start = (u32)start;
-
-    if (actual_start >= total)
-    {
-        result["total_entries"] = total;
-        result["start"] = actual_start;
-        result["count"] = 0;
-        result["lines"] = json::array();
-        return result;
-    }
-
-    u32 actual_count = (u32)count;
-    if (actual_start + actual_count > total)
-        actual_count = total - actual_start;
-
-    Memory* memory = m_core->GetMemory();
-
-    json lines = json::array();
-    for (u32 i = 0; i < actual_count; i++)
-    {
-        const GLYNX_Trace_Entry& entry = tl->GetEntry(actual_start + i);
-        char buf[256];
-
-        switch (entry.type)
-        {
-            case TRACE_CPU:
-            {
-                GLYNX_Disassembler_Record* record = memory->GetDisassemblerRecord(entry.cpu.pc);
-                char instr[64] = "???";
-                char bytes[10] = "";
-                if (IsValidPointer(record))
-                {
-                    snprintf(instr, sizeof(instr), "%s", record->name);
-                    char* p = instr;
-                    while (*p)
-                    {
-                        if (*p == '{')
-                        {
-                            char* end = strchr(p, '}');
-                            if (end)
-                                memmove(p, end + 1, strlen(end + 1) + 1);
-                            else
-                                break;
-                        }
-                        else
-                            p++;
-                    }
-                    snprintf(bytes, sizeof(bytes), "%s", record->bytes);
-                }
-                u8 p = entry.cpu.p;
-                snprintf(buf, sizeof(buf), "%04X  A:%02X X:%02X Y:%02X S:%02X  %c%c-%c%c%c%c%c  %-24s %s",
-                         entry.cpu.pc, entry.cpu.a, entry.cpu.x, entry.cpu.y, entry.cpu.s,
-                         (p & 0x80) ? 'N' : 'n', (p & 0x40) ? 'V' : 'v',
-                         (p & 0x10) ? 'B' : 'b', (p & 0x08) ? 'D' : 'd',
-                         (p & 0x04) ? 'I' : 'i', (p & 0x02) ? 'Z' : 'z',
-                         (p & 0x01) ? 'C' : 'c', instr, bytes);
-                break;
-            }
-            case TRACE_CPU_IRQ:
-                snprintf(buf, sizeof(buf), "  [CPU]  IRQ       PC:$%04X  Vector:$%04X  Mask:%02X",
-                         entry.irq.pc, entry.irq.vector, entry.irq.irq_mask);
-                break;
-            case TRACE_SUZY_MATH:
-                if (entry.math.completed)
-                    snprintf(buf, sizeof(buf), "  [SUZY] MATH      DONE");
-                else if (entry.math.is_divide)
-                    snprintf(buf, sizeof(buf), "  [SUZY] DIVIDE    $%04X%04X / $%04X = $%08X  R:$%04X%s",
-                             entry.math.op_a, entry.math.op_b & 0xFFFF, entry.math.op_b,
-                             entry.math.result, entry.math.remainder,
-                             entry.math.div_by_zero ? " [DIV0]" : "");
-                else
-                    snprintf(buf, sizeof(buf), "  [SUZY] MULTIPLY  $%04X * $%04X = $%08X%s%s",
-                             entry.math.op_a, entry.math.op_b, entry.math.result,
-                             entry.math.is_signed ? " [SIGN]" : "",
-                             entry.math.accumulate ? " [ACC]" : "");
-                break;
-            case TRACE_SUZY_SPRITE:
-                if (entry.sprite.is_start)
-                    snprintf(buf, sizeof(buf), "  [SUZY] SPRITES   START  SCB:$%04X  Tick:%llu", entry.sprite.scb_addr,
-                             (unsigned long long)entry.cycle);
-                else if (entry.sprite.is_end)
-                    snprintf(buf, sizeof(buf), "  [SUZY] SPRITES   END  Cycles:%u  Tick:%llu", entry.sprite.total_cycles,
-                             (unsigned long long)entry.cycle);
-                else if (entry.sprite.skipped)
-                    snprintf(buf, sizeof(buf), "  [SUZY]  SPRITE   SCB:$%04X  [SKIP]", entry.sprite.scb_addr);
-                else
-                {
-                    static const char* k_types[] = {"BG","BGNC","BSHD","BNDY","NORM","NCOL","XOR","SHDW"};
-                    snprintf(buf, sizeof(buf), "  [SUZY]  SPRITE   SCB:$%04X  Next:$%04X  (%d,%d)  %dBPP %s",
-                             entry.sprite.scb_addr, entry.sprite.scb_next,
-                             entry.sprite.hpos, entry.sprite.vpos,
-                             entry.sprite.bpp, k_types[entry.sprite.type & 7]);
-                }
-                break;
-            case TRACE_SUZY_INPUT:
-                snprintf(buf, sizeof(buf), "  [SUZY]  INPUT    %s:$%02X",
-                         entry.input.is_joystick ? "JOYSTICK" : "SWITCHES", entry.input.value);
-                break;
-            case TRACE_MIKEY_TIMER:
-                snprintf(buf, sizeof(buf), "  [MIKEY] TIMER %d  IRQ  Backup:$%02X",
-                         entry.timer.timer_id, entry.timer.backup);
-                break;
-            case TRACE_MIKEY_UART:
-            {
-                char source[16] = "";
-                char gap[24] = "";
-                char lost[24] = "";
-
-                if (entry.uart.kind == GLYNX_UART_TRACE_CFG)
-                {
-                    bool turbo = (entry.uart.flags & 0x20) != 0;
-                    u32 baud = turbo ? 1000000u : 1000000u / ((entry.uart.backup + 1u) * 8u);
-                    snprintf(buf, sizeof(buf), "  [MIKEY] UART CFG SERCTL:$%02X  %lu baud  %s  TX:%s RX:%s%s%s",
-                             entry.uart.data, (unsigned long)baud,
-                             (entry.uart.data & 0x10) ? ((entry.uart.data & 0x01) ? "PAR:EVEN" : "PAR:ODD ") : "PAR:OFF ",
-                             (entry.uart.data & 0x80) ? "IRQ" : "-  ",
-                             (entry.uart.data & 0x40) ? "IRQ" : "-  ",
-                             (entry.uart.data & 0x04) ? "  TXOPEN" : "",
-                             (entry.uart.data & 0x02) ? "  BREAK" : "");
-                    break;
-                }
-
-                if (entry.uart.kind == GLYNX_UART_TRACE_TX)
-                {
-                    if (entry.uart.chained)
-                        snprintf(source, sizeof(source), "  [CHAINED]");
-                }
-                else
-                {
-                    if (entry.uart.kind == GLYNX_UART_TRACE_RX)
-                        snprintf(source, sizeof(source), "  SRC:%s", entry.uart.source == 0 ? "LOCAL" : "LINK");
-
-                    snprintf(gap, sizeof(gap), entry.uart.kind == GLYNX_UART_TRACE_RD ? "  HELD:%uus" : "  GAP:%uus",
-                             (unsigned)entry.uart.gap_us);
-
-                    if (entry.uart.flags & 0x10)
-                        snprintf(lost, sizeof(lost), "  [OVERRUN lost:$%02X]", entry.uart.lost);
-                }
-
-                static const char* k_kind[] = { "TX", "RX", "RD" };
-
-                snprintf(buf, sizeof(buf), "  [MIKEY] UART %s  Data:$%02X  BIT9:%d%s%s%s%s%s%s",
-                         k_kind[entry.uart.kind < 3 ? entry.uart.kind : 0], entry.uart.data,
-                         (entry.uart.flags & 0x01) ? 1 : 0, source, gap, lost,
-                         (entry.uart.flags & 0x02) ? "  [PARERR]" : "",
-                         (entry.uart.flags & 0x04) ? "  [FRAMERR]" : "",
-                         (entry.uart.flags & 0x08) ? "  [BREAK]" : "");
-                break;
-            }
-            case TRACE_REDEYE:
-            {
-                static const char* k_msg[] = { "LOGON  ", "MSG1   ", "START  ", "DATA   ",
-                                               "REQUEST", "RESEND ", "MSG6   ", "MSG7   " };
-                const char* csum = entry.redeye.checksum_ok ? "" : "  [BAD CSUM]";
-                u8 msg = entry.redeye.msg & 7;
-                const char* dir = entry.redeye.dir ? "RX" : "TX";
-
-                if (entry.redeye.size == 5 && (msg == 0 || msg == 2) && entry.redeye.len >= 4)
-                {
-                    snprintf(buf, sizeof(buf), "  [REDEYE] %s %s plr:%d  players:$%02X  game:$%02X%02X%s",
-                             dir, k_msg[msg], entry.redeye.payload[0], entry.redeye.payload[1],
-                             entry.redeye.payload[3], entry.redeye.payload[2], csum);
-                    break;
-                }
-
-                if (msg == 5 && entry.redeye.len >= 1)
-                {
-                    snprintf(buf, sizeof(buf), "  [REDEYE] %s %s p%d seq%d  players:$%02X%s",
-                             dir, k_msg[msg], entry.redeye.player, entry.redeye.seq,
-                             entry.redeye.payload[0], csum);
-                    break;
-                }
-
-                char payload[48] = "";
-                int at = 0;
-
-                if (entry.redeye.len > 0)
-                    at = snprintf(payload, sizeof(payload), "  data:");
-
-                for (int i = 0; i < entry.redeye.len && at < (int)sizeof(payload) - 4; i++)
-                    at += snprintf(payload + at, sizeof(payload) - at, " %02X", entry.redeye.payload[i]);
-
-                snprintf(buf, sizeof(buf), "  [REDEYE] %s %s p%d seq%d  size:%d%s%s",
-                         dir, k_msg[msg], entry.redeye.player, entry.redeye.seq,
-                         entry.redeye.size, payload, csum);
-                break;
-            }
-            case TRACE_MIKEY_AUDIO:
-            {
-                static const char* k_audio_regs[] = {"VOL","FDBK","OUT","LFSR","BKUP","CTL","CNT","MISC"};
-                snprintf(buf, sizeof(buf), "  [MIKEY] AUDIO %d  %s=$%02X",
-                         entry.audio.channel, k_audio_regs[entry.audio.reg & 7], entry.audio.value);
-                break;
-            }
-            case TRACE_CART_SHIFT:
-                snprintf(buf, sizeof(buf), "  [CART]  SHIFT    Addr:$%02X  Bit:%d",
-                         entry.cart.addr_shift, entry.cart.bit);
-                break;
-            case TRACE_DEBUG_MESSAGE:
-                snprintf(buf, sizeof(buf), "  [DEBUG] %s", entry.debug_msg.text);
-                break;
-            default:
-                snprintf(buf, sizeof(buf), "  [???]");
-                break;
-        }
-
-        lines.push_back(buf);
-    }
+    u32 total = logger->GetCount();
+    count = CLAMP(count < 1 ? 100 : count, 1, 1000);
+    u32 actual_start = start < 0 ?
+        (total > (u32)count ? total - (u32)count : 0) : (u32)start;
 
     result["total_entries"] = total;
     result["start"] = actual_start;
+    result["lines"] = json::array();
+
+    if (actual_start >= total)
+    {
+        result["count"] = 0;
+        return result;
+    }
+
+    u32 actual_count = MIN((u32)count, total - actual_start);
+    for (u32 i = 0; i < actual_count; i++)
+    {
+        u32 index = actual_start + i;
+        GLYNX_Trace_Format_Options options = {};
+        options.registers = true;
+        options.flags = true;
+        options.bytes = true;
+        options.cycles = true;
+        if (index > 0)
+            options.previous = &logger->GetEntry(index - 1);
+        char line[GLYNX_TRACE_FORMAT_BUFFER_SIZE];
+        trace_logger_format_entry(logger->GetEntry(index),
+            options, line, sizeof(line));
+        result["lines"].push_back(line);
+    }
+
     result["count"] = actual_count;
-    result["lines"] = lines;
     return result;
 }
 
 json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output, const std::string& output,
     const std::string& memory_size, const std::string& disk_size, const std::string& output_path)
 {
+    json arguments = {{"enabled", enabled}, {"debug_output", debug_output}};
+    if (!output.empty()) arguments["output"] = output;
+    if (!memory_size.empty()) arguments["memory_size"] = memory_size;
+    if (!disk_size.empty()) arguments["disk_size"] = disk_size;
+    if (!output_path.empty()) arguments["output_path"] = output_path;
+    json filters = json::array();
+    if (flags & TRACE_FLAG_CPU) filters.push_back("cpu.instructions");
+    if (flags & TRACE_FLAG_CPU_IRQ) filters.push_back("cpu.irqs");
+    if (flags & TRACE_FLAG_SUZY_MATH)
+    {
+        filters.push_back("suzy.math.operations");
+        filters.push_back("suzy.math.completions");
+    }
+    if (flags & TRACE_FLAG_SUZY_SPRITE)
+    {
+        filters.push_back("suzy.sprites.engine");
+        filters.push_back("suzy.sprites.scbs");
+        filters.push_back("suzy.sprites.skips");
+        filters.push_back("suzy.sprites.collisions");
+        filters.push_back("suzy.sprites.rows");
+        filters.push_back("suzy.bus");
+    }
+    if (flags & TRACE_FLAG_SUZY_INPUT) filters.push_back("suzy.input.reads");
+    if (flags & TRACE_FLAG_MIKEY_TIMER)
+    {
+        filters.push_back("mikey.timers.registers");
+        filters.push_back("mikey.timers.underflows");
+        filters.push_back("mikey.timers.irqs");
+        filters.push_back("mikey.timers.links");
+    }
+    if (flags & TRACE_FLAG_MIKEY_INTERRUPT)
+        filters.push_back("mikey.interrupts");
+    if (flags & TRACE_FLAG_MIKEY_DISPLAY)
+    {
+        filters.push_back("mikey.display.registers");
+        filters.push_back("mikey.display.palette");
+        filters.push_back("mikey.display.dma");
+        filters.push_back("mikey.display.timing");
+    }
+    if (flags & TRACE_FLAG_MIKEY_UART)
+    {
+        filters.push_back("mikey.uart.registers");
+        filters.push_back("mikey.uart.transfers");
+        filters.push_back("mikey.uart.irqs");
+        filters.push_back("mikey.uart.problems");
+        filters.push_back("mikey.uart.breaks");
+        filters.push_back("mikey.uart.comlynx");
+    }
+    if (flags & TRACE_FLAG_REDEYE)
+    {
+        filters.push_back("redeye.packets");
+        filters.push_back("redeye.problems");
+    }
+    if (flags & TRACE_FLAG_MIKEY_AUDIO)
+    {
+        filters.push_back("mikey.audio.channels");
+        filters.push_back("mikey.audio.mixer");
+        filters.push_back("mikey.audio.clocks");
+    }
+    if (flags & TRACE_FLAG_CARTRIDGE)
+    {
+        filters.push_back("cartridge.address");
+        filters.push_back("cartridge.accesses");
+        filters.push_back("cartridge.eeprom");
+        filters.push_back("cartridge.audin");
+        filters.push_back("cartridge.storage");
+    }
+    if (flags & TRACE_FLAG_DEBUG_MSG) filters.push_back("debug.messages");
+    if (enabled)
+        arguments["filters"] = filters.empty() ? json::array({"cpu.instructions", "cpu.irqs"}) : filters;
+    return SetTraceLog(arguments);
+}
+
+json DebugAdapter::GetTraceLog(s64 start, int count)
+{
     json result;
 
     TraceLogger* tl = m_core->GetTraceLogger();
@@ -3385,111 +3234,293 @@ json DebugAdapter::SetTraceLog(bool enabled, u32 flags, bool debug_output, const
         return result;
     }
 
-    m_core->GetMikey()->SetDebugOutputEnabled(debug_output);
-    config_debug.debug_output_enabled = debug_output;
-    result["debug_output"] = debug_output;
+    u32 retained = tl->GetCount();
+    u64 total = tl->GetSequence();
+    u64 oldest = total - retained;
 
-    if (enabled)
+    if (count < 1) count = 100;
+    if (count > 1000) count = 1000;
+
+    u64 actual_start;
+    bool overrun = false;
+    if (start < 0)
     {
-        bool was_enabled = gui_debug_trace_logger_is_enabled();
-        int output_value;
-        if (output.empty())
-            output_value = was_enabled ? config_debug.trace_output : gui_TraceOutput_Memory;
-        else if (output == "memory")
-            output_value = gui_TraceOutput_Memory;
-        else if (output == "disk")
-            output_value = gui_TraceOutput_Disk;
-        else
-        {
-            result["error"] = "Invalid trace output";
-            return result;
-        }
-
-        int memory_size_value = config_debug.trace_capacity;
-        if (!memory_size.empty())
-        {
-            memory_size_value = trace_memory_size_index(memory_size);
-            if (memory_size_value < 0)
-            {
-                result["error"] = "Invalid trace memory size";
-                return result;
-            }
-        }
-
-        int disk_size_value = config_debug.trace_disk_size;
-        if (!disk_size.empty())
-        {
-            disk_size_value = trace_disk_size_index(disk_size);
-            if (disk_size_value < 0)
-            {
-                result["error"] = "Invalid trace disk size";
-                return result;
-            }
-        }
-
-        bool configuration_changed = output_value != config_debug.trace_output;
-        if (output_value == gui_TraceOutput_Memory)
-            configuration_changed = configuration_changed || memory_size_value != config_debug.trace_capacity;
-        else
-        {
-            configuration_changed = configuration_changed || disk_size_value != config_debug.trace_disk_size;
-            if (!output_path.empty())
-            {
-                configuration_changed = configuration_changed ||
-                    config_debug.trace_disk_dir_option != Directory_Location_Custom ||
-                    output_path != config_debug.trace_disk_path;
-            }
-        }
-
-        if (was_enabled && configuration_changed)
-            gui_debug_trace_logger_stop();
-
-        if (!gui_debug_trace_logger_is_enabled())
-        {
-            if (!gui_debug_trace_logger_configure(output_value, memory_size_value, disk_size_value, output_path.c_str()))
-            {
-                result["error"] = "Unable to configure trace logger";
-                return result;
-            }
-        }
-
-        if (!gui_debug_trace_logger_start(flags))
-        {
-            result["error"] = "Unable to start trace logger";
-            return result;
-        }
-
-        result["status"] = "started";
-        result["enabled_flags"] = tl->GetEnabledFlags();
-        result["output"] = config_debug.trace_output == gui_TraceOutput_Disk ? "disk" : "memory";
-        result["memory_size"] = trace_memory_size_name(config_debug.trace_capacity);
-        result["disk_size"] = trace_disk_size_name(config_debug.trace_disk_size);
-        if (config_debug.trace_output == gui_TraceOutput_Disk)
-            result["output_path"] = gui_debug_trace_logger_get_output_path();
-
-        json enabled_list = json::array();
-        u32 enabled_flags = tl->GetEnabledFlags();
-        if (enabled_flags & TRACE_FLAG_CPU) enabled_list.push_back("cpu");
-        if (enabled_flags & TRACE_FLAG_CPU_IRQ) enabled_list.push_back("cpu_irq");
-        if (enabled_flags & TRACE_FLAG_SUZY_MATH) enabled_list.push_back("suzy_math");
-        if (enabled_flags & TRACE_FLAG_SUZY_SPRITE) enabled_list.push_back("suzy_sprites");
-        if (enabled_flags & TRACE_FLAG_SUZY_INPUT) enabled_list.push_back("suzy_input");
-        if (enabled_flags & TRACE_FLAG_MIKEY_TIMER) enabled_list.push_back("mikey_timers");
-        if (enabled_flags & TRACE_FLAG_MIKEY_UART) enabled_list.push_back("mikey_uart");
-        if (enabled_flags & TRACE_FLAG_REDEYE) enabled_list.push_back("redeye");
-        if (enabled_flags & TRACE_FLAG_MIKEY_AUDIO) enabled_list.push_back("mikey_audio");
-        if (enabled_flags & TRACE_FLAG_CART_SHIFT) enabled_list.push_back("cart");
-        if (enabled_flags & TRACE_FLAG_DEBUG_MSG) enabled_list.push_back("debug_messages");
-        result["enabled"] = enabled_list;
+        u64 tail = (u64)(-(start + 1)) + 1;
+        actual_start = (total - oldest > tail) ? (total - tail) : oldest;
     }
     else
     {
-        gui_debug_trace_logger_stop();
-        tl->SetEnabledFlags(0);
-        result["status"] = "stopped";
+        actual_start = (u64)start;
+        if (actual_start < oldest)
+        {
+            actual_start = oldest;
+            overrun = true;
+        }
     }
 
-    result["total_entries"] = tl->GetCount();
+    if (actual_start >= total)
+    {
+        result["total_entries"] = retained;
+        result["total_logged"] = total;
+        result["oldest_sequence"] = oldest;
+        result["start"] = actual_start;
+        result["next_sequence"] = actual_start;
+        result["count"] = 0;
+        result["overrun"] = overrun;
+        result["lines"] = json::array();
+        return result;
+    }
+
+    u32 actual_count = (u32)count;
+    if ((u64)actual_count > total - actual_start)
+        actual_count = (u32)(total - actual_start);
+    u32 buffer_start = (u32)(actual_start - oldest);
+
+    json lines = json::array();
+    for (u32 i = 0; i < actual_count; i++)
+    {
+        const GLYNX_Trace_Entry& entry = tl->GetEntry(buffer_start + i);
+        char buf[GLYNX_TRACE_FORMAT_BUFFER_SIZE];
+
+        GLYNX_Trace_Format_Options options = {};
+        options.registers = true;
+        options.flags = true;
+        options.bytes = true;
+        options.cycles = true;
+        if (buffer_start + i > 0)
+            options.previous = &tl->GetEntry(buffer_start + i - 1);
+        trace_logger_format_entry(entry, options, buf, sizeof(buf));
+        lines.push_back(buf);
+    }
+
+    result["total_entries"] = retained;
+    result["total_logged"] = total;
+    result["oldest_sequence"] = oldest;
+    result["start"] = actual_start;
+    result["next_sequence"] = actual_start + actual_count;
+    result["count"] = actual_count;
+    result["overrun"] = overrun;
+    result["lines"] = lines;
+    return result;
+}
+
+struct GLYNX_Trace_Filter_Definition
+{
+    const char* name;
+    GLYNX_Trace_Type type;
+    u32 mask;
+};
+
+static const GLYNX_Trace_Filter_Definition k_trace_filters[] =
+{
+    {"cpu.instructions", TRACE_CPU, 0},
+    {"cpu.irqs", TRACE_CPU_IRQ, 0},
+    {"suzy.math.operations", TRACE_SUZY_MATH, TRACE_SUZY_MATH_FILTER_OPERATIONS},
+    {"suzy.math.completions", TRACE_SUZY_MATH, TRACE_SUZY_MATH_FILTER_COMPLETIONS},
+    {"suzy.sprites.engine", TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_FILTER_ENGINE},
+    {"suzy.sprites.scbs", TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_FILTER_SCBS},
+    {"suzy.sprites.skips", TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_FILTER_SKIPS},
+    {"suzy.sprites.collisions", TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_FILTER_COLLISIONS},
+    {"suzy.sprites.rows", TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_FILTER_ROWS},
+    {"suzy.bus", TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_FILTER_BUS},
+    {"suzy.input.reads", TRACE_SUZY_INPUT, TRACE_SUZY_INPUT_FILTER_READS},
+    {"mikey.timers.registers", TRACE_MIKEY_TIMER, TRACE_MIKEY_TIMER_FILTER_REGISTERS},
+    {"mikey.timers.underflows", TRACE_MIKEY_TIMER, TRACE_MIKEY_TIMER_FILTER_UNDERFLOWS},
+    {"mikey.timers.irqs", TRACE_MIKEY_TIMER, TRACE_MIKEY_TIMER_FILTER_IRQS},
+    {"mikey.timers.links", TRACE_MIKEY_TIMER, TRACE_MIKEY_TIMER_FILTER_LINKS},
+    {"mikey.interrupts", TRACE_MIKEY_INTERRUPT, TRACE_MIKEY_INTERRUPT_FILTER_ALL},
+    {"mikey.display.registers", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_REGISTERS},
+    {"mikey.display.palette", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_PALETTE},
+    {"mikey.display.dma", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_DMA},
+    {"mikey.display.timing", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_TIMING},
+    {"mikey.audio.channels", TRACE_MIKEY_AUDIO, TRACE_MIKEY_AUDIO_FILTER_CHANNELS},
+    {"mikey.audio.mixer", TRACE_MIKEY_AUDIO, TRACE_MIKEY_AUDIO_FILTER_MIXER},
+    {"mikey.audio.clocks", TRACE_MIKEY_AUDIO, TRACE_MIKEY_AUDIO_FILTER_CLOCKS},
+    {"mikey.uart.registers", TRACE_MIKEY_UART, TRACE_MIKEY_UART_FILTER_REGISTERS},
+    {"mikey.uart.transfers", TRACE_MIKEY_UART, TRACE_MIKEY_UART_FILTER_TRANSFERS},
+    {"mikey.uart.irqs", TRACE_MIKEY_UART, TRACE_MIKEY_UART_FILTER_IRQS},
+    {"mikey.uart.problems", TRACE_MIKEY_UART, TRACE_MIKEY_UART_FILTER_PROBLEMS},
+    {"mikey.uart.breaks", TRACE_MIKEY_UART, TRACE_MIKEY_UART_FILTER_BREAKS},
+    {"mikey.uart.comlynx", TRACE_MIKEY_UART, TRACE_MIKEY_UART_FILTER_COMLYNX},
+    {"redeye.packets", TRACE_REDEYE, TRACE_REDEYE_FILTER_PACKETS},
+    {"redeye.problems", TRACE_REDEYE, TRACE_REDEYE_FILTER_PROBLEMS},
+    {"cartridge.address", TRACE_CARTRIDGE, TRACE_CARTRIDGE_FILTER_ADDRESS},
+    {"cartridge.accesses", TRACE_CARTRIDGE, TRACE_CARTRIDGE_FILTER_ACCESSES},
+    {"cartridge.eeprom", TRACE_CARTRIDGE, TRACE_CARTRIDGE_FILTER_EEPROM},
+    {"cartridge.audin", TRACE_CARTRIDGE, TRACE_CARTRIDGE_FILTER_AUDIN},
+    {"cartridge.storage", TRACE_CARTRIDGE, TRACE_CARTRIDGE_FILTER_STORAGE},
+    {"debug.messages", TRACE_DEBUG_MESSAGE, TRACE_DEBUG_FILTER_MESSAGES},
+};
+
+json DebugAdapter::SetTraceLog(const json& arguments)
+{
+    TraceLogger* logger = m_core->GetTraceLogger();
+    if (!logger)
+        return {{"error", "Trace logger not available"}};
+
+    bool enabled = arguments["enabled"].get<bool>();
+    bool has_debug_output = arguments.contains("debug_output");
+    bool debug_output = has_debug_output ? arguments["debug_output"].get<bool>() :
+        m_core->GetMikey()->IsDebugOutputEnabled();
+
+    if (!enabled)
+    {
+        if (!gui_debug_trace_logger_stop())
+            return {{"error", "Unable to stop trace logger cleanly"}};
+        if (has_debug_output)
+        {
+            m_core->GetMikey()->SetDebugOutputEnabled(debug_output);
+            config_debug.debug_output_enabled = debug_output;
+        }
+        return {{"status", "stopped"}, {"debug_output", debug_output},
+            {"total_entries", logger->GetCount()}};
+    }
+
+    u32 flags = 0;
+    u32 masks[TRACE_TYPE_COUNT] = {};
+    json requested = arguments.contains("filters") ? arguments["filters"] :
+        json::array({"cpu.instructions", "cpu.irqs"});
+    for (json::const_iterator it = requested.begin(); it != requested.end(); ++it)
+    {
+        std::string name = it->get<std::string>();
+        bool found = false;
+        for (size_t i = 0; i < sizeof(k_trace_filters) / sizeof(k_trace_filters[0]); i++)
+        {
+            if (name == k_trace_filters[i].name)
+            {
+                flags |= 1U << k_trace_filters[i].type;
+                masks[k_trace_filters[i].type] |= k_trace_filters[i].mask;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return {{"error", "Unknown trace filter: " + name}};
+    }
+
+    int output = gui_debug_trace_logger_is_enabled() ? config_debug.trace_output : gui_TraceOutput_Memory;
+    if (arguments.contains("output"))
+    {
+        std::string requested_output = arguments["output"].get<std::string>();
+        if (requested_output == "memory")
+            output = gui_TraceOutput_Memory;
+        else if (requested_output == "disk")
+            output = gui_TraceOutput_Disk;
+        else
+            return {{"error", "Invalid trace output"}};
+    }
+    int memory_size = config_debug.trace_capacity;
+    int disk_size = config_debug.trace_disk_size;
+    if (arguments.contains("memory_size"))
+    {
+        std::string requested_size = arguments["memory_size"].get<std::string>();
+        memory_size = gui_debug_trace_logger_memory_size_index(requested_size.c_str());
+        if (memory_size < 0)
+            return {{"error", "Invalid trace memory size"}};
+    }
+    if (arguments.contains("disk_size"))
+    {
+        std::string requested_size = arguments["disk_size"].get<std::string>();
+        disk_size = gui_debug_trace_logger_disk_size_index(requested_size.c_str());
+        if (disk_size < 0)
+            return {{"error", "Invalid trace disk size"}};
+    }
+    std::string output_path = arguments.value("output_path", "");
+
+    bool was_enabled = gui_debug_trace_logger_is_enabled();
+    bool storage_change = arguments.contains("output") && output != config_debug.trace_output;
+    if (output == gui_TraceOutput_Memory)
+        storage_change = storage_change || memory_size != config_debug.trace_capacity;
+    else
+    {
+        storage_change = storage_change || disk_size != config_debug.trace_disk_size;
+        if (!output_path.empty())
+        {
+            storage_change = storage_change || config_debug.trace_disk_dir_option != Directory_Location_Custom ||
+                output_path != config_debug.trace_disk_path;
+        }
+    }
+
+    int old_output = config_debug.trace_output;
+    int old_memory_size = config_debug.trace_capacity;
+    int old_disk_size = config_debug.trace_disk_size;
+    int old_directory_option = config_debug.trace_disk_dir_option;
+    std::string old_output_path = config_debug.trace_disk_path;
+    u32 old_flags = logger->GetEnabledFlags();
+    u32 old_masks[TRACE_TYPE_COUNT];
+    for (int i = 0; i < TRACE_TYPE_COUNT; i++)
+        old_masks[i] = logger->GetEventFilter((GLYNX_Trace_Type)i);
+
+    bool storage_ready = true;
+    if (storage_change)
+    {
+        if (was_enabled && !gui_debug_trace_logger_stop())
+            return {{"error", "Unable to stop trace logger cleanly; staged entries preserved"}};
+        storage_ready = gui_debug_trace_logger_configure(output, memory_size, disk_size, output_path.c_str());
+    }
+    if (storage_ready)
+        storage_ready = gui_debug_trace_logger_start(flags);
+
+    if (!storage_ready)
+    {
+        if (gui_debug_trace_logger_is_enabled())
+            gui_debug_trace_logger_stop();
+        gui_debug_trace_logger_configure(old_output, old_memory_size, old_disk_size, "");
+        config_debug.trace_disk_dir_option = old_directory_option;
+        gui_debug_trace_logger_set_output_directory(old_output_path.c_str());
+        if (was_enabled)
+            gui_debug_trace_logger_start(old_flags);
+        gui_debug_trace_logger_set_event_filters(old_masks);
+        logger->SetEnabledFlags(was_enabled ? old_flags : 0);
+        return {{"error", "Unable to replace trace storage; previous configuration restored"}};
+    }
+
+    gui_debug_trace_logger_set_event_filters(masks);
+    logger->SetEnabledFlags(flags);
+    m_core->GetMikey()->SetDebugOutputEnabled(debug_output);
+    config_debug.debug_output_enabled = debug_output;
+
+    config_debug.trace_cpu = (flags & TRACE_FLAG_CPU) != 0;
+    config_debug.trace_cpu_irq = (flags & TRACE_FLAG_CPU_IRQ) != 0;
+    config_debug.trace_suzy_math = (flags & TRACE_FLAG_SUZY_MATH) != 0;
+    config_debug.trace_suzy_sprites = (flags & TRACE_FLAG_SUZY_SPRITE) != 0;
+    config_debug.trace_suzy_input = (flags & TRACE_FLAG_SUZY_INPUT) != 0;
+    config_debug.trace_mikey_timers = (flags & TRACE_FLAG_MIKEY_TIMER) != 0;
+    config_debug.trace_mikey_interrupts = (flags & TRACE_FLAG_MIKEY_INTERRUPT) != 0;
+    config_debug.trace_mikey_display = (flags & TRACE_FLAG_MIKEY_DISPLAY) != 0;
+    config_debug.trace_mikey_uart = (flags & TRACE_FLAG_MIKEY_UART) != 0;
+    config_debug.trace_redeye = (flags & TRACE_FLAG_REDEYE) != 0;
+    config_debug.trace_mikey_audio = (flags & TRACE_FLAG_MIKEY_AUDIO) != 0;
+    config_debug.trace_cart = (flags & TRACE_FLAG_CARTRIDGE) != 0;
+    config_debug.trace_debug_messages = (flags & TRACE_FLAG_DEBUG_MSG) != 0;
+    config_debug.trace_suzy_math_events = (int)masks[TRACE_SUZY_MATH];
+    config_debug.trace_suzy_sprite_events = (int)masks[TRACE_SUZY_SPRITE];
+    config_debug.trace_suzy_input_events = (int)masks[TRACE_SUZY_INPUT];
+    config_debug.trace_mikey_timer_events = (int)masks[TRACE_MIKEY_TIMER];
+    config_debug.trace_mikey_interrupt_events = (int)masks[TRACE_MIKEY_INTERRUPT];
+    config_debug.trace_mikey_display_events = (int)masks[TRACE_MIKEY_DISPLAY];
+    config_debug.trace_mikey_uart_events = (int)masks[TRACE_MIKEY_UART];
+    config_debug.trace_redeye_events = (int)masks[TRACE_REDEYE];
+    config_debug.trace_mikey_audio_events = (int)masks[TRACE_MIKEY_AUDIO];
+    config_debug.trace_cartridge_events = (int)masks[TRACE_CARTRIDGE];
+    config_debug.trace_debug_events = (int)masks[TRACE_DEBUG_MESSAGE];
+
+    json active = json::array();
+    for (size_t i = 0; i < sizeof(k_trace_filters) / sizeof(k_trace_filters[0]); i++)
+    {
+        u32 type_flag = 1U << k_trace_filters[i].type;
+        if ((flags & type_flag) && (k_trace_filters[i].mask == 0 ||
+            (masks[k_trace_filters[i].type] & k_trace_filters[i].mask) == k_trace_filters[i].mask))
+            active.push_back(k_trace_filters[i].name);
+    }
+
+    json result = {{"status", "started"}, {"debug_output", debug_output},
+        {"output", output == gui_TraceOutput_Disk ? "disk" : "memory"},
+        {"memory_size", gui_debug_trace_logger_memory_size_name(memory_size)},
+        {"disk_size", gui_debug_trace_logger_disk_size_name(disk_size)}, {"filters", active},
+        {"total_entries", logger->GetCount()}};
+    if (output == gui_TraceOutput_Disk)
+        result["output_path"] = gui_debug_trace_logger_get_output_path();
     return result;
 }
 

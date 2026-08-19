@@ -63,6 +63,7 @@ INLINE u32 M6502::RunInstruction()
     else
     {
         m_prev_opcode_address = m_s.PC.GetValue();
+        TraceInstructionEvent();
         u8 opcode = FetchOpcode8();
         m_s.cycles += m_opcode_cycles[opcode];
 
@@ -76,22 +77,6 @@ INLINE u32 M6502::RunInstruction()
             HandleIRQ();
 
         DisassembleNextOPCode();
-
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_CPU))
-        {
-            GLYNX_Trace_Entry e;
-            e.type = TRACE_CPU;
-            e.cycle = m_s.total_ticks;
-            e.cpu.pc = m_prev_opcode_address;
-            e.cpu.a = m_s.A.GetValue();
-            e.cpu.x = m_s.X.GetValue();
-            e.cpu.y = m_s.Y.GetValue();
-            e.cpu.s = m_s.S.GetValue();
-            e.cpu.p = m_s.P.GetValue();
-            m_trace_logger->TraceLog(e);
-        }
-#endif
 
     }
 
@@ -121,17 +106,20 @@ inline void M6502::HandleIRQ()
     u16 dest = m_s.PC.GetValue();
     PushCallStack(pc, dest, pc);
 
-    if (m_trace_logger->IsEnabled(TRACE_CPU_IRQ))
-    {
-        GLYNX_Trace_Entry e;
-        e.type = TRACE_CPU_IRQ;
-        e.cycle = m_s.total_ticks;
-        e.irq.pc = pc;
-        e.irq.vector = dest;
-        e.irq.irq_mask = (u8)m_s.debug_irq_mask;
-        m_trace_logger->TraceLog(e);
-    }
+    TraceIRQEvent(pc, dest);
 #endif
+}
+
+INLINE void M6502::TraceInstructionEvent()
+{
+    if (IsValidPointer(m_trace_logger) && m_trace_logger->IsEnabled(TRACE_CPU))
+        LogInstructionEvent();
+}
+
+INLINE void M6502::TraceIRQEvent(u16 pc, u16 vector)
+{
+    if (IsValidPointer(m_trace_logger) && m_trace_logger->IsEnabled(TRACE_CPU_IRQ))
+        LogIRQEvent(pc, vector);
 }
 
 INLINE void M6502::CheckIRQs()

@@ -56,7 +56,7 @@ This server provides tools for game development, rom hacking, reverse engineerin
 - **Input State**: Inspect effective pressed buttons and pending tap releases
 - **Bookmarks**: Memory and disassembler bookmarks for navigation
 - **Call Stack**: View function call hierarchy
-- **Trace Logger**: CPU instruction trace with interleaved hardware events (Suzy math/sprites, Mikey timers/audio/UART, cart)
+- **Trace Logger**: CPU instructions, master-clock cycles, absolute pagination, and exact Suzy/Mikey/UART/RedEye/cartridge event filters
 - **Screenshot Capture**: Get current frame as PNG image
 - **Rewind**: Time-travel debugging — seek to any recorded snapshot to inspect past emulator state
 - **Documentation Resources**: Built-in hardware and programming documentation for AI context
@@ -380,8 +380,19 @@ The server exposes tools organized in the following categories:
 - `remove_disassembler_bookmark` - Remove disassembler bookmark
 - `list_disassembler_bookmarks` - List all disassembler bookmarks
 - `get_call_stack` - View function call hierarchy
-- `get_trace_log` - Read trace logger entries (CPU + hardware events). Use set_trace_log to start/stop the logger
-- `set_trace_log` - Start or stop the trace logger. Use `output` (`memory` or `disk`), `memory_size` (`100K` through `5M`), `disk_size` (`10MB` through `1GB`, or `unbounded`), and `output_path` (disk output directory) to configure storage. Use `filters` (nested object) to select event types (cpu, cpu_irq, suzy_math, suzy_sprites, suzy_input, mikey_timers, mikey_uart, redeye, mikey_audio, cart, debug_messages). Use `debug_output` (bool) to enable the $FDC0-$FDC4 debug output registers so game code can send text to the trace logger
+- `get_trace_log` - Read trace entries by absolute sequence. Omit `start` for the latest 100 retained entries, or use a negative value to start that many entries from the retained tail. Results contain `total_entries`, monotonic `total_logged`, `oldest_sequence`, actual `start`, `next_sequence`, `count`, `overrun`, and formatted `lines`. An expired non-negative start is advanced to `oldest_sequence` with `overrun=true`.
+- `set_trace_log` - Start or stop tracing. `enabled` is required. Optional storage settings are `output` (`memory` or `disk`), `memory_size` (`100K`, `500K`, `1M`, `2M`, `5M`), `disk_size` (`10MB`, `50MB`, `100MB`, `250MB`, `500MB`, `1GB`, `unbounded`), and `output_path` (directory). `filters` is a non-empty unique array of exact names; omission selects `cpu.instructions` and `cpu.irqs`. Optional `debug_output` controls $FDC0-$FDC4 and preserves its current state when omitted. Filter-only changes preserve retained memory and active disk files.
+
+Exact trace filters:
+
+- CPU: `cpu.instructions`, `cpu.irqs`
+- Suzy math/input: `suzy.math.operations`, `suzy.math.completions`, `suzy.input.reads`
+- Suzy sprites: `suzy.sprites.engine`, `suzy.sprites.scbs`, `suzy.sprites.skips`, `suzy.sprites.collisions`, `suzy.sprites.rows`, `suzy.bus`
+- Mikey timers/display: `mikey.timers.registers`, `mikey.timers.underflows`, `mikey.timers.irqs`, `mikey.timers.links`, `mikey.interrupts`, `mikey.display.registers`, `mikey.display.palette`, `mikey.display.dma`, `mikey.display.timing`
+- Mikey audio/UART: `mikey.audio.channels`, `mikey.audio.mixer`, `mikey.audio.clocks`, `mikey.uart.registers`, `mikey.uart.transfers`, `mikey.uart.irqs`, `mikey.uart.problems`, `mikey.uart.breaks`, `mikey.uart.comlynx`
+- RedEye/cartridge/debug: `redeye.packets`, `redeye.problems`, `cartridge.address`, `cartridge.accesses`, `cartridge.eeprom`, `cartridge.audin`, `cartridge.storage`, `debug.messages`
+
+CPU entries are captured before opcode fetch. Hardware events emitted while Suzy and Mikey process a completed CPU/bus batch use that committed batch's `GearlynxCore::m_total_cycles` position. A backwards clock after reset is formatted as `RESET`; sequence identities remain monotonic across clears and resets.
 
 ### Breakpoints
 - `set_breakpoint` - Set execution, read, or write breakpoint at address. Read/write breakpoints stop with PC at instruction after memory access

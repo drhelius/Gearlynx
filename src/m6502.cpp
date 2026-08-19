@@ -28,6 +28,7 @@
 #include "memory.h"
 #include "random.h"
 #include "state_serializer.h"
+#include "trace_logger.h"
 
 M6502::M6502(Bus* bus, Random* random)
 {
@@ -83,6 +84,46 @@ void M6502::Init(Memory* memory)
 void M6502::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void M6502::LogInstructionEvent()
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_CPU;
+    entry.cpu.pc = m_s.PC.GetValue();
+    entry.cpu.a = m_s.A.GetValue();
+    entry.cpu.x = m_s.X.GetValue();
+    entry.cpu.y = m_s.Y.GetValue();
+    entry.cpu.s = m_s.S.GetValue();
+    entry.cpu.p = m_s.P.GetValue();
+    entry.cpu.mapctl = m_memory->GetState()->MAPCTL;
+    entry.cpu.opcodes[0] = m_memory->Read<true>(entry.cpu.pc);
+    entry.cpu.size = MIN(m_opcode_sizes[entry.cpu.opcodes[0]], (u8)sizeof(entry.cpu.opcodes));
+    for (u8 i = 1; i < entry.cpu.size; i++)
+        entry.cpu.opcodes[i] = m_memory->Read<true>((u16)(entry.cpu.pc + i));
+
+    GLYNX_Disassembler_Record* record = m_memory->GetDisassemblerRecord(entry.cpu.pc);
+    if (IsValidPointer(record))
+        strncpy_fit(entry.cpu.name, record->name, sizeof(entry.cpu.name));
+
+    m_trace_logger->TraceLog(entry);
+#endif
+}
+
+void M6502::LogIRQEvent(u16 pc, u16 vector)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_CPU_IRQ;
+    entry.irq.pc = pc;
+    entry.irq.vector = vector;
+    entry.irq.irq_mask = (u8)m_s.debug_irq_mask;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(pc);
+    UNUSED(vector);
+#endif
 }
 
 void M6502::Reset(bool is_lynx2)

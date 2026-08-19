@@ -22,14 +22,41 @@
 #include "eeprom.h"
 #include "bit_ops.h"
 #include "state_serializer.h"
+#include "trace_logger.h"
 
 EEPROM::EEPROM()
 {
+    InitPointer(m_trace_logger);
     Reset(GLYNX_EEPROM_NONE);
 }
 
 EEPROM::~EEPROM()
 {
+}
+
+void EEPROM::SetTraceLogger(TraceLogger* trace_logger)
+{
+    m_trace_logger = trace_logger;
+}
+
+void EEPROM::LogEEPROMEvent(u8 operation, u16 address, u16 value)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (operation == 0x03 || operation == 0x11)
+        m_trace_programming = true;
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_CARTRIDGE;
+    entry.cart.event = TRACE_CARTRIDGE_EEPROM;
+    entry.cart.operation = operation;
+    entry.cart.address = address;
+    entry.cart.value = (u8)value;
+    entry.cart.page = (u16)(value >> 8);
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(operation);
+    UNUSED(address);
+    UNUSED(value);
+#endif
 }
 
 void EEPROM::Reset(GLYNX_EEPROM type)
@@ -42,6 +69,9 @@ void EEPROM::Reset(GLYNX_EEPROM type)
     m_readonly = true;
     m_dirty = false;
     m_programming = false;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_trace_programming = false;
+#endif
     m_busy_count = 100;  // Start in ready state
     m_last_cs = false;
     m_last_clk = false;
@@ -86,7 +116,11 @@ s32 EEPROM::GetSize()
     return size;
 }
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+void EEPROM::ProcessEepromCounter(u16 counter, bool trace)
+#else
 void EEPROM::ProcessEepromCounter(u16 counter)
+#endif
 {
     if (!IsAvailable())
         return;
@@ -158,6 +192,13 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                 s32 opcode = (m_data >> m_addr_bits) & 0x03;
                 m_addr = m_data & ((1 << m_addr_bits) - 1);
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+                if (trace)
+                    TraceEEPROMEvent((u8)opcode, m_addr, 0);
+#else
+                TraceEEPROMEvent((u8)opcode, m_addr, 0);
+#endif
+
                 switch (opcode)
                 {
                     case 0x02:  // READ
@@ -226,6 +267,7 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                 u32 data_done_mask = (m_type & GLYNX_EEPROM_8BIT) ? 0x0100 : 0x10000;
                 if (m_data & data_done_mask)
                 {
+                    u16 write_data = (u16)(m_data & (data_done_mask - 1));
                     if (!m_readonly)
                     {
                         if (m_type & GLYNX_EEPROM_8BIT)
@@ -244,6 +286,12 @@ void EEPROM::ProcessEepromCounter(u16 counter)
                     m_programming = true;    // Programming mode
                     m_audin_output = false;  // Busy (ready signal)
                     m_state = EE_WAIT;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+                    if (trace)
+                        TraceEEPROMEvent(0x11, m_addr, write_data);
+#else
+                    TraceEEPROMEvent(0x11, m_addr, write_data);
+#endif
                 }
             }
             break;
@@ -284,6 +332,11 @@ void EEPROM::ProcessBusy()
         {
             m_audin_output = true;  // Ready
             m_programming = false;  // Done programming
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if (m_trace_programming)
+                TraceEEPROMEvent(0x80, m_addr, 0);
+            m_trace_programming = false;
+#endif
         }
     }
 }
@@ -355,6 +408,9 @@ void EEPROM::LoadState(std::istream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_trace_programming = false;
+#endif
 }
 
 void EEPROM::Serialize(StateSerializer& s)

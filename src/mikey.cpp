@@ -25,6 +25,7 @@
 #include "random.h"
 #include "state_serializer.h"
 #include "lcd_screen.h"
+#include "trace_logger.h"
 
 Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
 {
@@ -59,6 +60,17 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     m_uart_rx_wire_data = 0;
     m_uart_rx_wire_parity = false;
     m_uart_rx_wire_link = false;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_uart_tx_trace_active = false;
+    m_uart_tx_hold_trace = false;
+    m_uart_trace_cfg = 0xFF;
+    m_uart_trace_backup = 0xFF;
+    m_uart_trace_control = 0xFF;
+    m_uart_trace_turbo = 0xFF;
+    m_trace_effective_irqs = 0;
+    m_trace_uart_irq = false;
+    memset(m_redeye, 0, sizeof(m_redeye));
+#endif
 }
 
 Mikey::~Mikey()
@@ -94,6 +106,381 @@ bool Mikey::IsDebugOutputEnabled()
     return m_debug_output_enabled;
 }
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+void Mikey::ResetTraceUARTEventPairing()
+{
+    m_uart_tx_trace_active = false;
+}
+#endif
+
+void Mikey::LogCartridgeAddressEvent()
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_CARTRIDGE;
+    entry.cart.event = TRACE_CARTRIDGE_ADDRESS;
+    entry.cart.addr_shift = (u8)m_media->GetAddressShift();
+    entry.cart.bit = m_media->GetShiftRegisterBit() ? 1 : 0;
+    entry.cart.page = (u16)m_media->GetCounterValue();
+    m_trace_logger->TraceLog(entry);
+#endif
+}
+
+void Mikey::LogTimerEvent(u8 event, int timer, u8 reg, u8 raw)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Mikey_Timer* state = &m_state.timers[timer];
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_TIMER;
+    entry.timer.event = event;
+    entry.timer.timer_id = (u8)timer;
+    entry.timer.reg = reg;
+    entry.timer.raw = raw;
+    entry.timer.backup = state->backup;
+    entry.timer.counter = state->counter;
+    entry.timer.control_a = state->control_a;
+    entry.timer.control_b = state->control_b;
+    entry.timer.irq_pending = m_state.irq_pending & m_state.irq_mask;
+    entry.timer.linked = state->internal_period_cycles == 0;
+    entry.timer.reload = IS_SET_BIT(state->control_a, 4);
+    entry.timer.one_shot = IS_NOT_SET_BIT(state->control_a, 4);
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(event);
+    UNUSED(timer);
+    UNUSED(reg);
+    UNUSED(raw);
+#endif
+}
+
+void Mikey::LogInterruptEvent(u8 event, u8 reg, u8 raw)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (event == TRACE_MIKEY_INTERRUPT_LINE)
+    {
+        u8 effective = m_state.irq_pending & m_state.irq_mask;
+        if (effective == m_trace_effective_irqs)
+            return;
+        m_trace_effective_irqs = effective;
+    }
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_INTERRUPT;
+    entry.interrupt.event = event;
+    entry.interrupt.reg = reg;
+    entry.interrupt.raw = raw;
+    entry.interrupt.pending = m_state.irq_pending;
+    entry.interrupt.mask = m_state.irq_mask;
+    entry.interrupt.effective = m_state.irq_pending & m_state.irq_mask;
+    entry.interrupt.asserted = entry.interrupt.effective != 0;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(event);
+    UNUSED(reg);
+    UNUSED(raw);
+#endif
+}
+
+void Mikey::LogDisplayEvent(u8 event, u8 reg, u8 raw, int line)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if ((event == TRACE_MIKEY_DISPLAY_DMA_START ||
+        event == TRACE_MIKEY_DISPLAY_DMA_LINE ||
+        event == TRACE_MIKEY_DISPLAY_DMA_END) &&
+        IS_NOT_SET_BIT(m_state.DISPCTL, 0))
+        return;
+
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_DISPLAY;
+    entry.display.event = event;
+    entry.display.reg = reg;
+    entry.display.raw = raw;
+    entry.display.effective = raw;
+    entry.display.address = m_state.DISPADR.value;
+    entry.display.auxiliary = m_state.dispadr_latch;
+    entry.display.line = line >= 0 ? (u8)line : (u8)m_lcd_screen->GetState()->current_line;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(event);
+    UNUSED(reg);
+    UNUSED(raw);
+    UNUSED(line);
+#endif
+}
+
+void Mikey::LogPaletteEvent(u8 index, u8 raw, u16 rgb444)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_DISPLAY;
+    entry.display.event = TRACE_MIKEY_DISPLAY_PALETTE;
+    entry.display.reg = index;
+    entry.display.raw = raw;
+    entry.display.value = rgb444;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(index);
+    UNUSED(raw);
+    UNUSED(rgb444);
+#endif
+}
+
+void Mikey::LogAudioEvent(u8 event, int channel, u8 reg, u8 raw)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_AUDIO;
+    entry.audio.event = event;
+    entry.audio.channel = (u8)channel;
+    entry.audio.reg = reg;
+    entry.audio.value = raw;
+    if (event == TRACE_MIKEY_AUDIO_CHANNEL)
+    {
+        GLYNX_Mikey_Audio* state = &m_state.audio[channel];
+        switch (reg & 7)
+        {
+            case 0: entry.audio.effective = state->volume; break;
+            case 1: entry.audio.effective = state->feedback; break;
+            case 2: entry.audio.effective = (u8)state->output; break;
+            case 3: entry.audio.effective = state->lfsr_low; break;
+            case 4: entry.audio.effective = state->backup; break;
+            case 5: entry.audio.effective = state->control; break;
+            case 6: entry.audio.effective = state->counter; break;
+            default: entry.audio.effective = state->other; break;
+        }
+    }
+    else if (event == TRACE_MIKEY_AUDIO_CLOCK)
+    {
+        GLYNX_Mikey_Audio* state = &m_state.audio[channel];
+        entry.audio.value = (u8)state->output;
+        entry.audio.effective = (u8)state->output;
+    }
+    else
+        entry.audio.effective = raw;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(event);
+    UNUSED(channel);
+    UNUSED(reg);
+    UNUSED(raw);
+#endif
+}
+
+void Mikey::LogUARTEvent(u8 event, u8 data, u8 flags, u8 source,
+    u8 lost, bool chained)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (event == TRACE_MIKEY_UART_IRQ)
+    {
+        bool level = data != 0;
+        if (level == m_trace_uart_irq)
+            return;
+        m_trace_uart_irq = level;
+    }
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_UART;
+    entry.uart.event = event;
+    entry.uart.data = data;
+    entry.uart.flags = flags;
+    entry.uart.source = source;
+    entry.uart.lost = lost;
+    u32 gap_cycles = (event == TRACE_MIKEY_UART_RX_LATCH ||
+        event == TRACE_MIKEY_UART_DATA_READ || event == TRACE_MIKEY_UART_PROBLEM) ?
+        m_state.uart.rx_age_cycles : 0;
+    u32 gap_us = gap_cycles / (GLYNX_MASTER_CLOCK / 1000000);
+    entry.uart.gap_us = gap_us > 0xFFFF ? 0xFFFF : (u16)gap_us;
+    entry.uart.backup = m_state.timers[4].backup;
+    entry.uart.control = m_state.timers[4].control_a;
+    entry.uart.chained = chained;
+    m_trace_logger->TraceLog(entry);
+    if (event == TRACE_MIKEY_UART_TX_START)
+        m_uart_tx_trace_active = true;
+#else
+    UNUSED(event);
+    UNUSED(data);
+    UNUSED(flags);
+    UNUSED(source);
+    UNUSED(lost);
+    UNUSED(chained);
+#endif
+}
+
+void Mikey::LogUARTConfigEvent(u8 value, bool register_write)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    u8 config = value & 0xD7;
+    bool reset_errors = register_write && IS_SET_BIT(value, 3);
+    u8 backup = m_state.timers[4].backup;
+    u8 control = m_state.timers[4].control_a;
+    u8 turbo = IS_SET_BIT(m_state.MTEST0, 4) ? 1 : 0;
+    if (!reset_errors && config == m_uart_trace_cfg && backup == m_uart_trace_backup &&
+        control == m_uart_trace_control && turbo == m_uart_trace_turbo)
+        return;
+    m_uart_trace_cfg = config;
+    m_uart_trace_backup = backup;
+    m_uart_trace_control = control;
+    m_uart_trace_turbo = turbo;
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_UART;
+    entry.uart.event = TRACE_MIKEY_UART_REGISTER;
+    entry.uart.data = reset_errors ? value : config;
+    entry.uart.flags = turbo ? 0x20 : 0;
+    entry.uart.backup = backup;
+    entry.uart.control = control;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(value);
+    UNUSED(register_write);
+#endif
+}
+
+void Mikey::LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    RedEyeStream* stream = &m_redeye[dir & 1];
+    stream->count = 0;
+    stream->total = 0;
+    stream->last_cycle = 0;
+
+    if (!m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PROBLEM))
+        return;
+
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_REDEYE;
+    entry.redeye.event = TRACE_REDEYE_PROBLEM;
+    entry.redeye.dir = dir;
+    entry.redeye.problem = problem;
+    entry.redeye.size = value;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(dir);
+    UNUSED(problem);
+    UNUSED(value);
+#endif
+}
+
+void Mikey::LogRedEyeEvent(u8 dir, u8 data)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    RedEyeStream* stream = &m_redeye[dir & 1];
+
+    if (stream->count > 0)
+    {
+        u32 bit_cycles = IS_SET_BIT(m_state.MTEST0, 4) ? GLYNX_UART_TURBO_BIT_CYCLES :
+            (m_state.timers[4].internal_period_cycles ? m_state.timers[4].internal_period_cycles : 16) *
+            ((u32)m_state.timers[4].backup + 1) * 8;
+        u64 timeout = (u64)bit_cycles * 64;
+        if (m_comlynx_cycle - stream->last_cycle > timeout)
+        {
+            u8 count = stream->count;
+            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_TIMEOUT, count);
+            stream->count = 0;
+            stream->total = 0;
+            stream->last_cycle = 0;
+        }
+    }
+
+    if (stream->count == 0)
+    {
+        if (data == 0 || data > 32)
+        {
+            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_INVALID_SIZE, data);
+            return;
+        }
+        stream->total = (u8)(data + 2);
+    }
+
+    if (stream->count < sizeof(stream->buffer))
+        stream->buffer[stream->count] = data;
+    stream->count++;
+    stream->last_cycle = m_comlynx_cycle;
+    if (stream->count < stream->total)
+        return;
+
+    u8 size = stream->buffer[0];
+    u8 header = stream->buffer[1];
+    u32 sum = 0;
+    for (u8 i = 0; i < size + 1u; i++)
+        sum += stream->buffer[i];
+    u8 expected = (u8)((255u - sum) & 0xFFu);
+    bool checksum_ok = expected == stream->buffer[stream->total - 1];
+
+    if (m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PACKET))
+    {
+        GLYNX_Trace_Entry entry = {};
+        entry.type = TRACE_REDEYE;
+        entry.redeye.event = TRACE_REDEYE_PACKET;
+        entry.redeye.dir = dir;
+        entry.redeye.msg = header & 0x07;
+        entry.redeye.player = (header & 0x78) >> 3;
+        entry.redeye.seq = (header & 0x80) ? 1 : 0;
+        entry.redeye.size = size;
+        entry.redeye.total = stream->total;
+        entry.redeye.checksum_ok = checksum_ok;
+        for (u8 i = 0; i < 8; i++)
+        {
+            u8 index = (u8)(i + 2);
+            if (index + 1u < stream->total)
+            {
+                entry.redeye.payload[i] = stream->buffer[index];
+                entry.redeye.len++;
+            }
+        }
+        m_trace_logger->TraceLog(entry);
+    }
+
+    if (!checksum_ok)
+        TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_CHECKSUM, size);
+    stream->count = 0;
+    stream->total = 0;
+    stream->last_cycle = 0;
+#else
+    UNUSED(dir);
+    UNUSED(data);
+#endif
+}
+
+void Mikey::LogRedEyeTimeoutEvent()
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    u32 bit_cycles = IS_SET_BIT(m_state.MTEST0, 4) ? GLYNX_UART_TURBO_BIT_CYCLES :
+        (m_state.timers[4].internal_period_cycles ? m_state.timers[4].internal_period_cycles : 16) *
+        ((u32)m_state.timers[4].backup + 1) * 8;
+    u64 timeout = (u64)bit_cycles * 64;
+    for (u8 dir = 0; dir < 2; dir++)
+    {
+        RedEyeStream* stream = &m_redeye[dir];
+        if (stream->count > 0 && m_comlynx_cycle - stream->last_cycle > timeout)
+        {
+            u8 count = stream->count;
+            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_TIMEOUT, count);
+            stream->count = 0;
+            stream->total = 0;
+            stream->last_cycle = 0;
+        }
+    }
+#endif
+}
+
+void Mikey::LogCartridgeIOEvent(u8 event, u8 operation, u8 value)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_CARTRIDGE;
+    entry.cart.event = event;
+    entry.cart.operation = operation;
+    entry.cart.value = value;
+    entry.cart.write = true;
+    entry.cart.addr_shift = (u8)m_media->GetAddressShift();
+    entry.cart.page = (u16)m_media->GetCounterValue();
+    entry.cart.audin = m_media->GetAudinValue();
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(event);
+    UNUSED(operation);
+    UNUSED(value);
+#endif
+}
+
 void Mikey::Reset(bool is_lynx2)
 {
     if (m_state.uart.tx_open && m_state.uart.tx_brk &&
@@ -116,6 +503,9 @@ void Mikey::Reset(bool is_lynx2)
     ResetTimers();
     ResetAudio();
     ResetUART();
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    ResetTraceDiagnostics(true);
+#endif
 }
 
 void Mikey::ResetTimers()
@@ -195,12 +585,6 @@ void Mikey::ResetUART()
     m_state.uart.tx_empty_cycles = 0;
     m_state.uart.tx_start_bits = 0;
     m_state.uart.rx_age_cycles = 0;
-    m_uart_trace_cfg = 0xFF;
-    m_uart_trace_backup = 0xFF;
-    m_redeye[0].count = 0;
-    m_redeye[0].total = 0;
-    m_redeye[1].count = 0;
-    m_redeye[1].total = 0;
     m_uart_last_bit_cycle = 0;
     m_uart_tx_wire_start = 0;
     m_uart_tx_wire_bit_cycles = 0;
@@ -213,14 +597,41 @@ void Mikey::ResetUART()
     m_uart_rx_wire_link = false;
 }
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+void Mikey::ResetTraceDiagnostics(bool log_reset)
+{
+    m_uart_tx_trace_active = false;
+    m_uart_tx_hold_trace = false;
+    m_uart_trace_cfg = 0xFF;
+    m_uart_trace_backup = 0xFF;
+    m_uart_trace_control = 0xFF;
+    m_uart_trace_turbo = 0xFF;
+    m_trace_effective_irqs = m_state.irq_pending & m_state.irq_mask;
+    m_trace_uart_irq = (m_state.uart.tx_int_en && m_state.uart.tx_ready) ||
+        (m_state.uart.rx_int_en && m_state.uart.rx_ready);
+    for (u8 dir = 0; dir < 2; dir++)
+    {
+        if (log_reset && m_redeye[dir].count > 0)
+            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_RESET, m_redeye[dir].count);
+        m_redeye[dir].count = 0;
+        m_redeye[dir].total = 0;
+        m_redeye[dir].last_cycle = 0;
+    }
+}
+#endif
+
 void Mikey::ResetPalette()
 {
     for (int address = 0xFDA0; address < 0xFDC0; address++)
-        WriteColor(address, 0xFF);
+    WriteColor(address, 0xFF, true);
 }
 
 void Mikey::HorizontalBlank()
 {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (!m_lcd_screen->GetState()->in_vblank)
+        TraceDisplayEvent(TRACE_MIKEY_DISPLAY_DMA_LINE);
+#endif
     m_state.refresh_cycle_counter = 0;
     m_lcd_screen->FinishLine();
 
@@ -234,6 +645,10 @@ void Mikey::HorizontalBlank()
     {
         m_lcd_screen->SetVBlank(true);
         m_state.rest = true;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        TraceDisplayEvent(TRACE_MIKEY_DISPLAY_VBLANK, 0, 1);
+        TraceDisplayEvent(TRACE_MIKEY_DISPLAY_DMA_END);
+#endif
 
         // Clear lines that won't be rendered when backup < 104
         if (backup < 104)
@@ -263,9 +678,16 @@ void Mikey::HorizontalBlank()
         // Start of visible line 0 (end of vblank)
         if (visible_line == 0)
         {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            TraceDisplayEvent(TRACE_MIKEY_DISPLAY_DMA_START, 0, 0, visible_line);
+#endif
             m_lcd_screen->FirstDMA();
             m_lcd_screen->SetVBlank(false);
             m_state.frame_ready = true;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            TraceDisplayEvent(TRACE_MIKEY_DISPLAY_VBLANK, 0, 0, visible_line);
+            TraceDisplayEvent(TRACE_MIKEY_DISPLAY_FRAME, 0, 0, visible_line);
+#endif
         }
         // Start of visible line 1
         else if (visible_line == 1)
@@ -305,12 +727,20 @@ void Mikey::SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_
 
 void Mikey::SetComLynxCableConnected(bool connected)
 {
+    bool changed = m_comlynx_cable_connected != connected;
     m_comlynx_cable_connected = connected;
 
     if (!connected)
     {
         m_uart_rx_wire_state = 0;
     }
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (changed)
+        TraceUARTEvent(TRACE_MIKEY_UART_COMLYNX, connected ? 1 : 0);
+#else
+    UNUSED(changed);
+#endif
 }
 
 bool Mikey::IsComLynxCableConnected() const
@@ -344,6 +774,9 @@ void Mikey::LoadState(std::istream& stream, int version)
     m_uart_rx_wire_link = false;
 
     m_lcd_screen->LoadState(stream);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    ResetTraceDiagnostics(false);
+#endif
 }
 
 void Mikey::Serialize(StateSerializer& s, int version)
@@ -488,26 +921,58 @@ void Mikey::Serialize(StateSerializer& s, int version)
         m_state.MTEST0 = 0;
 }
 
-void Mikey::DebugOutputFlush()
+void Mikey::LogDebugMessageEvent(u16 address, u8 value)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (!m_debug_output_enabled || m_state.debug_msg_pos <= 0)
-        return;
-
-    if (m_trace_logger->IsEnabled(TRACE_DEBUG_MESSAGE))
+    switch (address)
     {
-        GLYNX_Trace_Entry e = {};
-        e.type = TRACE_DEBUG_MESSAGE;
-        e.cycle = 0;
-
-        int len = m_state.debug_msg_pos;
-        memcpy(e.debug_msg.text, m_state.debug_msg_buffer, len);
-        e.debug_msg.text[len] = '\0';
-
-        m_trace_logger->TraceLog(e);
+        case MIKEY_DBGASCII:
+            if (m_state.debug_msg_pos < (GLYNX_DEBUG_MSG_MAX_SIZE - 1))
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = (char)value;
+            break;
+        case MIKEY_DBGHEX:
+            if (m_state.debug_msg_pos < (GLYNX_DEBUG_MSG_MAX_SIZE - 2))
+            {
+                static const char k_hex[] = "0123456789ABCDEF";
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = k_hex[(value >> 4) & 0x0F];
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = k_hex[value & 0x0F];
+            }
+            break;
+        case MIKEY_DBGSTRL:
+            m_state.debug_str_addr.low = value;
+            break;
+        case MIKEY_DBGSTRH:
+        {
+            m_state.debug_str_addr.high = value;
+            u16 string_address = m_state.debug_str_addr.value;
+            int max_copy = (GLYNX_DEBUG_MSG_MAX_SIZE - 1) - m_state.debug_msg_pos;
+            for (int i = 0; i < max_copy; i++)
+            {
+                u8 character = m_memory->Read<true>(string_address++);
+                if (character == 0)
+                    break;
+                m_state.debug_msg_buffer[m_state.debug_msg_pos++] = (char)character;
+            }
+            break;
+        }
+        case MIKEY_DBGOUT:
+            if (value != 0 && m_state.debug_msg_pos > 0)
+            {
+                GLYNX_Trace_Entry entry = {};
+                entry.type = TRACE_DEBUG_MESSAGE;
+                int length = m_state.debug_msg_pos;
+                memcpy(entry.debug_msg.text, m_state.debug_msg_buffer, length);
+                entry.debug_msg.text[length] = '\0';
+                m_trace_logger->TraceLog(entry);
+                m_state.debug_msg_pos = 0;
+            }
+            break;
+        default:
+            break;
     }
-
-    m_state.debug_msg_pos = 0;
-    m_state.debug_msg_buffer[0] = '\0';
+    m_state.debug_msg_buffer[m_state.debug_msg_pos] = '\0';
+#else
+    UNUSED(address);
+    UNUSED(value);
 #endif
 }

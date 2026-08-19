@@ -1650,12 +1650,11 @@ json McpServer::BuildToolList()
             {"properties", {
                 {"start", {
                     {"type", "integer"},
-                    {"description", "Start index; 0 oldest, omit for latest."},
-                    {"minimum", 0}
+                    {"description", "Absolute trace sequence, or a negative value to read that many entries from the retained tail (omit for latest 100)"}
                 }},
                 {"count", {
                     {"type", "integer"},
-                    {"description", "Entry count; default 100, max 1000."},
+                    {"description", "Entries to return (default 100, max 1000)"},
                     {"minimum", 1},
                     {"maximum", 1000}
                 }}
@@ -1678,7 +1677,7 @@ json McpServer::BuildToolList()
                 }},
                 {"debug_output", {
                     {"type", "boolean"},
-                    {"description", "Enable $FDC0-$FDC4 debug output text registers. Default false."}
+                    {"description", "Enable $FDC0-$FDC4 debug output text registers; omission preserves current state."}
                 }},
                 {"output", {
                     {"type", "string"},
@@ -1700,55 +1699,30 @@ json McpServer::BuildToolList()
                     {"description", "Directory for the automatically named disk trace file."}
                 }},
                 {"filters", {
-                    {"type", "object"},
-                    {"description", "Trace event filters; omitted values default true."},
-                    {"properties", {
-                        {"cpu", {
-                            {"type", "boolean"},
-                            {"description", "CPU instructions. Default true."}
-                        }},
-                        {"cpu_irq", {
-                            {"type", "boolean"},
-                            {"description", "IRQ events. Default true."}
-                        }},
-                        {"suzy_math", {
-                            {"type", "boolean"},
-                            {"description", "Suzy multiply/divide operations. Default true."}
-                        }},
-                        {"suzy_sprites", {
-                            {"type", "boolean"},
-                            {"description", "Suzy sprite rendering. Default true."}
-                        }},
-                        {"suzy_input", {
-                            {"type", "boolean"},
-                            {"description", "Suzy input reads. Default true."}
-                        }},
-                        {"mikey_timers", {
-                            {"type", "boolean"},
-                            {"description", "Mikey timer events. Default true."}
-                        }},
-                        {"mikey_uart", {
-                            {"type", "boolean"},
-                            {"description", "Mikey UART frames, reads and config. Default true."}
-                        }},
-                        {"redeye", {
-                            {"type", "boolean"},
-                            {"description", "RedEye packets reassembled from ComLynx traffic. Default true."}
-                        }},
-                        {"mikey_audio", {
-                            {"type", "boolean"},
-                            {"description", "Mikey audio register writes. Default true."}
-                        }},
-                        {"cart", {
-                            {"type", "boolean"},
-                            {"description", "Cartridge shift register. Default true."}
-                        }},
-                        {"debug_messages", {
-                            {"type", "boolean"},
-                            {"description", "Game debug messages via $FDC0-$FDC4. Default true."}
-                        }}
-                    }},
-                    {"additionalProperties", false}
+                    {"type", "array"},
+                    {"description", "Unique exact filters; omission selects CPU instructions and IRQs."},
+                    {"minItems", 1},
+                    {"maxItems", 37},
+                    {"uniqueItems", true},
+                    {"items", {
+                        {"type", "string"},
+                        {"enum", json::array({
+                            "cpu.instructions", "cpu.irqs",
+                            "suzy.math.operations", "suzy.math.completions",
+                            "suzy.sprites.engine", "suzy.sprites.scbs", "suzy.sprites.skips",
+                            "suzy.sprites.collisions", "suzy.sprites.rows", "suzy.bus",
+                            "suzy.input.reads", "mikey.timers.registers",
+                            "mikey.timers.underflows", "mikey.timers.irqs", "mikey.timers.links",
+                            "mikey.interrupts", "mikey.display.registers", "mikey.display.palette",
+                            "mikey.display.dma", "mikey.display.timing", "mikey.audio.channels",
+                            "mikey.audio.mixer", "mikey.audio.clocks", "mikey.uart.registers",
+                            "mikey.uart.transfers", "mikey.uart.irqs", "mikey.uart.problems",
+                            "mikey.uart.breaks", "mikey.uart.comlynx", "redeye.packets",
+                            "redeye.problems", "cartridge.address", "cartridge.accesses",
+                            "cartridge.eeprom", "cartridge.audin", "cartridge.storage",
+                            "debug.messages"
+                        })}
+                    }}
                 }}
             }},
             {"required", json::array({"enabled"})},
@@ -2811,36 +2785,12 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     }
     else if (normalizedTool == "get_trace_log")
     {
-        int start = arguments.value("start", -1);
+        s64 start = arguments.value("start", (s64)-100);
         int count = arguments.value("count", 100);
         return m_debugAdapter.GetTraceLog(start, count);
     }
     else if (normalizedTool == "set_trace_log")
-    {
-        bool enabled = arguments["enabled"];
-        u32 flags = 0;
-        if (enabled)
-        {
-            json filters = arguments.value("filters", json::object());
-            if (filters.value("cpu", true)) flags |= TRACE_FLAG_CPU;
-            if (filters.value("cpu_irq", true)) flags |= TRACE_FLAG_CPU_IRQ;
-            if (filters.value("suzy_math", true)) flags |= TRACE_FLAG_SUZY_MATH;
-            if (filters.value("suzy_sprites", true)) flags |= TRACE_FLAG_SUZY_SPRITE;
-            if (filters.value("suzy_input", true)) flags |= TRACE_FLAG_SUZY_INPUT;
-            if (filters.value("mikey_timers", true)) flags |= TRACE_FLAG_MIKEY_TIMER;
-            if (filters.value("mikey_uart", true)) flags |= TRACE_FLAG_MIKEY_UART;
-            if (filters.value("redeye", true)) flags |= TRACE_FLAG_REDEYE;
-            if (filters.value("mikey_audio", true)) flags |= TRACE_FLAG_MIKEY_AUDIO;
-            if (filters.value("cart", true)) flags |= TRACE_FLAG_CART_SHIFT;
-            if (filters.value("debug_messages", true)) flags |= TRACE_FLAG_DEBUG_MSG;
-        }
-        bool debug_output = arguments.value("debug_output", false);
-        std::string output = arguments.value("output", "");
-        std::string memory_size = arguments.value("memory_size", "");
-        std::string disk_size = arguments.value("disk_size", "");
-        std::string output_path = arguments.value("output_path", "");
-        return m_debugAdapter.SetTraceLog(enabled, flags, debug_output, output, memory_size, disk_size, output_path);
-    }
+        return m_debugAdapter.SetTraceLog(arguments);
     else if (normalizedTool == "get_rewind_status")
     {
         return m_debugAdapter.GetRewindStatus();

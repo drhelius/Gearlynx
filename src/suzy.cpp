@@ -39,6 +39,19 @@ Suzy::Suzy(Media* media, M6502* m6502, Input* input, Bus* bus)
     InitPointer(m_ram);
     InitPointer(m_trace_logger);
     m_sprite_total_cycles = 0;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_trace_math_op_a = 0;
+    m_trace_math_op_b = 0;
+    m_trace_math_result = 0;
+    m_trace_math_elapsed = 0;
+    m_trace_math_remainder = 0;
+    m_trace_math_divide = false;
+    m_trace_math_sign = false;
+    m_trace_math_accumulate = false;
+    m_trace_math_div_by_zero = false;
+    m_trace_math_valid = false;
+    m_trace_sprite_active = false;
+#endif
     m_fast_sprite_rendering = false;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_sprite_bounding_box_mode = GLYNX_SPRITE_BOUNDING_BOX_DISABLED;
@@ -68,6 +81,192 @@ void Suzy::Init(Memory* memory, Mikey* mikey)
 void Suzy::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void Suzy::LogMathOperationEvent(u32 op_a, u32 op_b, u32 result, u16 remainder,
+    bool divide, bool sign, bool accumulate, bool div_by_zero, u32 elapsed_cycles)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (m_trace_logger->IsEventEnabled(TRACE_SUZY_MATH, TRACE_SUZY_MATH_COMPLETION))
+    {
+        m_trace_math_op_a = op_a;
+        m_trace_math_op_b = op_b;
+        m_trace_math_result = result;
+        m_trace_math_remainder = remainder;
+        m_trace_math_divide = divide;
+        m_trace_math_sign = sign;
+        m_trace_math_accumulate = accumulate;
+        m_trace_math_div_by_zero = div_by_zero;
+        m_trace_math_elapsed = elapsed_cycles;
+        m_trace_math_valid = true;
+    }
+    if (m_trace_logger->IsEventEnabled(TRACE_SUZY_MATH, TRACE_SUZY_MATH_OPERATION))
+    {
+        GLYNX_Trace_Entry entry = {};
+        entry.type = TRACE_SUZY_MATH;
+        entry.math.event = TRACE_SUZY_MATH_OPERATION;
+        entry.math.op_a = op_a;
+        entry.math.op_b = op_b;
+        entry.math.result = result;
+        entry.math.remainder = remainder;
+        entry.math.is_divide = divide;
+        entry.math.is_signed = sign;
+        entry.math.accumulate = accumulate;
+        entry.math.div_by_zero = div_by_zero;
+        entry.math.elapsed_cycles = elapsed_cycles;
+        m_trace_logger->TraceLog(entry);
+    }
+#else
+    UNUSED(op_a);
+    UNUSED(op_b);
+    UNUSED(result);
+    UNUSED(remainder);
+    UNUSED(divide);
+    UNUSED(sign);
+    UNUSED(accumulate);
+    UNUSED(div_by_zero);
+    UNUSED(elapsed_cycles);
+#endif
+}
+
+void Suzy::LogMathCompletionEvent()
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (!m_trace_math_valid)
+        return;
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_SUZY_MATH;
+    entry.math.event = TRACE_SUZY_MATH_COMPLETION;
+    entry.math.op_a = m_trace_math_op_a;
+    entry.math.op_b = m_trace_math_op_b;
+    entry.math.result = m_trace_math_result;
+    entry.math.remainder = m_trace_math_remainder;
+    entry.math.is_divide = m_trace_math_divide;
+    entry.math.is_signed = m_trace_math_sign;
+    entry.math.accumulate = m_trace_math_accumulate;
+    entry.math.div_by_zero = m_trace_math_div_by_zero;
+    entry.math.completed = true;
+    entry.math.elapsed_cycles = m_trace_math_elapsed;
+    m_trace_logger->TraceLog(entry);
+#endif
+}
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+void Suzy::ResetTraceEventPairing()
+{
+    ResetTraceMathEventPairing();
+    m_trace_sprite_active = false;
+}
+#endif
+
+void Suzy::LogSpriteEvent(u8 event, u8 reason)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (event == TRACE_SUZY_SPRITE_ENGINE_END && !m_trace_sprite_active)
+        return;
+
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_SUZY_SPRITE;
+    entry.sprite.event = event;
+    entry.sprite.reason = reason;
+    bool next_scb = event == TRACE_SUZY_SPRITE_ENGINE_START ||
+        (event == TRACE_SUZY_SPRITE_SKIP &&
+        (reason == TRACE_SUZY_SPRITE_SKIP_STOPPED ||
+        reason == TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL));
+    entry.sprite.scb_addr = next_scb ? m_state.SCBNEXT.value : m_state.SCBADR.value;
+    entry.sprite.scb_next = m_state.SCBNEXT.value;
+    entry.sprite.hpos = (s16)m_state.HPOSSTRT.value;
+    entry.sprite.vpos = (s16)m_state.VPOSSTRT.value;
+    entry.sprite.sprctl0 = m_state.SPRCTL0;
+    entry.sprite.sprgo = m_state.SPRGO;
+    entry.sprite.suzybusen = m_state.SUZYBUSEN;
+    entry.sprite.bpp = (u8)(((m_state.SPRCTL0 >> 6) & 3) + 1);
+    entry.sprite.type = m_state.SPRCTL0 & 7;
+    entry.sprite.is_start = event == TRACE_SUZY_SPRITE_ENGINE_START;
+    entry.sprite.is_end = event == TRACE_SUZY_SPRITE_ENGINE_END;
+    entry.sprite.skipped = event == TRACE_SUZY_SPRITE_SKIP;
+    entry.sprite.total_cycles = m_sprite_total_cycles;
+    entry.sprite.collision_id = m_state.SPRCOLL & 0x0F;
+    if (event == TRACE_SUZY_SPRITE_COLLISION)
+    {
+        u16 colpos = m_state.SCBADR.value + m_state.COLLOFF.value;
+        entry.sprite.depository = m_ram[colpos];
+    }
+    else
+        entry.sprite.depository = m_state.fred;
+    entry.sprite.everon = m_state.everon;
+    entry.sprite.source_pixels = m_state.row_source_pixels;
+    entry.sprite.output_pixels = m_state.row_output_pixels;
+    entry.sprite.charged_cycles = m_state.row_timing_charged_ticks;
+    m_trace_logger->TraceLog(entry);
+
+    if (event == TRACE_SUZY_SPRITE_ENGINE_START)
+        m_trace_sprite_active = true;
+    else if (event == TRACE_SUZY_SPRITE_ENGINE_END)
+        m_trace_sprite_active = false;
+#else
+    UNUSED(event);
+    UNUSED(reason);
+#endif
+}
+
+void Suzy::LogInputEvent(u8 value, bool joystick)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_SUZY_INPUT;
+    entry.input.event = TRACE_SUZY_INPUT_READ;
+    entry.input.value = value;
+    entry.input.is_joystick = joystick;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(value);
+    UNUSED(joystick);
+#endif
+}
+
+void Suzy::LogSpriteBusEvent(u32 cycles, u8 reason)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_SUZY_SPRITE;
+    entry.sprite.event = TRACE_SUZY_SPRITE_BUS;
+    entry.sprite.scb_addr = m_state.SCBADR.value;
+    entry.sprite.charged_cycles = cycles;
+    entry.sprite.reason = reason;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(cycles);
+    UNUSED(reason);
+#endif
+}
+
+void Suzy::LogCartridgeEvent(u8 event, u8 value, bool write, u8 bank)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    bank = (u8)m_media->GetEffectiveCartBank(bank);
+    if (event == TRACE_CARTRIDGE_STORAGE && !m_media->IsCartBankPersistent(bank))
+        return;
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_CARTRIDGE;
+    entry.cart.event = event;
+    entry.cart.address = m_media->GetLastCartBankAddress(bank);
+    entry.cart.value = value;
+    entry.cart.write = write;
+    entry.cart.bank = bank;
+    entry.cart.audin = m_media->GetAudin() && m_media->GetAudinValue();
+    entry.cart.addr_shift = (u8)m_media->GetAddressShift();
+    entry.cart.bit = m_media->GetShiftRegisterBit() ? 1 : 0;
+    entry.cart.page = m_media->GetCounterValue();
+    if (!m_media->GetShiftRegisterStrobe())
+        entry.cart.page = (entry.cart.page - 1) & 0x7FF;
+    m_trace_logger->TraceLog(entry);
+#else
+    UNUSED(event);
+    UNUSED(value);
+    UNUSED(write);
+    UNUSED(bank);
+#endif
 }
 
 void Suzy::SignalBlitterDone()
@@ -109,6 +308,9 @@ void Suzy::Reset()
     memset(&m_state, 0, sizeof(Suzy_State));
     m_sprite_total_cycles = 0;
     m_state.shift_register_bit = -1;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    ResetTraceEventPairing();
+#endif
 
     for (int i = 0; i < 16; ++i)
         m_state.pen_map[i] = i;
@@ -165,22 +367,10 @@ void Suzy::MathRunMultiply()
     m_state.math_cycles = 44 + ((m_state.sprsys_accumulate || m_state.sprsys_sign) ? 10 : 0);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_SUZY_MATH))
-    {
-        GLYNX_Trace_Entry e;
-        e.type = TRACE_SUZY_MATH;
-        e.cycle = 0;
-        e.math.op_a = ab;
-        e.math.op_b = cd;
-        e.math.result = result;
-        e.math.remainder = 0;
-        e.math.is_divide = false;
-        e.math.is_signed = m_state.sprsys_sign;
-        e.math.accumulate = m_state.sprsys_accumulate;
-        e.math.div_by_zero = false;
-        m_trace_logger->TraceLog(e);
-    }
+    ResetTraceMathEventPairing();
 #endif
+    TraceMathOperationEvent(ab, cd, result, 0, false, m_state.sprsys_sign,
+        m_state.sprsys_accumulate, false, m_state.math_cycles);
 }
 
 void Suzy::MathRunDivide()
@@ -226,22 +416,10 @@ void Suzy::MathRunDivide()
     m_state.math_cycles = 176 + (14 * l_zero16(divisor));
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_SUZY_MATH))
-    {
-        GLYNX_Trace_Entry e;
-        e.type = TRACE_SUZY_MATH;
-        e.cycle = 0;
-        e.math.op_a = (u16)((dividend >> 16) & 0xFFFF);
-        e.math.op_b = divisor;
-        e.math.result = quotient;
-        e.math.remainder = remainder;
-        e.math.is_divide = true;
-        e.math.is_signed = false;
-        e.math.accumulate = false;
-        e.math.div_by_zero = zero_divisor;
-        m_trace_logger->TraceLog(e);
-    }
+    ResetTraceMathEventPairing();
 #endif
+    TraceMathOperationEvent(dividend, divisor, quotient, remainder, true, false,
+        false, zero_divisor, m_state.math_cycles);
 }
 
 void Suzy::ComputeQuadLUT()
@@ -283,6 +461,9 @@ void Suzy::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    ResetTraceEventPairing();
+#endif
 
     if (version < 14)
     {

@@ -31,6 +31,7 @@ class StateSerializer;
 class EEPROM;
 class GameDrive;
 class ElCheapoSD;
+class TraceLogger;
 
 class Media
 {
@@ -55,6 +56,7 @@ public:
     Media();
     ~Media();
     void Init();
+    void SetTraceLogger(TraceLogger* trace_logger);
     void Reset();
     void HardReset();
     u8* GetROM();
@@ -107,10 +109,18 @@ public:
     void WriteBank1(u8 value);
     void WriteBank0A(u8 value);
     void WriteBank1A(u8 value);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    void ShiftRegisterStrobe(bool strobe, bool trace = true);
+#else
     void ShiftRegisterStrobe(bool strobe);
+#endif
     void ShiftRegisterBit(bool bit);
     void AdvanceCounter();
     u32 GetCartBankAddress(int bank);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    int GetEffectiveCartBank(int bank);
+    u32 GetLastCartBankAddress(int bank);
+#endif
     void SetAudinValue(bool value);
     bool GetAudinValue();
     u16 GetCounterValue();
@@ -229,6 +239,7 @@ private:
     u16 m_homebrew_boot_address;
     u16 m_homebrew_size;
     int m_epyx_headerless;
+    TraceLogger* m_trace_logger;
     u32 m_crc;
     u8* m_decrypt_buffer_a;
     u8* m_decrypt_buffer_b;

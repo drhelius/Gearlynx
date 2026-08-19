@@ -62,20 +62,35 @@ static inline void process(config_Operation operation)
 
     // Trace logger
     CONFIG_BOOL("Debug", "TraceCounter", config_debug.trace_counter, true);
+    CONFIG_BOOL("Debug", "TraceCycles", config_debug.trace_cycles, false);
     CONFIG_BOOL("Debug", "TraceRegisters", config_debug.trace_registers, true);
     CONFIG_BOOL("Debug", "TraceFlags", config_debug.trace_flags, true);
     CONFIG_BOOL("Debug", "TraceBytes", config_debug.trace_bytes, true);
+    CONFIG_BOOL("Debug", "TraceCpuEnabled", config_debug.trace_cpu_enabled, true);
     CONFIG_BOOL("Debug", "TraceCpu", config_debug.trace_cpu, true);
     CONFIG_BOOL("Debug", "TraceCpuIrq", config_debug.trace_cpu_irq, true);
-    CONFIG_BOOL("Debug", "TraceSuzyMath", config_debug.trace_suzy_math, true);
-    CONFIG_BOOL("Debug", "TraceSuzySprites", config_debug.trace_suzy_sprites, true);
-    CONFIG_BOOL("Debug", "TraceSuzyInput", config_debug.trace_suzy_input, true);
-    CONFIG_BOOL("Debug", "TraceMikeyTimers", config_debug.trace_mikey_timers, true);
-    CONFIG_BOOL("Debug", "TraceMikeyUart", config_debug.trace_mikey_uart, true);
-    CONFIG_BOOL("Debug", "TraceRedEye", config_debug.trace_redeye, true);
-    CONFIG_BOOL("Debug", "TraceMikeyAudio", config_debug.trace_mikey_audio, true);
-    CONFIG_BOOL("Debug", "TraceCart", config_debug.trace_cart, true);
-    CONFIG_BOOL("Debug", "TraceDebugMessages", config_debug.trace_debug_messages, true);
+    CONFIG_BOOL("Debug", "TraceSuzyMath", config_debug.trace_suzy_math, false);
+    CONFIG_BOOL("Debug", "TraceSuzySprites", config_debug.trace_suzy_sprites, false);
+    CONFIG_BOOL("Debug", "TraceSuzyInput", config_debug.trace_suzy_input, false);
+    CONFIG_BOOL("Debug", "TraceMikeyTimers", config_debug.trace_mikey_timers, false);
+    CONFIG_BOOL("Debug", "TraceMikeyInterrupts", config_debug.trace_mikey_interrupts, false);
+    CONFIG_BOOL("Debug", "TraceMikeyDisplay", config_debug.trace_mikey_display, false);
+    CONFIG_BOOL("Debug", "TraceMikeyUart", config_debug.trace_mikey_uart, false);
+    CONFIG_BOOL("Debug", "TraceRedEye", config_debug.trace_redeye, false);
+    CONFIG_BOOL("Debug", "TraceMikeyAudio", config_debug.trace_mikey_audio, false);
+    CONFIG_BOOL("Debug", "TraceCart", config_debug.trace_cart, false);
+    CONFIG_BOOL("Debug", "TraceDebugMessages", config_debug.trace_debug_messages, false);
+    CONFIG_INT_RANGE("Debug", "TraceSuzyMathEvents", config_debug.trace_suzy_math_events, TRACE_SUZY_MATH_FILTER_ALL, 0, TRACE_SUZY_MATH_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceSuzySpriteEvents", config_debug.trace_suzy_sprite_events, TRACE_SUZY_SPRITE_FILTER_ALL, 0, TRACE_SUZY_SPRITE_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceSuzyInputEvents", config_debug.trace_suzy_input_events, TRACE_SUZY_INPUT_FILTER_ALL, 0, TRACE_SUZY_INPUT_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceMikeyTimerEvents", config_debug.trace_mikey_timer_events, TRACE_MIKEY_TIMER_FILTER_ALL, 0, TRACE_MIKEY_TIMER_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceMikeyInterruptEvents", config_debug.trace_mikey_interrupt_events, TRACE_MIKEY_INTERRUPT_FILTER_ALL, 0, TRACE_MIKEY_INTERRUPT_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceMikeyDisplayEvents", config_debug.trace_mikey_display_events, TRACE_MIKEY_DISPLAY_FILTER_ALL, 0, TRACE_MIKEY_DISPLAY_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceMikeyUartEvents", config_debug.trace_mikey_uart_events, TRACE_MIKEY_UART_FILTER_ALL, 0, TRACE_MIKEY_UART_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceRedEyeEvents", config_debug.trace_redeye_events, TRACE_REDEYE_FILTER_ALL, 0, TRACE_REDEYE_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceMikeyAudioEvents", config_debug.trace_mikey_audio_events, TRACE_MIKEY_AUDIO_FILTER_ALL, 0, TRACE_MIKEY_AUDIO_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceCartridgeEvents", config_debug.trace_cartridge_events, TRACE_CARTRIDGE_FILTER_ALL, 0, TRACE_CARTRIDGE_FILTER_ALL);
+    CONFIG_INT_RANGE("Debug", "TraceDebugEvents", config_debug.trace_debug_events, TRACE_DEBUG_FILTER_MESSAGES, 0, TRACE_DEBUG_FILTER_MESSAGES);
     CONFIG_BOOL("Debug", "DebugOutputEnabled", config_debug.debug_output_enabled, false);
     CONFIG_INT_RANGE("Debug", "TraceOutput", config_debug.trace_output, 0, 0, 1);
     CONFIG_INT_RANGE("Debug", "TraceCapacity", config_debug.trace_capacity, 0, 0, 4);
@@ -356,6 +371,49 @@ static void migrate(int file_version)
         bool vrr = read_bool("Video", "VRR", false);
         sync_mode = sync ? (vrr ? config_VideoSync_VRR : config_VideoSync_Fixed) : config_VideoSync_Disabled;
         write_int("Video", "SyncMode", sync_mode);
+    }
+
+    if (file_version < 5)
+    {
+        bool cpu = read_bool("Debug", "TraceCpu", true);
+        bool cpu_irq = read_bool("Debug", "TraceCpuIrq", true);
+        bool suzy_math = read_bool("Debug", "TraceSuzyMath", true);
+        bool suzy_sprites = read_bool("Debug", "TraceSuzySprites", true);
+        bool suzy_input = read_bool("Debug", "TraceSuzyInput", true);
+        bool mikey_timers = read_bool("Debug", "TraceMikeyTimers", true);
+        bool mikey_uart = read_bool("Debug", "TraceMikeyUart", true);
+        bool redeye = read_bool("Debug", "TraceRedEye", true);
+        bool mikey_audio = read_bool("Debug", "TraceMikeyAudio", true);
+        bool cartridge = read_bool("Debug", "TraceCart", true);
+        bool debug_messages = read_bool("Debug", "TraceDebugMessages", true);
+        bool old_default = cpu && cpu_irq && suzy_math && suzy_sprites && suzy_input &&
+            mikey_timers && mikey_uart && redeye && mikey_audio && cartridge && debug_messages;
+
+        write_bool("Debug", "TraceCpu", cpu);
+        write_bool("Debug", "TraceCpuIrq", cpu_irq);
+        write_bool("Debug", "TraceSuzyMath", old_default ? false : suzy_math);
+        write_bool("Debug", "TraceSuzySprites", old_default ? false : suzy_sprites);
+        write_bool("Debug", "TraceSuzyInput", old_default ? false : suzy_input);
+        write_bool("Debug", "TraceMikeyTimers", old_default ? false : mikey_timers);
+        write_bool("Debug", "TraceMikeyInterrupts", false);
+        write_bool("Debug", "TraceMikeyDisplay", false);
+        write_bool("Debug", "TraceMikeyUart", old_default ? false : mikey_uart);
+        write_bool("Debug", "TraceRedEye", old_default ? false : redeye);
+        write_bool("Debug", "TraceMikeyAudio", old_default ? false : mikey_audio);
+        write_bool("Debug", "TraceCart", old_default ? false : cartridge);
+        write_bool("Debug", "TraceDebugMessages", old_default ? false : debug_messages);
+        write_bool("Debug", "TraceCycles", false);
+        write_int("Debug", "TraceSuzyMathEvents", TRACE_SUZY_MATH_FILTER_ALL);
+        write_int("Debug", "TraceSuzySpriteEvents", TRACE_SUZY_SPRITE_FILTER_ALL);
+        write_int("Debug", "TraceSuzyInputEvents", TRACE_SUZY_INPUT_FILTER_ALL);
+        write_int("Debug", "TraceMikeyTimerEvents", TRACE_MIKEY_TIMER_FILTER_ALL);
+        write_int("Debug", "TraceMikeyInterruptEvents", TRACE_MIKEY_INTERRUPT_FILTER_ALL);
+        write_int("Debug", "TraceMikeyDisplayEvents", TRACE_MIKEY_DISPLAY_FILTER_ALL);
+        write_int("Debug", "TraceMikeyUartEvents", TRACE_MIKEY_UART_FILTER_ALL);
+        write_int("Debug", "TraceRedEyeEvents", TRACE_REDEYE_FILTER_ALL);
+        write_int("Debug", "TraceMikeyAudioEvents", TRACE_MIKEY_AUDIO_FILTER_ALL);
+        write_int("Debug", "TraceCartridgeEvents", TRACE_CARTRIDGE_FILTER_ALL);
+        write_int("Debug", "TraceDebugEvents", TRACE_DEBUG_FILTER_MESSAGES);
     }
 
     int scale = 0;

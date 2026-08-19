@@ -85,7 +85,6 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_mikey = new Mikey(m_suzy, m_media, m_m6502, m_bus, m_random);
     m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502, m_bus, m_random);
     m_audio = new Audio(m_mikey);
-    m_trace_logger = new TraceLogger();
 
     m_media->Init();
     m_memory->Init();
@@ -97,9 +96,14 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_mikey->SetAudio(m_audio);
     m_m6502->Init(m_memory);
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_trace_logger = new TraceLogger(&m_total_cycles);
     m_m6502->SetTraceLogger(m_trace_logger);
     m_suzy->SetTraceLogger(m_trace_logger);
     m_mikey->SetTraceLogger(m_trace_logger);
+    m_media->SetTraceLogger(m_trace_logger);
+#endif
+
 }
 
 bool GearlynxCore::LoadROM(const char* file_path)

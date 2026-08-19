@@ -300,13 +300,21 @@ INLINE const char* Media::GetCartBankName(int bank)
     }
 }
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+INLINE void Media::ShiftRegisterStrobe(bool strobe, bool trace)
+#else
 INLINE void Media::ShiftRegisterStrobe(bool strobe)
+#endif
 {
     if (strobe)
     {
         m_page_offset = 0;
         if (m_eeprom_instance->IsAvailable())
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset, trace);
+#else
             m_eeprom_instance->ProcessEepromCounter((u16)m_page_offset);
+#endif
         if (m_el_cheapo_sd_instance->IsAvailable())
             m_el_cheapo_sd_instance->ProcessCounter((u16)m_page_offset);
     }
@@ -348,6 +356,33 @@ INLINE u32 Media::GetCartBankAddress(int bank)
     u32 address = (m_address_shift << m_address_shift_bits[bank]) | (m_page_offset & m_page_offset_mask[bank]);
     return address & m_cart_bank_mask[bank];
 }
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+INLINE int Media::GetEffectiveCartBank(int bank)
+{
+    if (bank == CART_BANK_0_A &&
+        (m_cart_bank_data[bank] == NULL || m_cart_bank_size[bank] == 0))
+        return CART_BANK_0;
+    if (bank == CART_BANK_1_A &&
+        (m_cart_bank_data[bank] == NULL || m_cart_bank_size[bank] == 0))
+        return CART_BANK_1;
+    return bank;
+}
+
+INLINE u32 Media::GetLastCartBankAddress(int bank)
+{
+    if (bank < 0 || bank >= CART_BANK_COUNT)
+        return 0;
+
+    u32 page_offset = m_page_offset;
+    if (!m_shift_register_strobe)
+        page_offset = (page_offset - 1) & 0x7FF;
+
+    u32 address = (m_address_shift << m_address_shift_bits[bank]) |
+        (page_offset & m_page_offset_mask[bank]);
+    return address & m_cart_bank_mask[bank];
+}
+#endif
 
 INLINE u8 Media::ReadCartBank(int bank)
 {

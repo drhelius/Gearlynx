@@ -22,6 +22,14 @@
 
 #include "eeprom.h"
 #include "bit_ops.h"
+#include "trace_logger.h"
+
+INLINE void EEPROM::TraceEEPROMEvent(u8 operation, u16 address, u16 value)
+{
+    if (IsValidPointer(m_trace_logger) &&
+        m_trace_logger->IsEventEnabled(TRACE_CARTRIDGE, TRACE_CARTRIDGE_EEPROM))
+        LogEEPROMEvent(operation, address, value);
+}
 
 INLINE GLYNX_EEPROM EEPROM::GetType()
 {

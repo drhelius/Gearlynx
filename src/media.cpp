@@ -45,6 +45,7 @@ Media::Media()
     InitPointer(m_eeprom_instance);
     InitPointer(m_game_drive_instance);
     InitPointer(m_el_cheapo_sd_instance);
+    InitPointer(m_trace_logger);
     InitPointer(m_decrypt_buffer_a);
     InitPointer(m_decrypt_buffer_b);
     InitPointer(m_decrypt_buffer_tmp);
@@ -77,6 +78,7 @@ Media::~Media()
 void Media::Init()
 {
     m_eeprom_instance = new EEPROM();
+    m_eeprom_instance->SetTraceLogger(m_trace_logger);
     m_game_drive_instance = new GameDrive();
     m_el_cheapo_sd_instance = new ElCheapoSD();
     m_nvram = new u8[NVRAM_SIZE];
@@ -86,6 +88,13 @@ void Media::Init()
     m_decrypt_buffer_tmp = new u8[EPYX_DECRYPT_BLOCK_SIZE];
     m_decrypt_buffer_sub = new u8[EPYX_DECRYPT_BLOCK_SIZE];
     HardReset();
+}
+
+void Media::SetTraceLogger(TraceLogger* trace_logger)
+{
+    m_trace_logger = trace_logger;
+    if (IsValidPointer(m_eeprom_instance))
+        m_eeprom_instance->SetTraceLogger(trace_logger);
 }
 
 void Media::Reset()

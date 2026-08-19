@@ -35,8 +35,60 @@ INLINE void Suzy::Clock(u32 cycles)
     UpdateMath(cycles);
 }
 
+INLINE void Suzy::TraceMathOperationEvent(u32 op_a, u32 op_b, u32 result, u16 remainder,
+    bool divide, bool sign, bool accumulate, bool div_by_zero, u32 elapsed_cycles)
+{
+    if (IsValidPointer(m_trace_logger) &&
+        (m_trace_logger->IsEventEnabled(TRACE_SUZY_MATH, TRACE_SUZY_MATH_OPERATION) ||
+         m_trace_logger->IsEventEnabled(TRACE_SUZY_MATH, TRACE_SUZY_MATH_COMPLETION)))
+        LogMathOperationEvent(op_a, op_b, result, remainder, divide, sign, accumulate,
+            div_by_zero, elapsed_cycles);
+}
+
+INLINE void Suzy::TraceMathCompletionEvent()
+{
+    if (IsValidPointer(m_trace_logger) &&
+        m_trace_logger->IsEventEnabled(TRACE_SUZY_MATH, TRACE_SUZY_MATH_COMPLETION))
+        LogMathCompletionEvent();
+}
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+INLINE void Suzy::ResetTraceMathEventPairing()
+{
+    m_trace_math_valid = false;
+}
+#endif
+
+INLINE void Suzy::TraceSpriteEvent(u8 event, u8 reason)
+{
+    if (IsValidPointer(m_trace_logger) && m_trace_logger->IsEventEnabled(TRACE_SUZY_SPRITE, event))
+        LogSpriteEvent(event, reason);
+}
+
+INLINE void Suzy::TraceSpriteBusEvent(u32 cycles, u8 reason)
+{
+    if (IsValidPointer(m_trace_logger) &&
+        m_trace_logger->IsEventEnabled(TRACE_SUZY_SPRITE, TRACE_SUZY_SPRITE_BUS))
+        LogSpriteBusEvent(cycles, reason);
+}
+
+INLINE void Suzy::TraceInputEvent(u8 value, bool joystick)
+{
+    if (IsValidPointer(m_trace_logger) &&
+        m_trace_logger->IsEventEnabled(TRACE_SUZY_INPUT, TRACE_SUZY_INPUT_READ))
+        LogInputEvent(value, joystick);
+}
+
+INLINE void Suzy::TraceCartridgeEvent(u8 event, u8 value, bool write, u8 bank)
+{
+    if (IsValidPointer(m_trace_logger) && m_trace_logger->IsEventEnabled(TRACE_CARTRIDGE, event))
+        LogCartridgeEvent(event, value, write, bank);
+}
+
 INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
 {
+    if (stolen_cycles > 0)
+        TraceSpriteBusEvent(stolen_cycles, 1);
     m_state.lcd_dma_pending_ticks += stolen_cycles;
 
     if (m_state.lcd_dma_pending_ticks == 0)
@@ -311,45 +363,29 @@ INLINE u8 Suzy::Read(u16 address)
     {
         u8 joy = m_input->ReadJoystick();
         DebugSuzy("Reading JOYSTICK: %02X", joy);
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (!debug && m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
-        {
-            GLYNX_Trace_Entry e;
-            e.type = TRACE_SUZY_INPUT;
-            e.cycle = 0;
-            e.input.value = joy;
-            e.input.is_joystick = true;
-            m_trace_logger->TraceLog(e);
-        }
-#endif
+        if (!debug)
+            TraceInputEvent(joy, true);
         return joy;
     }
     case SUZY_SWITCHES:    // 0xFCB1
     {
         u8 sw = m_input->ReadSwitches();
         DebugSuzy("Reading SWITCHES: %02X", sw);
-#if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (!debug && m_trace_logger->IsEnabled(TRACE_SUZY_INPUT))
-        {
-            GLYNX_Trace_Entry e;
-            e.type = TRACE_SUZY_INPUT;
-            e.cycle = 0;
-            e.input.value = sw;
-            e.input.is_joystick = false;
-            m_trace_logger->TraceLog(e);
-        }
-#endif
+        if (!debug)
+            TraceInputEvent(sw, false);
         return sw;
     }
     case SUZY_RCART0:      // 0xFCB2
+    {
         //DebugSuzy("Reading RCART0");
         if (!debug)
         {
             m_bus->InjectCycles(k_bus_cycles_cart_read);
-            if (m_media->GetAudin() && m_media->GetAudinValue())
-                return m_media->ReadBank0A();
-            else
-                return m_media->ReadBank0();
+            bool audin = m_media->GetAudin() && m_media->GetAudinValue();
+            u8 bank = audin ? Media::CART_BANK_0_A : Media::CART_BANK_0;
+            u8 value = audin ? m_media->ReadBank0A() : m_media->ReadBank0();
+            TraceCartridgeEvent(TRACE_CARTRIDGE_ACCESS, value, false, bank);
+            return value;
         }
         else
         {
@@ -358,15 +394,18 @@ INLINE u8 Suzy::Read(u16 address)
             else
                 return m_media->PeekBank0();
         }
+    }
     case SUZY_RCART1:      // 0xFCB3
+    {
         DebugSuzy("Reading RCART1");
         if (!debug)
         {
             m_bus->InjectCycles(k_bus_cycles_cart_read);
-            if (m_media->GetAudin() && m_media->GetAudinValue())
-                return m_media->ReadBank1A();
-            else
-                return m_media->ReadBank1();
+            bool audin = m_media->GetAudin() && m_media->GetAudinValue();
+            u8 bank = audin ? Media::CART_BANK_1_A : Media::CART_BANK_1;
+            u8 value = audin ? m_media->ReadBank1A() : m_media->ReadBank1();
+            TraceCartridgeEvent(TRACE_CARTRIDGE_ACCESS, value, false, bank);
+            return value;
         }
         else
         {
@@ -375,6 +414,7 @@ INLINE u8 Suzy::Read(u16 address)
             else
                 return m_media->PeekBank1();
         }
+    }
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Reading LEDS (unused)");
         return 0xFF;
@@ -696,19 +736,37 @@ INLINE void Suzy::Write(u16 address, u8 value)
         DebugSuzy("Writing to read-only SWITCHES: %02X", value);
         break;
     case SUZY_RCART0:      // 0xFCB2
+    {
         DebugSuzy("Writing to RCART0: %02X", value);
-        if (m_media->GetAudin() && m_media->GetAudinValue())
+        bool audin = m_media->GetAudin() && m_media->GetAudinValue();
+        u8 bank = audin ? Media::CART_BANK_0_A : Media::CART_BANK_0;
+        if (audin)
             m_media->WriteBank0A(value);
         else
             m_media->WriteBank0(value);
+        if (!debug)
+        {
+            TraceCartridgeEvent(TRACE_CARTRIDGE_ACCESS, value, true, bank);
+            TraceCartridgeEvent(TRACE_CARTRIDGE_STORAGE, value, true, bank);
+        }
         break;
+    }
     case SUZY_RCART1:      // 0xFCB3
+    {
         DebugSuzy("Writing to RCART1: %02X", value);
-        if (m_media->GetAudin() && m_media->GetAudinValue())
+        bool audin = m_media->GetAudin() && m_media->GetAudinValue();
+        u8 bank = audin ? Media::CART_BANK_1_A : Media::CART_BANK_1;
+        if (audin)
             m_media->WriteBank1A(value);
         else
             m_media->WriteBank1(value);
+        if (!debug)
+        {
+            TraceCartridgeEvent(TRACE_CARTRIDGE_ACCESS, value, true, bank);
+            TraceCartridgeEvent(TRACE_CARTRIDGE_STORAGE, value, true, bank);
+        }
         break;
+    }
     case SUZY_LEDS:        // 0xFCC0
         DebugSuzy("Writing to LEDS (unused): %02X", value);
         break;
@@ -1421,15 +1479,7 @@ INLINE void Suzy::SpritesGo()
     m_state.fsm_phase = SUZY_PHASE_IDLE;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-    {
-        GLYNX_Trace_Entry e = {};
-        e.type = TRACE_SUZY_SPRITE;
-        e.cycle = m_m6502->GetState()->total_ticks;
-        e.sprite.scb_addr = m_state.SCBNEXT.value;
-        e.sprite.is_start = true;
-        m_trace_logger->TraceLog(e);
-    }
+    TraceSpriteEvent(TRACE_SUZY_SPRITE_ENGINE_START);
 #endif
 
     if (m_fast_sprite_rendering)
@@ -1439,22 +1489,18 @@ INLINE void Suzy::SpritesGo()
             DrawSprite();
         }
 
-        DebugSuzy("SpritesGo finished: total cycles = %d", m_sprite_total_cycles);
-
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-        {
-            GLYNX_Trace_Entry e = {};
-            e.type = TRACE_SUZY_SPRITE;
-            e.cycle = m_m6502->GetState()->total_ticks;
-            e.sprite.is_end = true;
-            e.sprite.total_cycles = m_sprite_total_cycles;
-            m_trace_logger->TraceLog(e);
-        }
+        TraceSpriteEvent(TRACE_SUZY_SPRITE_SKIP, TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL);
 #endif
+
+        DebugSuzy("SpritesGo finished: total cycles = %d", m_sprite_total_cycles);
 
         if (m_state.sprite_cycles == 0)
         {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            TraceSpriteEvent(TRACE_SUZY_SPRITE_ENGINE_END);
+            m_trace_sprite_active = false;
+#endif
             m_state.sprsys_spritesbusy = false;
             m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
             SignalBlitterDone();
@@ -1476,7 +1522,12 @@ INLINE void Suzy::SpritesGo()
     m_state.row_emit_count = 0;
 
     if ((m_state.SCBNEXT.value & 0xFF00) == 0)
+    {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        TraceSpriteEvent(TRACE_SUZY_SPRITE_SKIP, TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL);
+#endif
         FinishBlitter();
+    }
 }
 
 INLINE void Suzy::FinishBlitter()
@@ -1484,15 +1535,8 @@ INLINE void Suzy::FinishBlitter()
     DebugSuzy("SpritesGo finished: total cycles = %d", m_sprite_total_cycles);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-    {
-        GLYNX_Trace_Entry e = {};
-        e.type = TRACE_SUZY_SPRITE;
-        e.cycle = m_m6502->GetState()->total_ticks;
-        e.sprite.is_end = true;
-        e.sprite.total_cycles = m_sprite_total_cycles;
-        m_trace_logger->TraceLog(e);
-    }
+    TraceSpriteEvent(TRACE_SUZY_SPRITE_ENGINE_END);
+    m_trace_sprite_active = false;
 #endif
 
     m_state.sprite_cycles = 0;
@@ -1527,6 +1571,10 @@ INLINE void Suzy::StepBlitter(u32 cycles)
         {
             DebugSuzy("Sprite operation completed");
             m_state.sprite_cycles = 0;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            TraceSpriteEvent(TRACE_SUZY_SPRITE_ENGINE_END);
+            m_trace_sprite_active = false;
+#endif
             m_state.sprsys_spritesbusy = false;
             m_state.SPRGO = UNSET_BIT(m_state.SPRGO, 0);
             m_state.fsm_phase = SUZY_PHASE_IDLE;
@@ -1570,6 +1618,9 @@ INLINE void Suzy::StepBlitterPhase()
 
             if ((m_state.SCBNEXT.value & 0xFF00) == 0)
             {
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+                TraceSpriteEvent(TRACE_SUZY_SPRITE_SKIP, TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL);
+#endif
                 FinishBlitter();
                 break;
             }
@@ -1603,15 +1654,7 @@ INLINE void Suzy::StepBlitterPhase()
                 DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", m_state.SCBADR.value);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-                if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-                {
-                    GLYNX_Trace_Entry e = {};
-                    e.type = TRACE_SUZY_SPRITE;
-                    e.cycle = m_m6502->GetState()->total_ticks;
-                    e.sprite.scb_addr = m_state.SCBADR.value;
-                    e.sprite.skipped = true;
-                    m_trace_logger->TraceLog(e);
-                }
+                TraceSpriteEvent(TRACE_SUZY_SPRITE_SKIP, TRACE_SUZY_SPRITE_SKIP_DISABLED);
 
                 if (m_scb_accumulation_enabled)
                 {
@@ -1755,20 +1798,7 @@ INLINE void Suzy::StepBlitterPhase()
                 m_frame_scb_list.push_back(si);
             }
 
-            if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-            {
-                GLYNX_Trace_Entry e = {};
-                e.type = TRACE_SUZY_SPRITE;
-                e.cycle = m_m6502->GetState()->total_ticks;
-                e.sprite.scb_addr = m_state.SCBADR.value;
-                e.sprite.scb_next = m_state.SCBNEXT.value;
-                e.sprite.hpos = (s16)m_state.HPOSSTRT.value;
-                e.sprite.vpos = (s16)m_state.VPOSSTRT.value;
-                e.sprite.sprctl0 = m_state.SPRCTL0;
-                e.sprite.bpp = (u8)(((m_state.SPRCTL0 >> 6) & 0x03) + 1);
-                e.sprite.type = (u8)(m_state.SPRCTL0 & 0x07);
-                m_trace_logger->TraceLog(e);
-            }
+            TraceSpriteEvent(TRACE_SUZY_SPRITE_SCB);
 #endif
 
             m_state.fsm_phase = SUZY_PHASE_QUAD_INIT;
@@ -2120,6 +2150,10 @@ INLINE void Suzy::StepBlitterPhase()
             if (pipeline_lower_depth_expansion)
                 FinalizeRowPipelineLowerDepthCollisionTiming(dx);
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            TraceSpriteEvent(TRACE_SUZY_SPRITE_ROW);
+#endif
+
             if (m_state.row_source_pixels > 0)
                 m_state.sprite_row_started = true;
 
@@ -2198,6 +2232,11 @@ INLINE void Suzy::StepBlitterPhase()
             }
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            if ((collide && type >= 2 && type != 5) || IS_SET_BIT(m_state.SPRGO, 2))
+                TraceSpriteEvent(TRACE_SUZY_SPRITE_COLLISION);
+#endif
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
             AddSpriteBoundingBox();
 #endif
 
@@ -2216,6 +2255,11 @@ INLINE void Suzy::StepBlitterPhase()
                     break;
                 }
 
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+                u8 reason = m_state.sprsys_stopsprites ? TRACE_SUZY_SPRITE_SKIP_STOPPED :
+                    TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL;
+                TraceSpriteEvent(TRACE_SUZY_SPRITE_SKIP, reason);
+#endif
                 FinishBlitter();
             }
             else
@@ -2434,15 +2478,7 @@ INLINE void Suzy::DrawSprite()
         DebugSuzy("Skipping sprite at SCB %04X due to SPRCTL1 bit 2 set", m_state.SCBADR.value);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-        {
-            GLYNX_Trace_Entry e = {};
-            e.type = TRACE_SUZY_SPRITE;
-            e.cycle = m_m6502->GetState()->total_ticks;
-            e.sprite.scb_addr = m_state.SCBADR.value;
-            e.sprite.skipped = true;
-            m_trace_logger->TraceLog(e);
-        }
+        TraceSpriteEvent(TRACE_SUZY_SPRITE_SKIP, TRACE_SUZY_SPRITE_SKIP_DISABLED);
 #endif
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
         if (m_scb_accumulation_enabled)
@@ -2571,20 +2607,7 @@ INLINE void Suzy::DrawSprite()
     m_state.everon = false;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    if (m_trace_logger->IsEnabled(TRACE_SUZY_SPRITE))
-    {
-        GLYNX_Trace_Entry e = {};
-        e.type = TRACE_SUZY_SPRITE;
-        e.cycle = m_m6502->GetState()->total_ticks;
-        e.sprite.scb_addr = m_state.SCBADR.value;
-        e.sprite.scb_next = m_state.SCBNEXT.value;
-        e.sprite.hpos = (s16)m_state.HPOSSTRT.value;
-        e.sprite.vpos = (s16)m_state.VPOSSTRT.value;
-        e.sprite.sprctl0 = m_state.SPRCTL0;
-        e.sprite.bpp = (u8)bpp;
-        e.sprite.type = (u8)type;
-        m_trace_logger->TraceLog(e);
-    }
+    TraceSpriteEvent(TRACE_SUZY_SPRITE_SCB);
 #endif
 
     s32 hoff = (s16)m_state.HOFF.value;
@@ -2749,6 +2772,11 @@ INLINE void Suzy::DrawSprite()
         depository = m_state.everon ? UNSET_BIT(depository, 7) : SET_BIT(depository, 7);
         RamWrite(colpos, depository);
     }
+
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if ((collide && type >= 2 && type != 5) || IS_SET_BIT(m_state.SPRGO, 2))
+        TraceSpriteEvent(TRACE_SUZY_SPRITE_COLLISION);
+#endif
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     AddSpriteBoundingBox();
@@ -3363,13 +3391,10 @@ INLINE void Suzy::UpdateMath(u32 cycles)
             m_state.math_cycles = 0;
             m_state.sprsys_mathbusy = false;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-            if (m_trace_logger->IsEnabled(TRACE_SUZY_MATH))
-            {
-                GLYNX_Trace_Entry e = {};
-                e.type = TRACE_SUZY_MATH;
-                e.math.completed = true;
-                m_trace_logger->TraceLog(e);
-            }
+            TraceMathCompletionEvent();
+#endif
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+            ResetTraceMathEventPairing();
 #endif
         }
     }

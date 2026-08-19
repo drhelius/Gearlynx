@@ -23,6 +23,7 @@
 #include "common.h"
 
 class StateSerializer;
+class TraceLogger;
 
 class EEPROM
 {
@@ -30,12 +31,17 @@ public:
     EEPROM();
     ~EEPROM();
     void Reset(GLYNX_EEPROM type);
+    void SetTraceLogger(TraceLogger* trace_logger);
     GLYNX_EEPROM GetType();
     bool IsAvailable();
     bool IsSelected();
     s32 GetSize();
     void ProcessIO(u8 iodir, u8 iodat);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    void ProcessEepromCounter(u16 counter, bool trace = true);
+#else
     void ProcessEepromCounter(u16 counter);
+#endif
     void ProcessBusy();
     bool OutputBit();
     u8* GetData();
@@ -48,6 +54,8 @@ public:
 
 private:
     void SetType(GLYNX_EEPROM type);
+    INLINE void TraceEEPROMEvent(u8 operation, u16 address, u16 value);
+    void LogEEPROMEvent(u8 operation, u16 address, u16 value);
     void Serialize(StateSerializer& s);
 
 private:
@@ -70,6 +78,9 @@ private:
     bool m_readonly;
     bool m_dirty;
     bool m_programming;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    bool m_trace_programming;
+#endif
     s32 m_busy_count;
     bool m_last_cs;
     bool m_last_clk;
@@ -77,6 +88,7 @@ private:
     u16 m_done_mask;
     u8 m_iodir;
     u8 m_iodat;
+    TraceLogger* m_trace_logger;
 };
 
 #include "eeprom_inline.h"

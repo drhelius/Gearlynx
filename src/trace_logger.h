@@ -35,23 +35,190 @@ enum GLYNX_Trace_Type : u8
     TRACE_MIKEY_UART,
     TRACE_REDEYE,
     TRACE_MIKEY_AUDIO,
-    TRACE_CART_SHIFT,
+    TRACE_CARTRIDGE,
     TRACE_DEBUG_MESSAGE,
+    TRACE_MIKEY_INTERRUPT,
+    TRACE_MIKEY_DISPLAY,
     TRACE_TYPE_COUNT,
 };
 
-#define TRACE_FLAG_CPU          (1 << TRACE_CPU)
-#define TRACE_FLAG_CPU_IRQ      (1 << TRACE_CPU_IRQ)
-#define TRACE_FLAG_SUZY_MATH    (1 << TRACE_SUZY_MATH)
-#define TRACE_FLAG_SUZY_SPRITE  (1 << TRACE_SUZY_SPRITE)
-#define TRACE_FLAG_SUZY_INPUT   (1 << TRACE_SUZY_INPUT)
-#define TRACE_FLAG_MIKEY_TIMER  (1 << TRACE_MIKEY_TIMER)
-#define TRACE_FLAG_MIKEY_UART   (1 << TRACE_MIKEY_UART)
-#define TRACE_FLAG_REDEYE       (1 << TRACE_REDEYE)
-#define TRACE_FLAG_MIKEY_AUDIO  (1 << TRACE_MIKEY_AUDIO)
-#define TRACE_FLAG_CART_SHIFT   (1 << TRACE_CART_SHIFT)
-#define TRACE_FLAG_DEBUG_MSG    (1 << TRACE_DEBUG_MESSAGE)
-#define TRACE_FLAG_ALL          0x7FF
+#define TRACE_FLAG_CPU          (1U << TRACE_CPU)
+#define TRACE_FLAG_CPU_IRQ      (1U << TRACE_CPU_IRQ)
+#define TRACE_FLAG_SUZY_MATH    (1U << TRACE_SUZY_MATH)
+#define TRACE_FLAG_SUZY_SPRITE  (1U << TRACE_SUZY_SPRITE)
+#define TRACE_FLAG_SUZY_INPUT   (1U << TRACE_SUZY_INPUT)
+#define TRACE_FLAG_MIKEY_TIMER  (1U << TRACE_MIKEY_TIMER)
+#define TRACE_FLAG_MIKEY_INTERRUPT (1U << TRACE_MIKEY_INTERRUPT)
+#define TRACE_FLAG_MIKEY_DISPLAY (1U << TRACE_MIKEY_DISPLAY)
+#define TRACE_FLAG_MIKEY_UART   (1U << TRACE_MIKEY_UART)
+#define TRACE_FLAG_REDEYE       (1U << TRACE_REDEYE)
+#define TRACE_FLAG_MIKEY_AUDIO  (1U << TRACE_MIKEY_AUDIO)
+#define TRACE_FLAG_CARTRIDGE    (1U << TRACE_CARTRIDGE)
+#define TRACE_FLAG_DEBUG_MSG    (1U << TRACE_DEBUG_MESSAGE)
+#define TRACE_FLAG_ALL          ((1U << TRACE_TYPE_COUNT) - 1)
+
+static_assert(TRACE_TYPE_COUNT < 32, "Trace category flags exceed u32 width");
+
+#define TRACE_CART_SHIFT        TRACE_CARTRIDGE
+#define TRACE_FLAG_CART_SHIFT   TRACE_FLAG_CARTRIDGE
+
+#define TRACE_EVENT_FLAG(event) (1U << (event))
+
+enum GLYNX_Trace_Math_Event : u8
+{
+    TRACE_SUZY_MATH_OPERATION = 0,
+    TRACE_SUZY_MATH_COMPLETION,
+};
+
+enum GLYNX_Trace_Sprite_Event : u8
+{
+    TRACE_SUZY_SPRITE_ENGINE_START = 0,
+    TRACE_SUZY_SPRITE_ENGINE_END,
+    TRACE_SUZY_SPRITE_SCB,
+    TRACE_SUZY_SPRITE_SKIP,
+    TRACE_SUZY_SPRITE_COLLISION,
+    TRACE_SUZY_SPRITE_ROW,
+    TRACE_SUZY_SPRITE_BUS,
+};
+
+enum GLYNX_Trace_Sprite_Skip : u8
+{
+    TRACE_SUZY_SPRITE_SKIP_DISABLED = 1,
+    TRACE_SUZY_SPRITE_SKIP_STOPPED,
+    TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL,
+};
+
+enum GLYNX_Trace_Input_Event : u8
+{
+    TRACE_SUZY_INPUT_READ = 0,
+};
+
+enum GLYNX_Trace_Timer_Event : u8
+{
+    TRACE_MIKEY_TIMER_REGISTER = 0,
+    TRACE_MIKEY_TIMER_UNDERFLOW,
+    TRACE_MIKEY_TIMER_IRQ,
+    TRACE_MIKEY_TIMER_LINK,
+};
+
+enum GLYNX_Trace_Interrupt_Event : u8
+{
+    TRACE_MIKEY_INTERRUPT_REGISTER = 0,
+    TRACE_MIKEY_INTERRUPT_LINE,
+};
+
+enum GLYNX_Trace_Display_Event : u8
+{
+    TRACE_MIKEY_DISPLAY_REGISTER = 0,
+    TRACE_MIKEY_DISPLAY_PALETTE,
+    TRACE_MIKEY_DISPLAY_DMA_START,
+    TRACE_MIKEY_DISPLAY_DMA_LINE,
+    TRACE_MIKEY_DISPLAY_DMA_END,
+    TRACE_MIKEY_DISPLAY_VBLANK,
+    TRACE_MIKEY_DISPLAY_FRAME,
+};
+
+enum GLYNX_Trace_Audio_Event : u8
+{
+    TRACE_MIKEY_AUDIO_CHANNEL = 0,
+    TRACE_MIKEY_AUDIO_MIXER,
+    TRACE_MIKEY_AUDIO_CLOCK,
+};
+
+enum GLYNX_Trace_UART_Event : u8
+{
+    TRACE_MIKEY_UART_REGISTER = 0,
+    TRACE_MIKEY_UART_TX_START,
+    TRACE_MIKEY_UART_TX_END,
+    TRACE_MIKEY_UART_RX_LATCH,
+    TRACE_MIKEY_UART_DATA_READ,
+    TRACE_MIKEY_UART_IRQ,
+    TRACE_MIKEY_UART_PROBLEM,
+    TRACE_MIKEY_UART_BREAK,
+    TRACE_MIKEY_UART_COMLYNX,
+};
+
+enum GLYNX_Trace_RedEye_Event : u8
+{
+    TRACE_REDEYE_PACKET = 0,
+    TRACE_REDEYE_PROBLEM,
+};
+
+enum GLYNX_Trace_RedEye_Problem : u8
+{
+    TRACE_REDEYE_PROBLEM_INVALID_SIZE = 1,
+    TRACE_REDEYE_PROBLEM_CHECKSUM,
+    TRACE_REDEYE_PROBLEM_TIMEOUT,
+    TRACE_REDEYE_PROBLEM_FRAMING,
+    TRACE_REDEYE_PROBLEM_BREAK,
+    TRACE_REDEYE_PROBLEM_RESET,
+};
+
+enum GLYNX_Trace_Cartridge_Event : u8
+{
+    TRACE_CARTRIDGE_ADDRESS = 0,
+    TRACE_CARTRIDGE_ACCESS,
+    TRACE_CARTRIDGE_EEPROM,
+    TRACE_CARTRIDGE_AUDIN,
+    TRACE_CARTRIDGE_STORAGE = 6,
+};
+
+enum GLYNX_Trace_Debug_Event : u8
+{
+    TRACE_DEBUG_MESSAGE_OUTPUT = 0,
+};
+
+static_assert(TRACE_SUZY_MATH_COMPLETION < 32 && TRACE_SUZY_SPRITE_BUS < 32 &&
+    TRACE_SUZY_INPUT_READ < 32 && TRACE_MIKEY_TIMER_LINK < 32 &&
+    TRACE_MIKEY_INTERRUPT_LINE < 32 && TRACE_MIKEY_DISPLAY_FRAME < 32 &&
+    TRACE_MIKEY_AUDIO_CLOCK < 32 && TRACE_MIKEY_UART_COMLYNX < 32 &&
+    TRACE_REDEYE_PROBLEM < 32 && TRACE_CARTRIDGE_STORAGE < 32 &&
+    TRACE_DEBUG_MESSAGE_OUTPUT < 32, "Trace event filters exceed u32 width");
+
+#define TRACE_SUZY_MATH_FILTER_OPERATIONS   TRACE_EVENT_FLAG(TRACE_SUZY_MATH_OPERATION)
+#define TRACE_SUZY_MATH_FILTER_COMPLETIONS  TRACE_EVENT_FLAG(TRACE_SUZY_MATH_COMPLETION)
+#define TRACE_SUZY_MATH_FILTER_ALL          (TRACE_SUZY_MATH_FILTER_OPERATIONS | TRACE_SUZY_MATH_FILTER_COMPLETIONS)
+#define TRACE_SUZY_SPRITE_FILTER_ENGINE     (TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_ENGINE_START) | TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_ENGINE_END))
+#define TRACE_SUZY_SPRITE_FILTER_SCBS       TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_SCB)
+#define TRACE_SUZY_SPRITE_FILTER_SKIPS      TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_SKIP)
+#define TRACE_SUZY_SPRITE_FILTER_COLLISIONS TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_COLLISION)
+#define TRACE_SUZY_SPRITE_FILTER_ROWS       TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_ROW)
+#define TRACE_SUZY_SPRITE_FILTER_BUS        TRACE_EVENT_FLAG(TRACE_SUZY_SPRITE_BUS)
+#define TRACE_SUZY_SPRITE_FILTER_ALL        (TRACE_SUZY_SPRITE_FILTER_ENGINE | TRACE_SUZY_SPRITE_FILTER_SCBS | TRACE_SUZY_SPRITE_FILTER_SKIPS | TRACE_SUZY_SPRITE_FILTER_COLLISIONS | TRACE_SUZY_SPRITE_FILTER_ROWS | TRACE_SUZY_SPRITE_FILTER_BUS)
+#define TRACE_SUZY_INPUT_FILTER_READS       TRACE_EVENT_FLAG(TRACE_SUZY_INPUT_READ)
+#define TRACE_SUZY_INPUT_FILTER_ALL         TRACE_SUZY_INPUT_FILTER_READS
+#define TRACE_MIKEY_TIMER_FILTER_REGISTERS  TRACE_EVENT_FLAG(TRACE_MIKEY_TIMER_REGISTER)
+#define TRACE_MIKEY_TIMER_FILTER_UNDERFLOWS TRACE_EVENT_FLAG(TRACE_MIKEY_TIMER_UNDERFLOW)
+#define TRACE_MIKEY_TIMER_FILTER_IRQS       TRACE_EVENT_FLAG(TRACE_MIKEY_TIMER_IRQ)
+#define TRACE_MIKEY_TIMER_FILTER_LINKS      TRACE_EVENT_FLAG(TRACE_MIKEY_TIMER_LINK)
+#define TRACE_MIKEY_TIMER_FILTER_ALL        (TRACE_MIKEY_TIMER_FILTER_REGISTERS | TRACE_MIKEY_TIMER_FILTER_UNDERFLOWS | TRACE_MIKEY_TIMER_FILTER_IRQS | TRACE_MIKEY_TIMER_FILTER_LINKS)
+#define TRACE_MIKEY_INTERRUPT_FILTER_ALL    (TRACE_EVENT_FLAG(TRACE_MIKEY_INTERRUPT_REGISTER) | TRACE_EVENT_FLAG(TRACE_MIKEY_INTERRUPT_LINE))
+#define TRACE_MIKEY_DISPLAY_FILTER_REGISTERS TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_REGISTER)
+#define TRACE_MIKEY_DISPLAY_FILTER_PALETTE  TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_PALETTE)
+#define TRACE_MIKEY_DISPLAY_FILTER_DMA      (TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_DMA_START) | TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_DMA_LINE) | TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_DMA_END))
+#define TRACE_MIKEY_DISPLAY_FILTER_TIMING   (TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_VBLANK) | TRACE_EVENT_FLAG(TRACE_MIKEY_DISPLAY_FRAME))
+#define TRACE_MIKEY_DISPLAY_FILTER_ALL      (TRACE_MIKEY_DISPLAY_FILTER_REGISTERS | TRACE_MIKEY_DISPLAY_FILTER_PALETTE | TRACE_MIKEY_DISPLAY_FILTER_DMA | TRACE_MIKEY_DISPLAY_FILTER_TIMING)
+#define TRACE_MIKEY_AUDIO_FILTER_CHANNELS   TRACE_EVENT_FLAG(TRACE_MIKEY_AUDIO_CHANNEL)
+#define TRACE_MIKEY_AUDIO_FILTER_MIXER      TRACE_EVENT_FLAG(TRACE_MIKEY_AUDIO_MIXER)
+#define TRACE_MIKEY_AUDIO_FILTER_CLOCKS     TRACE_EVENT_FLAG(TRACE_MIKEY_AUDIO_CLOCK)
+#define TRACE_MIKEY_AUDIO_FILTER_ALL        (TRACE_MIKEY_AUDIO_FILTER_CHANNELS | TRACE_MIKEY_AUDIO_FILTER_MIXER | TRACE_MIKEY_AUDIO_FILTER_CLOCKS)
+#define TRACE_MIKEY_UART_FILTER_REGISTERS   TRACE_EVENT_FLAG(TRACE_MIKEY_UART_REGISTER)
+#define TRACE_MIKEY_UART_FILTER_TRANSFERS   (TRACE_EVENT_FLAG(TRACE_MIKEY_UART_TX_START) | TRACE_EVENT_FLAG(TRACE_MIKEY_UART_TX_END) | TRACE_EVENT_FLAG(TRACE_MIKEY_UART_RX_LATCH) | TRACE_EVENT_FLAG(TRACE_MIKEY_UART_DATA_READ))
+#define TRACE_MIKEY_UART_FILTER_IRQS        TRACE_EVENT_FLAG(TRACE_MIKEY_UART_IRQ)
+#define TRACE_MIKEY_UART_FILTER_PROBLEMS    TRACE_EVENT_FLAG(TRACE_MIKEY_UART_PROBLEM)
+#define TRACE_MIKEY_UART_FILTER_BREAKS      TRACE_EVENT_FLAG(TRACE_MIKEY_UART_BREAK)
+#define TRACE_MIKEY_UART_FILTER_COMLYNX     TRACE_EVENT_FLAG(TRACE_MIKEY_UART_COMLYNX)
+#define TRACE_MIKEY_UART_FILTER_ALL         (TRACE_MIKEY_UART_FILTER_REGISTERS | TRACE_MIKEY_UART_FILTER_TRANSFERS | TRACE_MIKEY_UART_FILTER_IRQS | TRACE_MIKEY_UART_FILTER_PROBLEMS | TRACE_MIKEY_UART_FILTER_BREAKS | TRACE_MIKEY_UART_FILTER_COMLYNX)
+#define TRACE_REDEYE_FILTER_PACKETS         TRACE_EVENT_FLAG(TRACE_REDEYE_PACKET)
+#define TRACE_REDEYE_FILTER_PROBLEMS        TRACE_EVENT_FLAG(TRACE_REDEYE_PROBLEM)
+#define TRACE_REDEYE_FILTER_ALL             (TRACE_REDEYE_FILTER_PACKETS | TRACE_REDEYE_FILTER_PROBLEMS)
+#define TRACE_CARTRIDGE_FILTER_ADDRESS      TRACE_EVENT_FLAG(TRACE_CARTRIDGE_ADDRESS)
+#define TRACE_CARTRIDGE_FILTER_ACCESSES     TRACE_EVENT_FLAG(TRACE_CARTRIDGE_ACCESS)
+#define TRACE_CARTRIDGE_FILTER_EEPROM       TRACE_EVENT_FLAG(TRACE_CARTRIDGE_EEPROM)
+#define TRACE_CARTRIDGE_FILTER_AUDIN        TRACE_EVENT_FLAG(TRACE_CARTRIDGE_AUDIN)
+#define TRACE_CARTRIDGE_FILTER_STORAGE      TRACE_EVENT_FLAG(TRACE_CARTRIDGE_STORAGE)
+#define TRACE_CARTRIDGE_FILTER_ALL          (TRACE_CARTRIDGE_FILTER_ADDRESS | TRACE_CARTRIDGE_FILTER_ACCESSES | TRACE_CARTRIDGE_FILTER_EEPROM | TRACE_CARTRIDGE_FILTER_AUDIN | TRACE_CARTRIDGE_FILTER_STORAGE)
+#define TRACE_DEBUG_FILTER_MESSAGES         TRACE_EVENT_FLAG(TRACE_DEBUG_MESSAGE_OUTPUT)
 
 struct GLYNX_Trace_Entry
 {
@@ -63,6 +230,10 @@ struct GLYNX_Trace_Entry
         {
             u16 pc;
             u8 a, x, y, s, p;
+            u8 size;
+            u8 opcodes[3];
+            u8 mapctl;
+            char name[64];
         } cpu;
 
         struct
@@ -74,10 +245,12 @@ struct GLYNX_Trace_Entry
 
         struct
         {
-            u16 op_a;
-            u16 op_b;
+            u32 op_a;
+            u32 op_b;
             u32 result;
+            u32 elapsed_cycles;
             u16 remainder;
+            u8 event;
             bool is_divide;
             bool is_signed;
             bool accumulate;
@@ -94,15 +267,26 @@ struct GLYNX_Trace_Entry
             u8 sprctl0;
             u8 bpp;
             u8 type;
+            u8 event;
+            u8 reason;
+            u8 sprgo;
+            u8 suzybusen;
+            u8 collision_id;
+            u8 depository;
             bool skipped;
             bool is_start;
             bool is_end;
+            bool everon;
             u32 total_cycles;
+            u32 source_pixels;
+            u32 output_pixels;
+            u32 charged_cycles;
         } sprite;
 
         struct
         {
             u8 value;
+            u8 event;
             bool is_joystick;
         } input;
 
@@ -110,7 +294,40 @@ struct GLYNX_Trace_Entry
         {
             u8 timer_id;
             u8 backup;
+            u8 counter;
+            u8 control_a;
+            u8 control_b;
+            u8 raw;
+            u8 reg;
+            u8 event;
+            u8 irq_pending;
+            bool linked;
+            bool reload;
+            bool one_shot;
         } timer;
+
+        struct
+        {
+            u8 event;
+            u8 reg;
+            u8 raw;
+            u8 pending;
+            u8 mask;
+            u8 effective;
+            bool asserted;
+        } interrupt;
+
+        struct
+        {
+            u16 address;
+            u16 value;
+            u16 auxiliary;
+            u8 event;
+            u8 reg;
+            u8 raw;
+            u8 effective;
+            u8 line;
+        } display;
 
         struct
         {
@@ -120,7 +337,9 @@ struct GLYNX_Trace_Entry
             u8 lost;        // byte an overrun destroyed
             u8 kind;        // GLYNX_UART_TRACE_*
             u8 backup;      // TIM4 backup, so the configured baud can be shown
+            u8 control;     // TIM4 control A, including the clock prescaler
             u16 gap_us;     // since the previous frame was latched
+            u8 event;
             bool chained;   // TX followed straight on from the previous frame
         } uart;
 
@@ -131,8 +350,11 @@ struct GLYNX_Trace_Entry
             u8 player;      // header bits 3-6
             u8 seq;         // header bit 7
             u8 size;        // first byte of the packet
+            u8 total;
             u8 len;         // payload bytes captured below
             u8 payload[8];
+            u8 event;
+            u8 problem;
             bool checksum_ok;
         } redeye;
 
@@ -141,12 +363,22 @@ struct GLYNX_Trace_Entry
             u8 channel;
             u8 reg;
             u8 value;
+            u8 effective;
+            u8 event;
         } audio;
 
         struct
         {
             u8 addr_shift;
             u8 bit;
+            u32 address;
+            u8 value;
+            u8 bank;
+            u16 page;
+            u8 event;
+            u8 operation;
+            bool write;
+            bool audin;
         } cart;
 
         struct
@@ -156,39 +388,72 @@ struct GLYNX_Trace_Entry
     };
 };
 
+static_assert(sizeof(GLYNX_Trace_Entry) <= 96, "Trace entry exceeds memory budget");
+
 class TraceLogger
 {
 public:
-    TraceLogger();
+    TraceLogger(const u64* total_cycles = NULL);
     ~TraceLogger();
     void Reset();
     bool SetCapacity(u32 capacity);
     INLINE bool IsEnabled(GLYNX_Trace_Type type) const;
+    INLINE bool IsEventEnabled(GLYNX_Trace_Type type, u8 event) const;
     INLINE void TraceLog(const GLYNX_Trace_Entry& entry);
     void SetEnabledFlags(u32 flags);
+    void SetEventFilter(GLYNX_Trace_Type type, u32 filter);
     u32 GetEnabledFlags() const;
+    u32 GetEventFilter(GLYNX_Trace_Type type) const;
     const GLYNX_Trace_Entry* GetBuffer() const;
     u32 GetCount() const;
     u32 GetCapacity() const;
     u32 GetPosition() const;
     u64 GetTotalLogged() const;
+    u64 GetSequence() const;
     const GLYNX_Trace_Entry& GetEntry(u32 index) const;
 
 private:
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    void UpdateEnabled();
+#endif
     GLYNX_Trace_Entry* m_buffer;
     u32 m_position;
     u32 m_count;
     u32 m_capacity;
     u32 m_enabled_flags;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    bool m_enabled;
+#endif
+    u32 m_event_filters[TRACE_TYPE_COUNT];
     u64 m_total_logged;
+    u64 m_sequence;
+    const u64* m_total_cycles;
 };
 
 INLINE bool TraceLogger::IsEnabled(GLYNX_Trace_Type type) const
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    return m_buffer && (m_enabled_flags & (1 << type)) != 0;
+    if (likely(!m_enabled))
+        return false;
+
+    return type < TRACE_TYPE_COUNT && (m_enabled_flags & (1U << type)) != 0;
 #else
     UNUSED(type);
+    return false;
+#endif
+}
+
+INLINE bool TraceLogger::IsEventEnabled(GLYNX_Trace_Type type, u8 event) const
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (likely(!m_enabled))
+        return false;
+
+    return type < TRACE_TYPE_COUNT && (m_enabled_flags & (1U << type)) != 0 &&
+        event < 32 && (m_event_filters[type] & TRACE_EVENT_FLAG(event)) != 0;
+#else
+    UNUSED(type);
+    UNUSED(event);
     return false;
 #endif
 }
@@ -197,12 +462,15 @@ INLINE void TraceLogger::TraceLog(const GLYNX_Trace_Entry& entry)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_buffer[m_position] = entry;
+    if (IsValidPointer(m_total_cycles))
+        m_buffer[m_position].cycle = *m_total_cycles;
     m_position++;
     if (m_position == m_capacity)
         m_position = 0;
     if (m_count < m_capacity)
         m_count++;
     m_total_logged++;
+    m_sequence++;
 #else
     UNUSED(entry);
 #endif

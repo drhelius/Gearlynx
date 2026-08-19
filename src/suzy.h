@@ -161,6 +161,9 @@ public:
     bool IsBusEnabled();
     void SetFastSpriteRendering(bool enabled);
     void SetTraceLogger(TraceLogger* trace_logger);
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    void ResetTraceEventPairing();
+#endif
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     struct GLYNX_Sprite_Bounding_Box
@@ -287,6 +290,23 @@ private:
     void MathRunMultiply();
     void MathRunDivide();
     bool MathIsNegative(u16 value);
+    INLINE void TraceMathOperationEvent(u32 op_a, u32 op_b, u32 result, u16 remainder,
+        bool divide, bool sign, bool accumulate, bool div_by_zero, u32 elapsed_cycles);
+    INLINE void TraceMathCompletionEvent();
+    INLINE void TraceSpriteEvent(u8 event, u8 reason = 0);
+    INLINE void TraceSpriteBusEvent(u32 cycles, u8 reason);
+    INLINE void TraceInputEvent(u8 value, bool joystick);
+    INLINE void TraceCartridgeEvent(u8 event, u8 value, bool write, u8 bank);
+    void LogMathOperationEvent(u32 op_a, u32 op_b, u32 result, u16 remainder,
+        bool divide, bool sign, bool accumulate, bool div_by_zero, u32 elapsed_cycles);
+    void LogMathCompletionEvent();
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    INLINE void ResetTraceMathEventPairing();
+#endif
+    void LogSpriteEvent(u8 event, u8 reason);
+    void LogSpriteBusEvent(u32 cycles, u8 reason);
+    void LogInputEvent(u8 value, bool joystick);
+    void LogCartridgeEvent(u8 event, u8 value, bool write, u8 bank);
     void ComputeQuadLUT();
     void Serialize(StateSerializer& s, int version);
 
@@ -308,6 +328,19 @@ private:
     u8* m_ram;
     TraceLogger* m_trace_logger;
     u32 m_sprite_total_cycles;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    u32 m_trace_math_op_a;
+    u32 m_trace_math_op_b;
+    u32 m_trace_math_result;
+    u32 m_trace_math_elapsed;
+    u16 m_trace_math_remainder;
+    bool m_trace_math_divide;
+    bool m_trace_math_sign;
+    bool m_trace_math_accumulate;
+    bool m_trace_math_div_by_zero;
+    bool m_trace_math_valid;
+    bool m_trace_sprite_active;
+#endif
     QuadPos m_quad_lut[4][4][4] = {};
     bool m_fast_sprite_rendering;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)

@@ -165,6 +165,10 @@ private:
     void HandleIRQ();
     void CheckIRQs();
     void SetBreakpointHitAddress(u16 address);
+    INLINE void TraceInstructionEvent();
+    INLINE void TraceIRQEvent(u16 pc, u16 vector);
+    void LogInstructionEvent();
+    void LogIRQEvent(u16 pc, u16 vector);
 
     void CheckBreakpoints();
     void PushCallStack(u16 src, u16 dest, u16 back);

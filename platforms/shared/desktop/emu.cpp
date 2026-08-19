@@ -30,6 +30,7 @@
 #include "rewind.h"
 #include "runahead.h"
 #include "events.h"
+#include "gui_debug_trace_logger.h"
 #include "mcp/mcp_manager.h"
 #include "comlynx/comlynx_manager.h"
 #include "vscode/debug_monitor_server.h"
@@ -183,6 +184,7 @@ void emu_destroy(void)
 
 bool emu_load_rom(const char* file_path)
 {
+    gui_debug_trace_logger_reset();
     emu_debug_command = Debug_Command_None;
     reset_buffers();
     reset_debug();
@@ -215,6 +217,8 @@ void emu_load_rom_async(const char* file_path)
 {
     if (loading_state.load() != Loading_State_None)
         return;
+
+    gui_debug_trace_logger_reset();
 
     emu_debug_command = Debug_Command_None;
     reset_buffers();
@@ -566,6 +570,7 @@ GLYNX_Bios_State emu_load_bios(const char* file_path)
 
 void emu_reset(void)
 {
+    gui_debug_trace_logger_reset();
     emu_debug_command = Debug_Command_None;
     emu_debug_step_frames_pending = 0;
     emu_debug_pc_changed = true;
@@ -732,6 +737,7 @@ void emu_load_ram(const char* file_path)
 {
     if (!emu_is_empty())
     {
+        gui_debug_trace_logger_reset();
         emu_comlynx_stop();
         save_ram();
         core->ResetROM(false);
