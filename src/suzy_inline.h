@@ -88,7 +88,7 @@ INLINE void Suzy::TraceCartridgeEvent(u8 event, u8 value, bool write, u8 bank)
 INLINE u32 Suzy::ApplyBusStall(u32* cycles, u32 stolen_cycles)
 {
     if (stolen_cycles > 0)
-        TraceSpriteBusEvent(stolen_cycles, 1);
+        TraceSpriteBusEvent(stolen_cycles, TRACE_SUZY_SPRITE_BUS_DISPLAY_DMA);
     m_state.lcd_dma_pending_ticks += stolen_cycles;
 
     if (m_state.lcd_dma_pending_ticks == 0)

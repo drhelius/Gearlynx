@@ -1362,7 +1362,8 @@ INLINE void Mikey::UartRelevelIRQ()
 
     bool level = tx_level || rx_level;
     TraceUARTEvent(TRACE_MIKEY_UART_IRQ, level ? 1 : 0,
-        (tx_level ? 1 : 0) | (rx_level ? 2 : 0));
+        (tx_level ? TRACE_MIKEY_UART_IRQ_SOURCE_TX : 0) |
+        (rx_level ? TRACE_MIKEY_UART_IRQ_SOURCE_RX : 0));
 
     UpdateIRQs();
 }
@@ -1388,7 +1389,10 @@ INLINE void Mikey::UartRxReflectHead()
 
 INLINE void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source)
 {
-    u8 flags = (parbit ? 0x01 : 0) | (parerr ? 0x02 : 0) | (framerr ? 0x04 : 0) | (rxbreak ? 0x08 : 0);
+    u8 flags = (parbit ? TRACE_MIKEY_UART_FLAG_PARITY_BIT : 0) |
+        (parerr ? TRACE_MIKEY_UART_FLAG_PARITY_ERROR : 0) |
+        (framerr ? TRACE_MIKEY_UART_FLAG_FRAMING_ERROR : 0) |
+        (rxbreak ? TRACE_MIKEY_UART_FLAG_BREAK : 0);
 
     bool room = (m_state.uart.rxq_count == 0) ||
                 (m_state.uart.rxq_count == 1 && (source != 0 || m_state.uart.rx_age_cycles >= GLYNX_UART_RX_HOLD_CYCLES));
@@ -1402,11 +1406,11 @@ INLINE void Mikey::UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, b
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     TraceUARTEvent(TRACE_MIKEY_UART_RX_LATCH, data,
-            lost ? (u8)(flags | 0x10) : flags, source,
+            lost ? (u8)(flags | TRACE_MIKEY_UART_FLAG_OVERRUN) : flags, source,
             lost ? m_state.uart.rxq_data[slot] : 0);
     if ((flags & 0x0E) != 0 || lost)
         TraceUARTEvent(TRACE_MIKEY_UART_PROBLEM, data,
-            lost ? (u8)(flags | 0x10) : flags, source,
+            lost ? (u8)(flags | TRACE_MIKEY_UART_FLAG_OVERRUN) : flags, source,
             lost ? m_state.uart.rxq_data[slot] : 0);
 
     if (source != 0)
@@ -1483,7 +1487,8 @@ INLINE void Mikey::UartBeginFrame(u8 data, bool chained)
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (trace)
         TraceUARTEvent(TRACE_MIKEY_UART_TX_START, data,
-            m_state.uart.tx_parbit ? 0x01 : 0x00, 0, 0, chained);
+            m_state.uart.tx_parbit ? TRACE_MIKEY_UART_FLAG_PARITY_BIT : 0,
+            TRACE_MIKEY_UART_SOURCE_LOOPBACK, 0, chained);
 
     if (trace)
         TraceRedEyeEvent(0, data);
@@ -1558,7 +1563,9 @@ INLINE void Mikey::UartReceiveWire(bool level, bool peer_low)
         parity_error = m_uart_rx_wire_parity != m_state.uart.par_even;
 
     UartRxPush(m_uart_rx_wire_data, m_uart_rx_wire_parity, parity_error,
-        !level, !level && m_uart_rx_wire_data == 0, m_uart_rx_wire_link ? 1 : 0);
+        !level, !level && m_uart_rx_wire_data == 0,
+        m_uart_rx_wire_link ? TRACE_MIKEY_UART_SOURCE_COMLYNX :
+        TRACE_MIKEY_UART_SOURCE_LOOPBACK);
 
     UartRelevelIRQ();
 
@@ -1683,7 +1690,7 @@ INLINE void Mikey::UartClock()
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
         if (m_uart_tx_trace_active)
             TraceUARTEvent(TRACE_MIKEY_UART_TX_END, m_state.uart.tx_data,
-                m_state.uart.tx_parbit ? 0x01 : 0x00);
+                m_state.uart.tx_parbit ? TRACE_MIKEY_UART_FLAG_PARITY_BIT : 0);
         m_uart_tx_trace_active = false;
 #endif
 
@@ -1789,12 +1796,13 @@ INLINE void Mikey::TraceRedEyeEvent(u8 dir, u8 data)
         LogRedEyeEvent(dir, data);
 }
 
-INLINE void Mikey::TraceRedEyeProblemEvent(u8 dir, u8 problem, u8 value)
+INLINE void Mikey::TraceRedEyeProblemEvent(u8 dir, u8 problem, u8 value,
+    u8 expected, u8 actual)
 {
     if (IsValidPointer(m_trace_logger) &&
         (m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PACKET) ||
          m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PROBLEM)))
-        LogRedEyeProblemEvent(dir, problem, value);
+        LogRedEyeProblemEvent(dir, problem, value, expected, actual);
 }
 
 INLINE void Mikey::TraceRedEyeTimeoutEvent()

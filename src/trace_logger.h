@@ -70,22 +70,53 @@ enum GLYNX_Trace_Math_Event : u8
     TRACE_SUZY_MATH_COMPLETION,
 };
 
+enum GLYNX_Trace_IRQ_Source : u8
+{
+    TRACE_CPU_IRQ_TIMER0 = 0x01,
+    TRACE_CPU_IRQ_TIMER1 = 0x02,
+    TRACE_CPU_IRQ_TIMER2 = 0x04,
+    TRACE_CPU_IRQ_TIMER3 = 0x08,
+    TRACE_CPU_IRQ_UART = 0x10,
+    TRACE_CPU_IRQ_TIMER5 = 0x20,
+    TRACE_CPU_IRQ_TIMER6 = 0x40,
+    TRACE_CPU_IRQ_TIMER7 = 0x80,
+};
+
 enum GLYNX_Trace_Sprite_Event : u8
 {
     TRACE_SUZY_SPRITE_ENGINE_START = 0,
-    TRACE_SUZY_SPRITE_ENGINE_END,
-    TRACE_SUZY_SPRITE_SCB,
-    TRACE_SUZY_SPRITE_SKIP,
-    TRACE_SUZY_SPRITE_COLLISION,
-    TRACE_SUZY_SPRITE_ROW,
-    TRACE_SUZY_SPRITE_BUS,
+    TRACE_SUZY_SPRITE_ENGINE_END = 1,
+    TRACE_SUZY_SPRITE_SCB = 2,
+    TRACE_SUZY_SPRITE_SKIP = 3,
+    TRACE_SUZY_SPRITE_COLLISION = 4,
+    TRACE_SUZY_SPRITE_ROW = 5,
+    TRACE_SUZY_SPRITE_BUS = 6,
+};
+
+enum GLYNX_Trace_Sprite_Type : u8
+{
+    TRACE_SUZY_SPRITE_TYPE_BACKGROUND = 0,
+    TRACE_SUZY_SPRITE_TYPE_BACKGROUND_NONCOLLIDABLE = 1,
+    TRACE_SUZY_SPRITE_TYPE_BOUNDARY_SHADOW = 2,
+    TRACE_SUZY_SPRITE_TYPE_BOUNDARY = 3,
+    TRACE_SUZY_SPRITE_TYPE_NORMAL = 4,
+    TRACE_SUZY_SPRITE_TYPE_NONCOLLIDABLE = 5,
+    TRACE_SUZY_SPRITE_TYPE_XOR = 6,
+    TRACE_SUZY_SPRITE_TYPE_SHADOW = 7,
 };
 
 enum GLYNX_Trace_Sprite_Skip : u8
 {
+    TRACE_SUZY_SPRITE_SKIP_NONE = 0,
     TRACE_SUZY_SPRITE_SKIP_DISABLED = 1,
-    TRACE_SUZY_SPRITE_SKIP_STOPPED,
-    TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL,
+    TRACE_SUZY_SPRITE_SKIP_STOPPED = 2,
+    TRACE_SUZY_SPRITE_SKIP_INVALID_TERMINAL = 3,
+};
+
+enum GLYNX_Trace_Sprite_Bus_Reason : u8
+{
+    TRACE_SUZY_SPRITE_BUS_NONE = 0,
+    TRACE_SUZY_SPRITE_BUS_DISPLAY_DMA = 1,
 };
 
 enum GLYNX_Trace_Input_Event : u8
@@ -96,15 +127,22 @@ enum GLYNX_Trace_Input_Event : u8
 enum GLYNX_Trace_Timer_Event : u8
 {
     TRACE_MIKEY_TIMER_REGISTER = 0,
-    TRACE_MIKEY_TIMER_UNDERFLOW,
-    TRACE_MIKEY_TIMER_IRQ,
-    TRACE_MIKEY_TIMER_LINK,
+    TRACE_MIKEY_TIMER_UNDERFLOW = 1,
+    TRACE_MIKEY_TIMER_IRQ = 2,
+    TRACE_MIKEY_TIMER_LINK = 3,
 };
 
 enum GLYNX_Trace_Interrupt_Event : u8
 {
     TRACE_MIKEY_INTERRUPT_REGISTER = 0,
-    TRACE_MIKEY_INTERRUPT_LINE,
+    TRACE_MIKEY_INTERRUPT_LINE = 1,
+};
+
+enum GLYNX_Trace_Interrupt_Kind : u8
+{
+    TRACE_MIKEY_INTERRUPT_CLEAR = 0,
+    TRACE_MIKEY_INTERRUPT_SET = 1,
+    TRACE_MIKEY_INTERRUPT_LINE_CHANGE = 2,
 };
 
 enum GLYNX_Trace_Display_Event : u8
@@ -128,20 +166,67 @@ enum GLYNX_Trace_Audio_Event : u8
 enum GLYNX_Trace_UART_Event : u8
 {
     TRACE_MIKEY_UART_REGISTER = 0,
-    TRACE_MIKEY_UART_TX_START,
-    TRACE_MIKEY_UART_TX_END,
-    TRACE_MIKEY_UART_RX_LATCH,
-    TRACE_MIKEY_UART_DATA_READ,
-    TRACE_MIKEY_UART_IRQ,
-    TRACE_MIKEY_UART_PROBLEM,
-    TRACE_MIKEY_UART_BREAK,
-    TRACE_MIKEY_UART_COMLYNX,
+    TRACE_MIKEY_UART_TX_START = 1,
+    TRACE_MIKEY_UART_TX_END = 2,
+    TRACE_MIKEY_UART_RX_LATCH = 3,
+    TRACE_MIKEY_UART_DATA_READ = 4,
+    TRACE_MIKEY_UART_IRQ = 5,
+    TRACE_MIKEY_UART_PROBLEM = 6,
+    TRACE_MIKEY_UART_BREAK = 7,
+    TRACE_MIKEY_UART_COMLYNX = 8,
+};
+
+enum GLYNX_Trace_UART_Kind : u8
+{
+    TRACE_MIKEY_UART_KIND_CONFIG = 0,
+    TRACE_MIKEY_UART_KIND_SERDAT_WRITE = 1,
+    TRACE_MIKEY_UART_KIND_TX_START = 2,
+    TRACE_MIKEY_UART_KIND_TX_END = 3,
+    TRACE_MIKEY_UART_KIND_RX_LATCH = 4,
+    TRACE_MIKEY_UART_KIND_DATA_READ = 5,
+    TRACE_MIKEY_UART_KIND_IRQ_ASSERTED = 6,
+    TRACE_MIKEY_UART_KIND_IRQ_CLEARED = 7,
+    TRACE_MIKEY_UART_KIND_PROBLEM = 8,
+    TRACE_MIKEY_UART_KIND_TX_BREAK_ASSERTED = 9,
+    TRACE_MIKEY_UART_KIND_TX_BREAK_CLEARED = 10,
+    TRACE_MIKEY_UART_KIND_CABLE_CONNECTED = 11,
+    TRACE_MIKEY_UART_KIND_CABLE_DISCONNECTED = 12,
+};
+
+enum GLYNX_Trace_UART_Source : u8
+{
+    TRACE_MIKEY_UART_SOURCE_LOOPBACK = 0,
+    TRACE_MIKEY_UART_SOURCE_COMLYNX = 1,
+};
+
+enum GLYNX_Trace_UART_IRQ_Source : u8
+{
+    TRACE_MIKEY_UART_IRQ_SOURCE_TX = 0x01,
+    TRACE_MIKEY_UART_IRQ_SOURCE_RX = 0x02,
+};
+
+enum GLYNX_Trace_UART_Flag : u8
+{
+    TRACE_MIKEY_UART_FLAG_PARITY_BIT = 0x01,
+    TRACE_MIKEY_UART_FLAG_PARITY_ERROR = 0x02,
+    TRACE_MIKEY_UART_FLAG_FRAMING_ERROR = 0x04,
+    TRACE_MIKEY_UART_FLAG_BREAK = 0x08,
+    TRACE_MIKEY_UART_FLAG_OVERRUN = 0x10,
+    TRACE_MIKEY_UART_FLAG_TURBO = 0x20,
 };
 
 enum GLYNX_Trace_RedEye_Event : u8
 {
     TRACE_REDEYE_PACKET = 0,
     TRACE_REDEYE_PROBLEM,
+};
+
+enum GLYNX_Trace_RedEye_Message : u8
+{
+    TRACE_REDEYE_MESSAGE_LOGON = 0,
+    TRACE_REDEYE_MESSAGE_DATA = 3,
+    TRACE_REDEYE_MESSAGE_REQ = 4,
+    TRACE_REDEYE_MESSAGE_MASTER_RESEND = 5,
 };
 
 enum GLYNX_Trace_RedEye_Problem : u8
@@ -161,6 +246,18 @@ enum GLYNX_Trace_Cartridge_Event : u8
     TRACE_CARTRIDGE_EEPROM,
     TRACE_CARTRIDGE_AUDIN,
     TRACE_CARTRIDGE_STORAGE = 6,
+};
+
+enum GLYNX_Trace_EEPROM_Operation : u8
+{
+    TRACE_EEPROM_READ = 0,
+    TRACE_EEPROM_WRITE = 1,
+    TRACE_EEPROM_ERASE = 2,
+    TRACE_EEPROM_EWDS = 3,
+    TRACE_EEPROM_EWEN = 4,
+    TRACE_EEPROM_WRAL = 5,
+    TRACE_EEPROM_ERAL = 6,
+    TRACE_EEPROM_READY = 7,
 };
 
 enum GLYNX_Trace_Debug_Event : u8
@@ -265,6 +362,9 @@ struct GLYNX_Trace_Entry
             s16 hpos;
             s16 vpos;
             u8 sprctl0;
+            u8 sprctl1;
+            u8 sprcoll;
+            u8 sprinit;
             u8 bpp;
             u8 type;
             u8 event;
@@ -298,9 +398,13 @@ struct GLYNX_Trace_Entry
             u8 control_a;
             u8 control_b;
             u8 raw;
+            u8 effective;
             u8 reg;
+            u8 destination;
             u8 event;
             u8 irq_pending;
+            u8 irq_mask;
+            u8 irq_effective;
             bool linked;
             bool reload;
             bool one_shot;
@@ -314,6 +418,7 @@ struct GLYNX_Trace_Entry
             u8 pending;
             u8 mask;
             u8 effective;
+            u8 kind;
             bool asserted;
         } interrupt;
 
@@ -326,6 +431,7 @@ struct GLYNX_Trace_Entry
             u8 reg;
             u8 raw;
             u8 effective;
+            u8 control;
             u8 line;
         } display;
 
@@ -335,10 +441,13 @@ struct GLYNX_Trace_Entry
             u8 flags;
             u8 source;
             u8 lost;        // byte an overrun destroyed
-            u8 kind;        // GLYNX_UART_TRACE_*
+            u8 kind;        // GLYNX_Trace_UART_Kind
+            u8 config;      // effective SERCTL configuration
+            u8 status;      // stable SERCTL status snapshot
             u8 backup;      // TIM4 backup, so the configured baud can be shown
             u8 control;     // TIM4 control A, including the clock prescaler
             u16 gap_us;     // since the previous frame was latched
+            u32 bit_cycles;
             u8 event;
             bool chained;   // TX followed straight on from the previous frame
         } uart;
@@ -355,6 +464,9 @@ struct GLYNX_Trace_Entry
             u8 payload[8];
             u8 event;
             u8 problem;
+            u8 value;
+            u8 checksum_expected;
+            u8 checksum_actual;
             bool checksum_ok;
         } redeye;
 
@@ -372,11 +484,12 @@ struct GLYNX_Trace_Entry
             u8 addr_shift;
             u8 bit;
             u32 address;
-            u8 value;
+            u16 value;
             u8 bank;
             u16 page;
             u8 event;
             u8 operation;
+            u8 data_bits;
             bool write;
             bool audin;
         } cart;

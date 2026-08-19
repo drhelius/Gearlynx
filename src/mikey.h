@@ -148,7 +148,7 @@ private:
     void UartRxReflectHead();
     void UartRxPush(u8 data, bool parbit, bool parerr, bool framerr, bool rxbreak, u8 source);
     INLINE void TraceRedEyeEvent(u8 dir, u8 data);
-    INLINE void TraceRedEyeProblemEvent(u8 dir, u8 problem, u8 value);
+    INLINE void TraceRedEyeProblemEvent(u8 dir, u8 problem, u8 value, u8 expected = 0, u8 actual = 0);
     INLINE void TraceRedEyeTimeoutEvent();
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     void UartBeginFrame(u8 data, bool chained, bool trace = true);
@@ -181,7 +181,7 @@ private:
         u8 lost, bool chained);
     void LogUARTConfigEvent(u8 value, bool register_write);
     void LogRedEyeEvent(u8 dir, u8 data);
-    void LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value);
+    void LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value, u8 expected, u8 actual);
     void LogRedEyeTimeoutEvent();
     void LogCartridgeAddressEvent();
     void LogCartridgeIOEvent(u8 event, u8 operation, u8 value);

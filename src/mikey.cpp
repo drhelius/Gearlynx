@@ -136,11 +136,26 @@ void Mikey::LogTimerEvent(u8 event, int timer, u8 reg, u8 raw)
     entry.timer.timer_id = (u8)timer;
     entry.timer.reg = reg;
     entry.timer.raw = raw;
+    entry.timer.destination = event == TRACE_MIKEY_TIMER_LINK ? reg : 0xFF;
     entry.timer.backup = state->backup;
     entry.timer.counter = state->counter;
     entry.timer.control_a = state->control_a;
     entry.timer.control_b = state->control_b;
-    entry.timer.irq_pending = m_state.irq_pending & m_state.irq_mask;
+    if (event == TRACE_MIKEY_TIMER_REGISTER)
+    {
+        switch (reg)
+        {
+            case 0: entry.timer.effective = state->backup; break;
+            case 1: entry.timer.effective = state->control_a; break;
+            case 2: entry.timer.effective = state->counter; break;
+            default: entry.timer.effective = state->control_b; break;
+        }
+    }
+    else
+        entry.timer.effective = state->counter;
+    entry.timer.irq_pending = m_state.irq_pending;
+    entry.timer.irq_mask = m_state.irq_mask;
+    entry.timer.irq_effective = m_state.irq_pending & m_state.irq_mask;
     entry.timer.linked = state->internal_period_cycles == 0;
     entry.timer.reload = IS_SET_BIT(state->control_a, 4);
     entry.timer.one_shot = IS_NOT_SET_BIT(state->control_a, 4);
@@ -167,6 +182,8 @@ void Mikey::LogInterruptEvent(u8 event, u8 reg, u8 raw)
     entry.type = TRACE_MIKEY_INTERRUPT;
     entry.interrupt.event = event;
     entry.interrupt.reg = reg;
+    entry.interrupt.kind = event == TRACE_MIKEY_INTERRUPT_LINE ?
+        TRACE_MIKEY_INTERRUPT_LINE_CHANGE : reg;
     entry.interrupt.raw = raw;
     entry.interrupt.pending = m_state.irq_pending;
     entry.interrupt.mask = m_state.irq_mask;
@@ -195,6 +212,7 @@ void Mikey::LogDisplayEvent(u8 event, u8 reg, u8 raw, int line)
     entry.display.reg = reg;
     entry.display.raw = raw;
     entry.display.effective = raw;
+    entry.display.control = m_state.DISPCTL;
     entry.display.address = m_state.DISPADR.value;
     entry.display.auxiliary = m_state.dispadr_latch;
     entry.display.line = line >= 0 ? (u8)line : (u8)m_lcd_screen->GetState()->current_line;
@@ -283,6 +301,42 @@ void Mikey::LogUARTEvent(u8 event, u8 data, u8 flags, u8 source,
     entry.uart.flags = flags;
     entry.uart.source = source;
     entry.uart.lost = lost;
+    switch (event)
+    {
+        case TRACE_MIKEY_UART_REGISTER:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_SERDAT_WRITE;
+            break;
+        case TRACE_MIKEY_UART_TX_START:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_TX_START;
+            break;
+        case TRACE_MIKEY_UART_TX_END:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_TX_END;
+            break;
+        case TRACE_MIKEY_UART_RX_LATCH:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_RX_LATCH;
+            break;
+        case TRACE_MIKEY_UART_DATA_READ:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_DATA_READ;
+            break;
+        case TRACE_MIKEY_UART_IRQ:
+            entry.uart.kind = data ? TRACE_MIKEY_UART_KIND_IRQ_ASSERTED :
+                TRACE_MIKEY_UART_KIND_IRQ_CLEARED;
+            break;
+        case TRACE_MIKEY_UART_PROBLEM:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_PROBLEM;
+            break;
+        case TRACE_MIKEY_UART_BREAK:
+            entry.uart.kind = data ? TRACE_MIKEY_UART_KIND_TX_BREAK_ASSERTED :
+                TRACE_MIKEY_UART_KIND_TX_BREAK_CLEARED;
+            break;
+        case TRACE_MIKEY_UART_COMLYNX:
+            entry.uart.kind = data ? TRACE_MIKEY_UART_KIND_CABLE_CONNECTED :
+                TRACE_MIKEY_UART_KIND_CABLE_DISCONNECTED;
+            break;
+        default:
+            entry.uart.kind = TRACE_MIKEY_UART_KIND_CONFIG;
+            break;
+    }
     u32 gap_cycles = (event == TRACE_MIKEY_UART_RX_LATCH ||
         event == TRACE_MIKEY_UART_DATA_READ || event == TRACE_MIKEY_UART_PROBLEM) ?
         m_state.uart.rx_age_cycles : 0;
@@ -290,6 +344,16 @@ void Mikey::LogUARTEvent(u8 event, u8 data, u8 flags, u8 source,
     entry.uart.gap_us = gap_us > 0xFFFF ? 0xFFFF : (u16)gap_us;
     entry.uart.backup = m_state.timers[4].backup;
     entry.uart.control = m_state.timers[4].control_a;
+    entry.uart.config = m_state.SERCTL & 0xD7;
+    entry.uart.status = (m_state.uart.tx_ready ? 0x80 : 0) |
+        (m_state.uart.rx_ready ? 0x40 : 0) |
+        (m_state.uart.tx_empty ? 0x20 : 0) |
+        (m_state.uart.par_err ? 0x10 : 0) |
+        (m_state.uart.ovr_err ? 0x08 : 0) |
+        (m_state.uart.fram_err ? 0x04 : 0) |
+        (m_state.uart.rx_break ? 0x02 : 0) |
+        (m_state.uart.par_bit ? 0x01 : 0);
+    entry.uart.bit_cycles = GetUartBitCycles();
     entry.uart.chained = chained;
     m_trace_logger->TraceLog(entry);
     if (event == TRACE_MIKEY_UART_TX_START)
@@ -322,10 +386,21 @@ void Mikey::LogUARTConfigEvent(u8 value, bool register_write)
     GLYNX_Trace_Entry entry = {};
     entry.type = TRACE_MIKEY_UART;
     entry.uart.event = TRACE_MIKEY_UART_REGISTER;
+    entry.uart.kind = TRACE_MIKEY_UART_KIND_CONFIG;
     entry.uart.data = reset_errors ? value : config;
-    entry.uart.flags = turbo ? 0x20 : 0;
+    entry.uart.flags = turbo ? TRACE_MIKEY_UART_FLAG_TURBO : 0;
+    entry.uart.config = config;
+    entry.uart.status = (m_state.uart.tx_ready ? 0x80 : 0) |
+        (m_state.uart.rx_ready ? 0x40 : 0) |
+        (m_state.uart.tx_empty ? 0x20 : 0) |
+        (m_state.uart.par_err ? 0x10 : 0) |
+        (m_state.uart.ovr_err ? 0x08 : 0) |
+        (m_state.uart.fram_err ? 0x04 : 0) |
+        (m_state.uart.rx_break ? 0x02 : 0) |
+        (m_state.uart.par_bit ? 0x01 : 0);
     entry.uart.backup = backup;
     entry.uart.control = control;
+    entry.uart.bit_cycles = GetUartBitCycles();
     m_trace_logger->TraceLog(entry);
 #else
     UNUSED(value);
@@ -333,7 +408,7 @@ void Mikey::LogUARTConfigEvent(u8 value, bool register_write)
 #endif
 }
 
-void Mikey::LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value)
+void Mikey::LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value, u8 expected, u8 actual)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     RedEyeStream* stream = &m_redeye[dir & 1];
@@ -350,11 +425,16 @@ void Mikey::LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value)
     entry.redeye.dir = dir;
     entry.redeye.problem = problem;
     entry.redeye.size = value;
+    entry.redeye.value = value;
+    entry.redeye.checksum_expected = expected;
+    entry.redeye.checksum_actual = actual;
     m_trace_logger->TraceLog(entry);
 #else
     UNUSED(dir);
     UNUSED(problem);
     UNUSED(value);
+    UNUSED(expected);
+    UNUSED(actual);
 #endif
 }
 
@@ -403,6 +483,7 @@ void Mikey::LogRedEyeEvent(u8 dir, u8 data)
         sum += stream->buffer[i];
     u8 expected = (u8)((255u - sum) & 0xFFu);
     bool checksum_ok = expected == stream->buffer[stream->total - 1];
+    u8 actual = stream->buffer[stream->total - 1];
 
     if (m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PACKET))
     {
@@ -416,6 +497,8 @@ void Mikey::LogRedEyeEvent(u8 dir, u8 data)
         entry.redeye.size = size;
         entry.redeye.total = stream->total;
         entry.redeye.checksum_ok = checksum_ok;
+        entry.redeye.checksum_expected = expected;
+        entry.redeye.checksum_actual = actual;
         for (u8 i = 0; i < 8; i++)
         {
             u8 index = (u8)(i + 2);
@@ -429,7 +512,7 @@ void Mikey::LogRedEyeEvent(u8 dir, u8 data)
     }
 
     if (!checksum_ok)
-        TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_CHECKSUM, size);
+        TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_CHECKSUM, size, expected, actual);
     stream->count = 0;
     stream->total = 0;
     stream->last_cycle = 0;

@@ -178,6 +178,9 @@ void Suzy::LogSpriteEvent(u8 event, u8 reason)
     entry.sprite.hpos = (s16)m_state.HPOSSTRT.value;
     entry.sprite.vpos = (s16)m_state.VPOSSTRT.value;
     entry.sprite.sprctl0 = m_state.SPRCTL0;
+    entry.sprite.sprctl1 = m_state.SPRCTL1;
+    entry.sprite.sprcoll = m_state.SPRCOLL;
+    entry.sprite.sprinit = m_state.SPRINIT;
     entry.sprite.sprgo = m_state.SPRGO;
     entry.sprite.suzybusen = m_state.SUZYBUSEN;
     entry.sprite.bpp = (u8)(((m_state.SPRCTL0 >> 6) & 3) + 1);
@@ -232,6 +235,12 @@ void Suzy::LogSpriteBusEvent(u32 cycles, u8 reason)
     entry.type = TRACE_SUZY_SPRITE;
     entry.sprite.event = TRACE_SUZY_SPRITE_BUS;
     entry.sprite.scb_addr = m_state.SCBADR.value;
+    entry.sprite.sprctl0 = m_state.SPRCTL0;
+    entry.sprite.sprctl1 = m_state.SPRCTL1;
+    entry.sprite.sprcoll = m_state.SPRCOLL;
+    entry.sprite.sprinit = m_state.SPRINIT;
+    entry.sprite.bpp = (u8)(((m_state.SPRCTL0 >> 6) & 3) + 1);
+    entry.sprite.type = m_state.SPRCTL0 & 7;
     entry.sprite.charged_cycles = cycles;
     entry.sprite.reason = reason;
     m_trace_logger->TraceLog(entry);
