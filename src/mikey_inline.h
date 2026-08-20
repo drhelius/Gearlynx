@@ -1573,7 +1573,7 @@ INLINE void Mikey::UartReceiveWire(bool level, bool peer_low)
 }
 
 template<bool turbo>
-INLINE void Mikey::UartClock()
+inline void Mikey::UartClock()
 {
     // If break is asserted, keep line busy and do not advance a normal frame
     if (m_state.uart.tx_brk)
