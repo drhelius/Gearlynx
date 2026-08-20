@@ -188,7 +188,7 @@ void Mikey::LogInterruptEvent(u8 event, u8 reg, u8 raw)
     entry.interrupt.event = event;
     entry.interrupt.reg = reg;
     entry.interrupt.kind = event == TRACE_MIKEY_INTERRUPT_LINE ?
-        TRACE_MIKEY_INTERRUPT_LINE_CHANGE : reg;
+        (u8)TRACE_MIKEY_INTERRUPT_LINE_CHANGE : reg;
     entry.interrupt.raw = raw;
     entry.interrupt.pending = m_state.irq_pending;
     entry.interrupt.mask = m_state.irq_mask;
