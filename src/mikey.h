@@ -134,6 +134,14 @@ private:
     void SynchronizeCPURead();
     void UpdateUART(u32 cycles);
     void UpdateTimerHardware(u32 cycles);
+    void ClockTimerDomain(int prescaler, u32 remaining_cycles);
+    void RebuildTimerCaches();
+    void UpdateTimerServiceMask(int unit);
+    void UpdateTimerStatusMask(int unit);
+    void ExpireTimerStatus(u32 phase, u32 cycles);
+    void ExpireTimerStatusSlot(int slot);
+    u32 CalculateNextTimerSourceCycles(u32 phase);
+    u32 GetNextTimerServiceCycles(u32 phase);
     void ClockTimer(int timer);
     void ClockAudio(int channel);
     void ServiceTimer(int timer);
@@ -232,6 +240,11 @@ private:
     bool m_trace_uart_irq;
 #endif
     u32 m_video_line_remainder;
+    u16 m_timer_source_masks[7];
+    u16 m_timer_service_mask;
+    u16 m_timer_status_mask;
+    u8 m_timer_active_source_mask;
+    u32 m_timer_source_countdown;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     struct RedEyeStream
@@ -251,6 +264,7 @@ private:
 
 static const u32 k_mikey_timer_period_us[8] = { 1, 2, 4, 8, 16, 32, 64, 0 };
 static const u32 k_mikey_timer_period_cycles[8] = { 16, 32, 64, 128, 256, 512, 1024, 0 };
+static const u32 k_mikey_timer_source_phase[7] = { 1, 17, 56, 120, 120, 376, 897 };
 static const int k_mikey_timer_forward_links[8] = { 2, 3, 4, 5, -1, 7, -1, 8 };
 static const int k_mikey_timer_backward_links[8] = { -1, 11, 0, 1, 2, 3, -1, 5 };
 static const int k_mikey_audio_forward_links[4] = { 1, 2, 3, -1 };

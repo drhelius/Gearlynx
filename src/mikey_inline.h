@@ -503,6 +503,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Setting MTEST0 to %02X (was %02X)", value, m_state.MTEST0);
             m_state.MTEST0 = value;
             m_uart_last_bit_cycle = 0;
+            m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             if (!debug)
                 TraceUARTConfigEvent(m_state.SERCTL);
@@ -694,9 +695,22 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         u8 old_prescaler = old_control_a & 0x07;
         u8 new_prescaler = value & 0x07;
 
+        if (IS_SET_BIT(old_control_a, 3) && old_prescaler < 7)
+        {
+            m_timer_source_masks[old_prescaler] = UNSET_BIT(m_timer_source_masks[old_prescaler], i);
+            if (m_timer_source_masks[old_prescaler] == 0)
+                m_timer_active_source_mask = UNSET_BIT(m_timer_active_source_mask, old_prescaler);
+        }
+
         t->control_a = value;
 
         t->internal_period_cycles = k_mikey_timer_period_cycles[new_prescaler];
+
+        if (IS_SET_BIT(value, 3) && new_prescaler < 7)
+        {
+            m_timer_source_masks[new_prescaler] = SET_BIT(m_timer_source_masks[new_prescaler], i);
+            m_timer_active_source_mask = SET_BIT(m_timer_active_source_mask, new_prescaler);
+        }
 
         // Re-sync only when clock source changes or when enabling counting from disabled
         bool prescaler_changed = (old_prescaler != new_prescaler);
@@ -723,6 +737,9 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         if (IS_SET_BIT(value, 6))
             t->control_b = UNSET_BIT(t->control_b, 3);
 
+        UpdateTimerServiceMask(i);
+        m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
+
         break;
     }
     case 2:
@@ -734,6 +751,8 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
         if (IS_NOT_SET_BIT(t->control_b, 1) && IS_SET_BIT(value, 1))
             BorrowInTimer(i, t);
         t->control_b = value & 0x08;
+        UpdateTimerStatusMask(i);
+        UpdateTimerServiceMask(i);
         break;
     default:
         break;
@@ -832,8 +851,21 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
         u8 old_prescaler = old_control & 0x07;
         u8 new_prescaler = value & 0x07;
 
+        if (IS_SET_BIT(old_control, 3) && old_prescaler < 7)
+        {
+            m_timer_source_masks[old_prescaler] = UNSET_BIT(m_timer_source_masks[old_prescaler], i + 8);
+            if (m_timer_source_masks[old_prescaler] == 0)
+                m_timer_active_source_mask = UNSET_BIT(m_timer_active_source_mask, old_prescaler);
+        }
+
         c->control = value;
         c->internal_period_cycles = k_mikey_timer_period_cycles[new_prescaler];
+
+        if (IS_SET_BIT(value, 3) && new_prescaler < 7)
+        {
+            m_timer_source_masks[new_prescaler] = SET_BIT(m_timer_source_masks[new_prescaler], i + 8);
+            m_timer_active_source_mask = SET_BIT(m_timer_active_source_mask, new_prescaler);
+        }
 
         bool prescaler_changed = (old_prescaler != new_prescaler);
         bool enable_count_rising = IS_NOT_SET_BIT(old_control, 3) && IS_SET_BIT(value, 3);
@@ -851,6 +883,8 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
             c->internal_mix = true;
 
         RebuildTapsMask(c);
+        UpdateTimerServiceMask(i + 8);
+        m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
         break;
     }
     case 6:
@@ -867,6 +901,8 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
         }
         c->other = value & 0xF8;
         RebuildLFSR(c);
+        UpdateTimerStatusMask(i + 8);
+        UpdateTimerServiceMask(i + 8);
         break;
     default:
         break;
@@ -991,57 +1027,314 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 {
     m_video_line_remainder = 0;
 
-    while (cycles-- > 0)
+    while (cycles > 0)
     {
-        if (IsUartTurbo() && m_comlynx_cable_connected && m_comlynx_turbo_sync_callback &&
-            (m_comlynx_cycle & (COMLYNX_TURBO_SYNC_CYCLES - 1)) == 0)
+        bool turbo_sync = unlikely(m_comlynx_cable_connected &&
+            m_comlynx_turbo_sync_callback && IsUartTurbo());
+
+        if (turbo_sync && (m_comlynx_cycle & (COMLYNX_TURBO_SYNC_CYCLES - 1)) == 0)
         {
             m_comlynx_turbo_sync_callback(m_comlynx_cycle, m_comlynx_turbo_user_data);
+            turbo_sync = unlikely(m_comlynx_cable_connected &&
+                m_comlynx_turbo_sync_callback && IsUartTurbo());
         }
 
-        m_comlynx_cycle++;
-        m_state.timer_source_phase = (m_state.timer_source_phase + 1) & 1023;
+        u32 phase = m_state.timer_source_phase;
+        u32 distance = cycles + 1;
+        u32 source_cycles = m_timer_source_countdown;
+        u32 service_cycles = GetNextTimerServiceCycles(phase);
 
-        for (int prescaler = 0; prescaler < 7; prescaler++)
+        if (source_cycles > 0 && source_cycles < distance)
+            distance = source_cycles;
+        if (service_cycles < distance)
+            distance = service_cycles;
+
+        if (turbo_sync)
         {
-            u32 period = k_mikey_timer_period_cycles[prescaler];
-            u32 alignment = (period == 1024) ? 127 : ((period >= 64) ? 136 : 143);
+            u32 sync_cycles = (u32)((0 - m_comlynx_cycle) & (COMLYNX_TURBO_SYNC_CYCLES - 1));
+            if (sync_cycles == 0)
+                sync_cycles = COMLYNX_TURBO_SYNC_CYCLES;
+            if (sync_cycles < distance)
+                distance = sync_cycles;
+        }
 
-            if (((m_state.timer_source_phase + alignment) & (period - 1)) != 0)
-                continue;
+        if (distance > cycles)
+        {
+            ExpireTimerStatus(phase, cycles);
+            if (m_timer_source_countdown > 0)
+                m_timer_source_countdown -= cycles;
+            m_comlynx_cycle += cycles;
+            m_state.timer_source_phase = (phase + cycles) & 1023;
+            break;
+        }
 
-            if (prescaler == 0 && IS_SET_BIT(m_state.MTEST0, 4))
+        bool source_event = source_cycles > 0 && source_cycles == distance;
+
+        if (distance > 1)
+            ExpireTimerStatus(phase, distance - 1);
+
+        if (m_timer_source_countdown > 0)
+            m_timer_source_countdown -= distance;
+
+        m_comlynx_cycle += distance;
+        phase = (phase + distance) & 1023;
+        m_state.timer_source_phase = phase;
+        cycles -= distance;
+
+        u32 slot = phase & 0x0F;
+
+        if (source_event && slot == 1)
+        {
+            if (IS_SET_BIT(m_state.MTEST0, 4))
                 UartClock<true>();
 
-            for (int timer = 0; timer < 8; timer++)
-            {
-                GLYNX_Mikey_Timer* t = &m_state.timers[timer];
-                if (IS_SET_BIT(t->control_a, 3) && t->internal_period_cycles == period)
-                {
-                    if (timer == 0 && t->counter == 0)
-                        m_video_line_remainder = cycles;
-
-                    ClockTimer(timer);
-                }
-            }
-
-            for (int channel = 0; channel < 4; channel++)
-            {
-                GLYNX_Mikey_Audio* c = &m_state.audio[channel];
-                if (IS_SET_BIT(c->control, 3) && c->internal_period_cycles == period)
-                    ClockAudio(channel);
-            }
+            if (m_timer_source_masks[0] != 0)
+                ClockTimerDomain(0, cycles);
+            if (m_timer_source_masks[1] != 0 && (phase & 31) == 17)
+                ClockTimerDomain(1, cycles);
+            if (m_timer_source_masks[6] != 0 && phase == 897)
+                ClockTimerDomain(6, cycles);
+        }
+        else if (source_event && slot == 8)
+        {
+            if (m_timer_source_masks[2] != 0 && (phase & 63) == 56)
+                ClockTimerDomain(2, cycles);
+            if (m_timer_source_masks[3] != 0 && (phase & 127) == 120)
+                ClockTimerDomain(3, cycles);
+            if (m_timer_source_masks[4] != 0 && (phase & 255) == 120)
+                ClockTimerDomain(4, cycles);
+            if (m_timer_source_masks[5] != 0 && (phase & 511) == 376)
+                ClockTimerDomain(5, cycles);
         }
 
-        int slot = m_state.timer_source_phase & 0x0F;
+        if (source_event)
+            m_timer_source_countdown = CalculateNextTimerSourceCycles(phase);
 
-        if (slot < 8)
-            ServiceTimer(slot);
-        else if (slot < 12)
-            ServiceAudio(slot - 8);
+        ExpireTimerStatusSlot(slot);
+
+        if (slot < 12 && IS_SET_BIT(m_timer_service_mask, slot))
+        {
+            m_timer_service_mask = UNSET_BIT(m_timer_service_mask, slot);
+
+            if (slot < 8)
+                ServiceTimer(slot);
+            else
+                ServiceAudio(slot - 8);
+
+            UpdateTimerStatusMask(slot);
+            UpdateTimerServiceMask(slot);
+        }
     }
 
     m_video_line_remainder = 0;
+}
+
+INLINE u32 Mikey::CalculateNextTimerSourceCycles(u32 phase)
+{
+    u8 mask = m_timer_active_source_mask;
+
+    if (IS_SET_BIT(m_state.MTEST0, 4))
+        mask = SET_BIT(mask, 0);
+
+    u32 next_cycles = 0;
+
+    if ((mask & 0x03) != 0)
+    {
+        int prescaler = IS_SET_BIT(mask, 0) ? 0 : 1;
+        u32 period = k_mikey_timer_period_cycles[prescaler];
+        next_cycles = (k_mikey_timer_source_phase[prescaler] - phase) & (period - 1);
+
+        if (next_cycles == 0)
+            next_cycles = period;
+    }
+
+    if ((mask & 0x3C) != 0)
+    {
+        int prescaler = (int)t_zero16(mask & 0x3C);
+        u32 period = k_mikey_timer_period_cycles[prescaler];
+        u32 source_cycles = (k_mikey_timer_source_phase[prescaler] - phase) & (period - 1);
+
+        if (source_cycles == 0)
+            source_cycles = period;
+        if (next_cycles == 0 || source_cycles < next_cycles)
+            next_cycles = source_cycles;
+    }
+
+    if (IS_SET_BIT(mask, 6) && IS_NOT_SET_BIT(mask, 0))
+    {
+        u32 source_cycles = (k_mikey_timer_source_phase[6] - phase) & 1023;
+
+        if (source_cycles == 0)
+            source_cycles = 1024;
+
+        if (next_cycles == 0 || source_cycles < next_cycles)
+            next_cycles = source_cycles;
+    }
+
+    return next_cycles;
+}
+
+INLINE u32 Mikey::GetNextTimerServiceCycles(u32 phase)
+{
+    if (m_timer_service_mask == 0)
+        return 0xFFFFFFFF;
+
+    u32 slot = phase & 0x0F;
+    u32 shift = slot + 1;
+    u16 rotated = (u16)((m_timer_service_mask >> shift) |
+        ((u32)m_timer_service_mask << (16 - shift)));
+    return t_zero16(rotated) + 1;
+}
+
+INLINE void Mikey::ExpireTimerStatus(u32 phase, u32 cycles)
+{
+    if (m_timer_status_mask == 0 || cycles == 0)
+        return;
+
+    u16 slot_mask;
+
+    if (cycles >= 16)
+        slot_mask = 0x0FFF;
+    else
+    {
+        u32 start = (phase + 1) & 0x0F;
+        u32 range = ((1U << cycles) - 1) << start;
+        slot_mask = (u16)((range | (range >> 16)) & 0x0FFF);
+    }
+
+    u16 expired = m_timer_status_mask & slot_mask;
+    m_timer_status_mask &= ~expired;
+
+    while (expired != 0)
+    {
+        int unit = (int)t_zero16(expired);
+        expired &= expired - 1;
+
+        if (unit < 8)
+            m_state.timers[unit].control_b &= 0xFC;
+        else
+            m_state.audio[unit - 8].other &= 0xFC;
+    }
+}
+
+INLINE void Mikey::ExpireTimerStatusSlot(int slot)
+{
+    if (slot >= 12 || IS_NOT_SET_BIT(m_timer_status_mask, slot))
+        return;
+
+    m_timer_status_mask = UNSET_BIT(m_timer_status_mask, slot);
+
+    if (slot < 8)
+        m_state.timers[slot].control_b &= 0xFC;
+    else
+        m_state.audio[slot - 8].other &= 0xFC;
+}
+
+INLINE void Mikey::ClockTimerDomain(int prescaler, u32 remaining_cycles)
+{
+    u16 mask = m_timer_source_masks[prescaler];
+
+    while (mask != 0)
+    {
+        int unit = (int)t_zero16(mask);
+        mask &= mask - 1;
+
+        if (unit < 8)
+        {
+            GLYNX_Mikey_Timer* t = &m_state.timers[unit];
+            if (unit == 0 && t->counter == 0)
+                m_video_line_remainder = remaining_cycles;
+
+            ClockTimer(unit);
+            UpdateTimerStatusMask(unit);
+        }
+        else
+        {
+            ClockAudio(unit - 8);
+            UpdateTimerStatusMask(unit);
+        }
+    }
+}
+
+INLINE void Mikey::RebuildTimerCaches()
+{
+    memset(m_timer_source_masks, 0, sizeof(m_timer_source_masks));
+    m_timer_service_mask = 0;
+    m_timer_status_mask = 0;
+    m_timer_active_source_mask = 0;
+    m_timer_source_countdown = 0;
+
+    for (int timer = 0; timer < 8; timer++)
+    {
+        u8 control = m_state.timers[timer].control_a;
+        int prescaler = control & 7;
+        if (IS_SET_BIT(control, 3) && prescaler < 7)
+        {
+            m_timer_source_masks[prescaler] = SET_BIT(m_timer_source_masks[prescaler], timer);
+            m_timer_active_source_mask = SET_BIT(m_timer_active_source_mask, prescaler);
+        }
+
+        UpdateTimerStatusMask(timer);
+        UpdateTimerServiceMask(timer);
+    }
+
+    for (int channel = 0; channel < 4; channel++)
+    {
+        u8 control = m_state.audio[channel].control;
+        int prescaler = control & 7;
+        if (IS_SET_BIT(control, 3) && prescaler < 7)
+        {
+            m_timer_source_masks[prescaler] = SET_BIT(m_timer_source_masks[prescaler], channel + 8);
+            m_timer_active_source_mask = SET_BIT(m_timer_active_source_mask, prescaler);
+        }
+
+        UpdateTimerStatusMask(channel + 8);
+        UpdateTimerServiceMask(channel + 8);
+    }
+
+    m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
+}
+
+INLINE void Mikey::UpdateTimerStatusMask(int unit)
+{
+    bool active;
+
+    if (unit < 8)
+        active = (m_state.timers[unit].control_b & 0x03) != 0;
+    else
+        active = (m_state.audio[unit - 8].other & 0x03) != 0;
+
+    if (active)
+        m_timer_status_mask = SET_BIT(m_timer_status_mask, unit);
+    else
+        m_timer_status_mask = UNSET_BIT(m_timer_status_mask, unit);
+}
+
+INLINE void Mikey::UpdateTimerServiceMask(int unit)
+{
+    bool active = false;
+
+    if (unit < 8)
+    {
+        GLYNX_Mikey_Timer* t = &m_state.timers[unit];
+        bool linked = IS_SET_BIT(t->control_a, 3) && t->internal_period_cycles == 0;
+        bool reset_done = IS_SET_BIT(t->control_a, 6) && IS_SET_BIT(t->control_b, 3);
+        bool blocked = IS_NOT_SET_BIT(t->control_a, 4) && IS_SET_BIT(t->control_b, 3) && !reset_done;
+        active = linked && (reset_done || (t->internal_pending_ticks > 0 && !blocked));
+    }
+    else
+    {
+        GLYNX_Mikey_Audio* c = &m_state.audio[unit - 8];
+        bool linked = IS_SET_BIT(c->control, 3) && c->internal_period_cycles == 0;
+        bool reset_done = IS_SET_BIT(c->control, 6) && IS_SET_BIT(c->other, 3);
+        bool blocked = IS_NOT_SET_BIT(c->control, 4) && IS_SET_BIT(c->other, 3) && !reset_done;
+        active = linked && (reset_done || (c->internal_pending_ticks > 0 && !blocked));
+    }
+
+    if (active)
+        m_timer_service_mask = SET_BIT(m_timer_service_mask, unit);
+    else
+        m_timer_service_mask = UNSET_BIT(m_timer_service_mask, unit);
 }
 
 INLINE void Mikey::ClockTimer(int i)
@@ -1135,11 +1428,17 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
             {
                 m_state.timers[link].internal_pending_ticks++;
                 m_state.timers[link].control_b = SET_BIT(m_state.timers[link].control_b, 1);
+                m_timer_status_mask = SET_BIT(m_timer_status_mask, link);
+                if (IS_NOT_SET_BIT(m_timer_service_mask, link))
+                    UpdateTimerServiceMask(link);
             }
             else
             {
                 m_state.audio[0].internal_pending_ticks++;
                 m_state.audio[0].other = SET_BIT(m_state.audio[0].other, 1);
+                m_timer_status_mask = SET_BIT(m_timer_status_mask, 8);
+                if (IS_NOT_SET_BIT(m_timer_service_mask, 8))
+                    UpdateTimerServiceMask(8);
             }
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             TraceTimerEvent(TRACE_MIKEY_TIMER_LINK, i, (u8)link, 0);
@@ -1233,11 +1532,17 @@ INLINE bool Mikey::BorrowInChannel(int i, GLYNX_Mikey_Audio* c)
         {
             m_state.audio[link].internal_pending_ticks++;
             m_state.audio[link].other = SET_BIT(m_state.audio[link].other, 1);
+            m_timer_status_mask = SET_BIT(m_timer_status_mask, link + 8);
+            if (IS_NOT_SET_BIT(m_timer_service_mask, link + 8))
+                UpdateTimerServiceMask(link + 8);
         }
         else // audio ch 3 links to timer 1
         {
             m_state.timers[1].internal_pending_ticks++;
             m_state.timers[1].control_b = SET_BIT(m_state.timers[1].control_b, 1);
+            m_timer_status_mask = SET_BIT(m_timer_status_mask, 1);
+            if (IS_NOT_SET_BIT(m_timer_service_mask, 1))
+                UpdateTimerServiceMask(1);
         }
 
         const bool one_shot = IS_NOT_SET_BIT(c->control, 4);

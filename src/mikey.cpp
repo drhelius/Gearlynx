@@ -60,6 +60,11 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     m_uart_rx_wire_data = 0;
     m_uart_rx_wire_parity = false;
     m_uart_rx_wire_link = false;
+    memset(m_timer_source_masks, 0, sizeof(m_timer_source_masks));
+    m_timer_service_mask = 0;
+    m_timer_status_mask = 0;
+    m_timer_active_source_mask = 0;
+    m_timer_source_countdown = 0;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_uart_tx_trace_active = false;
     m_uart_tx_hold_trace = false;
@@ -615,6 +620,11 @@ void Mikey::Reset(bool is_lynx2)
 void Mikey::ResetTimers()
 {
     m_state.timer_source_phase = m_random->Next(7) + 1;
+    memset(m_timer_source_masks, 0, sizeof(m_timer_source_masks));
+    m_timer_service_mask = 0;
+    m_timer_status_mask = 0;
+    m_timer_active_source_mask = 0;
+    m_timer_source_countdown = 0;
 
     for (int i = 0; i < 8; i++)
     {
@@ -874,6 +884,7 @@ void Mikey::LoadState(std::istream& stream, int version)
     m_uart_tx_wire_published = false;
     m_uart_rx_wire_state = 0;
     m_uart_rx_wire_link = false;
+    RebuildTimerCaches();
 
     m_lcd_screen->LoadState(stream);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)

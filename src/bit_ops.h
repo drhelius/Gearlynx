@@ -56,6 +56,21 @@ INLINE u32 l_zero16(u16 value)
 #endif
 }
 
+INLINE u32 t_zero16(u16 value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return (u32)(value ? __builtin_ctz((unsigned)value) : 16);
+#else
+    u32 n = 0;
+    while (value && !(value & 1))
+    {
+        n++;
+        value >>= 1;
+    }
+    return value ? n : 16;
+#endif
+}
+
 INLINE u8 parity8(u8 x)
 {
 #if defined(__GNUC__) || defined(__clang__)
