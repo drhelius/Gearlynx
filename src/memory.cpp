@@ -43,7 +43,7 @@ Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m650
     m_state.MAPCTL = 0;
     m_is_lynx2 = true;
 
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < 4; i++)
     {
         m_read_page[i] = NULL;
         m_write_page[i] = NULL;
@@ -154,22 +154,12 @@ GLYNX_Disassembler_Record** Memory::GetAllDisassemblerRecords()
 
 void Memory::SetupDefaultMemoryMap()
 {
-    for (int i = 0; i < 0xFF; i++)
-    {
-        m_read_page[i] = m_state.ram + (i << 8);
-        m_write_page[i] = m_state.ram + (i << 8);
-        m_read_fn[i] = NULL;
-        m_write_fn[i] = NULL;
-        m_read_fn_debug[i] = NULL;
-        m_write_fn_debug[i] = NULL;
-    }
-
-    m_read_page[0xFF] = NULL;
-    m_write_page[0xFF] = NULL;
-    m_read_fn[0xFF] = &Memory::LastPageRead;
-    m_write_fn[0xFF] = &Memory::LastPageWrite;
-    m_read_fn_debug[0xFF] = &Memory::LastPageRead;
-    m_write_fn_debug[0xFF] = &Memory::LastPageWrite;
+    m_read_page[3] = NULL;
+    m_write_page[3] = NULL;
+    m_read_fn[3] = &Memory::LastPageRead;
+    m_write_fn[3] = &Memory::LastPageWrite;
+    m_read_fn_debug[3] = &Memory::LastPageRead;
+    m_write_fn_debug[3] = &Memory::LastPageWrite;
 
     RebuildMemoryMap();
 }

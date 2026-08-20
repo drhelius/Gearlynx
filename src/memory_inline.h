@@ -44,6 +44,9 @@ INLINE u8 Memory::Read(u16 address)
 #endif
     }
 
+    if (likely(address < 0xFC00))
+        return m_state.ram[address];
+
     if (unlikely(address == 0xFFF9))
     {
         if (likely(m_is_lynx2))
@@ -52,7 +55,7 @@ INLINE u8 Memory::Read(u16 address)
             return m_state.MAPCTL;
     }
 
-    u8 page = hi(address);
+    u8 page = hi(address) - 0xFC;
 
     if (IsValidPointer(m_read_page[page]))
         return m_read_page[page][lo(address)];
@@ -77,13 +80,19 @@ INLINE void Memory::Write(u16 address, u8 value)
 #endif
     }
 
+    if (likely(address < 0xFC00))
+    {
+        m_state.ram[address] = value;
+        return;
+    }
+
     if (unlikely(address == 0xFFF9))
     {
         SetMapCtl(value);
         return;
     }
 
-    u8 page = hi(address);
+    u8 page = hi(address) - 0xFC;
 
     if (IsValidPointer(m_write_page[page]))
         m_write_page[page][lo(address)] = value;
@@ -116,69 +125,69 @@ inline void Memory::RebuildMemoryMap()
     if (IS_SET_BIT(m_state.MAPCTL, 0))
     {
         //Debug("SUZY not visible");
-        m_read_page[0xFC] = m_state.ram + 0xFC00;
-        m_write_page[0xFC] = m_state.ram + 0xFC00;
-        m_read_fn[0xFC] = NULL;
-        m_write_fn[0xFC] = NULL;
-        m_read_fn_debug[0xFC] = NULL;
-        m_write_fn_debug[0xFC] = NULL;
+        m_read_page[0] = m_state.ram + 0xFC00;
+        m_write_page[0] = m_state.ram + 0xFC00;
+        m_read_fn[0] = NULL;
+        m_write_fn[0] = NULL;
+        m_read_fn_debug[0] = NULL;
+        m_write_fn_debug[0] = NULL;
     }
     // SUZY visible
     else
     {
         //Debug("SUZY visible");
-        m_read_page[0xFC] = NULL;
-        m_write_page[0xFC] = NULL;
-        m_read_fn[0xFC] = &Memory::SuzyRead;
-        m_write_fn[0xFC] = &Memory::SuzyWrite;
-        m_read_fn_debug[0xFC] = &Memory::SuzyReadDebug;
-        m_write_fn_debug[0xFC] = &Memory::SuzyWriteDebug;
+        m_read_page[0] = NULL;
+        m_write_page[0] = NULL;
+        m_read_fn[0] = &Memory::SuzyRead;
+        m_write_fn[0] = &Memory::SuzyWrite;
+        m_read_fn_debug[0] = &Memory::SuzyReadDebug;
+        m_write_fn_debug[0] = &Memory::SuzyWriteDebug;
     }
 
     // MIKEY not visible
     if (IS_SET_BIT(m_state.MAPCTL, 1))
     {
         //Debug("MIKEY not visible");
-        m_read_page[0xFD] = m_state.ram + 0xFD00;
-        m_write_page[0xFD] = m_state.ram + 0xFD00;
-        m_read_fn[0xFD] = NULL;
-        m_write_fn[0xFD] = NULL;
-        m_read_fn_debug[0xFD] = NULL;
-        m_write_fn_debug[0xFD] = NULL;
+        m_read_page[1] = m_state.ram + 0xFD00;
+        m_write_page[1] = m_state.ram + 0xFD00;
+        m_read_fn[1] = NULL;
+        m_write_fn[1] = NULL;
+        m_read_fn_debug[1] = NULL;
+        m_write_fn_debug[1] = NULL;
     }
     // MIKEY visible
     else
     {
         //Debug("MIKEY visible");
-        m_read_page[0xFD] = NULL;
-        m_write_page[0xFD] = NULL;
-        m_read_fn[0xFD] = &Memory::MikeyRead;
-        m_write_fn[0xFD] = &Memory::MikeyWrite;
-        m_read_fn_debug[0xFD] = &Memory::MikeyReadDebug;
-        m_write_fn_debug[0xFD] = &Memory::MikeyWriteDebug;
+        m_read_page[1] = NULL;
+        m_write_page[1] = NULL;
+        m_read_fn[1] = &Memory::MikeyRead;
+        m_write_fn[1] = &Memory::MikeyWrite;
+        m_read_fn_debug[1] = &Memory::MikeyReadDebug;
+        m_write_fn_debug[1] = &Memory::MikeyWriteDebug;
     }
 
     // BIOS not visible
     if (IS_SET_BIT(m_state.MAPCTL, 2))
     {
         //Debug("BIOS not visible");
-        m_read_page[0xFE] = m_state.ram + 0xFE00;
-        m_write_page[0xFE] = m_state.ram + 0xFE00;
-        m_read_fn[0xFE] = NULL;
-        m_write_fn[0xFE] = NULL;
-        m_read_fn_debug[0xFE] = NULL;
-        m_write_fn_debug[0xFE] = NULL;
+        m_read_page[2] = m_state.ram + 0xFE00;
+        m_write_page[2] = m_state.ram + 0xFE00;
+        m_read_fn[2] = NULL;
+        m_write_fn[2] = NULL;
+        m_read_fn_debug[2] = NULL;
+        m_write_fn_debug[2] = NULL;
     }
     // BIOS visible
     else
     {
         //Debug("BIOS visible");
-        m_read_page[0xFE] = NULL;
-        m_write_page[0xFE] = m_state.ram + 0xFE00;
-        m_read_fn[0xFE] = &Memory::BiosRead;
-        m_write_fn[0xFE] = NULL;
-        m_read_fn_debug[0xFE] = &Memory::BiosRead;
-        m_write_fn_debug[0xFE] = NULL;
+        m_read_page[2] = NULL;
+        m_write_page[2] = m_state.ram + 0xFE00;
+        m_read_fn[2] = &Memory::BiosRead;
+        m_write_fn[2] = NULL;
+        m_read_fn_debug[2] = &Memory::BiosRead;
+        m_write_fn_debug[2] = NULL;
     }
 }
 
