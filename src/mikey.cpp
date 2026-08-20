@@ -411,30 +411,75 @@ void Mikey::LogUARTConfigEvent(u8 value, bool register_write)
 void Mikey::LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value, u8 expected, u8 actual)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    RedEyeStream* stream = &m_redeye[dir & 1];
-    stream->count = 0;
-    stream->total = 0;
-    stream->last_cycle = 0;
+    if (m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PROBLEM))
+    {
+        GLYNX_Trace_Entry entry = {};
+        SnapshotRedEyeEntry(entry, dir);
+        entry.type = TRACE_REDEYE;
+        entry.redeye.event = TRACE_REDEYE_PROBLEM;
+        entry.redeye.problem = problem;
+        entry.redeye.value = value;
+        entry.redeye.checksum_expected = expected;
+        entry.redeye.checksum_actual = actual;
+        m_trace_logger->TraceLog(entry);
+    }
 
-    if (!m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PROBLEM))
-        return;
-
-    GLYNX_Trace_Entry entry = {};
-    entry.type = TRACE_REDEYE;
-    entry.redeye.event = TRACE_REDEYE_PROBLEM;
-    entry.redeye.dir = dir;
-    entry.redeye.problem = problem;
-    entry.redeye.size = value;
-    entry.redeye.value = value;
-    entry.redeye.checksum_expected = expected;
-    entry.redeye.checksum_actual = actual;
-    m_trace_logger->TraceLog(entry);
+    ResetRedEyeStream(dir);
 #else
     UNUSED(dir);
     UNUSED(problem);
     UNUSED(value);
     UNUSED(expected);
     UNUSED(actual);
+#endif
+}
+
+void Mikey::SnapshotRedEyeEntry(GLYNX_Trace_Entry& entry, u8 dir)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    RedEyeStream* stream = &m_redeye[dir & 1];
+    entry.redeye.dir = dir;
+    entry.redeye.total = stream->total;
+    entry.redeye.captured = stream->count;
+
+    if (stream->count == 0)
+        return;
+
+    entry.redeye.size = stream->buffer[0];
+    if (stream->count < 2)
+        return;
+
+    u8 header = stream->buffer[1];
+    entry.redeye.msg = header & 0x07;
+    entry.redeye.player = (header & 0x78) >> 3;
+    entry.redeye.seq = (header & 0x80) ? 1 : 0;
+    entry.redeye.header_valid = true;
+
+    u8 payload_size = entry.redeye.size > 0 ? (u8)(entry.redeye.size - 1) : 0;
+    u8 available = stream->count > 2 ? (u8)(stream->count - 2) : 0;
+    if (available > payload_size)
+        available = payload_size;
+    if (available > sizeof(entry.redeye.payload))
+        available = (u8)sizeof(entry.redeye.payload);
+
+    entry.redeye.len = available;
+    for (u8 i = 0; i < available; i++)
+        entry.redeye.payload[i] = stream->buffer[i + 2];
+#else
+    UNUSED(entry);
+    UNUSED(dir);
+#endif
+}
+
+void Mikey::ResetRedEyeStream(u8 dir)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    RedEyeStream* stream = &m_redeye[dir & 1];
+    stream->count = 0;
+    stream->total = 0;
+    stream->last_cycle = 0;
+#else
+    UNUSED(dir);
 #endif
 }
 
@@ -451,17 +496,13 @@ void Mikey::LogRedEyeEvent(u8 dir, u8 data)
         u64 timeout = (u64)bit_cycles * 64;
         if (m_comlynx_cycle - stream->last_cycle > timeout)
         {
-            u8 count = stream->count;
-            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_TIMEOUT, count);
-            stream->count = 0;
-            stream->total = 0;
-            stream->last_cycle = 0;
+            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_TIMEOUT, stream->count);
         }
     }
 
     if (stream->count == 0)
     {
-        if (data == 0 || data > 32)
+        if (data == 0 || data > 129)
         {
             TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_INVALID_SIZE, data);
             return;
@@ -477,7 +518,6 @@ void Mikey::LogRedEyeEvent(u8 dir, u8 data)
         return;
 
     u8 size = stream->buffer[0];
-    u8 header = stream->buffer[1];
     u32 sum = 0;
     for (u8 i = 0; i < size + 1u; i++)
         sum += stream->buffer[i];
@@ -488,34 +528,19 @@ void Mikey::LogRedEyeEvent(u8 dir, u8 data)
     if (m_trace_logger->IsEventEnabled(TRACE_REDEYE, TRACE_REDEYE_PACKET))
     {
         GLYNX_Trace_Entry entry = {};
+        SnapshotRedEyeEntry(entry, dir);
         entry.type = TRACE_REDEYE;
         entry.redeye.event = TRACE_REDEYE_PACKET;
-        entry.redeye.dir = dir;
-        entry.redeye.msg = header & 0x07;
-        entry.redeye.player = (header & 0x78) >> 3;
-        entry.redeye.seq = (header & 0x80) ? 1 : 0;
-        entry.redeye.size = size;
-        entry.redeye.total = stream->total;
         entry.redeye.checksum_ok = checksum_ok;
         entry.redeye.checksum_expected = expected;
         entry.redeye.checksum_actual = actual;
-        for (u8 i = 0; i < 8; i++)
-        {
-            u8 index = (u8)(i + 2);
-            if (index + 1u < stream->total)
-            {
-                entry.redeye.payload[i] = stream->buffer[index];
-                entry.redeye.len++;
-            }
-        }
         m_trace_logger->TraceLog(entry);
     }
 
     if (!checksum_ok)
         TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_CHECKSUM, size, expected, actual);
-    stream->count = 0;
-    stream->total = 0;
-    stream->last_cycle = 0;
+    else
+        ResetRedEyeStream(dir);
 #else
     UNUSED(dir);
     UNUSED(data);
@@ -534,11 +559,7 @@ void Mikey::LogRedEyeTimeoutEvent()
         RedEyeStream* stream = &m_redeye[dir];
         if (stream->count > 0 && m_comlynx_cycle - stream->last_cycle > timeout)
         {
-            u8 count = stream->count;
-            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_TIMEOUT, count);
-            stream->count = 0;
-            stream->total = 0;
-            stream->last_cycle = 0;
+            TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_TIMEOUT, stream->count);
         }
     }
 #endif
@@ -696,9 +717,7 @@ void Mikey::ResetTraceDiagnostics(bool log_reset)
     {
         if (log_reset && m_redeye[dir].count > 0)
             TraceRedEyeProblemEvent(dir, TRACE_REDEYE_PROBLEM_RESET, m_redeye[dir].count);
-        m_redeye[dir].count = 0;
-        m_redeye[dir].total = 0;
-        m_redeye[dir].last_cycle = 0;
+        ResetRedEyeStream(dir);
     }
 }
 #endif

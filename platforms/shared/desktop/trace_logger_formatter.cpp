@@ -221,8 +221,9 @@ static const char* redeye_message_name(u8 message)
     switch (message)
     {
         case TRACE_REDEYE_MESSAGE_LOGON: return "LOGON";
+        case TRACE_REDEYE_MESSAGE_START: return "START";
         case TRACE_REDEYE_MESSAGE_DATA: return "DATA";
-        case TRACE_REDEYE_MESSAGE_REQ: return "REQ";
+        case TRACE_REDEYE_MESSAGE_REQ: return "REQUEST";
         case TRACE_REDEYE_MESSAGE_MASTER_RESEND: return "MASTER RESEND";
         default: return NULL;
     }
@@ -811,30 +812,169 @@ static void format_uart(const GLYNX_Trace_Entry& entry, char* buffer, size_t siz
     }
 }
 
-static void append_redeye_direction(char* buffer, size_t size,
+static void append_redeye_prefix(char* buffer, size_t size,
     size_t* offset, u8 direction)
 {
+    append_format(buffer, size, offset, "[REDEYE] ");
     if (direction == 0)
-        append_format(buffer, size, offset, "TX");
+        append_format(buffer, size, offset, "TX --> ");
     else if (direction == 1)
-        append_format(buffer, size, offset, "RX");
+        append_format(buffer, size, offset, "RX <-- ");
     else
-        append_format(buffer, size, offset, "UNKNOWN(%u)", direction);
+        append_format(buffer, size, offset, "UNKNOWN(%u) ", direction);
+}
+
+static u8 redeye_payload_size(const GLYNX_Trace_Entry& entry)
+{
+    return entry.redeye.size > 0 ? (u8)(entry.redeye.size - 1) : 0;
 }
 
 static void append_redeye_payload(const GLYNX_Trace_Entry& entry,
     char* buffer, size_t size, size_t* offset)
 {
+    u8 payload_size = redeye_payload_size(entry);
     u8 count = entry.redeye.len < sizeof(entry.redeye.payload) ? entry.redeye.len :
         (u8)sizeof(entry.redeye.payload);
-    if (count == 0)
-    {
-        append_format(buffer, size, offset, "NONE");
-        return;
-    }
+    if (count > payload_size)
+        count = payload_size;
+
+    append_format(buffer, size, offset, " Len:%u", payload_size);
+    if (count > 0)
+        append_format(buffer, size, offset, " Data:");
     for (u8 i = 0; i < count; i++)
         append_format(buffer, size, offset, "%s%02X", i ? " " : "",
             entry.redeye.payload[i]);
+    if (payload_size > count)
+        append_format(buffer, size, offset, " Omitted:%u", payload_size - count);
+}
+
+static void append_redeye_players(char* buffer, size_t size,
+    size_t* offset, u8 mask)
+{
+    append_format(buffer, size, offset, "{");
+    bool first = true;
+    for (u8 player = 0; player < 8; player++)
+    {
+        if ((mask & (1u << player)) != 0)
+        {
+            append_format(buffer, size, offset, "%s%u", first ? "" : ",", player);
+            first = false;
+        }
+    }
+    append_format(buffer, size, offset, "}");
+}
+
+static bool redeye_has_complete_payload(const GLYNX_Trace_Entry& entry, u8 payload_size)
+{
+    return entry.redeye.header_valid && entry.redeye.size == payload_size + 1u &&
+        entry.redeye.total == entry.redeye.size + 2u &&
+        entry.redeye.captured == entry.redeye.total &&
+        entry.redeye.len >= payload_size;
+}
+
+static u8 redeye_header(const GLYNX_Trace_Entry& entry)
+{
+    return (u8)(entry.redeye.msg | (entry.redeye.player << 3) |
+        (entry.redeye.seq << 7));
+}
+
+static void append_redeye_raw_header(const GLYNX_Trace_Entry& entry,
+    char* buffer, size_t size, size_t* offset)
+{
+    if (entry.redeye.header_valid)
+        append_format(buffer, size, offset, " P%u S%u",
+            entry.redeye.player, entry.redeye.seq);
+}
+
+static void append_redeye_message(const GLYNX_Trace_Entry& entry,
+    char* buffer, size_t size, size_t* offset, bool details)
+{
+    const char* message = redeye_message_name(entry.redeye.msg);
+    switch (entry.redeye.msg)
+    {
+        case TRACE_REDEYE_MESSAGE_LOGON:
+            append_format(buffer, size, offset, "LOGON");
+            if (redeye_header(entry) == TRACE_REDEYE_MESSAGE_LOGON &&
+                redeye_has_complete_payload(entry, 4))
+            {
+                append_format(buffer, size, offset, " Claim:P%u Players:",
+                    entry.redeye.payload[0]);
+                append_redeye_players(buffer, size, offset, entry.redeye.payload[1]);
+                append_format(buffer, size, offset, " Game:$%04X",
+                    (u16)(entry.redeye.payload[2] |
+                    ((u16)entry.redeye.payload[3] << 8)));
+            }
+            else
+            {
+                append_redeye_raw_header(entry, buffer, size, offset);
+                if (details)
+                    append_redeye_payload(entry, buffer, size, offset);
+            }
+            break;
+        case TRACE_REDEYE_MESSAGE_START:
+            append_format(buffer, size, offset, "START");
+            if (redeye_header(entry) == TRACE_REDEYE_MESSAGE_START &&
+                redeye_has_complete_payload(entry, 4))
+            {
+                append_format(buffer, size, offset, " Countdown:%u Players:",
+                    entry.redeye.payload[0]);
+                append_redeye_players(buffer, size, offset, entry.redeye.payload[1]);
+                append_format(buffer, size, offset, " Game:$%04X",
+                    (u16)(entry.redeye.payload[2] |
+                    ((u16)entry.redeye.payload[3] << 8)));
+            }
+            else
+            {
+                append_redeye_raw_header(entry, buffer, size, offset);
+                if (details)
+                    append_redeye_payload(entry, buffer, size, offset);
+            }
+            break;
+        case TRACE_REDEYE_MESSAGE_DATA:
+            append_format(buffer, size, offset, "DATA P%u S%u",
+                entry.redeye.player, entry.redeye.seq);
+            if (details)
+                append_redeye_payload(entry, buffer, size, offset);
+            break;
+        case TRACE_REDEYE_MESSAGE_REQ:
+            append_format(buffer, size, offset, "REQUEST Target:P%u S%u",
+                entry.redeye.player, entry.redeye.seq);
+            if (details && redeye_payload_size(entry) != 0)
+                append_redeye_payload(entry, buffer, size, offset);
+            break;
+        case TRACE_REDEYE_MESSAGE_MASTER_RESEND:
+            append_format(buffer, size, offset, "MASTER RESEND From:P%u S%u",
+                entry.redeye.player, entry.redeye.seq);
+            if (entry.redeye.len > 0)
+            {
+                append_format(buffer, size, offset, " Missing:");
+                append_redeye_players(buffer, size, offset, entry.redeye.payload[0]);
+                append_format(buffer, size, offset, " Mask:$%02X",
+                    entry.redeye.payload[0]);
+            }
+            else if (details)
+                append_redeye_payload(entry, buffer, size, offset);
+            break;
+        default:
+            if (message)
+                append_format(buffer, size, offset, "%s", message);
+            else
+                append_format(buffer, size, offset, "UNKNOWN(%u)", entry.redeye.msg);
+            append_redeye_raw_header(entry, buffer, size, offset);
+            if (details)
+                append_redeye_payload(entry, buffer, size, offset);
+            break;
+    }
+}
+
+static void append_redeye_capture(const GLYNX_Trace_Entry& entry,
+    char* buffer, size_t size, size_t* offset)
+{
+    if (entry.redeye.total > 0)
+        append_format(buffer, size, offset, " Captured:%u/%u",
+            entry.redeye.captured, entry.redeye.total);
+    else
+        append_format(buffer, size, offset, " Captured:%u", entry.redeye.captured);
 }
 
 static const char* redeye_problem_name(u8 problem)
@@ -856,45 +996,46 @@ static void format_redeye(const GLYNX_Trace_Entry& entry, char* buffer, size_t s
     size_t offset = 0;
     if (entry.redeye.event == TRACE_REDEYE_PACKET)
     {
-        const char* message = redeye_message_name(entry.redeye.msg);
-        append_format(buffer, size, &offset, "[REDEYE] PACKET Direction:");
-        append_redeye_direction(buffer, size, &offset, entry.redeye.dir);
-        append_format(buffer, size, &offset, " Message:");
-        if (message)
-            append_format(buffer, size, &offset, "%s", message);
-        else
-            append_format(buffer, size, &offset, "UNKNOWN(%u)", entry.redeye.msg);
-        append_format(buffer, size, &offset,
-            " Player:%u Seq:%u Size:%u Captured:%u/%u Payload:",
-            entry.redeye.player, entry.redeye.seq,
-            entry.redeye.size, entry.redeye.len, entry.redeye.total);
-        append_redeye_payload(entry, buffer, size, &offset);
-        append_format(buffer, size, &offset, " Checksum:%s Expected:$%02X Actual:$%02X",
-            entry.redeye.checksum_ok ? "OK" : "BAD",
-            entry.redeye.checksum_expected, entry.redeye.checksum_actual);
+        append_redeye_prefix(buffer, size, &offset, entry.redeye.dir);
+        append_redeye_message(entry, buffer, size, &offset, true);
     }
     else if (entry.redeye.event == TRACE_REDEYE_PROBLEM)
     {
         const char* problem = redeye_problem_name(entry.redeye.problem);
-        append_format(buffer, size, &offset, "[REDEYE] ");
+        append_redeye_prefix(buffer, size, &offset, entry.redeye.dir);
         if (problem)
             append_format(buffer, size, &offset, "%s", problem);
         else
             append_format(buffer, size, &offset, "UNKNOWN(%u)", entry.redeye.problem);
-        append_format(buffer, size, &offset, " Direction:");
-        append_redeye_direction(buffer, size, &offset, entry.redeye.dir);
         if (entry.redeye.problem == TRACE_REDEYE_PROBLEM_INVALID_SIZE)
             append_format(buffer, size, &offset, " Size:%u", entry.redeye.value);
         else if (entry.redeye.problem == TRACE_REDEYE_PROBLEM_CHECKSUM)
-            append_format(buffer, size, &offset, " Size:%u Expected:$%02X Actual:$%02X",
-                entry.redeye.value, entry.redeye.checksum_expected,
-                entry.redeye.checksum_actual);
+        {
+            if (entry.redeye.header_valid)
+            {
+                append_format(buffer, size, &offset, " ");
+                append_redeye_message(entry, buffer, size, &offset, false);
+            }
+            append_format(buffer, size, &offset, " Expected:$%02X Actual:$%02X",
+                entry.redeye.checksum_expected, entry.redeye.checksum_actual);
+        }
         else if (entry.redeye.problem == TRACE_REDEYE_PROBLEM_TIMEOUT ||
             entry.redeye.problem == TRACE_REDEYE_PROBLEM_RESET)
-            append_format(buffer, size, &offset, " Captured:%u", entry.redeye.value);
+            append_redeye_capture(entry, buffer, size, &offset);
         else if (entry.redeye.problem == TRACE_REDEYE_PROBLEM_FRAMING ||
             entry.redeye.problem == TRACE_REDEYE_PROBLEM_BREAK)
+        {
+            if (entry.redeye.header_valid)
+            {
+                append_format(buffer, size, &offset, " ");
+                append_redeye_message(entry, buffer, size, &offset, false);
+            }
+            if (entry.redeye.captured > 0)
+                append_redeye_capture(entry, buffer, size, &offset);
             append_format(buffer, size, &offset, " Data:$%02X", entry.redeye.value);
+        }
+        else if (!problem)
+            append_format(buffer, size, &offset, " Value:$%02X", entry.redeye.value);
     }
     else
         append_format(buffer, size, &offset, "[REDEYE] UNKNOWN(%u)", entry.redeye.event);

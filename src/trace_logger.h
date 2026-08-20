@@ -224,6 +224,7 @@ enum GLYNX_Trace_RedEye_Event : u8
 enum GLYNX_Trace_RedEye_Message : u8
 {
     TRACE_REDEYE_MESSAGE_LOGON = 0,
+    TRACE_REDEYE_MESSAGE_START = 2,
     TRACE_REDEYE_MESSAGE_DATA = 3,
     TRACE_REDEYE_MESSAGE_REQ = 4,
     TRACE_REDEYE_MESSAGE_MASTER_RESEND = 5,
@@ -460,14 +461,16 @@ struct GLYNX_Trace_Entry
             u8 seq;         // header bit 7
             u8 size;        // first byte of the packet
             u8 total;
+            u8 captured;    // wire bytes captured, including size/header/checksum
             u8 len;         // payload bytes captured below
-            u8 payload[8];
+            u8 payload[64];
             u8 event;
             u8 problem;
             u8 value;
             u8 checksum_expected;
             u8 checksum_actual;
             bool checksum_ok;
+            bool header_valid;
         } redeye;
 
         struct

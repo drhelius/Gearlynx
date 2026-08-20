@@ -36,6 +36,7 @@ class Bus;
 class LcdScreen;
 class StateSerializer;
 class TraceLogger;
+struct GLYNX_Trace_Entry;
 enum GLYNX_Trace_Type : u8;
 
 class Mikey
@@ -183,6 +184,8 @@ private:
     void LogRedEyeEvent(u8 dir, u8 data);
     void LogRedEyeProblemEvent(u8 dir, u8 problem, u8 value, u8 expected, u8 actual);
     void LogRedEyeTimeoutEvent();
+    void SnapshotRedEyeEntry(GLYNX_Trace_Entry& entry, u8 dir);
+    void ResetRedEyeStream(u8 dir);
     void LogCartridgeAddressEvent();
     void LogCartridgeIOEvent(u8 event, u8 operation, u8 value);
     void LogDebugMessageEvent(u16 address, u8 value);
@@ -233,7 +236,7 @@ private:
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     struct RedEyeStream
     {
-        u8 buffer[64];
+        u8 buffer[131];
         u8 count;
         u8 total;
         u64 last_cycle;
