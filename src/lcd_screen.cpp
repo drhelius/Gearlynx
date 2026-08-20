@@ -24,6 +24,53 @@
 #include "no_bios.h"
 #include "no_power.h"
 
+template<typename Pixel, GLYNX_Rotation rotation>
+static void ConvertAndRotateFrameBuffer(const u16* src, Pixel* dst,
+    const Pixel* palette)
+{
+    const int width = GLYNX_SCREEN_WIDTH;
+    const int height = GLYNX_SCREEN_HEIGHT;
+    const int pixel_count = width * height;
+
+    if (rotation == GLYNX_ROTATION_180)
+    {
+        for (int i = 0; i < pixel_count; ++i)
+            dst[pixel_count - 1 - i] = palette[src[i] & 0x0FFF];
+        return;
+    }
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            const int src_index = y * width + x;
+            const int dst_index = (rotation == GLYNX_ROTATION_LEFT)
+                                  ? (width - 1 - x) * height + y
+                                  : x * height + (height - 1 - y);
+            dst[dst_index] = palette[src[src_index] & 0x0FFF];
+        }
+    }
+}
+
+template<typename Pixel>
+static void ConvertRotatedFrameBuffer(const u16* src, Pixel* dst,
+    const Pixel* palette, GLYNX_Rotation rotation)
+{
+    switch (rotation)
+    {
+        case GLYNX_ROTATION_LEFT:
+            ConvertAndRotateFrameBuffer<Pixel, GLYNX_ROTATION_LEFT>(src, dst, palette);
+            break;
+        case GLYNX_ROTATION_180:
+            ConvertAndRotateFrameBuffer<Pixel, GLYNX_ROTATION_180>(src, dst, palette);
+            break;
+        case GLYNX_ROTATION_RIGHT:
+        default:
+            ConvertAndRotateFrameBuffer<Pixel, GLYNX_ROTATION_RIGHT>(src, dst, palette);
+            break;
+    }
+}
+
 LcdScreen::LcdScreen(Mikey* mikey, Memory* memory, Bus* bus)
 {
     m_mikey = mikey;
@@ -83,23 +130,37 @@ void LcdScreen::EndFrame(GLYNX_Rotation rotation)
     if (m_pixel_format == GLYNX_PIXEL_RGB565)
     {
         u16* dst = (u16*)m_frame_buffer;
-        for (int i = 0; i < pixel_count; ++i)
+
+        if (rotation == GLYNX_ROTATION_DISABLED)
         {
-            u16 color_12bit = src[i] & 0x0FFF;
-            dst[i] = m_rgb565_palette[color_12bit];
+            for (int i = 0; i < pixel_count; ++i)
+            {
+                u16 color_12bit = src[i] & 0x0FFF;
+                dst[i] = m_rgb565_palette[color_12bit];
+            }
+            return;
         }
+
+        ConvertRotatedFrameBuffer(src, dst, m_rgb565_palette,
+            rotation);
     }
     else
     {
         u32* dst = (u32*)m_frame_buffer;
-        for (int i = 0; i < pixel_count; ++i)
-        {
-            u16 color_12bit = src[i] & 0x0FFF;
-            dst[i] = m_rgba8888_palette[color_12bit];
-        }
-    }
 
-    RotateFrameBuffer(rotation);
+        if (rotation == GLYNX_ROTATION_DISABLED)
+        {
+            for (int i = 0; i < pixel_count; ++i)
+            {
+                u16 color_12bit = src[i] & 0x0FFF;
+                dst[i] = m_rgba8888_palette[color_12bit];
+            }
+            return;
+        }
+
+        ConvertRotatedFrameBuffer(src, dst, m_rgba8888_palette,
+            rotation);
+    }
 }
 
 void LcdScreen::RenderNoBiosScreen(u8* frame_buffer)
@@ -114,72 +175,6 @@ void LcdScreen::RenderNoPowerScreen(u8* frame_buffer)
     int byte_count = GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * (m_pixel_format == GLYNX_PIXEL_RGB565 ? 2 : 4);
     u8* no_power_image = (m_pixel_format == GLYNX_PIXEL_RGB565) ? (u8*)k_no_power_rgb565 : (u8*)k_no_power_rgba8888;
     memcpy(frame_buffer, no_power_image, byte_count);
-}
-
-void LcdScreen::RotateFrameBuffer(GLYNX_Rotation rotation)
-{
-    if (rotation == GLYNX_ROTATION_DISABLED)
-        return;
-
-    const int width = GLYNX_SCREEN_WIDTH;
-    const int height = GLYNX_SCREEN_HEIGHT;
-    const int pixel_count = width * height;
-
-    if (m_pixel_format == GLYNX_PIXEL_RGB565)
-    {
-        const u16* src = reinterpret_cast<const u16*>(m_frame_buffer);
-        u16* dst = reinterpret_cast<u16*>(m_rotated_frame_buffer);
-
-        if (rotation == GLYNX_ROTATION_180)
-        {
-            for (int i = 0; i < pixel_count; i++)
-                dst[pixel_count - 1 - i] = src[i];
-
-            memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u16));
-            return;
-        }
-
-        for (int y = 0; y < height; ++y)
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                const int src_index = y * width + x;
-                const int dst_index = (rotation == GLYNX_ROTATION_LEFT)
-                                      ? (width - 1 - x) * height + y
-                                      : x * height + (height - 1 - y);
-                dst[dst_index] = src[src_index];
-            }
-        }
-
-        memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u16));
-        return;
-    }
-
-    const u32* src = reinterpret_cast<const u32*>(m_frame_buffer);
-    u32* dst = reinterpret_cast<u32*>(m_rotated_frame_buffer);
-
-    if (rotation == GLYNX_ROTATION_180)
-    {
-        for (int i = 0; i < pixel_count; i++)
-            dst[pixel_count - 1 - i] = src[i];
-
-        memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u32));
-        return;
-    }
-
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            const int src_index = y * width + x;
-            const int dst_index = (rotation == GLYNX_ROTATION_LEFT)
-                                  ? (width - 1 - x) * height + y
-                                  : x * height + (height - 1 - y);
-            dst[dst_index] = src[src_index];
-        }
-    }
-
-    memcpy(m_frame_buffer, m_rotated_frame_buffer, pixel_count * sizeof(u32));
 }
 
 void LcdScreen::SaveState(std::ostream& stream)

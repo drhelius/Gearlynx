@@ -81,7 +81,6 @@ private:
     void InitPalettes();
     void DoDMA();
     void DrawPixel();
-    void RotateFrameBuffer(GLYNX_Rotation rotation);
     void Serialize(StateSerializer& s);
 
 private:
@@ -91,7 +90,6 @@ private:
     u8* m_ram;
     u8* m_frame_buffer;
     u16 m_screen_buffer[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT] = {};
-    u8 m_rotated_frame_buffer[GLYNX_SCREEN_WIDTH * GLYNX_SCREEN_HEIGHT * 4] = {};
     LcdScreen_State m_state;
     GLYNX_Pixel_Format m_pixel_format;
     u32 m_rgba8888_palette[4096] = {};
