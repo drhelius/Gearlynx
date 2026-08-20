@@ -68,7 +68,7 @@ INLINE u32 M6502::RunInstruction()
         m_s.cycles += m_opcode_cycles[opcode];
 
         CheckIRQs();
-        (this->*m_opcodes[opcode])();
+        m_opcodes[opcode](this);
 
         if (m_irq_sample_after_opcode && !m_s.irq_pending)
             CheckIRQs();

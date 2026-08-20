@@ -128,7 +128,7 @@ void M6502::LogIRQEvent(u16 pc, u16 vector)
 
 void M6502::Reset(bool is_lynx2)
 {
-    InitOPCodeFunctors(is_lynx2);
+    InitOPCodeTable(is_lynx2);
 
     m_s.PC.SetLow(m_memory->Read(0xFFFC));
     m_s.PC.SetHigh(m_memory->Read(0xFFFD));

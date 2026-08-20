@@ -127,7 +127,15 @@ public:
     void LoadState(std::istream& stream);
 
 private:
-    typedef void (M6502::*opcodeptr) (void);
+    typedef void (M6502::*opcode_member_ptr) (void);
+    typedef void (*opcodeptr) (M6502*);
+
+    template<opcode_member_ptr Opcode>
+    static void OPCodeThunk(M6502* cpu)
+    {
+        (cpu->*Opcode)();
+    }
+
     opcodeptr m_opcodes[256];
     const u8* m_opcode_cycles;
     const u8* m_opcode_sizes;
@@ -252,7 +260,7 @@ private:
     void OPCodes_TSB(u16 address);
     void OPCodes_LynxI_NOP();
 
-    void InitOPCodeFunctors(bool is_lynx2);
+    void InitOPCodeTable(bool is_lynx2);
 
     void OPCode0x00(); void OPCode0x01(); void OPCode0x02(); void OPCode0x03();
     void OPCode0x04(); void OPCode0x05(); void OPCode0x06(); void OPCode0x07();
