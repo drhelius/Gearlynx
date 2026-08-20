@@ -140,6 +140,8 @@ private:
     void UpdateTimerStatusMask(int unit);
     void ExpireTimerStatus(u32 phase, u32 cycles);
     void ExpireTimerStatusSlot(int slot);
+    void RebuildTimerSourceDistances();
+    u32 CalculateNextTimerSourceCyclesSlow(u32 phase, u8 key);
     u32 CalculateNextTimerSourceCycles(u32 phase);
     u32 GetNextTimerServiceCycles(u32 phase);
     void ClockTimer(int timer);
@@ -244,6 +246,8 @@ private:
     u16 m_timer_service_mask;
     u16 m_timer_status_mask;
     u8 m_timer_active_source_mask;
+    u16 m_timer_source_distance[1024];
+    u8 m_timer_source_key;
     u32 m_timer_source_countdown;
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)

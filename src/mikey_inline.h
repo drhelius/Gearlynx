@@ -20,6 +20,7 @@
 #ifndef MIKEY_INLINE_H
 #define MIKEY_INLINE_H
 
+#include <assert.h>
 #include "mikey.h"
 #include "audio.h"
 #include "suzy.h"
@@ -503,6 +504,7 @@ INLINE void Mikey::Write(u16 address, u8 value)
             DebugMikey("Setting MTEST0 to %02X (was %02X)", value, m_state.MTEST0);
             m_state.MTEST0 = value;
             m_uart_last_bit_cycle = 0;
+            RebuildTimerSourceDistances();
             m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             if (!debug)
@@ -738,6 +740,7 @@ inline void Mikey::WriteTimer(u16 address, u8 value)
             t->control_b = UNSET_BIT(t->control_b, 3);
 
         UpdateTimerServiceMask(i);
+        RebuildTimerSourceDistances();
         m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
 
         break;
@@ -884,6 +887,7 @@ inline void Mikey::WriteAudio(u16 address, u8 value)
 
         RebuildTapsMask(c);
         UpdateTimerServiceMask(i + 8);
+        RebuildTimerSourceDistances();
         m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
         break;
     }
@@ -1131,47 +1135,17 @@ INLINE void Mikey::UpdateTimerHardware(u32 cycles)
 
 INLINE u32 Mikey::CalculateNextTimerSourceCycles(u32 phase)
 {
-    u8 mask = m_timer_active_source_mask;
-
+#if !defined(NDEBUG)
+    u8 key = m_timer_active_source_mask;
     if (IS_SET_BIT(m_state.MTEST0, 4))
-        mask = SET_BIT(mask, 0);
+        key = SET_BIT(key, 0);
 
-    u32 next_cycles = 0;
+    assert(phase < 1024);
+    assert(key == m_timer_source_key);
+    assert(m_timer_source_distance[phase] == CalculateNextTimerSourceCyclesSlow(phase, key));
+#endif
 
-    if ((mask & 0x03) != 0)
-    {
-        int prescaler = IS_SET_BIT(mask, 0) ? 0 : 1;
-        u32 period = k_mikey_timer_period_cycles[prescaler];
-        next_cycles = (k_mikey_timer_source_phase[prescaler] - phase) & (period - 1);
-
-        if (next_cycles == 0)
-            next_cycles = period;
-    }
-
-    if ((mask & 0x3C) != 0)
-    {
-        int prescaler = (int)t_zero16(mask & 0x3C);
-        u32 period = k_mikey_timer_period_cycles[prescaler];
-        u32 source_cycles = (k_mikey_timer_source_phase[prescaler] - phase) & (period - 1);
-
-        if (source_cycles == 0)
-            source_cycles = period;
-        if (next_cycles == 0 || source_cycles < next_cycles)
-            next_cycles = source_cycles;
-    }
-
-    if (IS_SET_BIT(mask, 6) && IS_NOT_SET_BIT(mask, 0))
-    {
-        u32 source_cycles = (k_mikey_timer_source_phase[6] - phase) & 1023;
-
-        if (source_cycles == 0)
-            source_cycles = 1024;
-
-        if (next_cycles == 0 || source_cycles < next_cycles)
-            next_cycles = source_cycles;
-    }
-
-    return next_cycles;
+    return m_timer_source_distance[phase];
 }
 
 INLINE u32 Mikey::GetNextTimerServiceCycles(u32 phase)
@@ -1292,6 +1266,7 @@ INLINE void Mikey::RebuildTimerCaches()
         UpdateTimerServiceMask(channel + 8);
     }
 
+    RebuildTimerSourceDistances();
     m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
 }
 

@@ -64,6 +64,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     m_timer_service_mask = 0;
     m_timer_status_mask = 0;
     m_timer_active_source_mask = 0;
+    m_timer_source_key = 0xFF;
     m_timer_source_countdown = 0;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_uart_tx_trace_active = false;
@@ -637,6 +638,9 @@ void Mikey::ResetTimers()
         m_state.timers[i].internal_pending_ticks = 0;
     }
 
+    RebuildTimerSourceDistances();
+    m_timer_source_countdown = CalculateNextTimerSourceCycles(m_state.timer_source_phase);
+
     m_lcd_screen->ConfigureLineTiming();
 }
 
@@ -666,6 +670,62 @@ void Mikey::ResetAudio()
     m_state.ATTEN_B = 0x00;
     m_state.ATTEN_C = 0x00;
     m_state.ATTEN_D = 0x00;
+}
+
+void Mikey::RebuildTimerSourceDistances()
+{
+    u8 key = m_timer_active_source_mask;
+
+    if (IS_SET_BIT(m_state.MTEST0, 4))
+        key = SET_BIT(key, 0);
+
+    if (key == m_timer_source_key)
+        return;
+
+    for (u32 phase = 0; phase < 1024; phase++)
+        m_timer_source_distance[phase] = (u16)CalculateNextTimerSourceCyclesSlow(phase, key);
+
+    m_timer_source_key = key;
+}
+
+u32 Mikey::CalculateNextTimerSourceCyclesSlow(u32 phase, u8 key)
+{
+    u32 next_cycles = 0;
+
+    if ((key & 0x03) != 0)
+    {
+        int prescaler = IS_SET_BIT(key, 0) ? 0 : 1;
+        u32 period = k_mikey_timer_period_cycles[prescaler];
+        next_cycles = (k_mikey_timer_source_phase[prescaler] - phase) & (period - 1);
+
+        if (next_cycles == 0)
+            next_cycles = period;
+    }
+
+    if ((key & 0x3C) != 0)
+    {
+        int prescaler = (int)t_zero16(key & 0x3C);
+        u32 period = k_mikey_timer_period_cycles[prescaler];
+        u32 source_cycles = (k_mikey_timer_source_phase[prescaler] - phase) & (period - 1);
+
+        if (source_cycles == 0)
+            source_cycles = period;
+        if (next_cycles == 0 || source_cycles < next_cycles)
+            next_cycles = source_cycles;
+    }
+
+    if (IS_SET_BIT(key, 6) && IS_NOT_SET_BIT(key, 0))
+    {
+        u32 source_cycles = (k_mikey_timer_source_phase[6] - phase) & 1023;
+
+        if (source_cycles == 0)
+            source_cycles = 1024;
+
+        if (next_cycles == 0 || source_cycles < next_cycles)
+            next_cycles = source_cycles;
+    }
+
+    return next_cycles;
 }
 
 void Mikey::ResetUART()
