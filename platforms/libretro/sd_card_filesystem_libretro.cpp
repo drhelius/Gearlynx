@@ -152,7 +152,21 @@ s64 SdCardFileSystemLibretro::ReadFile(u32 offset, void* data, u32 size)
     if (m_vfs_interface->seek(m_file, offset, RETRO_VFS_SEEK_POSITION_START) < 0)
         return -1;
 
-    return (s64)m_vfs_interface->read(m_file, data, size);
+    u8* output = (u8*)data;
+    s64 total = 0;
+
+    while (total < size)
+    {
+        s64 read = (s64)m_vfs_interface->read(m_file, output + total, size - total);
+        if (read < 0)
+            return total > 0 ? total : -1;
+        if (read == 0)
+            break;
+
+        total += read;
+    }
+
+    return total;
 }
 
 bool SdCardFileSystemLibretro::WriteFile(u32 offset, const void* data, u32 size)
