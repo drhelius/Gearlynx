@@ -40,6 +40,14 @@
 #include "emu.h"
 #include "config.h"
 
+static const char* GLDEBUG_MAGIC = "GLDEBUG2";
+static const int GLDEBUG_MAGIC_LEN = 8;
+static const int GLDEBUG_MAX_RECORDS = 0x10000;
+
+static bool read_settings_data(std::istream& stream, void* data, size_t size);
+static bool read_settings_bool(std::istream& stream, bool& value);
+static bool read_settings_count(std::istream& stream, int& count, size_t record_size);
+
 void gui_debug_init(void)
 {
     gui_debug_trace_logger_init();
@@ -131,9 +139,6 @@ void gui_debug_windows(void)
     }
 }
 
-static const char* GLDEBUG_MAGIC = "GLDEBUG2";
-static const int GLDEBUG_MAGIC_LEN = 8;
-
 void gui_debug_save_settings(const char* file_path)
 {
     std::ofstream file(file_path, std::ios::binary);
@@ -196,49 +201,93 @@ void gui_debug_load_settings(const char* file_path)
     }
 
     char magic[8] = {};
-    file.read(magic, GLDEBUG_MAGIC_LEN);
-    if (file.gcount() != GLDEBUG_MAGIC_LEN || memcmp(magic, GLDEBUG_MAGIC, GLDEBUG_MAGIC_LEN) != 0)
+    if (!read_settings_data(file, magic, GLDEBUG_MAGIC_LEN) ||
+        memcmp(magic, GLDEBUG_MAGIC, GLDEBUG_MAGIC_LEN) != 0)
     {
         Log("Invalid debug settings file: %s", file_path);
-        file.close();
         return;
     }
 
     GearlynxCore* core = emu_get_core();
     M6502* processor = core->GetM6502();
 
-    processor->ResetBreakpoints();
+    M6502::GLYNX_Breakpoint breakpoint = {};
+    size_t breakpoint_size = sizeof(breakpoint.enabled) + sizeof(breakpoint.address1) +
+        sizeof(breakpoint.address2) + sizeof(breakpoint.read) + sizeof(breakpoint.write) +
+        sizeof(breakpoint.execute) + sizeof(breakpoint.range);
     int bp_count = 0;
-    file.read((char*)&bp_count, sizeof(int));
-    std::vector<M6502::GLYNX_Breakpoint>* breakpoints = processor->GetBreakpoints();
+    if (!read_settings_count(file, bp_count, breakpoint_size))
+    {
+        Log("Invalid debug settings file: %s", file_path);
+        return;
+    }
+
+    std::vector<M6502::GLYNX_Breakpoint> breakpoints;
+    breakpoints.reserve((size_t)bp_count);
     for (int i = 0; i < bp_count; i++)
     {
-        M6502::GLYNX_Breakpoint bp;
-        file.read((char*)&bp.enabled, sizeof(bool));
-        file.read((char*)&bp.address1, sizeof(u16));
-        file.read((char*)&bp.address2, sizeof(u16));
-        file.read((char*)&bp.read, sizeof(bool));
-        file.read((char*)&bp.write, sizeof(bool));
-        file.read((char*)&bp.execute, sizeof(bool));
-        file.read((char*)&bp.range, sizeof(bool));
-        breakpoints->push_back(bp);
+        M6502::GLYNX_Breakpoint bp = {};
+        if (!read_settings_bool(file, bp.enabled) ||
+            !read_settings_data(file, &bp.address1, sizeof(bp.address1)) ||
+            !read_settings_data(file, &bp.address2, sizeof(bp.address2)) ||
+            !read_settings_bool(file, bp.read) ||
+            !read_settings_bool(file, bp.write) ||
+            !read_settings_bool(file, bp.execute) ||
+            !read_settings_bool(file, bp.range))
+        {
+            Log("Invalid debug settings file: %s", file_path);
+            return;
+        }
+        breakpoints.push_back(bp);
     }
 
-    file.read((char*)emu_debug_irq_breakpoints, sizeof(bool) * 8);
+    bool irq_breakpoints[8] = {};
+    for (int i = 0; i < 8; i++)
+    {
+        if (!read_settings_bool(file, irq_breakpoints[i]))
+        {
+            Log("Invalid debug settings file: %s", file_path);
+            return;
+        }
+    }
 
-    gui_debug_reset_disassembler_bookmarks();
+    struct DasmBookmark { u16 address; char name[32]; };
+    DasmBookmark bookmark = {};
+    size_t bookmark_size = sizeof(bookmark.address) + sizeof(bookmark.name);
     int bookmark_count = 0;
-    file.read((char*)&bookmark_count, sizeof(int));
+    if (!read_settings_count(file, bookmark_count, bookmark_size))
+    {
+        Log("Invalid debug settings file: %s", file_path);
+        return;
+    }
+
+    std::vector<DasmBookmark> bookmarks;
+    bookmarks.reserve((size_t)bookmark_count);
     for (int i = 0; i < bookmark_count; i++)
     {
-        u16 address;
-        char name[32];
-        file.read((char*)&address, sizeof(u16));
-        file.read(name, 32);
-        gui_debug_add_disassembler_bookmark(address, name);
+        DasmBookmark item = {};
+        if (!read_settings_data(file, &item.address, sizeof(item.address)) ||
+            !read_settings_data(file, item.name, sizeof(item.name)))
+        {
+            Log("Invalid debug settings file: %s", file_path);
+            return;
+        }
+        item.name[sizeof(item.name) - 1] = 0;
+        bookmarks.push_back(item);
     }
 
-    gui_debug_memory_load_settings(file);
+    if (!gui_debug_memory_load_settings(file))
+    {
+        Log("Invalid debug settings file: %s", file_path);
+        return;
+    }
+
+    processor->GetBreakpoints()->swap(breakpoints);
+    memcpy(emu_debug_irq_breakpoints, irq_breakpoints, sizeof(irq_breakpoints));
+
+    gui_debug_reset_disassembler_bookmarks();
+    for (int i = 0; i < bookmark_count; i++)
+        gui_debug_add_disassembler_bookmark(bookmarks[i].address, bookmarks[i].name);
 
     file.close();
 
@@ -289,4 +338,56 @@ void gui_debug_auto_load_settings(void)
     test.close();
 
     gui_debug_load_settings(path.c_str());
+}
+
+static bool read_settings_data(std::istream& stream, void* data, size_t size)
+{
+    stream.read((char*)data, (std::streamsize)size);
+    return !stream.fail() && stream.gcount() == (std::streamsize)size;
+}
+
+static bool read_settings_bool(std::istream& stream, bool& value)
+{
+    u8 data[sizeof(bool)] = {};
+    bool false_value = false;
+    bool true_value = true;
+
+    if (!read_settings_data(stream, data, sizeof(data)))
+        return false;
+    if (memcmp(data, &false_value, sizeof(data)) == 0)
+    {
+        value = false;
+        return true;
+    }
+    if (memcmp(data, &true_value, sizeof(data)) == 0)
+    {
+        value = true;
+        return true;
+    }
+
+    return false;
+}
+
+static bool read_settings_count(std::istream& stream, int& count, size_t record_size)
+{
+    if (!read_settings_data(stream, &count, sizeof(count)))
+        return false;
+    if (count < 0 || count > GLDEBUG_MAX_RECORDS || record_size == 0)
+        return false;
+
+    std::streampos position = stream.tellg();
+    if (position == std::streampos(-1))
+        return false;
+
+    stream.seekg(0, std::ios::end);
+    std::streampos end = stream.tellg();
+    if (end == std::streampos(-1))
+        return false;
+
+    stream.seekg(position);
+    if (stream.fail() || end < position)
+        return false;
+
+    u64 remaining = (u64)(end - position);
+    return (u64)count <= remaining / record_size;
 }
