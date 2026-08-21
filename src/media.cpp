@@ -1304,7 +1304,7 @@ void Media::LoadState(std::istream& stream, int version)
     }
     if (m_el_cheapo_sd_instance->IsAvailable())
     {
-        if (version == 18)
+        if (version >= 18)
             m_el_cheapo_sd_instance->LoadState(stream);
         else
             m_el_cheapo_sd_instance->Reset(false);
