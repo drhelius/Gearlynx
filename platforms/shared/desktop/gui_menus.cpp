@@ -169,6 +169,7 @@ static void menu_gearlynx(void)
             ImGui::EndMenu();
         }
 
+        ImGui::Separator();
         ImGui::MenuItem("Enable Softpatching", "", &config_emulator.softpatching);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Automatically applies a matching .ips patch next to the ROM when loading.");
