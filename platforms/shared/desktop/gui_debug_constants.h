@@ -51,55 +51,60 @@ struct GuiDebugTextColor
     }
 };
 
-static const GuiDebugColor cyan =          { ImVec4(0.10f, 0.90f, 0.90f, 1.0f), ImVec4(0.00f, 0.34f, 0.42f, 1.0f) };
-static const GuiDebugColor dark_cyan =     { ImVec4(0.00f, 0.30f, 0.30f, 1.0f), ImVec4(0.70f, 0.82f, 0.84f, 1.0f) };
-static const GuiDebugColor magenta =       { ImVec4(1.00f, 0.50f, 0.96f, 1.0f), ImVec4(0.61f, 0.00f, 0.48f, 1.0f) };
-static const GuiDebugColor dark_magenta =  { ImVec4(0.30f, 0.18f, 0.27f, 1.0f), ImVec4(0.78f, 0.66f, 0.78f, 1.0f) };
-static const GuiDebugColor yellow =        { ImVec4(1.00f, 0.90f, 0.05f, 1.0f), ImVec4(0.46f, 0.32f, 0.00f, 1.0f) };
-static const GuiDebugColor dark_yellow =   { ImVec4(0.30f, 0.25f, 0.00f, 1.0f), ImVec4(0.82f, 0.74f, 0.48f, 1.0f) };
-static const GuiDebugColor orange =        { ImVec4(1.00f, 0.55f, 0.00f, 1.0f), ImVec4(0.54f, 0.24f, 0.00f, 1.0f) };
-static const GuiDebugColor dark_orange =   { ImVec4(0.60f, 0.20f, 0.00f, 1.0f), ImVec4(0.86f, 0.68f, 0.52f, 1.0f) };
-static const GuiDebugColor red =           { ImVec4(0.98f, 0.15f, 0.45f, 1.0f), ImVec4(0.68f, 0.00f, 0.20f, 1.0f) };
-static const GuiDebugColor dark_red =      { ImVec4(0.30f, 0.04f, 0.16f, 1.0f), ImVec4(0.86f, 0.62f, 0.70f, 1.0f) };
-static const GuiDebugColor green =         { ImVec4(0.10f, 0.90f, 0.10f, 1.0f), ImVec4(0.00f, 0.38f, 0.08f, 1.0f) };
-static const GuiDebugColor dim_green =     { ImVec4(0.05f, 0.40f, 0.05f, 1.0f), ImVec4(0.24f, 0.46f, 0.20f, 1.0f) };
-static const GuiDebugColor dark_green =    { ImVec4(0.03f, 0.20f, 0.02f, 1.0f), ImVec4(0.60f, 0.76f, 0.56f, 1.0f) };
-static const GuiDebugColor violet =        { ImVec4(0.68f, 0.51f, 1.00f, 1.0f), ImVec4(0.37f, 0.17f, 0.69f, 1.0f) };
-static const GuiDebugColor dark_violet =   { ImVec4(0.24f, 0.15f, 0.30f, 1.0f), ImVec4(0.72f, 0.64f, 0.82f, 1.0f) };
-static const GuiDebugColor blue =          { ImVec4(0.20f, 0.40f, 1.00f, 1.0f), ImVec4(0.05f, 0.20f, 0.74f, 1.0f) };
-static const GuiDebugColor dark_blue =     { ImVec4(0.07f, 0.10f, 0.30f, 1.0f), ImVec4(0.60f, 0.66f, 0.84f, 1.0f) };
-static const GuiDebugColor white =         { ImVec4(1.00f, 1.00f, 1.00f, 1.0f), ImVec4(0.08f, 0.075f, 0.10f, 1.0f) };
-static const GuiDebugColor gray =          { ImVec4(0.50f, 0.50f, 0.50f, 1.0f), ImVec4(0.34f, 0.32f, 0.38f, 1.0f) };
-static const GuiDebugColor mid_gray =      { ImVec4(0.40f, 0.40f, 0.40f, 1.0f), ImVec4(0.46f, 0.43f, 0.50f, 1.0f) };
-static const GuiDebugColor dark_gray =     { ImVec4(0.10f, 0.10f, 0.10f, 1.0f), ImVec4(0.35f, 0.34f, 0.38f, 1.0f) };
-static const GuiDebugColor black =         { ImVec4(0.00f, 0.00f, 0.00f, 1.0f), ImVec4(0.08f, 0.075f, 0.10f, 1.0f) };
-static const GuiDebugColor brown =         { ImVec4(0.68f, 0.50f, 0.36f, 1.0f), ImVec4(0.43f, 0.24f, 0.08f, 1.0f) };
-static const GuiDebugColor dark_brown =    { ImVec4(0.38f, 0.20f, 0.06f, 1.0f), ImVec4(0.76f, 0.62f, 0.48f, 1.0f) };
+static inline ImVec4 gui_debug_color(unsigned int rgb)
+{
+    return ImVec4(((rgb >> 16) & 0xFF) / 255.0f, ((rgb >> 8) & 0xFF) / 255.0f, (rgb & 0xFF) / 255.0f, 1.0f);
+}
 
-static const GuiDebugTextColor c_cyan = { "{19E6E6}", "{00576B}" };
-static const GuiDebugTextColor c_dark_cyan = { "{004C4C}", "{B3D1D6}" };
-static const GuiDebugTextColor c_magenta = { "{FF80F5}", "{9C007A}" };
-static const GuiDebugTextColor c_dark_magenta = { "{4C2E45}", "{C7A8C7}" };
-static const GuiDebugTextColor c_yellow = { "{FFE60D}", "{755200}" };
-static const GuiDebugTextColor c_dark_yellow = { "{4C4000}", "{D1BD7A}" };
-static const GuiDebugTextColor c_orange = { "{FF8C00}", "{8A3D00}" };
-static const GuiDebugTextColor c_dark_orange = { "{993300}", "{DBAD85}" };
-static const GuiDebugTextColor c_red = { "{FA2673}", "{AD0033}" };
-static const GuiDebugTextColor c_dark_red = { "{4C0A29}", "{DB9EB3}" };
-static const GuiDebugTextColor c_green = { "{19E619}", "{006114}" };
-static const GuiDebugTextColor c_dim_green = { "{0D660D}", "{3D7533}" };
-static const GuiDebugTextColor c_dark_green = { "{083305}", "{99C28F}" };
-static const GuiDebugTextColor c_violet = { "{AD82FF}", "{5E2BAD}" };
-static const GuiDebugTextColor c_dark_violet = { "{3D274D}", "{B8A3D1}" };
-static const GuiDebugTextColor c_blue = { "{3366FF}", "{0D33BD}" };
-static const GuiDebugTextColor c_dark_blue = { "{12194D}", "{99A8D6}" };
-static const GuiDebugTextColor c_white = { "{FFFFFF}", "{14131A}" };
-static const GuiDebugTextColor c_gray = { "{808080}", "{575261}" };
-static const GuiDebugTextColor c_mid_gray = { "{666666}", "{756E80}" };
-static const GuiDebugTextColor c_dark_gray = { "{1A1A1A}", "{5A5661}" };
-static const GuiDebugTextColor c_black = { "{000000}", "{14131A}" };
-static const GuiDebugTextColor c_brown = { "{AD805C}", "{6E3D14}" };
-static const GuiDebugTextColor c_dark_brown = { "{61330F}", "{C29E7A}" };
+static const GuiDebugColor cyan = { gui_debug_color(0x1AE6E6), gui_debug_color(0x007C91) };
+static const GuiDebugColor dark_cyan = { gui_debug_color(0x004D4D), gui_debug_color(0xCBEFF3) };
+static const GuiDebugColor magenta = { gui_debug_color(0xFF80F5), gui_debug_color(0xB42375) };
+static const GuiDebugColor dark_magenta = { gui_debug_color(0x4D2E45), gui_debug_color(0xF3D6E8) };
+static const GuiDebugColor yellow = { gui_debug_color(0xFFE60D), gui_debug_color(0x8A6000) };
+static const GuiDebugColor dark_yellow = { gui_debug_color(0x4D4000), gui_debug_color(0xF7E7B2) };
+static const GuiDebugColor orange = { gui_debug_color(0xFF8C00), gui_debug_color(0xC44D00) };
+static const GuiDebugColor dark_orange = { gui_debug_color(0x993300), gui_debug_color(0xF8D4B6) };
+static const GuiDebugColor red = { gui_debug_color(0xFA2673), gui_debug_color(0xC7254E) };
+static const GuiDebugColor dark_red = { gui_debug_color(0x4D0A29), gui_debug_color(0xF6CDD8) };
+static const GuiDebugColor green = { gui_debug_color(0x1AE61A), gui_debug_color(0x17823B) };
+static const GuiDebugColor dim_green = { gui_debug_color(0x0D660D), gui_debug_color(0x4D7438) };
+static const GuiDebugColor dark_green = { gui_debug_color(0x083305), gui_debug_color(0xD5E8D6) };
+static const GuiDebugColor violet = { gui_debug_color(0xAD82FF), gui_debug_color(0x7047C2) };
+static const GuiDebugColor dark_violet = { gui_debug_color(0x3D264D), gui_debug_color(0xE4D9F7) };
+static const GuiDebugColor blue = { gui_debug_color(0x3366FF), gui_debug_color(0x0969DA) };
+static const GuiDebugColor dark_blue = { gui_debug_color(0x121A4D), gui_debug_color(0xD7E5FA) };
+static const GuiDebugColor white = { gui_debug_color(0xFFFFFF), gui_debug_color(0x21201C) };
+static const GuiDebugColor gray = { gui_debug_color(0x808080), gui_debug_color(0x69645D) };
+static const GuiDebugColor mid_gray = { gui_debug_color(0x666666), gui_debug_color(0x756F67) };
+static const GuiDebugColor dark_gray = { gui_debug_color(0x1A1A1A), gui_debug_color(0x4B4842) };
+static const GuiDebugColor black = { gui_debug_color(0x000000), gui_debug_color(0x21201C) };
+static const GuiDebugColor brown = { gui_debug_color(0xAD805C), gui_debug_color(0x87502C) };
+static const GuiDebugColor dark_brown = { gui_debug_color(0x61330F), gui_debug_color(0xE8D6C8) };
+
+static const GuiDebugTextColor c_cyan = { "{1AE6E6}", "{007C91}" };
+static const GuiDebugTextColor c_dark_cyan = { "{004D4D}", "{CBEFF3}" };
+static const GuiDebugTextColor c_magenta = { "{FF80F5}", "{B42375}" };
+static const GuiDebugTextColor c_dark_magenta = { "{4D2E45}", "{F3D6E8}" };
+static const GuiDebugTextColor c_yellow = { "{FFE60D}", "{8A6000}" };
+static const GuiDebugTextColor c_dark_yellow = { "{4D4000}", "{F7E7B2}" };
+static const GuiDebugTextColor c_orange = { "{FF8C00}", "{C44D00}" };
+static const GuiDebugTextColor c_dark_orange = { "{993300}", "{F8D4B6}" };
+static const GuiDebugTextColor c_red = { "{FA2673}", "{C7254E}" };
+static const GuiDebugTextColor c_dark_red = { "{4D0A29}", "{F6CDD8}" };
+static const GuiDebugTextColor c_green = { "{1AE61A}", "{17823B}" };
+static const GuiDebugTextColor c_dim_green = { "{0D660D}", "{4D7438}" };
+static const GuiDebugTextColor c_dark_green = { "{083305}", "{D5E8D6}" };
+static const GuiDebugTextColor c_violet = { "{AD82FF}", "{7047C2}" };
+static const GuiDebugTextColor c_dark_violet = { "{3D264D}", "{E4D9F7}" };
+static const GuiDebugTextColor c_blue = { "{3366FF}", "{0969DA}" };
+static const GuiDebugTextColor c_dark_blue = { "{121A4D}", "{D7E5FA}" };
+static const GuiDebugTextColor c_white = { "{FFFFFF}", "{21201C}" };
+static const GuiDebugTextColor c_gray = { "{808080}", "{69645D}" };
+static const GuiDebugTextColor c_mid_gray = { "{666666}", "{756F67}" };
+static const GuiDebugTextColor c_dark_gray = { "{1A1A1A}", "{4B4842}" };
+static const GuiDebugTextColor c_black = { "{000000}", "{21201C}" };
+static const GuiDebugTextColor c_brown = { "{AD805C}", "{87502C}" };
+static const GuiDebugTextColor c_dark_brown = { "{61330F}", "{E8D6C8}" };
 
 static inline ImVec4 gui_debug_lerp_color(const ImVec4& a, const ImVec4& b, float t)
 {
