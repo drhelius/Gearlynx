@@ -53,6 +53,10 @@ static bool open_bios = false;
 static bool open_bios_warning = false;
 static bool save_debug_settings = false;
 static bool load_debug_settings = false;
+static const ImVec4 service_comlynx_color(0.39f, 0.58f, 0.93f, 1.0f);
+static const ImVec4 service_mcp_http_color(0.10f, 0.90f, 0.10f, 1.0f);
+static const ImVec4 service_mcp_stdio_color(0.90f, 0.70f, 0.10f, 1.0f);
+static const ImVec4 service_debug_monitor_color(0.20f, 0.70f, 1.0f, 1.0f);
 static ShaderPresetInfo shader_presets[SHADER_PRESET_MAX_DISCOVERED];
 static int shader_preset_count = 0;
 
@@ -400,7 +404,7 @@ static void menu_emulator(void)
             ImGui::Separator();
             if (emu_get_core()->GetMedia()->IsBiosValid())
             {
-                ImGui::TextColored(ImVec4(0.10f, 0.90f, 0.10f, 1.0f), "Valid BIOS");
+                ImGui::TextColored(service_mcp_http_color, "Valid BIOS");
             }
             else
             {
@@ -1218,9 +1222,9 @@ static void menu_debug(void)
             ImGui::Separator();
 
             if (stdio_running)
-                ImGui::TextColored(ImVec4(0.90f, 0.70f, 0.10f, 1.0f), "STDIO mode active");
+                ImGui::TextColored(service_mcp_stdio_color, "STDIO mode active");
             else if (http_running)
-                ImGui::TextColored(ImVec4(0.10f, 0.90f, 0.10f, 1.0f), "Listening on %s:%d",
+                ImGui::TextColored(service_mcp_http_color, "Listening on %s:%d",
                     emu_mcp_get_http_address(), emu_mcp_get_http_port());
             else
                 ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "Stopped");
@@ -1401,7 +1405,6 @@ static void menu_comlynx(void)
     gui_in_use = true;
     ComLynxStatus status = emu_comlynx_get_status();
     bool active = emu_comlynx_is_active();
-    const ImVec4 cornflower_blue(0.39f, 0.58f, 0.93f, 1.0f);
     const ImVec4 error_red(0.98f, 0.15f, 0.45f, 1.0f);
 
 #if defined(__APPLE__)
@@ -1420,7 +1423,7 @@ static void menu_comlynx(void)
     switch (status.mode)
     {
         case ComLynxModeConnected:
-            ImGui::TextColored(cornflower_blue, "%s", status.endpoint);
+            ImGui::TextColored(service_comlynx_color, "%s", status.endpoint);
             ImGui::TextDisabled("Peer %d of %d", status.local_peer_id, status.peer_count);
             break;
         case ComLynxModeFault:
@@ -1516,9 +1519,7 @@ static void draw_server_status(void)
     bool show_comlynx_status = false;
     bool show_mcp_status = false;
     bool show_debug_monitor_status = false;
-    ImVec4 comlynx_color(0.39f, 0.58f, 0.93f, 1.0f);
-    ImVec4 mcp_color(0.10f, 0.90f, 0.10f, 1.0f);
-    ImVec4 debug_monitor_color(0.20f, 0.70f, 1.0f, 1.0f);
+    ImVec4 mcp_color = service_mcp_http_color;
 
     if (comlynx.mode == ComLynxModeConnected)
     {
@@ -1533,7 +1534,7 @@ static void draw_server_status(void)
         if (transport_mode == 0)
         {
             snprintf(mcp_status, sizeof(mcp_status), "MCP: STDIO");
-            mcp_color = ImVec4(0.90f, 0.70f, 0.10f, 1.0f);
+            mcp_color = service_mcp_stdio_color;
             show_mcp_status = true;
         }
         else if (transport_mode == 1)
@@ -1578,7 +1579,7 @@ static void draw_server_status(void)
     ImGui::AlignTextToFramePadding();
 
     if (show_comlynx_status)
-        ImGui::TextColored(comlynx_color, "%s", comlynx_status);
+        ImGui::TextColored(service_comlynx_color, "%s", comlynx_status);
 
     if (show_mcp_status)
     {
@@ -1591,7 +1592,7 @@ static void draw_server_status(void)
     {
         if (show_comlynx_status || show_mcp_status)
             ImGui::SameLine(0.0f, spacing);
-        ImGui::TextColored(debug_monitor_color, "%s", debug_monitor_status);
+        ImGui::TextColored(service_debug_monitor_color, "%s", debug_monitor_status);
     }
 }
 
