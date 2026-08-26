@@ -506,10 +506,18 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
         DefaultLynxHeader();
     }
 
+    if (m_rom_size > GLYNX_MAX_ROM_SIZE)
+    {
+        Error("Unable to load ROM: Size %u exceeds maximum supported size %u",
+            m_rom_size, (u32)GLYNX_MAX_ROM_SIZE);
+        HardReset();
+        return false;
+    }
+
     Log("ROM Size: %d KB, %d bytes (0x%0X)", m_rom_size / 1024, m_rom_size, m_rom_size);
 
     u32 loaded_rom_size = m_rom_size;
-    m_rom = new u8[m_rom_size];
+    m_rom = new u8[GLYNX_MAX_ROM_SIZE];
     memcpy(m_rom, buffer, m_rom_size);
 
     m_crc = CalculateCRC32(0, m_rom, m_rom_size);
@@ -517,14 +525,18 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
     GatherInfoFromDB();
 
+    if (m_rom_size > GLYNX_MAX_ROM_SIZE)
+    {
+        Error("Unable to load ROM: Size %u exceeds maximum supported size %u",
+            m_rom_size, (u32)GLYNX_MAX_ROM_SIZE);
+        HardReset();
+        return false;
+    }
+
     if (m_rom_size > loaded_rom_size)
     {
         Debug("ROM buffer too small (%d bytes) for database size (%d bytes), padding with 0xFF", loaded_rom_size, m_rom_size);
-        u8* padded = new u8[m_rom_size];
-        memcpy(padded, m_rom, loaded_rom_size);
-        memset(padded + loaded_rom_size, 0xFF, m_rom_size - loaded_rom_size);
-        SafeDeleteArray(m_rom);
-        m_rom = padded;
+        memset(m_rom + loaded_rom_size, 0xFF, m_rom_size - loaded_rom_size);
     }
 
     if (m_type == MEDIA_LYNX)
@@ -533,14 +545,18 @@ bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
 
         u32 required_size = m_required_rom_size;
 
+        if (required_size > GLYNX_MAX_ROM_SIZE)
+        {
+            Error("Unable to load ROM: Required bank size %u exceeds maximum supported size %u",
+                required_size, (u32)GLYNX_MAX_ROM_SIZE);
+            HardReset();
+            return false;
+        }
+
         if (required_size > m_rom_size)
         {
             Debug("ROM buffer too small (%d bytes) for banks (%d bytes), padding with 0xFF", m_rom_size, required_size);
-            u8* padded = new u8[required_size];
-            memcpy(padded, m_rom, m_rom_size);
-            memset(padded + m_rom_size, 0xFF, required_size - m_rom_size);
-            SafeDeleteArray(m_rom);
-            m_rom = padded;
+            memset(m_rom + m_rom_size, 0xFF, required_size - m_rom_size);
             m_rom_size = required_size;
             SetupBanks();
         }

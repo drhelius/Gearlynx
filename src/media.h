@@ -26,6 +26,7 @@
 #define EPYX_HEADER_NEW 410
 #define EPYX_DECRYPT_BLOCK_SIZE 51
 #define NVRAM_SIZE (8 * 1024) // 8KB
+#define GLYNX_MAX_ROM_SIZE (2 * 1024 * 1024)
 
 class StateSerializer;
 class EEPROM;
