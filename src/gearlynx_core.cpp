@@ -281,9 +281,9 @@ void GearlynxCore::RenderFrameBuffer(u8* frame_buffer)
     m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
 }
 
-bool GearlynxCore::LoadROM(const char* file_path)
+bool GearlynxCore::LoadROM(const char* file_path, bool softpatching)
 {
-    if (m_media->LoadFromFile(file_path))
+    if (m_media->LoadFromFile(file_path, softpatching))
     {
         m_memory->ResetDisassemblerRecords();
         Reset();

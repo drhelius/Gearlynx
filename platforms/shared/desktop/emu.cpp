@@ -68,6 +68,7 @@ static std::thread loading_thread;
 static bool loading_thread_active = false;
 static bool loading_result;
 static char loading_file_path[4096];
+static bool loading_softpatching;
 
 static void save_ram(void);
 static void load_ram(void);
@@ -192,7 +193,7 @@ bool emu_load_rom(const char* file_path)
 
     save_ram();
 
-    if (!core->LoadROM(file_path))
+    if (!core->LoadROM(file_path, config_emulator.softpatching))
         return false;
 
     load_ram();
@@ -209,7 +210,7 @@ bool emu_load_rom(const char* file_path)
 
 static void load_rom_thread_func(void)
 {
-    loading_result = core->LoadROM(loading_file_path);
+    loading_result = core->LoadROM(loading_file_path, loading_softpatching);
     loading_state.store(Loading_State_Finished);
 }
 
@@ -230,6 +231,7 @@ void emu_load_rom_async(const char* file_path)
     strncpy(loading_file_path, file_path, sizeof(loading_file_path) - 1);
     loading_file_path[sizeof(loading_file_path) - 1] = '\0';
     loading_result = false;
+    loading_softpatching = config_emulator.softpatching;
     loading_state.store(Loading_State_Loading);
     if (loading_thread_active)
         loading_thread.join();

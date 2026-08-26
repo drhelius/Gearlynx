@@ -558,6 +558,9 @@ json DebugAdapter::GetMediaInfo()
     info["crc"] = crc_ss.str();
 
     info["rom_size"] = media->GetROMSize();
+    info["softpatch_applied"] = media->IsSoftpatchApplied();
+    if (media->IsSoftpatchApplied())
+        info["softpatch_path"] = media->GetSoftpatchPath();
 
     // Media type
     Media::GLYNX_Media_Type type = media->GetType();
@@ -1814,6 +1817,9 @@ json DebugAdapter::FinishLoadMedia(const std::string& file_path)
     result["success"] = true;
     result["file_path"] = file_path;
     result["rom_name"] = m_core->GetMedia()->GetFileName();
+    result["softpatch_applied"] = m_core->GetMedia()->IsSoftpatchApplied();
+    if (m_core->GetMedia()->IsSoftpatchApplied())
+        result["softpatch_path"] = m_core->GetMedia()->GetSoftpatchPath();
 
     Media::GLYNX_Media_Type type = m_core->GetMedia()->GetType();
     switch (type)

@@ -150,6 +150,9 @@
     <ClInclude Include="..\shared\desktop\gui_popups.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\ips_patch.h">
+      <Filter>core</Filter>
+    </ClInclude>
     <ClInclude Include="..\shared\desktop\keyboard.h">
       <Filter>desktop</Filter>
     </ClInclude>

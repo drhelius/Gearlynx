@@ -29,6 +29,7 @@
 #include "miniz.h"
 #undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "crc.h"
+#include "ips_patch.h"
 #include "game_db.h"
 #include "state_serializer.h"
 
@@ -58,6 +59,8 @@ Media::Media()
     m_eeprom_forced = false;
     m_forced_cartridge_hardware = GLYNX_CARTRIDGE_HARDWARE_STANDARD;
     m_cartridge_hardware_forced = false;
+    m_softpatch_applied = false;
+    m_softpatch_path[0] = 0;
     HardReset();
 }
 
@@ -152,6 +155,8 @@ void Media::HardReset()
     m_homebrew_size = 0;
     m_epyx_headerless = 0;
     m_crc = 0;
+    m_softpatch_applied = false;
+    m_softpatch_path[0] = 0;
 }
 
 void Media::ReleaseCartBankRAM()
@@ -341,7 +346,17 @@ void Media::SetupBanks()
         m_required_rom_size = SetupClassicBanks();
 }
 
-bool Media::LoadFromFile(const char* path)
+bool Media::IsSoftpatchApplied() const
+{
+    return m_softpatch_applied;
+}
+
+const char* Media::GetSoftpatchPath() const
+{
+    return m_softpatch_path;
+}
+
+bool Media::LoadFromFile(const char* path, bool softpatching)
 {
     using namespace std;
 
@@ -385,9 +400,9 @@ bool Media::LoadFromFile(const char* path)
                 if (!is_empty)
                 {
                     if (strcmp(m_file_extension, "zip") == 0)
-                        m_ready = LoadFromZipFile((u8*)(buffer), size);
+                        m_ready = LoadFromZipFile((u8*)(buffer), size, softpatching);
                     else
-                        m_ready = LoadFromBuffer((u8*)(buffer), size, path);
+                        m_ready = LoadFromBufferWithSoftpatch((u8*)(buffer), size, path, softpatching);
                 }
             }
             else
@@ -412,10 +427,41 @@ bool Media::LoadFromFile(const char* path)
         m_ready = false;
     }
 
-    if (!m_ready)
+    if (!m_ready && m_softpatch_applied)
+    {
+        Error("Media rejected after applying IPS patch %s. Loading unpatched media.",
+            m_softpatch_path);
+        return LoadFromFile(path, false);
+    }
+    else if (!m_ready)
         HardReset();
 
     return m_ready;
+}
+
+bool Media::LoadFromBufferWithSoftpatch(const u8* buffer, int size, const char* path,
+    bool softpatching)
+{
+    u8* patched_buffer = NULL;
+    int patched_size = 0;
+    char patch_path[4096] = {};
+    bool patched = softpatching && ips_apply_patch(m_file_path, buffer, size,
+        &patched_buffer, &patched_size, patch_path, sizeof(patch_path));
+
+    bool loaded;
+    if (patched)
+        loaded = LoadFromBuffer(patched_buffer, patched_size, path);
+    else
+        loaded = LoadFromBuffer(buffer, size, path);
+
+    m_softpatch_applied = patched;
+    if (m_softpatch_applied)
+        strncpy_fit(m_softpatch_path, patch_path, sizeof(m_softpatch_path));
+    else
+        m_softpatch_path[0] = 0;
+
+    SafeDeleteArray(patched_buffer);
+    return loaded;
 }
 
 bool Media::LoadFromBuffer(const u8* buffer, int size, const char* path)
@@ -620,7 +666,7 @@ GLYNX_Bios_State Media::LoadBiosData(const u8* buffer, int size, const char* pat
     }
 }
 
-bool Media::LoadFromZipFile(const u8* buffer, int size)
+bool Media::LoadFromZipFile(const u8* buffer, int size, bool softpatching)
 {
     Debug("Loading from ZIP file... Size: %d", size);
 
@@ -666,7 +712,7 @@ bool Media::LoadFromZipFile(const u8* buffer, int size)
                 return false;
             }
 
-            bool ok = LoadFromBuffer((const u8*) p, (int)uncomp_size, fn.c_str());
+            bool ok = LoadFromBufferWithSoftpatch((const u8*) p, (int)uncomp_size, fn.c_str(), softpatching);
 
             free(p);
             mz_zip_reader_end(&zip_archive);

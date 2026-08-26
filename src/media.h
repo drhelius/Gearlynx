@@ -92,8 +92,10 @@ public:
     u16 GetHeaderBank0PageSize();
     u16 GetHeaderBank1PageSize();
     const char* GetFormatName();
-    bool LoadFromFile(const char* path);
+    bool LoadFromFile(const char* path, bool softpatching = false);
     bool LoadFromBuffer(const u8* buffer, int size, const char* path);
+    bool IsSoftpatchApplied() const;
+    const char* GetSoftpatchPath() const;
     GLYNX_Bios_State LoadBios(const char* path);
     GLYNX_Bios_State LoadBiosFromBuffer(const u8* buffer, int size);
     void UnloadBios();
@@ -152,7 +154,9 @@ public:
 
 private:
     void Serialize(StateSerializer& s, int version);
-    bool LoadFromZipFile(const u8* buffer, int size);
+    bool LoadFromZipFile(const u8* buffer, int size, bool softpatching);
+    bool LoadFromBufferWithSoftpatch(const u8* buffer, int size, const char* path,
+        bool softpatching);
     GLYNX_Bios_State LoadBiosData(const u8* buffer, int size, const char* path);
     void GatherInfoFromDB();
     bool GatherLynxHeader(const u8* buffer);
@@ -241,6 +245,8 @@ private:
     int m_epyx_headerless;
     TraceLogger* m_trace_logger;
     u32 m_crc;
+    bool m_softpatch_applied;
+    char m_softpatch_path[4096];
     u8* m_decrypt_buffer_a;
     u8* m_decrypt_buffer_b;
     u8* m_decrypt_buffer_tmp;
