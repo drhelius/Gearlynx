@@ -350,6 +350,9 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 {
     core->GetRuntimeInfo(runtime_info);
 
+    if (runtime_info.frame_time > 0.0f)
+        current_fps = 1000.0f / runtime_info.frame_time;
+
     info->geometry.base_width   = runtime_info.screen_width;
     info->geometry.base_height  = runtime_info.screen_height;
     info->geometry.max_width    = GLYNX_SCREEN_WIDTH;

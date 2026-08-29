@@ -823,6 +823,17 @@ void emu_get_runtime(GLYNX_Runtime_Info& runtime)
     core->GetRuntimeInfo(runtime);
 }
 
+double emu_get_frame_rate(void)
+{
+    if (!IsValidPointer(core))
+        return 60.0;
+
+    GLYNX_Runtime_Info runtime;
+    emu_get_runtime(runtime);
+
+    return runtime.frame_time > 0.0f ? 1000.0 / runtime.frame_time : 60.0;
+}
+
 void emu_get_info(char* info, int buffer_size)
 {
     if (!emu_is_empty())

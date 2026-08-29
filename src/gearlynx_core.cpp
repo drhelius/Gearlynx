@@ -342,7 +342,10 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     u8 t0_prescaler = mikey_state->timers[0].control_a & 0x07;
     float tick_T0_us = (float)k_mikey_timer_period_us[t0_prescaler];
 
-    runtime_info.frame_time = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
+    if (mikey_state->timers[0].backup == 0 && mikey_state->timers[2].backup == 0)
+        runtime_info.frame_time = 0.0f;
+    else
+        runtime_info.frame_time = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
 
     return m_media->IsReady();
 }
