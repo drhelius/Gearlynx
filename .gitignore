@@ -66,9 +66,12 @@ xcuserdata/
 *.xcexplist
 *.xcsettings
 *.xccheckout
+platforms/ios/Support/ThumbnailKeys.local.xcconfig
 
 #binaries
-platforms/**/gearlynx
+platforms/linux/**/gearlynx
+platforms/macos/**/gearlynx
+platforms/raspberry*/**/gearlynx
 tests/**/gearlynx-tests
 tests/**/gearlynx-comlynx-tests
 tests/**/gearlynx-comlynx-tests.dSYM/
