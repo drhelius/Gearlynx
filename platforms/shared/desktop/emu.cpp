@@ -557,7 +557,7 @@ bool emu_is_debug_idle(void)
 
 bool emu_is_empty(void)
 {
-    return !core->GetMedia()->IsReady();
+    return !IsValidPointer(core) || !core->GetMedia()->IsReady();
 }
 
 bool emu_is_bios_loaded(void)
