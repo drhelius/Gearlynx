@@ -570,6 +570,7 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Gearlynx.rc" />
+    <ResourceCompile Include="version.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Gearlynx.ico" />
