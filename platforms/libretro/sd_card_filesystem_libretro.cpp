@@ -99,8 +99,8 @@ bool SdCardFileSystemLibretro::CreateSizedFile(const char* path, u32 size)
     if (success && m_vfs_interface->flush)
         success = m_vfs_interface->flush(file) == 0;
 
-    m_vfs_interface->close(file);
-    return success;
+    bool closed = m_vfs_interface->close(file) == 0;
+    return success && closed;
 }
 
 bool SdCardFileSystemLibretro::OpenFile(const char* path, bool& writable, u32& size)
