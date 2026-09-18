@@ -592,6 +592,9 @@ void emu_reset(void)
 void emu_force_rotation(int rotation)
 {
     core->GetMedia()->ForceRotation((GLYNX_Rotation)rotation);
+    core->GetInput()->Reset();
+    input_raw_directions = 0;
+    input_active_directions = 0;
 }
 
 void emu_force_console_type(int console_type)
