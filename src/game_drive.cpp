@@ -18,13 +18,33 @@
  */
 
 #include <algorithm>
-#include <cctype>
 #include <limits>
 #include "game_drive.h"
 #include "sd_card_filesystem.h"
 #include "state_serializer.h"
 
-static void BuildShortName(const char* file_name, char* short_name)
+static char UpperCaseFileCharacter(char value)
+{
+    return (value >= 'a' && value <= 'z') ? value - 'a' + 'A' : value;
+}
+
+static bool FileNamesEqual(const char* left, const char* right)
+{
+    while (*left && *right)
+    {
+        if (UpperCaseFileCharacter(*left++) != UpperCaseFileCharacter(*right++))
+            return false;
+    }
+    return *left == *right;
+}
+
+static bool IsShortNameCharacter(char value)
+{
+    return (value >= 'A' && value <= 'Z') || (value >= '0' && value <= '9') ||
+        (value != 0 && strchr("$%'-_@~`!(){}^#&", value) != NULL);
+}
+
+static void BuildShortName(const char* file_name, char* short_name, u32 suffix)
 {
     std::string name = file_name;
     size_t dot = name.find_last_of('.');
@@ -35,22 +55,28 @@ static void BuildShortName(const char* file_name, char* short_name)
 
     for (size_t index = 0; index < base.size(); index++)
     {
-        unsigned char value = (unsigned char)base[index];
-        if (std::isalnum(value) || value == '_' || value == '-' || value == '$')
-            clean_base += (char)std::toupper(value);
+        char value = UpperCaseFileCharacter(base[index]);
+        if (IsShortNameCharacter(value))
+            clean_base += value;
     }
 
     for (size_t index = 0; index < extension.size(); index++)
     {
-        unsigned char value = (unsigned char)extension[index];
-        if (std::isalnum(value) || value == '_' || value == '-' || value == '$')
-            clean_extension += (char)std::toupper(value);
+        char value = UpperCaseFileCharacter(extension[index]);
+        if (IsShortNameCharacter(value))
+            clean_extension += value;
     }
 
     if (clean_base.empty())
         clean_base = "FILE";
-    if (clean_base.size() > 8)
-        clean_base = clean_base.substr(0, 6) + "~1";
+    if (clean_base.size() > 8 && suffix == 0)
+        suffix = 1;
+    if (suffix > 0)
+    {
+        char tail[9];
+        snprintf(tail, sizeof(tail), "~%u", suffix);
+        clean_base = clean_base.substr(0, 8 - strlen(tail)) + tail;
+    }
     if (clean_extension.size() > 3)
         clean_extension.resize(3);
 
@@ -325,7 +351,48 @@ bool GameDrive::BuildHostPath(const std::string& guest_path, std::string& host_p
 
     host_path = m_root_path;
     for (size_t i = 0; i < parts.size(); i++)
-        append_path_component(host_path, parts[i].c_str());
+    {
+        std::string exact_path = host_path;
+        append_path_component(exact_path, parts[i].c_str());
+        bool directory = false;
+        u32 size = 0;
+        if (m_file_system->GetFileInfo(exact_path.c_str(), directory, size))
+        {
+            host_path = exact_path;
+            continue;
+        }
+
+        std::vector<DirectoryEntry> entries;
+        if (!ReadDirectoryEntries(host_path, entries))
+            return false;
+
+        const DirectoryEntry* match = NULL;
+        for (size_t index = 0; index < entries.size(); index++)
+        {
+            if (FileNamesEqual(parts[i].c_str(), entries[index].name))
+            {
+                match = &entries[index];
+                break;
+            }
+        }
+
+        if (!match)
+        {
+            for (size_t index = 0; index < entries.size(); index++)
+            {
+                if (FileNamesEqual(parts[i].c_str(), entries[index].host_name.c_str()))
+                {
+                    if (match)
+                        return false;
+                    match = &entries[index];
+                }
+            }
+        }
+
+        if (!match)
+            return false;
+        append_path_component(host_path, match->host_name.c_str());
+    }
 
     return true;
 }
@@ -358,10 +425,27 @@ bool GameDrive::OpenDirectory(const std::string& guest_path)
     m_directory_entries.clear();
     m_directory_index = 0;
 
+    if (!ReadDirectoryEntries(host_path, m_directory_entries))
+        return false;
+
+    m_open_directory_guest_path = guest_path;
+    return true;
+}
+
+bool GameDrive::ReadDirectoryEntries(const std::string& host_path, std::vector<DirectoryEntry>& entries) const
+{
     std::vector<SdCardFileSystemEntry> file_system_entries;
     if (!m_file_system->ReadDirectory(host_path.c_str(), file_system_entries))
         return false;
 
+    // Assign aliases in host-name order, independent of filesystem enumeration order.
+    std::sort(file_system_entries.begin(), file_system_entries.end(),
+        [](const SdCardFileSystemEntry& left, const SdCardFileSystemEntry& right)
+        {
+            return left.name < right.name;
+        });
+
+    entries.clear();
     for (size_t index = 0; index < file_system_entries.size(); index++)
     {
         const SdCardFileSystemEntry& file_system_entry = file_system_entries[index];
@@ -374,17 +458,44 @@ bool GameDrive::OpenDirectory(const std::string& guest_path)
             entry.attributes |= 0x01;
         if (file_system_entry.hidden)
             entry.attributes |= 0x02;
-        BuildShortName(file_system_entry.name.c_str(), entry.name);
-        m_directory_entries.push_back(entry);
+        entry.host_name = file_system_entry.name;
+        entries.push_back(entry);
     }
 
-    std::sort(m_directory_entries.begin(), m_directory_entries.end(),
+    u32 next_suffix = 1;
+    for (size_t index = 0; index < entries.size(); index++)
+    {
+        DirectoryEntry& entry = entries[index];
+        BuildShortName(entry.host_name.c_str(), entry.name, 0);
+
+        for (;;)
+        {
+            bool collision = false;
+            for (size_t other = 0; other < entries.size(); other++)
+            {
+                // Reserve host names too, so an alias cannot open a different literal file.
+                if ((other < index && FileNamesEqual(entry.name, entries[other].name)) ||
+                    (other != index && FileNamesEqual(entry.name, entries[other].host_name.c_str())))
+                {
+                    collision = true;
+                    break;
+                }
+            }
+
+            if (!collision)
+                break;
+            if (next_suffix > 9999999)
+                return false;
+            BuildShortName(entry.host_name.c_str(), entry.name, next_suffix++);
+        }
+    }
+
+    std::sort(entries.begin(), entries.end(),
         [](const DirectoryEntry& left, const DirectoryEntry& right)
         {
             return strcmp(left.name, right.name) < 0;
         });
 
-    m_open_directory_guest_path = guest_path;
     return true;
 }
 

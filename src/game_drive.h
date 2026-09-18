@@ -92,6 +92,7 @@ private:
         u16 time;
         u8 attributes;
         char name[13];
+        std::string host_name;
     };
 
 private:
@@ -104,6 +105,7 @@ private:
     void QueueDword(u32 value);
     void QueueResult(Result result);
     bool BuildHostPath(const std::string& guest_path, std::string& host_path) const;
+    bool ReadDirectoryEntries(const std::string& host_path, std::vector<DirectoryEntry>& entries) const;
     bool OpenFile(const std::string& guest_path);
     bool OpenDirectory(const std::string& guest_path);
     void CloseFile();
