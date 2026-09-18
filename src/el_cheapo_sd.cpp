@@ -432,7 +432,10 @@ void ElCheapoSD::Serialize(StateSerializer& serializer)
     G_SERIALIZE_ARRAY(serializer, &m_sram[0], m_sram.size());
     G_SERIALIZE(serializer, m_audio_streaming);
     G_SERIALIZE(serializer, m_audio_offset);
-    serializer.SerializeString(m_audio_file_name);
+    serializer.SerializeString(m_audio_file_name, MAX_FILE_NAME_SIZE);
+
+    if (!serializer.IsValid())
+        return;
 
     m_serial_state = (SerialState)serial_state;
 

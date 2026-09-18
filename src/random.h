@@ -43,9 +43,10 @@ public:
 
     void LoadState(std::istream& stream)
     {
-        u32 state;
+        u32 state = 0;
         stream.read(reinterpret_cast<char*>(&state), sizeof(state));
-        SetState(state);
+        if (stream.good())
+            SetState(state);
     }
 
     INLINE u32 Next()

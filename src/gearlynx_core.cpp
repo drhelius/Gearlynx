@@ -849,7 +849,11 @@ bool GearlynxCore::LoadState(std::istream& stream)
 #endif
 
     stream.seekg(0, ios::end);
-    size_t size = static_cast<size_t>(stream.tellg());
+    std::streampos end = stream.tellg();
+    if (!stream.good() || end < (std::streamoff)sizeof(header))
+        return false;
+    size_t size = static_cast<size_t>(end);
+    size_t body_size = size - sizeof(header);
 
     // Try desktop header first (larger, contains all info)
     GLYNX_SaveState_Header desktop_header = {};
@@ -858,8 +862,12 @@ bool GearlynxCore::LoadState(std::istream& stream)
         stream.seekg(size - sizeof(desktop_header), ios::beg);
         stream.read(reinterpret_cast<char*> (&desktop_header), sizeof(desktop_header));
 
-        if (desktop_header.magic == GLYNX_SAVESTATE_MAGIC)
+        if (stream.good() && desktop_header.magic == GLYNX_SAVESTATE_MAGIC)
         {
+            body_size = size - sizeof(desktop_header);
+            if (desktop_header.screenshot_size > body_size)
+                return false;
+            body_size -= desktop_header.screenshot_size;
             header.magic = desktop_header.magic;
             header.version = desktop_header.version;
 #if !defined(__LIBRETRO__)
@@ -877,6 +885,9 @@ bool GearlynxCore::LoadState(std::istream& stream)
     }
 
     stream.seekg(0, ios::beg);
+
+    if (!stream.good())
+        return false;
 
     Debug("Load state header magic: 0x%08x", header.magic);
     Debug("Load state header version: %d", header.version);
@@ -922,19 +933,33 @@ bool GearlynxCore::LoadState(std::istream& stream)
     Debug("Unserializing save state...");
 
     m_m6502->LoadState(stream);
+    if (!stream.good())
+        return false;
     m_memory->LoadState(stream, header.version);
+    if (!stream.good())
+        return false;
     m_mikey->LoadState(stream, header.version);
+    if (!stream.good())
+        return false;
     m_suzy->LoadState(stream, header.version);
+    if (!stream.good())
+        return false;
     m_audio->LoadState(stream, header.version);
+    if (!stream.good())
+        return false;
     m_input->LoadState(stream);
+    if (!stream.good())
+        return false;
     m_media->LoadState(stream, header.version);
+    if (!stream.good())
+        return false;
 
     if (header.version >= 21)
     {
         m_random->LoadState(stream);
     }
 
-    return true;
+    return stream.good() && stream.tellg() == (std::streamoff)body_size;
 }
 
 bool GearlynxCore::GetSaveStateHeader(int index, const char* path, GLYNX_SaveState_Header* header)

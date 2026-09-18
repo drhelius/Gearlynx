@@ -557,10 +557,13 @@ void GameDrive::Serialize(StateSerializer& serializer)
     G_SERIALIZE(serializer, m_file_offset);
     G_SERIALIZE(serializer, m_output_offset);
     G_SERIALIZE(serializer, m_directory_index);
-    serializer.SerializeString(m_open_file_guest_path);
-    serializer.SerializeString(m_open_directory_guest_path);
-    serializer.SerializeVector(m_input);
-    serializer.SerializeVector(m_output);
+    serializer.SerializeString(m_open_file_guest_path, MAX_GUEST_PATH_SIZE);
+    serializer.SerializeString(m_open_directory_guest_path, MAX_GUEST_PATH_SIZE);
+    serializer.SerializeVector(m_input, MAX_COMMAND_BUFFER_SIZE);
+    serializer.SerializeVector(m_output, MAX_COMMAND_BUFFER_SIZE);
+
+    if (!serializer.IsValid())
+        return;
 
     if (m_programmed)
         G_SERIALIZE_ARRAY(serializer, &m_program_bank[0], m_program_bank.size());
@@ -569,6 +572,8 @@ void GameDrive::Serialize(StateSerializer& serializer)
 
     if (serializer.IsLoading())
     {
+        if (!serializer.IsValid())
+            return;
         bool restore_file = m_file_open;
         u32 restore_offset = m_file_offset;
         std::string restore_file_path = m_open_file_guest_path;

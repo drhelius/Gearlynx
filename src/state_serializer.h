@@ -21,6 +21,7 @@
 #define STATE_SERIALIZER_H
 
 #include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 #include "types.h"
@@ -36,6 +37,7 @@ public:
 
     inline bool IsSaving() const { return m_is_saving; }
     inline bool IsLoading() const { return !m_is_saving; }
+    inline bool IsValid() const { return m_is_saving ? m_output_stream->good() : m_input_stream->good(); }
 
     // Serialize a single variable
     template<typename T>
@@ -57,25 +59,33 @@ public:
             m_input_stream->read(reinterpret_cast<char*>(array), sizeof(T) * count);
     }
 
-    void SerializeString(std::string& value)
+    void SerializeString(std::string& value, size_t max_size)
     {
         u32 size = (u32)value.size();
         Serialize(size);
 
         if (IsLoading())
+        {
+            if (!CheckReadSize(size, max_size, 1))
+                return;
             value.resize(size);
+        }
         if (size > 0)
             SerializeArray(&value[0], size);
     }
 
     template<typename T>
-    void SerializeVector(std::vector<T>& value)
+    void SerializeVector(std::vector<T>& value, size_t max_size)
     {
         u32 size = (u32)value.size();
         Serialize(size);
 
         if (IsLoading())
+        {
+            if (!CheckReadSize(size, max_size, sizeof(T)))
+                return;
             value.resize(size);
+        }
         if (size > 0)
             SerializeArray(&value[0], size);
     }
@@ -84,6 +94,31 @@ public:
     std::istream* GetInputStream() { return m_input_stream; }
 
 private:
+    bool CheckReadSize(size_t count, size_t max_count, size_t element_size)
+    {
+        if (!m_input_stream->good())
+            return false;
+        if (count > max_count || count > std::numeric_limits<size_t>::max() / element_size ||
+            count > (u64)std::numeric_limits<std::streamsize>::max() / element_size)
+        {
+            m_input_stream->setstate(std::ios::failbit);
+            return false;
+        }
+        if (count == 0)
+            return true;
+
+        std::streampos position = m_input_stream->tellg();
+        m_input_stream->seekg(0, std::ios::end);
+        std::streampos end = m_input_stream->tellg();
+        if (position < 0 || end < position || count > (u64)(end - position) / element_size)
+        {
+            m_input_stream->setstate(std::ios::failbit);
+            return false;
+        }
+        m_input_stream->seekg(position);
+        return m_input_stream->good();
+    }
+
     std::ostream* m_output_stream;
     std::istream* m_input_stream;
     bool m_is_saving;

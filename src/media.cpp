@@ -1349,6 +1349,8 @@ void Media::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
+    if (!stream.good())
+        return;
     bool legacy_eeprom_state = version < 18 && m_active_eeprom != GLYNX_EEPROM_NONE;
     bool legacy_sd_only_eeprom = legacy_eeprom_state && !m_eeprom_instance->IsAvailable();
     if (legacy_sd_only_eeprom)
@@ -1357,6 +1359,8 @@ void Media::LoadState(std::istream& stream, int version)
         m_eeprom_instance->LoadState(stream);
     if (legacy_sd_only_eeprom)
         m_eeprom_instance->Reset(GLYNX_EEPROM_NONE);
+    if (!stream.good())
+        return;
     if (m_game_drive_instance->IsAvailable())
     {
         if (version >= 17)
@@ -1364,6 +1368,8 @@ void Media::LoadState(std::istream& stream, int version)
         else
             m_game_drive_instance->Reset(false);
     }
+    if (!stream.good())
+        return;
     if (m_el_cheapo_sd_instance->IsAvailable())
     {
         if (version >= 18)
@@ -1371,6 +1377,8 @@ void Media::LoadState(std::istream& stream, int version)
         else
             m_el_cheapo_sd_instance->Reset(false);
     }
+    if (!stream.good())
+        return;
     if (m_persistent_ram_size > 0)
         m_save_memory_dirty = true;
 }
