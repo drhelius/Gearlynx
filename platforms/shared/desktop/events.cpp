@@ -35,6 +35,7 @@ static bool keyboard_pressed(const bool* keyboard_state, int keyboard_state_coun
 static bool gamepad_button_pressed(SDL_Gamepad* controller, int button);
 static Sint16 gamepad_axis_value(SDL_Gamepad* controller, int axis);
 static void sync_key(GLYNX_Keys key, bool pressed);
+static void sync_directional_input(void);
 
 void events_shortcuts(const SDL_Event* event)
 {
@@ -132,14 +133,13 @@ void events_emu(const SDL_Event* event)
             if (config_input.gamepad_directional == 1)
                 break;
 
-            if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP)
-                emu_key_pressed(GLYNX_KEY_UP);
-            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN)
-                emu_key_pressed(GLYNX_KEY_DOWN);
-            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT)
-                emu_key_pressed(GLYNX_KEY_LEFT);
-            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT)
-                emu_key_pressed(GLYNX_KEY_RIGHT);
+            if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
+                event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN ||
+                event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT ||
+                event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT)
+            {
+                sync_directional_input();
+            }
         }
         break;
 
@@ -170,14 +170,13 @@ void events_emu(const SDL_Event* event)
             if (config_input.gamepad_directional == 1)
                 break;
 
-            if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP)
-                emu_key_released(GLYNX_KEY_UP);
-            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN)
-                emu_key_released(GLYNX_KEY_DOWN);
-            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT)
-                emu_key_released(GLYNX_KEY_LEFT);
-            else if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT)
-                emu_key_released(GLYNX_KEY_RIGHT);
+            if (event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_UP ||
+                event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_DOWN ||
+                event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_LEFT ||
+                event->gbutton.button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT)
+            {
+                sync_directional_input();
+            }
         }
         break;
 
@@ -194,50 +193,11 @@ void events_emu(const SDL_Event* event)
             if (event->gaxis.which != id)
                 break;
 
-            if (config_input.gamepad_directional == 1)
+            if ((config_input.gamepad_directional == 1 || config_input.gamepad_directional == 2) &&
+                (event->gaxis.axis == config_input.gamepad_x_axis ||
+                 event->gaxis.axis == config_input.gamepad_y_axis))
             {
-                const int STICK_DEAD_ZONE = 8000;
-
-                if(event->gaxis.axis == config_input.gamepad_x_axis)
-                {
-                    int x_motion = event->gaxis.value * (config_input.gamepad_invert_x_axis ? -1 : 1);
-
-                    if (x_motion < -STICK_DEAD_ZONE)
-                    {
-                        emu_key_pressed(GLYNX_KEY_LEFT);
-                        emu_key_released(GLYNX_KEY_RIGHT);
-                    }
-                    else if (x_motion > STICK_DEAD_ZONE)
-                    {
-                        emu_key_pressed(GLYNX_KEY_RIGHT);
-                        emu_key_released(GLYNX_KEY_LEFT);
-                    }
-                    else
-                    {
-                        emu_key_released(GLYNX_KEY_LEFT);
-                        emu_key_released(GLYNX_KEY_RIGHT);
-                    }
-                }
-                else if(event->gaxis.axis == config_input.gamepad_y_axis)
-                {
-                    int y_motion = event->gaxis.value * (config_input.gamepad_invert_y_axis ? -1 : 1);
-
-                    if (y_motion < -STICK_DEAD_ZONE)
-                    {
-                        emu_key_pressed(GLYNX_KEY_UP);
-                        emu_key_released(GLYNX_KEY_DOWN);
-                    }
-                    else if (y_motion > STICK_DEAD_ZONE)
-                    {
-                        emu_key_pressed(GLYNX_KEY_DOWN);
-                        emu_key_released(GLYNX_KEY_UP);
-                    }
-                    else
-                    {
-                        emu_key_released(GLYNX_KEY_UP);
-                        emu_key_released(GLYNX_KEY_DOWN);
-                    }
-                }
+                sync_directional_input();
             }
 
             if (event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || event->gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
@@ -296,14 +256,11 @@ void events_emu(const SDL_Event* event)
 
             int key = event->key.scancode;
 
-            if (key == config_input.key_left)
-                emu_key_pressed(GLYNX_KEY_LEFT);
-            else if (key == config_input.key_right)
-                emu_key_pressed(GLYNX_KEY_RIGHT);
-            else if (key == config_input.key_up)
-                emu_key_pressed(GLYNX_KEY_UP);
-            else if (key == config_input.key_down)
-                emu_key_pressed(GLYNX_KEY_DOWN);
+            if (key == config_input.key_left || key == config_input.key_right ||
+                key == config_input.key_up || key == config_input.key_down)
+            {
+                sync_directional_input();
+            }
             else if (key == config_input.key_A)
                 emu_key_pressed(GLYNX_KEY_A);
             else if (key == config_input.key_B)
@@ -321,14 +278,11 @@ void events_emu(const SDL_Event* event)
         {
             int key = event->key.scancode;
 
-            if (key == config_input.key_left)
-                emu_key_released(GLYNX_KEY_LEFT);
-            else if (key == config_input.key_right)
-                emu_key_released(GLYNX_KEY_RIGHT);
-            else if (key == config_input.key_up)
-                emu_key_released(GLYNX_KEY_UP);
-            else if (key == config_input.key_down)
-                emu_key_released(GLYNX_KEY_DOWN);
+            if (key == config_input.key_left || key == config_input.key_right ||
+                key == config_input.key_up || key == config_input.key_down)
+            {
+                sync_directional_input();
+            }
             else if (key == config_input.key_A)
                 emu_key_released(GLYNX_KEY_A);
             else if (key == config_input.key_B)
@@ -359,10 +313,7 @@ void events_sync_input(void)
     int keyboard_state_count = 0;
     const bool* keyboard_state = SDL_GetKeyboardState(&keyboard_state_count);
 
-    sync_key(GLYNX_KEY_LEFT, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_left));
-    sync_key(GLYNX_KEY_RIGHT, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_right));
-    sync_key(GLYNX_KEY_UP, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_up));
-    sync_key(GLYNX_KEY_DOWN, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_down));
+    sync_directional_input();
     sync_key(GLYNX_KEY_A, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_A));
     sync_key(GLYNX_KEY_B, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_B));
     sync_key(GLYNX_KEY_PAUSE, keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_pause));
@@ -378,24 +329,55 @@ void events_sync_input(void)
     sync_key(GLYNX_KEY_PAUSE, gamepad_button_pressed(controller, config_input.gamepad_pause));
     sync_key(GLYNX_KEY_OPTION1, gamepad_button_pressed(controller, config_input.gamepad_option1));
     sync_key(GLYNX_KEY_OPTION2, gamepad_button_pressed(controller, config_input.gamepad_option2));
+}
 
-    if (config_input.gamepad_directional == 0)
+static void sync_directional_input(void)
+{
+    int keyboard_state_count = 0;
+    const bool* keyboard_state = SDL_GetKeyboardState(&keyboard_state_count);
+    bool keyboard = (SDL_GetModState() & (SDL_KMOD_CTRL | SDL_KMOD_SHIFT)) == 0;
+
+    bool up = keyboard && keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_up);
+    bool down = keyboard && keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_down);
+    bool left = keyboard && keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_left);
+    bool right = keyboard && keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_right);
+
+    SDL_Gamepad* controller = gamepad_controller;
+    if (IsValidPointer(controller) && config_input.gamepad)
     {
-        sync_key(GLYNX_KEY_UP, SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_UP) != 0);
-        sync_key(GLYNX_KEY_DOWN, SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_DOWN) != 0);
-        sync_key(GLYNX_KEY_LEFT, SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_LEFT) != 0);
-        sync_key(GLYNX_KEY_RIGHT, SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) != 0);
+        if (config_input.gamepad_directional == 0 || config_input.gamepad_directional == 2)
+        {
+            up |= SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_UP);
+            down |= SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
+            left |= SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+            right |= SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+        }
+        if (config_input.gamepad_directional == 1 || config_input.gamepad_directional == 2)
+        {
+            const int STICK_DEAD_ZONE = 8000;
+            int x = gamepad_axis_value(controller, config_input.gamepad_x_axis) *
+                (config_input.gamepad_invert_x_axis ? -1 : 1);
+            int y = gamepad_axis_value(controller, config_input.gamepad_y_axis) *
+                (config_input.gamepad_invert_y_axis ? -1 : 1);
+
+            up |= y < -STICK_DEAD_ZONE;
+            down |= y > STICK_DEAD_ZONE;
+            left |= x < -STICK_DEAD_ZONE;
+            right |= x > STICK_DEAD_ZONE;
+        }
     }
-    else
-    {
-        const int STICK_DEAD_ZONE = 8000;
-        int x_motion = gamepad_axis_value(controller, config_input.gamepad_x_axis) * (config_input.gamepad_invert_x_axis ? -1 : 1);
-        int y_motion = gamepad_axis_value(controller, config_input.gamepad_y_axis) * (config_input.gamepad_invert_y_axis ? -1 : 1);
 
-        sync_key(GLYNX_KEY_LEFT, x_motion < -STICK_DEAD_ZONE);
-        sync_key(GLYNX_KEY_RIGHT, x_motion > STICK_DEAD_ZONE);
-        sync_key(GLYNX_KEY_UP, y_motion < -STICK_DEAD_ZONE);
-        sync_key(GLYNX_KEY_DOWN, y_motion > STICK_DEAD_ZONE);
+    const GLYNX_Keys directions[] = {
+        GLYNX_KEY_UP, GLYNX_KEY_DOWN, GLYNX_KEY_LEFT, GLYNX_KEY_RIGHT
+    };
+    const bool pressed[] = { up, down, left, right };
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (pressed[i])
+            emu_key_pressed(directions[i]);
+        else
+            emu_key_released(directions[i]);
     }
 }
 
