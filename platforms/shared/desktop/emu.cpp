@@ -570,7 +570,12 @@ GLYNX_Bios_State emu_load_bios(const char* file_path)
     return core->LoadBios(file_path);
 }
 
-void emu_reset(void)
+void emu_save_persistent_data(void)
+{
+    save_ram();
+}
+
+void emu_reset(bool save_persistent_data)
 {
     gui_debug_trace_logger_reset();
     emu_debug_command = Debug_Command_None;
@@ -582,7 +587,8 @@ void emu_reset(void)
     reset_rewind_timing();
     emu_audio_reset();
 
-    save_ram();
+    if (save_persistent_data)
+        emu_save_persistent_data();
     core->ResetROM(false);
     load_ram();
 
@@ -798,14 +804,20 @@ void update_savestates_data(void)
 {
     emu_savestates_generation++;
 
+    for (int i = 0; i < 5; i++)
+    {
+        emu_savestates[i].rom_name[0] = 0;
+        SafeDeleteArray(emu_savestates_screenshots[i].data);
+        emu_savestates_screenshots[i].width = 0;
+        emu_savestates_screenshots[i].height = 0;
+        emu_savestates_screenshots[i].size = 0;
+    }
+
     if (emu_is_empty())
         return;
 
     for (int i = 0; i < 5; i++)
     {
-        emu_savestates[i].rom_name[0] = 0;
-        SafeDeleteArray(emu_savestates_screenshots[i].data);
-
         const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
 
         if (!core->GetSaveStateHeader(i + 1, dir, &emu_savestates[i]))

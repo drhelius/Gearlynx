@@ -103,9 +103,24 @@ bool gui_init(void)
         gui_default_fonts[i] = io.Fonts->AddFontDefault(&font_cfg);
     }
 
+    gui_apply_settings();
+
+    if (strlen(gui_bios_path) > 0)
+        gui_load_bios(gui_bios_path);
+
+    gui_debug_init();
+    gui_init_menus();
+
+    return true;
+}
+
+void gui_apply_settings(void)
+{
     gui_default_font = gui_default_fonts[config_debug.font_size];
 
     set_style();
+
+    emu_audio_sync = config_audio.sync;
 
     emu_force_rotation(config_video.rotation);
     emu_force_console_type(config_emulator.console_type);
@@ -121,20 +136,13 @@ bool gui_init(void)
 
     emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
     emu_set_disassembler_syntax(config_debug.dis_syntax);
+    emu_comlynx_set_normal_barrier_stall_us((u32)config_emulator.comlynx_stall_us);
 
     strncpy_fit(gui_savefiles_path, config_emulator.savefiles_path.c_str(), sizeof(gui_savefiles_path));
     strncpy_fit(gui_savestates_path, config_emulator.savestates_path.c_str(), sizeof(gui_savestates_path));
     strncpy_fit(gui_screenshots_path, config_emulator.screenshots_path.c_str(), sizeof(gui_screenshots_path));
     strncpy_fit(gui_bios_path, config_emulator.bios_path.c_str(), sizeof(gui_bios_path));
     strncpy_fit(gui_mcp_http_address, config_emulator.mcp_http_address.c_str(), sizeof(gui_mcp_http_address));
-
-    if (strlen(gui_bios_path) > 0)
-        gui_load_bios(gui_bios_path);
-
-    gui_debug_init();
-    gui_init_menus();
-
-    return true;
 }
 
 void gui_destroy(void)
