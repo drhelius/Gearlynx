@@ -131,7 +131,10 @@ bool rewind_pop(void)
     bool ok = emu_get_core()->LoadState(slot, size);
 
     if (ok)
+    {
+        emu_debug_state_restored();
         events_sync_input();
+    }
 
     head = idx;
     count--;
@@ -181,6 +184,7 @@ bool rewind_seek(int age)
 
     if (ok)
     {
+        emu_debug_state_restored();
         events_sync_input();
         seek_age = age;
     }

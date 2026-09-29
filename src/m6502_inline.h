@@ -508,7 +508,6 @@ INLINE void M6502::CheckBreakpoints()
 INLINE void M6502::DisassembleNextOPCode()
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-
     CheckBreakpoints();
 
     u16 address = m_s.PC.GetValue();

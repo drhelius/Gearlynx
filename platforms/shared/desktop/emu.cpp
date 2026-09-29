@@ -775,6 +775,7 @@ void emu_load_state_slot(int index)
         const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
         if (core->LoadState(dir, index))
         {
+            emu_debug_state_restored();
             events_sync_input();
             rewind_reset();
         }
@@ -794,6 +795,7 @@ void emu_load_state_file(const char* file_path)
         emu_comlynx_stop();
         if (core->LoadState(file_path))
         {
+            emu_debug_state_restored();
             events_sync_input();
             rewind_reset();
         }
@@ -944,6 +946,14 @@ void emu_get_info(char* info, int buffer_size)
 GearlynxCore* emu_get_core(void)
 {
     return core;
+}
+
+void emu_debug_state_restored(void)
+{
+    emu_get_core()->GetM6502()->ResetDebuggerExecutionState();
+    emu_debug_command = Debug_Command_None;
+    emu_debug_step_frames_pending = 0;
+    emu_debug_pc_changed = true;
 }
 
 void emu_debug_step_over(void)

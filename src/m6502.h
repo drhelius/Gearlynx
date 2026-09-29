@@ -119,6 +119,7 @@ public:
     void SetDisassemblerSyntax(GLYNX_Disassembler_Syntax syntax);
     GLYNX_Disassembler_Syntax GetDisassemblerSyntax() const;
     void ClearDisassemblerCallStack();
+    void ResetDebuggerExecutionState();
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
     void CheckMemoryBreakpoints(u16 address, bool read);
     void SetPageModeEnabled(bool enabled);

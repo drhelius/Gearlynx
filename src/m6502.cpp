@@ -357,6 +357,20 @@ void M6502::ClearDisassemblerCallStack()
     m_disassembler_call_stack_size = 0;
 }
 
+void M6502::ResetDebuggerExecutionState()
+{
+    ClearDisassemblerCallStack();
+    m_run_to_breakpoint_requested = false;
+    m_run_to_breakpoint.enabled = false;
+    m_run_to_breakpoint_hit = false;
+    m_cpu_breakpoint_hit = false;
+    m_memory_breakpoint_hit = false;
+    m_debug_brk_breakpoint_hit = false;
+    m_breakpoint_hit_address_valid = false;
+    m_breakpoint_hit_address = 0xFFFF;
+    m_prev_opcode_address = 0xFFFF;
+}
+
 void M6502::CheckMemoryBreakpoints(u16 address, bool read)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
