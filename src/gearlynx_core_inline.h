@@ -28,6 +28,33 @@
 #include "mikey.h"
 #include "suzy.h"
 
+INLINE bool GearlynxCore::RunCycle(u32& clock_cycles)
+{
+    u32 cpu_cycles = m_m6502->RunInstruction();
+    u32 bus_cycles = m_bus->ConsumeCycles();
+    u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
+    clock_cycles = cpu_cycles + bus_cycles;
+    u32 suzy_cycles = m_suzy->ApplyBusStall(&clock_cycles, suzy_stolen_cycles);
+    m_total_cycles += clock_cycles;
+    SynchronizeComLynx();
+
+    bool vblank;
+    if (m_m6502->IsHalted())
+    {
+        vblank = m_mikey->Clock(clock_cycles);
+        if (m_m6502->IsHalted())
+            m_suzy->Clock(suzy_cycles);
+    }
+    else
+    {
+        m_suzy->Clock(suzy_cycles);
+        vblank = m_mikey->Clock(clock_cycles);
+    }
+    m_audio->Clock(clock_cycles);
+
+    return vblank;
+}
+
 INLINE void GearlynxCore::SynchronizeComLynx()
 {
     if (m_mikey->IsUartTurbo())

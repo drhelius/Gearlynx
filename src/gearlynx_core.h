@@ -56,7 +56,10 @@ public:
     GearlynxCore();
     ~GearlynxCore();
     void Init(GLYNX_Pixel_Format pixel_format = GLYNX_PIXEL_RGBA8888);
+    void SetRandomSeed(u32 seed);
     bool RunToVBlank(u8* frame_buffer, s16* sample_buffer, int* sample_count, GLYNX_Debug_Run* debug = NULL, bool render = true);
+    INLINE bool RunCycle(u32& clock_cycles);
+    void EndFrame(s16* sample_buffer, int* sample_count);
     bool LoadROM(const char* file_path, bool softpatching = false);
     bool LoadROMFromBuffer(const u8* buffer, int size, const char* file_path = NULL);
     GLYNX_Bios_State LoadBios(const char* file_path);

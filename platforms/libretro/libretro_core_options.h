@@ -56,6 +56,11 @@ struct retro_core_option_v2_category option_cats_us[] = {
         "Input",
         "Configure controller behavior and other input settings."
     },
+    {
+        "link",
+        "ComLynx Link Cable",
+        "Configure linked Lynx systems, screen layout and audio output."
+    },
     { NULL, NULL, NULL },
 };
 
@@ -341,6 +346,101 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { NULL, NULL },
         },
         "Disabled"
+    },
+
+    /* ComLynx Link Cable */
+
+    {
+        "gearlynx_link_enable",
+        "ComLynx Link Cable Enable (restart)",
+        NULL,
+        "Run two to four linked Lynx systems using standard ComLynx. Loading one ROM runs a separate copy on each screen; use a Player Lynx Link subsystem to load different ROMs. Controller ports 1 to 4 control the corresponding screens. Save states and achievements are disabled when linking. Turbo ComLynx is not supported.",
+        NULL,
+        "link",
+        {
+            { "Enabled", NULL },
+            { "Disabled", NULL },
+            { NULL, NULL },
+        },
+        "Disabled"
+    },
+    {
+        "gearlynx_link_players",
+        "Link Players (restart)",
+        NULL,
+        "Choose how many linked systems run when loading a single ROM. Subsystem loading determines the player count independently. Changes take effect after closing and reloading content.",
+        NULL,
+        "link",
+        {
+            { "2", NULL },
+            { "3", NULL },
+            { "4", NULL },
+            { NULL, NULL },
+        },
+        "2"
+    },
+    {
+        "gearlynx_link_placement",
+        "Linked Screen Placement",
+        NULL,
+        "Arrange the screens horizontally, vertically or in a two-column grid.",
+        NULL,
+        "link",
+        {
+            { "Horizontal", NULL },
+            { "Vertical", NULL },
+            { "Grid", NULL },
+            { NULL, NULL },
+        },
+        "Grid"
+    },
+    {
+        "gearlynx_link_switch",
+        "Linked Screen Switch",
+        NULL,
+        "Reverse the order of the screens. Controller assignments, screen selection and audio selection still refer to the original screen numbers.",
+        NULL,
+        "link",
+        {
+            { "Enabled", NULL },
+            { "Disabled", NULL },
+            { NULL, NULL },
+        },
+        "Disabled"
+    },
+    {
+        "gearlynx_link_screen",
+        "Linked Screen Selection",
+        NULL,
+        "Display all screens or only the selected system. All linked systems continue running. An inactive screen selection displays all screens.",
+        NULL,
+        "link",
+        {
+            { "All Screens", NULL },
+            { "Screen 1", NULL },
+            { "Screen 2", NULL },
+            { "Screen 3", NULL },
+            { "Screen 4", NULL },
+            { NULL, NULL },
+        },
+        "All Screens"
+    },
+    {
+        "gearlynx_link_audio",
+        "Linked Screen Audio",
+        NULL,
+        "Choose the system to hear, or mix all linked systems at equal volume. An inactive screen selection plays screen 1.",
+        NULL,
+        "link",
+        {
+            { "Screen 1", NULL },
+            { "Screen 2", NULL },
+            { "Screen 3", NULL },
+            { "Screen 4", NULL },
+            { "Mix", NULL },
+            { NULL, NULL },
+        },
+        "Screen 1"
     },
 
     { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },

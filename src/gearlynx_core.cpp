@@ -106,6 +106,11 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
 
 }
 
+void GearlynxCore::SetRandomSeed(u32 seed)
+{
+    m_random->Seed(seed);
+}
+
 template<bool debugger>
 bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
     int* sample_count, GLYNX_Debug_Run* debug, bool render)
@@ -135,28 +140,8 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
 
         do
         {
-            u32 cpu_cycles = m_m6502->RunInstruction();
-            u32 bus_cycles = m_bus->ConsumeCycles();
-            u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
-            u32 lynx_cycles = cpu_cycles + bus_cycles;
-            u32 suzy_cycles = m_suzy->ApplyBusStall(&lynx_cycles, suzy_stolen_cycles);
-            m_total_cycles += lynx_cycles;
-            SynchronizeComLynx();
-
-            //Debug("-> CPU cycles=%u, Lynx cycles=%u", cpu_cycles, lynx_cycles);
-
-            if (m_m6502->IsHalted())
-            {
-                stop = m_mikey->Clock(lynx_cycles);
-                if (m_m6502->IsHalted())
-                    m_suzy->Clock(suzy_cycles);
-            }
-            else
-            {
-                m_suzy->Clock(suzy_cycles);
-                stop = m_mikey->Clock(lynx_cycles);
-            }
-            m_audio->Clock(lynx_cycles);
+            u32 lynx_cycles;
+            stop = RunCycle(lynx_cycles);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             if (stop)
@@ -189,7 +174,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
 #endif
         if (render)
             m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
-        m_audio->EndFrame(sample_buffer, sample_count);
+        EndFrame(sample_buffer, sample_count);
 
         return m_m6502->BreakpointHit() || m_m6502->RunToBreakpointHit();
     }
@@ -202,26 +187,8 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
 
         do
         {
-            u32 cpu_cycles = m_m6502->RunInstruction();
-            u32 bus_cycles = m_bus->ConsumeCycles();
-            u32 suzy_stolen_cycles = m_bus->ConsumeSuzyStolenCycles();
-            u32 lynx_cycles = cpu_cycles + bus_cycles;
-            u32 suzy_cycles = m_suzy->ApplyBusStall(&lynx_cycles, suzy_stolen_cycles);
-            m_total_cycles += lynx_cycles;
-            SynchronizeComLynx();
-
-            if (m_m6502->IsHalted())
-            {
-                stop = m_mikey->Clock(lynx_cycles);
-                if (m_m6502->IsHalted())
-                    m_suzy->Clock(suzy_cycles);
-            }
-            else
-            {
-                m_suzy->Clock(suzy_cycles);
-                stop = m_mikey->Clock(lynx_cycles);
-            }
-            m_audio->Clock(lynx_cycles);
+            u32 lynx_cycles;
+            stop = RunCycle(lynx_cycles);
 
             failsafe_cycle_count += lynx_cycles;
             if (failsafe_cycle_count > 450000)
@@ -237,7 +204,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
 #endif
         if (render)
             m_mikey->GetLcdScreen()->EndFrame(m_media->GetRotation());
-        m_audio->EndFrame(sample_buffer, sample_count);
+        EndFrame(sample_buffer, sample_count);
 
         return false;
     }
@@ -273,6 +240,11 @@ bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer,
         return RunToVBlankTemplate<true>(frame_buffer, sample_buffer, sample_count, debug, render);
     else
         return RunToVBlankTemplate<false>(frame_buffer, sample_buffer, sample_count, debug, render);
+}
+
+void GearlynxCore::EndFrame(s16* sample_buffer, int* sample_count)
+{
+    m_audio->EndFrame(sample_buffer, sample_count);
 }
 
 void GearlynxCore::RenderFrameBuffer(u8* frame_buffer)

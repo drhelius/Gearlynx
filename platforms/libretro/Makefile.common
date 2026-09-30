@@ -1,6 +1,7 @@
 SOURCES_C   :=  $(DEPS_DIR)/miniz/miniz.c \
 
 SOURCES_CXX :=  $(CORE_DIR)/libretro.cpp \
+                $(CORE_DIR)/libretro_link.cpp \
                 $(CORE_DIR)/sd_card_filesystem_libretro.cpp \
                 $(SOURCE_DIR)/audio.cpp \
                 $(SOURCE_DIR)/bus.cpp \
