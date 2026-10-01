@@ -74,7 +74,7 @@ static void BuildShortName(const char* file_name, char* short_name, u32 suffix)
     if (suffix > 0)
     {
         char tail[9];
-        snprintf(tail, sizeof(tail), "~%u", suffix);
+        snprintf(tail, sizeof(tail), "~%u", (unsigned int)MIN(suffix, 9999999U));
         clean_base = clean_base.substr(0, 8 - strlen(tail)) + tail;
     }
     if (clean_extension.size() > 3)
