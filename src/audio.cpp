@@ -172,12 +172,20 @@ void Audio::Serialize(StateSerializer& s, int version)
         m_sample_phase = 0;
     G_SERIALIZE(s, m_lpf_left);
     G_SERIALIZE(s, m_lpf_right);
-    G_SERIALIZE(s, m_buffer_pos);
+
+    if (version < 27)
+        G_SERIALIZE(s, m_buffer_pos);
+    else if (s.IsLoading())
+        m_buffer_pos = 0;
+
     G_SERIALIZE(s, m_frame_samples);
 
-    for (int i = 0; i < 4; i++)
+    if (version < 27)
     {
-        G_SERIALIZE_ARRAY(s, m_channel[i].buffer, GLYNX_AUDIO_BUFFER_SIZE);
+        for (int i = 0; i < 4; i++)
+        {
+            G_SERIALIZE_ARRAY(s, m_channel[i].buffer, GLYNX_AUDIO_BUFFER_SIZE);
+        }
     }
 }
 

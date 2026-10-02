@@ -18,6 +18,7 @@
  */
 
 #include "bus.h"
+#include "state_serializer.h"
 
 Bus::Bus()
 {
@@ -38,4 +39,22 @@ void Bus::Reset()
 {
     m_cycles = 0;
     m_suzy_stolen_cycles = 0;
+}
+
+void Bus::SaveState(std::ostream& stream)
+{
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Bus::LoadState(std::istream& stream)
+{
+    StateSerializer serializer(stream);
+    Serialize(serializer);
+}
+
+void Bus::Serialize(StateSerializer& s)
+{
+    G_SERIALIZE(s, m_cycles);
+    G_SERIALIZE(s, m_suzy_stolen_cycles);
 }

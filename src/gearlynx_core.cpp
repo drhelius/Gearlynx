@@ -682,6 +682,7 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
     m_input->SaveState(stream);
     m_media->SaveState(stream);
     m_random->SaveState(stream);
+    m_bus->SaveState(stream);
 
 #if defined(__LIBRETRO__)
     GLYNX_SaveState_Header_Libretro header;
@@ -930,6 +931,11 @@ bool GearlynxCore::LoadState(std::istream& stream)
     {
         m_random->LoadState(stream);
     }
+
+    if (header.version >= 27)
+        m_bus->LoadState(stream);
+    else
+        m_bus->Reset();
 
     return stream.good() && stream.tellg() == (std::streamoff)body_size;
 }

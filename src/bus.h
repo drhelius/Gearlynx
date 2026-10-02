@@ -20,7 +20,10 @@
 #ifndef BUS_H
 #define BUS_H
 
+#include <iostream>
 #include "common.h"
+
+class StateSerializer;
 
 class Bus
 {
@@ -34,6 +37,11 @@ public:
     u32 GetCycles() const;
     u32 ConsumeCycles();
     u32 ConsumeSuzyStolenCycles();
+    void SaveState(std::ostream& stream);
+    void LoadState(std::istream& stream);
+
+private:
+    void Serialize(StateSerializer& s);
 
 private:
     u32 m_cycles;
