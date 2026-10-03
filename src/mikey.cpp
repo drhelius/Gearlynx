@@ -937,13 +937,6 @@ void Mikey::LoadState(std::istream& stream, int version)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, version);
-    m_cpu_read_cycles = 0;
-    m_uart_tx_wire_start = 0;
-    m_uart_tx_wire_bit_cycles = 0;
-    m_uart_tx_wire_bits = 0x07FF;
-    m_uart_tx_wire_published = false;
-    m_uart_rx_wire_state = 0;
-    m_uart_rx_wire_link = false;
     RebuildTimerCaches();
 
     m_lcd_screen->LoadState(stream);
@@ -1092,6 +1085,37 @@ void Mikey::Serialize(StateSerializer& s, int version)
         G_SERIALIZE(s, m_state.MTEST0);
     else if (s.IsLoading())
         m_state.MTEST0 = 0;
+
+    if (version >= 28)
+    {
+        G_SERIALIZE(s, m_cpu_read_cycles);
+        G_SERIALIZE(s, m_comlynx_cycle);
+        G_SERIALIZE(s, m_uart_last_bit_cycle);
+        G_SERIALIZE(s, m_uart_tx_wire_start);
+        G_SERIALIZE(s, m_uart_tx_wire_bit_cycles);
+        G_SERIALIZE(s, m_uart_tx_wire_bits);
+        G_SERIALIZE(s, m_uart_tx_wire_published);
+        G_SERIALIZE(s, m_uart_rx_wire_state);
+        G_SERIALIZE(s, m_uart_rx_wire_bit);
+        G_SERIALIZE(s, m_uart_rx_wire_data);
+        G_SERIALIZE(s, m_uart_rx_wire_parity);
+        G_SERIALIZE(s, m_uart_rx_wire_link);
+    }
+    else if (s.IsLoading())
+    {
+        m_cpu_read_cycles = 0;
+        m_comlynx_cycle = 0;
+        m_uart_last_bit_cycle = 0;
+        m_uart_tx_wire_start = 0;
+        m_uart_tx_wire_bit_cycles = 0;
+        m_uart_tx_wire_bits = 0x07FF;
+        m_uart_tx_wire_published = false;
+        m_uart_rx_wire_state = 0;
+        m_uart_rx_wire_bit = 0;
+        m_uart_rx_wire_data = 0;
+        m_uart_rx_wire_parity = false;
+        m_uart_rx_wire_link = false;
+    }
 }
 
 void Mikey::LogDebugMessageEvent(u16 address, u8 value)
