@@ -1603,10 +1603,13 @@ static void render_debug_sprites(int count)
         bool start_left = IS_SET_BIT(info.sprctl1, 0);
         int start_quad = (start_left ? 1 : 0) | (start_up ? 2 : 0);
 
+        s16 screen_x = (s16)(u16)(info.hpos - info.hoff);
+        s16 screen_y = (s16)(u16)(info.vpos - info.voff);
+
         if (ram[sprdline] > k_sprite_max_line_size)
             continue;
-        if (info.hpos > k_sprite_max_pos || info.hpos < -k_sprite_max_pos ||
-            info.vpos > k_sprite_max_pos || info.vpos < -k_sprite_max_pos)
+        if (screen_x > k_sprite_max_pos || screen_x < -k_sprite_max_pos ||
+            screen_y > k_sprite_max_pos || screen_y < -k_sprite_max_pos)
             continue;
 
         // First pass: compute bounding box
