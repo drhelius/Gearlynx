@@ -150,7 +150,10 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             if (stop)
+            {
                 m_suzy->SwapFrameSCBList();
+                m_profiler->AddFrame();
+            }
 #endif
 
             failsafe_cycle_count += lynx_cycles;

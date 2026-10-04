@@ -3696,7 +3696,7 @@ json DebugAdapter::GetProfilerData(const std::string& sort, int count, const std
     u32 function_count = profiler->GetFunctionCount();
     u64 total = profiler->GetTotalCycles();
     u32 frame_cycles = gui_debug_profiler_get_frame_cycles();
-    double frames = (frame_cycles > 0) ? (double)total / (double)frame_cycles : 0.0;
+    double frames = (double)profiler->GetFrameCount();
 
     std::string filter_upper = filter;
     std::transform(filter_upper.begin(), filter_upper.end(), filter_upper.begin(), ::toupper);

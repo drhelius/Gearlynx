@@ -37,6 +37,7 @@ Profiler::Profiler(const u64* master_clock_cycles)
     m_halt_cycle = 0;
     m_last_cycle = 0;
     m_total_cycles = 0;
+    m_frame_count = 0;
     m_irq_cycles = 0;
     Reset();
 }
@@ -51,6 +52,7 @@ void Profiler::Reset()
 {
     m_function_count = 0;
     m_total_cycles = 0;
+    m_frame_count = 0;
 
     if (IsValidPointer(m_hash))
     {
@@ -161,6 +163,12 @@ void Profiler::Halt(bool halted, u32 pending_cycles)
     m_halted = halted;
 }
 
+void Profiler::AddFrame()
+{
+    if (m_enabled)
+        m_frame_count++;
+}
+
 const GLYNX_Profiler_Function* Profiler::GetFunctions() const
 {
     return m_functions;
@@ -174,6 +182,11 @@ u32 Profiler::GetFunctionCount() const
 u64 Profiler::GetTotalCycles() const
 {
     return m_total_cycles;
+}
+
+u64 Profiler::GetFrameCount() const
+{
+    return m_frame_count;
 }
 
 void Profiler::InitFunction(u16 index, u32 key, u16 address, u16 bank, GLYNX_Profiler_Function_Type type)

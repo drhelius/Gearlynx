@@ -91,7 +91,7 @@ static bool row_sort_compare(const ProfilerRow& a, const ProfilerRow& b);
 static void draw_right_aligned(const ImVec4& color, const char* text);
 static void draw_number(u64 value);
 static void draw_percent(u64 value, u64 total);
-static void draw_calls_per_frame(u32 calls, u64 total);
+static void draw_calls_per_frame(u32 calls, u64 frames);
 static void draw_empty(void);
 
 void gui_debug_window_profiler(void)
@@ -152,13 +152,11 @@ void gui_debug_profiler_show(bool show)
 
 u32 gui_debug_profiler_get_frame_cycles(void)
 {
-    GLYNX_Runtime_Info runtime_info;
-    emu_get_core()->GetRuntimeInfo(runtime_info);
+    Profiler* profiler = emu_get_core()->GetProfiler();
+    if (!IsValidPointer(profiler) || (profiler->GetFrameCount() == 0))
+        return 0;
 
-    if (runtime_info.frame_time <= 0.0f)
-        return GLYNX_MASTER_CLOCK / 60;
-
-    return (u32)((runtime_info.frame_time * GLYNX_MASTER_CLOCK) / 1000.0f);
+    return (u32)(profiler->GetTotalCycles() / profiler->GetFrameCount());
 }
 
 static void draw_profiler(Profiler* profiler)
@@ -182,10 +180,11 @@ static void draw_profiler(Profiler* profiler)
     const GLYNX_Profiler_Function* functions = profiler->GetFunctions();
     u32 count = profiler->GetFunctionCount();
     u64 total = profiler->GetTotalCycles();
+    u64 frames = profiler->GetFrameCount();
 
     ImGui::SameLine();
     ImGui::Text("Functions: %u  Frames: %llu  Cycles: %llu", count - 2,
-        (unsigned long long)(total / gui_debug_profiler_get_frame_cycles()), (unsigned long long)total);
+        (unsigned long long)frames, (unsigned long long)total);
 
     ImGui::SameLine();
     ImGui::PushItemWidth(-1);
@@ -309,10 +308,10 @@ static void draw_profiler(Profiler* profiler)
                     draw_number(function.calls);
 
                 ImGui::TableNextColumn();
-                if (root || (total == 0))
+                if (root || (frames == 0))
                     draw_empty();
                 else
-                    draw_calls_per_frame(function.calls, total);
+                    draw_calls_per_frame(function.calls, frames);
 
                 ImGui::TableNextColumn();
                 if (root)
@@ -499,11 +498,10 @@ static void draw_percent(u64 value, u64 total)
     draw_right_aligned(white, text);
 }
 
-static void draw_calls_per_frame(u32 calls, u64 total)
+static void draw_calls_per_frame(u32 calls, u64 frames)
 {
     char text[32];
-    double frames = (double)total / (double)gui_debug_profiler_get_frame_cycles();
-    snprintf(text, sizeof(text), "%.2f", (double)calls / frames);
+    snprintf(text, sizeof(text), "%.2f", (double)calls / (double)frames);
     draw_right_aligned(white, text);
 }
 

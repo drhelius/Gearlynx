@@ -77,9 +77,11 @@ public:
     void Enter(u32 key, u16 address, u16 bank, u16 return_sp, bool irq, u32 pending_cycles);
     void Return(u16 sp, u32 pending_cycles);
     void Halt(bool halted, u32 pending_cycles);
+    void AddFrame();
     const GLYNX_Profiler_Function* GetFunctions() const;
     u32 GetFunctionCount() const;
     u64 GetTotalCycles() const;
+    u64 GetFrameCount() const;
 
 private:
     void InitFunction(u16 index, u32 key, u16 address, u16 bank, GLYNX_Profiler_Function_Type type);
@@ -101,6 +103,7 @@ private:
     u64 m_halt_cycle;
     u64 m_last_cycle;
     u64 m_total_cycles;
+    u64 m_frame_count;
     u64 m_irq_cycles;
     const u64* m_master_clock_cycles;
 };
