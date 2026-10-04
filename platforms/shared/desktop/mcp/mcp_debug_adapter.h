@@ -171,6 +171,8 @@ public:
     json SetTraceLog(bool enabled, u32 flags, bool debug_output, const std::string& output,
         const std::string& memory_size, const std::string& disk_size, const std::string& output_path);
     json SetTraceLog(const json& arguments);
+    json SetProfiler(const std::string& action);
+    json GetProfilerData(const std::string& sort, int count, const std::string& filter);
 
     // Rewind
     json GetRewindStatus();
