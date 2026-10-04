@@ -313,14 +313,14 @@ void McpServer::HandleInitialize(const json& request)
             {"name", "gearlynx-mcp-server"},
             {"title", GLYNX_TITLE " MCP Server"},
             {"version", GLYNX_VERSION},
-            {"description", "Debug/control " GLYNX_TITLE " Atari Lynx: execution, breakpoints, IRQ timers, memory, 6502 CPU, Mikey, Suzy, UART, cartridge, EEPROM, LCD, disassembly, symbols, sprites, frame buffers, save states, rewind, input, screenshots."}
+            {"description", "Debug/control " GLYNX_TITLE " Atari Lynx: execution, breakpoints, IRQ timers, memory, 6502 CPU, Mikey, Suzy, UART, cartridge, EEPROM, LCD, disassembly, symbols, sprites, frame buffers, save states, rewind, input, screenshots, video recording."}
         }}
     };
 
     response["result"]["instructions"] =
         "Use this server for Atari Lynx game debugging, reverse engineering, memory inspection, CPU "
         "tracing, breakpoints, Mikey, Suzy, UART, LCD, cartridge, sprites, save states, rewind, input, "
-        "and screenshots.";
+        "screenshots, and video recording.";
 
     if (g_mcp_router_enabled)
     {
@@ -907,6 +907,51 @@ json McpServer::BuildToolList()
         {"annotations", {{"readOnlyHint", true}, {"destructiveHint", false}, {"idempotentHint", true}, {"openWorldHint", false}}},
         {"inputSchema", {
             {"type", "object"},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "start_video_recording"},
+        {"title", "Start Video Recording"},
+        {"description", "Start recording emulated video and audio to an AVI file (MJPEG or uncompressed video, PCM audio). The file is written to disk only; its path is returned. Options given here update the recording settings, same as the GUI menu."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", true}, {"idempotentHint", false}, {"openWorldHint", true}}},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"file_path", {
+                    {"type", "string"},
+                    {"description", "Absolute destination .avi file path. If omitted, an automatic name is used in the configured video recordings directory."}
+                }},
+                {"scale", {
+                    {"type", "integer"},
+                    {"description", "Output height multiplier (1-20)."},
+                    {"minimum", 1},
+                    {"maximum", 20}
+                }},
+                {"aspect_ratio", {
+                    {"type", "string"},
+                    {"description", "Output aspect ratio. screen follows the current display settings (square pixels while debugging)."},
+                    {"enum", json::array({"screen", "square", "4:3", "16:9", "16:10"})}
+                }},
+                {"quality", {
+                    {"type", "string"},
+                    {"description", "low and medium halve color resolution; lossless writes uncompressed video with very large files."},
+                    {"enum", json::array({"low", "medium", "high", "lossless"})}
+                }}
+            }},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "stop_video_recording"},
+        {"title", "Stop Video Recording"},
+        {"description", "Stop the active video recording and finalize the AVI file. Returns the file path and recorded frame count."},
+        {"annotations", {{"readOnlyHint", false}, {"destructiveHint", false}, {"idempotentHint", false}, {"openWorldHint", true}}},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", json::object()},
             {"additionalProperties", false}
         }}
     });
@@ -2604,6 +2649,18 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     else if (normalizedTool == "get_screenshot")
     {
         return m_debugAdapter.GetScreenshot();
+    }
+    else if (normalizedTool == "start_video_recording")
+    {
+        std::string file_path = arguments.value("file_path", "");
+        int scale = arguments.value("scale", 0);
+        std::string aspect_ratio = arguments.value("aspect_ratio", "");
+        std::string quality = arguments.value("quality", "");
+        return m_debugAdapter.StartVideoRecording(file_path, scale, aspect_ratio, quality);
+    }
+    else if (normalizedTool == "stop_video_recording")
+    {
+        return m_debugAdapter.StopVideoRecording();
     }
     else if (normalizedTool == "get_frame_buffer")
     {

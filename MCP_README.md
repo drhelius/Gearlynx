@@ -59,6 +59,7 @@ This server provides tools for game development, rom hacking, reverse engineerin
 - **Trace Logger**: CPU instructions, master-clock cycles, absolute pagination, and exact Suzy/Mikey/UART/RedEye/cartridge event filters
 - **Profiler**: Per-function call counts, calls per frame, and inclusive/exclusive cycle statistics
 - **Screenshot Capture**: Get current frame as PNG image
+- **Video Recording**: Record emulated video and audio to AVI files on disk
 - **Rewind**: Time-travel debugging — seek to any recorded snapshot to inspect past emulator state
 - **Documentation Resources**: Built-in hardware and programming documentation for AI context
 - **GUI Integration**: MCP server runs alongside the emulator GUI, sharing the same state
@@ -320,6 +321,7 @@ Once configured, you can ask your AI assistant:
 - "Pause execution and show me the Mikey timers"
 - "Step through the next 5 instructions"
 - "Capture a screenshot of the current frame"
+- "Record a video of the next 600 frames to /path/to/clip.avi"
 - "Tap the A button on the controller"
 - "Show me the Suzy registers"
 
@@ -425,6 +427,8 @@ CPU entries are captured before opcode fetch. Hardware events emitted while Suzy
 
 ### Screen Capture
 - `get_screenshot` - Capture current screen frame as base64 PNG
+- `start_video_recording` - Start recording video and audio to an AVI file (MJPEG or uncompressed video, 16-bit PCM audio). Only the resulting `file_path` is returned; the video stays on disk. Optional `file_path` (absolute; if omitted, an automatic name in the configured video recordings directory), `scale` (1-20), `aspect_ratio` (`screen`, `square`, `4:3`, `16:9`, `16:10`), and `quality` (`low`, `medium`, `high`, `lossless`). Given options update the recording settings, same as the GUI menu. `screen` follows the display aspect ratio, which uses square pixels while debugging. Frames are recorded only while the emulator runs, so continue or step execution before stopping
+- `stop_video_recording` - Stop the active recording and finalize the AVI file. Returns `file_path` and the number of recorded `frames`
 - `get_frame_buffer` - Capture debug frame buffer as base64 PNG (VIDBAS from Suzy or DISPADR from Mikey)
 - `get_sprite` - Render SCB sprite image or return sprite metadata
 

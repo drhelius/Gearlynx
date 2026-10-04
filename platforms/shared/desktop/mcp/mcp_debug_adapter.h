@@ -118,6 +118,8 @@ public:
     json GetCartStatus();
     json GetEepromStatus();
     json GetScreenshot();
+    json StartVideoRecording(const std::string& file_path, int scale, const std::string& aspect_ratio, const std::string& quality);
+    json StopVideoRecording();
     json GetFrameBuffer(const std::string& buffer_type);
     json GetSprite(int index, const std::string& format);
 

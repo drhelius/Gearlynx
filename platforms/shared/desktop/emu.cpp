@@ -22,6 +22,7 @@
 #include <thread>
 #include <atomic>
 #include <string.h>
+#include <math.h>
 #include "gearlynx.h"
 #include "mikey.h"
 #include "lcd_screen.h"
@@ -29,6 +30,7 @@
 #include "config.h"
 #include "rewind.h"
 #include "runahead.h"
+#include "video_recorder.h"
 #include "events.h"
 #include "gui_debug_trace_logger.h"
 #include "mcp/mcp_manager.h"
@@ -82,6 +84,7 @@ static void update_debug_framebuffers(void);
 static void update_debug_sprites(void);
 static void update_debug_sprites_accumulated(void);
 static void render_debug_sprites(int count);
+static void get_video_recording_size(const GLYNX_Runtime_Info& runtime, int* width, int* height);
 static void reset_rewind_timing(void);
 static int get_rewind_pop_budget(void);
 static bool is_direction_key(GLYNX_Keys key);
@@ -166,6 +169,7 @@ void emu_destroy(void)
     }
     loading_state.store(Loading_State_None);
 
+    emu_stop_video_recording();
     save_ram();
     rewind_destroy();
     runahead_destroy();
@@ -401,6 +405,16 @@ void emu_update(void)
         if (frame_completed)
             emu_frame_counter++;
         rewind_push();
+        if (video_recorder_is_recording())
+        {
+            video_recorder_add_audio(audio_buffer, sampleCount);
+            if (frame_completed)
+            {
+                GLYNX_Runtime_Info runtime;
+                emu_get_runtime(runtime);
+                video_recorder_add_video(emu_frame_buffer, runtime.screen_width, runtime.screen_height, 4);
+            }
+        }
     }
 
     if ((sampleCount > 0) && !core->IsPaused())
@@ -2065,6 +2079,71 @@ void emu_stop_vgm_recording(void)
 bool emu_is_vgm_recording(void)
 {
     return core->GetAudio()->IsVgmRecording();
+}
+
+bool emu_start_video_recording(const char* file_path)
+{
+    if (!core->GetMedia()->IsReady())
+        return false;
+
+    if (video_recorder_is_recording())
+        emu_stop_video_recording();
+
+    GLYNX_Runtime_Info runtime;
+    emu_get_runtime(runtime);
+
+    int width = 0;
+    int height = 0;
+    get_video_recording_size(runtime, &width, &height);
+
+    if (!video_recorder_start(file_path, width, height, emu_get_frame_rate(), GLYNX_AUDIO_SAMPLE_RATE, (Video_Recorder_Quality)config_video.recording_quality))
+        return false;
+
+    Log("Video recording started: %s (%dx%d)", file_path, width, height);
+    return true;
+}
+
+void emu_stop_video_recording(void)
+{
+    if (video_recorder_is_recording())
+    {
+        video_recorder_stop();
+        Log("Video recording stopped");
+    }
+}
+
+bool emu_is_video_recording(void)
+{
+    return video_recorder_is_recording();
+}
+
+static void get_video_recording_size(const GLYNX_Runtime_Info& runtime, int* width, int* height)
+{
+    int selected_ratio = config_debug.debug ? 0 : config_video.ratio;
+    float ratio = 0.0f;
+
+    if (config_video.recording_ratio > 0)
+        selected_ratio = config_video.recording_ratio - 1;
+
+    switch (selected_ratio)
+    {
+        case 1:
+            ratio = 4.0f / 3.0f;
+            break;
+        case 2:
+            ratio = 16.0f / 9.0f;
+            break;
+        case 3:
+            ratio = 16.0f / 10.0f;
+            break;
+        default:
+            ratio = (float)runtime.screen_width / (float)runtime.screen_height;
+    }
+
+    *height = runtime.screen_height * config_video.recording_scale;
+    *width = (int)roundf((float)*height * ratio);
+    *width += *width & 1;
+    *height += *height & 1;
 }
 
 void emu_mcp_set_transport(int mode, int tcp_port, const char* tcp_address)
