@@ -36,6 +36,7 @@ SOURCES_CXX := \
     $(DESKTOP_SRC_DIR)/gui_debug_scb_viewer.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_timers.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_trace_logger.cpp \
+    $(DESKTOP_SRC_DIR)/gui_debug_profiler.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_uart.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_lcd.cpp \
     $(DESKTOP_SRC_DIR)/gui_debug_eeprom.cpp \
@@ -77,4 +78,5 @@ SOURCES_CXX := \
     $(SRC_DIR)/suzy.cpp \
     $(SRC_DIR)/eeprom.cpp \
     $(SRC_DIR)/trace_logger.cpp \
+    $(SRC_DIR)/profiler.cpp \
     $(SRC_DIR)/vgm_recorder.cpp

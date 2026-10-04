@@ -36,6 +36,7 @@ M6502::M6502(Bus* bus, Random* random)
     m_random = random;
     InitPointer(m_memory);
     InitPointer(m_trace_logger);
+    InitPointer(m_profiler);
     m_opcode_cycles = k_m6502_opcode_cycles_lynx2;
     m_opcode_sizes = k_m6502_opcode_sizes_lynx2;
     m_s.cycles = 0;
@@ -84,6 +85,21 @@ void M6502::Init(Memory* memory)
 void M6502::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void M6502::SetProfiler(Profiler* profiler)
+{
+    m_profiler = profiler;
+}
+
+void M6502::ProfilerEnter(u16 address, bool irq)
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    m_profiler->Enter(address, address, 0, m_s.S.GetValue(), irq, GetInstructionTicks());
+#else
+    UNUSED(address);
+    UNUSED(irq);
+#endif
 }
 
 void M6502::LogInstructionEvent()
@@ -369,6 +385,9 @@ void M6502::ResetDebuggerExecutionState()
     m_breakpoint_hit_address_valid = false;
     m_breakpoint_hit_address = 0xFFFF;
     m_prev_opcode_address = 0xFFFF;
+
+    if (IsValidPointer(m_profiler))
+        m_profiler->ResetStack();
 }
 
 void M6502::CheckMemoryBreakpoints(u16 address, bool read)

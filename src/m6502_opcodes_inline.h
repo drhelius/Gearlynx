@@ -164,7 +164,7 @@ INLINE void M6502::OPCodes_BRK()
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     u16 dest = m_s.PC.GetValue();
-    PushCallStack(pc - 1, dest, pc + 1);
+    PushCallStack(pc - 1, dest, pc + 1, false);
 #endif
 }
 

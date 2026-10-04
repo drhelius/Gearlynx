@@ -17,19 +17,19 @@
  *
  */
 
-#ifndef GEARLYNX_H
-#define	GEARLYNX_H
+#ifndef GUI_DEBUG_PROFILER_H
+#define GUI_DEBUG_PROFILER_H
 
-#include "common.h"
-#include "gearlynx_core.h"
-#include "input.h"
-#include "audio.h"
-#include "media.h"
-#include "m6502.h"
-#include "memory.h"
-#include "suzy.h"
-#include "mikey.h"
-#include "trace_logger.h"
-#include "profiler.h"
+#ifdef GUI_DEBUG_PROFILER_IMPORT
+    #define EXTERN
+#else
+    #define EXTERN extern
+#endif
 
-#endif /* GEARLYNX_H */
+EXTERN void gui_debug_window_profiler(void);
+EXTERN void gui_debug_profiler_update(void);
+EXTERN void gui_debug_profiler_reset(void);
+
+#undef GUI_DEBUG_PROFILER_IMPORT
+#undef EXTERN
+#endif /* GUI_DEBUG_PROFILER_H */

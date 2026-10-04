@@ -221,7 +221,7 @@ void M6502::OPCode0x20()
     m_s.PC.SetValue(dest);
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    PushCallStack(pc - 3, dest, pc);
+    PushCallStack(pc - 3, dest, pc, false);
 #endif
 }
 
@@ -422,7 +422,7 @@ void M6502::OPCode0x40()
     SetFlag(FLAG_UNUSED);
     m_irq_sample_after_opcode = true;
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    PopCallStack();
+    PopCallStack(3);
 #endif
 }
 
@@ -617,7 +617,7 @@ void M6502::OPCode0x60()
     // RTS
     m_s.PC.SetValue(StackPop16() + 1);
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-    PopCallStack();
+    PopCallStack(2);
 #endif
 }
 

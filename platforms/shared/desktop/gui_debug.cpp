@@ -28,6 +28,7 @@
 #include "gui_debug_memory.h"
 #include "gui_debug_psg.h"
 #include "gui_debug_trace_logger.h"
+#include "gui_debug_profiler.h"
 #include "gui_debug_mikey.h"
 #include "gui_debug_suzy.h"
 #include "gui_debug_scb_viewer.h"
@@ -72,6 +73,7 @@ void gui_debug_reset(void)
 {
     gui_debug_disassembler_reset();
     gui_debug_memory_reset();
+    gui_debug_profiler_reset();
     gui_debug_reset_breakpoints();
     gui_debug_reset_symbols();
     gui_debug_reset_disassembler_bookmarks();
@@ -87,6 +89,7 @@ void gui_debug_update(void)
 void gui_debug_windows(void)
 {
     gui_debug_update();
+    gui_debug_profiler_update();
 
     if (config_debug.debug)
     {
@@ -102,6 +105,8 @@ void gui_debug_windows(void)
             gui_debug_window_breakpoints();
         if (config_debug.show_symbols)
             gui_debug_window_symbols();
+        if (config_debug.show_profiler)
+            gui_debug_window_profiler();
         if (config_debug.show_psg)
             gui_debug_window_psg();
         if (config_debug.show_trace_logger)

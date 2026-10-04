@@ -27,6 +27,7 @@
 #include "memory.h"
 #include "bus.h"
 #include "trace_logger.h"
+#include "profiler.h"
 
 INLINE u32 M6502::RunInstruction()
 {
@@ -47,7 +48,7 @@ INLINE u32 M6502::RunInstruction()
     {
         if (m_s.irq_asserted)
         {
-            m_s.halted = false;
+            Halt(false);
             m_prev_opcode_address = m_s.PC.GetValue();
             CheckIRQs();
             if(m_s.irq_pending && !m_skip_irq_on_step)
@@ -104,7 +105,7 @@ inline void M6502::HandleIRQ()
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_s.debug_next_irq = 3;
     u16 dest = m_s.PC.GetValue();
-    PushCallStack(pc, dest, pc);
+    PushCallStack(pc, dest, pc, true);
 
     TraceIRQEvent(pc, dest);
 #endif
@@ -136,6 +137,10 @@ INLINE void M6502::AssertIRQ(bool asserted, u8 irq_mask)
 INLINE void M6502::Halt(bool halted)
 {
     m_s.halted = halted;
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    if (unlikely(m_profiler->IsEnabled()))
+        m_profiler->Halt(halted, GetInstructionTicks());
+#endif
 }
 
 INLINE bool M6502::IsHalted()
@@ -421,7 +426,7 @@ INLINE std::stack<M6502::GLYNX_CallStackEntry>* M6502::GetDisassemblerCallStack(
     return &m_disassembler_call_stack;
 }
 
-INLINE void M6502::PushCallStack(u16 src, u16 dest, u16 back)
+INLINE void M6502::PushCallStack(u16 src, u16 dest, u16 back, bool irq)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (m_disassembler_call_stack_size < 256)
@@ -433,14 +438,18 @@ INLINE void M6502::PushCallStack(u16 src, u16 dest, u16 back)
         m_disassembler_call_stack.push(entry);
         m_disassembler_call_stack_size++;
     }
+
+    if (unlikely(m_profiler->IsEnabled()))
+        ProfilerEnter(dest, irq);
 #else
     UNUSED(src);
     UNUSED(dest);
     UNUSED(back);
+    UNUSED(irq);
 #endif
 }
 
-INLINE void M6502::PopCallStack()
+INLINE void M6502::PopCallStack(u8 stack_bytes)
 {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (m_disassembler_call_stack_size > 0)
@@ -448,6 +457,11 @@ INLINE void M6502::PopCallStack()
         m_disassembler_call_stack.pop();
         m_disassembler_call_stack_size--;
     }
+
+    if (unlikely(m_profiler->IsEnabled()))
+        m_profiler->Return((u8)(m_s.S.GetValue() - stack_bytes), GetInstructionTicks());
+#else
+    UNUSED(stack_bytes);
 #endif
 }
 

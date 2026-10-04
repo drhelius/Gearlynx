@@ -35,6 +35,7 @@ class Suzy;
 class Mikey;
 class Random;
 class TraceLogger;
+class Profiler;
 
 class GearlynxCore
 {
@@ -93,6 +94,7 @@ public:
     Bus* GetBus();
     u64 GetTotalCycles();
     TraceLogger* GetTraceLogger();
+    Profiler* GetProfiler();
     void SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
         GLYNX_ComLynx_Sample_Callback sample_callback,
         GLYNX_ComLynx_Break_Callback break_callback,
@@ -125,6 +127,7 @@ private:
     Mikey* m_mikey;
     Random* m_random;
     TraceLogger* m_trace_logger;
+    Profiler* m_profiler;
     bool m_paused;
     u64 m_total_cycles;
     GLYNX_ComLynx_Sync_Callback m_comlynx_sync_callback;

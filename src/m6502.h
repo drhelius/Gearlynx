@@ -44,6 +44,7 @@ class StateSerializer;
 class Bus;
 class Random;
 class TraceLogger;
+class Profiler;
 
 class M6502
 {
@@ -124,6 +125,7 @@ public:
     void CheckMemoryBreakpoints(u16 address, bool read);
     void SetPageModeEnabled(bool enabled);
     void SetTraceLogger(TraceLogger* trace_logger);
+    void SetProfiler(Profiler* profiler);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
@@ -145,6 +147,7 @@ private:
     Bus* m_bus;
     Random* m_random;
     TraceLogger* m_trace_logger;
+    Profiler* m_profiler;
     M6502_State m_s;
     bool m_breakpoints_enabled;
     u8 m_breakpoints_irq_enabled;
@@ -180,8 +183,9 @@ private:
     void LogIRQEvent(u16 pc, u16 vector);
 
     void CheckBreakpoints();
-    void PushCallStack(u16 src, u16 dest, u16 back);
-    void PopCallStack();
+    void PushCallStack(u16 src, u16 dest, u16 back, bool irq);
+    void PopCallStack(u8 stack_bytes);
+    NO_INLINE void ProfilerEnter(u16 address, bool irq);
 
     u8 FetchOpcode8();
     u8 FetchOperand8();

@@ -35,6 +35,7 @@
 #include "mikey.h"
 #include "random.h"
 #include "trace_logger.h"
+#include "profiler.h"
 #include "memory_stream.h"
 
 GearlynxCore::GearlynxCore()
@@ -49,6 +50,7 @@ GearlynxCore::GearlynxCore()
     InitPointer(m_mikey);
     InitPointer(m_random);
     InitPointer(m_trace_logger);
+    InitPointer(m_profiler);
     m_paused = true;
     m_total_cycles = 0;
     m_comlynx_sync_callback = NULL;
@@ -69,6 +71,7 @@ GearlynxCore::~GearlynxCore()
     SafeDelete(m_mikey);
     SafeDelete(m_random);
     SafeDelete(m_trace_logger);
+    SafeDelete(m_profiler);
 }
 
 void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
@@ -102,6 +105,8 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_suzy->SetTraceLogger(m_trace_logger);
     m_mikey->SetTraceLogger(m_trace_logger);
     m_media->SetTraceLogger(m_trace_logger);
+    m_profiler = new Profiler(&m_total_cycles);
+    m_m6502->SetProfiler(m_profiler);
 #endif
 
 }
@@ -330,6 +335,11 @@ u64 GearlynxCore::GetTotalCycles()
 TraceLogger* GearlynxCore::GetTraceLogger()
 {
     return m_trace_logger;
+}
+
+Profiler* GearlynxCore::GetProfiler()
+{
+    return m_profiler;
 }
 
 void GearlynxCore::SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
@@ -1068,6 +1078,10 @@ void GearlynxCore::Reset()
 {
     m_paused = false;
     m_total_cycles = 0;
+
+    if (IsValidPointer(m_profiler))
+        m_profiler->Reset();
+
     m_comlynx_next_sync_cycle = 0;
 
     m_media->Reset();
