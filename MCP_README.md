@@ -390,9 +390,11 @@ Exact trace filters:
 - CPU: `cpu.instructions`, `cpu.irqs`
 - Suzy math/input: `suzy.math.operations`, `suzy.math.completions`, `suzy.input.reads`
 - Suzy sprites: `suzy.sprites.engine`, `suzy.sprites.scbs`, `suzy.sprites.skips`, `suzy.sprites.collisions`, `suzy.sprites.rows`, `suzy.bus`
-- Mikey timers/display: `mikey.timers.registers`, `mikey.timers.underflows`, `mikey.timers.irqs`, `mikey.timers.links`, `mikey.interrupts`, `mikey.display.registers`, `mikey.display.palette`, `mikey.display.dma`, `mikey.display.timing`
+- Mikey timers/display: `mikey.timers.registers`, `mikey.timers.underflows`, `mikey.timers.irqs`, `mikey.timers.links`, `mikey.interrupts`, `mikey.display.registers`, `mikey.display.palette`, `mikey.display.dma`, `mikey.display.timing`, `mikey.display.missed_vblank`
 - Mikey audio/UART: `mikey.audio.channels`, `mikey.audio.mixer`, `mikey.audio.clocks`, `mikey.uart.registers`, `mikey.uart.transfers`, `mikey.uart.irqs`, `mikey.uart.problems`, `mikey.uart.breaks`, `mikey.uart.comlynx`
 - RedEye/cartridge/debug: `redeye.packets`, `redeye.problems`, `cartridge.address`, `cartridge.accesses`, `cartridge.eeprom`, `cartridge.audin`, `cartridge.storage`, `debug.messages`
+
+`mikey.display.missed_vblank` logs each frame where the CPU access set with `vblank_watch_address` (hex) and `vblank_watch_operation` (`read`, `write`, or `read_write`) did not happen before the Timer 2 underflow that raises the VBL interrupt, with the number of consecutive misses; the first VBlank after starting, changing the watch, resetting, or loading a state only arms the check. Both parameters persist and keep their current values when omitted.
 
 CPU entries are captured before opcode fetch. Hardware events emitted while Suzy and Mikey process a completed CPU/bus batch use that committed batch's `GearlynxCore::m_total_cycles` position. A backwards clock after reset is formatted as `RESET`; sequence identities remain monotonic across clears and resets.
 

@@ -107,6 +107,7 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_media->SetTraceLogger(m_trace_logger);
     m_profiler = new Profiler(&m_total_cycles);
     m_m6502->SetProfiler(m_profiler);
+    m_mikey->SetProfiler(m_profiler);
 #endif
 
 }
@@ -150,10 +151,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             if (stop)
-            {
                 m_suzy->SwapFrameSCBList();
-                m_profiler->AddFrame();
-            }
 #endif
 
             failsafe_cycle_count += lynx_cycles;
@@ -698,6 +696,7 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
     m_bus->SaveState(stream);
 
 #if defined(__LIBRETRO__)
+    UNUSED(screenshot);
     GLYNX_SaveState_Header_Libretro header;
     header.magic = GLYNX_SAVESTATE_MAGIC;
     header.version = GLYNX_SAVESTATE_VERSION;

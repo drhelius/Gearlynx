@@ -40,7 +40,8 @@ INLINE u8 Memory::Read(u16 address)
     if (!debug)
     {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        m_m6502->CheckMemoryBreakpoints(address, true);
+        if (m_m6502->HasMemoryHooks(true))
+            m_m6502->CheckCpuAddressHooks(address, true);
 #endif
     }
 
@@ -76,7 +77,8 @@ INLINE void Memory::Write(u16 address, u8 value)
     if (!debug)
     {
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
-        m_m6502->CheckMemoryBreakpoints(address, false);
+        if (m_m6502->HasMemoryHooks(false))
+            m_m6502->CheckCpuAddressHooks(address, false);
 #endif
     }
 

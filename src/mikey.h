@@ -36,6 +36,7 @@ class Bus;
 class LcdScreen;
 class StateSerializer;
 class TraceLogger;
+class Profiler;
 struct GLYNX_Trace_Entry;
 enum GLYNX_Trace_Type : u8;
 
@@ -93,6 +94,7 @@ public:
     bool SwitchAudInValue();
     void SetSuzyDone();
     void SetTraceLogger(TraceLogger* trace_logger);
+    void SetProfiler(Profiler* profiler);
     void SetDebugOutputEnabled(bool enabled);
     bool IsDebugOutputEnabled();
     void SaveState(std::ostream& stream);
@@ -175,6 +177,7 @@ private:
     INLINE void TraceTimerEvent(u8 event, int timer, u8 reg = 0, u8 raw = 0);
     INLINE void TraceInterruptEvent(u8 event, u8 reg = 0, u8 raw = 0);
     INLINE void TraceDisplayEvent(u8 event, u8 reg = 0, u8 raw = 0, int line = -1);
+    INLINE void TraceMissedVBlank();
     INLINE void TracePaletteEvent(u8 index, u8 raw, u16 rgb444);
     INLINE void TraceAudioEvent(u8 event, int channel, u8 reg, u8 raw);
     INLINE void TraceUARTEvent(u8 event, u8 data = 0, u8 flags = 0, u8 source = 0,
@@ -186,6 +189,7 @@ private:
     void LogTimerEvent(u8 event, int timer, u8 reg, u8 raw);
     void LogInterruptEvent(u8 event, u8 reg, u8 raw);
     void LogDisplayEvent(u8 event, u8 reg, u8 raw, int line);
+    void LogMissedVBlank();
     void LogPaletteEvent(u8 index, u8 raw, u16 rgb444);
     void LogAudioEvent(u8 event, int channel, u8 reg, u8 raw);
     void LogUARTEvent(u8 event, u8 data, u8 flags, u8 source,
@@ -213,6 +217,7 @@ private:
     bool m_is_lynx2;
     bool m_debug_output_enabled;
     TraceLogger* m_trace_logger;
+    Profiler* m_profiler;
     u32 m_cpu_read_cycles;
     GLYNX_ComLynx_Publish_Callback m_comlynx_publish_callback;
     GLYNX_ComLynx_Sample_Callback m_comlynx_sample_callback;

@@ -30,6 +30,7 @@
 #include "bus.h"
 #include "lcd_screen.h"
 #include "trace_logger.h"
+#include "profiler.h"
 #include "eeprom.h"
 #include "el_cheapo_sd.h"
 #include "memory.h"
@@ -614,6 +615,8 @@ inline void Mikey::WriteColor(u16 address, u8 value, bool debug)
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     if (!debug)
         TracePaletteEvent((u8)color_index, value, rgb444);
+#else
+    UNUSED(debug);
 #endif
 }
 
@@ -1443,6 +1446,14 @@ INLINE bool Mikey::BorrowInTimer(int i, GLYNX_Mikey_Timer* t)
             HorizontalBlank();
         else if (i == 4 && IS_NOT_SET_BIT(m_state.MTEST0, 4))
             UartClock<false>();
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+        else if (i == 2)
+        {
+            if (IsValidPointer(m_profiler))
+                m_profiler->AddFrame();
+            TraceMissedVBlank();
+        }
+#endif
 
         // In one-shot, after DONE we must not consume more clocks
         if (one_shot && IS_SET_BIT(t->control_b, 3))
@@ -2039,6 +2050,12 @@ INLINE void Mikey::TraceDisplayEvent(u8 event, u8 reg, u8 raw, int line)
 {
     if (IsValidPointer(m_trace_logger) && m_trace_logger->IsEventEnabled(TRACE_MIKEY_DISPLAY, event))
         LogDisplayEvent(event, reg, raw, line);
+}
+
+INLINE void Mikey::TraceMissedVBlank()
+{
+    if (IsValidPointer(m_trace_logger) && m_trace_logger->IsEventEnabled(TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_MISSED_VBLANK))
+        LogMissedVBlank();
 }
 
 INLINE void Mikey::TracePaletteEvent(u8 index, u8 raw, u16 rgb444)

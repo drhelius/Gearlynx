@@ -609,6 +609,13 @@ static void format_display(const GLYNX_Trace_Entry& entry, char* buffer, size_t 
             append_format(buffer, size, &offset, "[MIKEY] DISPLAY FRAME START Line:%u",
                 entry.display.line);
             break;
+        case TRACE_MIKEY_DISPLAY_MISSED_VBLANK:
+        {
+            const char* access = entry.display.raw == 0x03 ? "R/W" : (entry.display.raw == 0x02 ? "W" : "R");
+            append_format(buffer, size, &offset, "[MIKEY] DISPLAY VBLANK MISSED Watch:$%04X %s Consecutive:%u",
+                entry.display.address, access, entry.display.auxiliary);
+            break;
+        }
         default:
             append_format(buffer, size, &offset, "[MIKEY] DISPLAY UNKNOWN(%u)",
                 entry.display.event);

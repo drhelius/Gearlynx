@@ -3370,6 +3370,7 @@ static const GLYNX_Trace_Filter_Definition k_trace_filters[] =
     {"mikey.display.palette", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_PALETTE},
     {"mikey.display.dma", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_DMA},
     {"mikey.display.timing", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_TIMING},
+    {"mikey.display.missed_vblank", TRACE_MIKEY_DISPLAY, TRACE_MIKEY_DISPLAY_FILTER_MISSED_VBLANK},
     {"mikey.audio.channels", TRACE_MIKEY_AUDIO, TRACE_MIKEY_AUDIO_FILTER_CHANNELS},
     {"mikey.audio.mixer", TRACE_MIKEY_AUDIO, TRACE_MIKEY_AUDIO_FILTER_MIXER},
     {"mikey.audio.clocks", TRACE_MIKEY_AUDIO, TRACE_MIKEY_AUDIO_FILTER_CLOCKS},
@@ -3391,6 +3392,7 @@ static const GLYNX_Trace_Filter_Definition k_trace_filters[] =
 
 json DebugAdapter::SetTraceLog(const json& arguments)
 {
+    static const char* const k_vblank_watch_operations[] = { "read", "write", "read_write" };
     TraceLogger* logger = m_core->GetTraceLogger();
     if (!logger)
         return {{"error", "Trace logger not available"}};
@@ -3463,6 +3465,30 @@ json DebugAdapter::SetTraceLog(const json& arguments)
             return {{"error", "Invalid trace disk size"}};
     }
     std::string output_path = arguments.value("output_path", "");
+
+    int vblank_watch_address_value = config_debug.trace_vblank_watch_address;
+    std::string vblank_watch_address = arguments.value("vblank_watch_address", "");
+    if (!vblank_watch_address.empty())
+    {
+        u16 address = 0;
+        if (!parse_hex_with_prefix(vblank_watch_address, &address))
+            return {{"error", "Invalid vblank watch address"}};
+        vblank_watch_address_value = address;
+    }
+
+    int vblank_watch_operation_value = config_debug.trace_vblank_watch_operation;
+    std::string vblank_watch_operation = arguments.value("vblank_watch_operation", "");
+    if (!vblank_watch_operation.empty())
+    {
+        vblank_watch_operation_value = -1;
+        for (int i = 0; i < 3; i++)
+        {
+            if (vblank_watch_operation == k_vblank_watch_operations[i])
+                vblank_watch_operation_value = i;
+        }
+        if (vblank_watch_operation_value < 0)
+            return {{"error", "Invalid vblank watch operation"}};
+    }
 
     bool was_enabled = gui_debug_trace_logger_is_enabled();
     bool storage_change = arguments.contains("output") && output != config_debug.trace_output;
@@ -3541,6 +3567,9 @@ json DebugAdapter::SetTraceLog(const json& arguments)
     config_debug.trace_mikey_audio_events = (int)masks[TRACE_MIKEY_AUDIO];
     config_debug.trace_cartridge_events = (int)masks[TRACE_CARTRIDGE];
     config_debug.trace_debug_events = (int)masks[TRACE_DEBUG_MESSAGE];
+    config_debug.trace_vblank_watch_address = vblank_watch_address_value;
+    config_debug.trace_vblank_watch_operation = vblank_watch_operation_value;
+    gui_debug_trace_logger_sync_vblank_watch();
 
     json active = json::array();
     for (size_t i = 0; i < sizeof(k_trace_filters) / sizeof(k_trace_filters[0]); i++)
@@ -3556,6 +3585,13 @@ json DebugAdapter::SetTraceLog(const json& arguments)
         {"memory_size", gui_debug_trace_logger_memory_size_name(memory_size)},
         {"disk_size", gui_debug_trace_logger_disk_size_name(disk_size)}, {"filters", active},
         {"total_entries", logger->GetCount()}};
+    if ((flags & TRACE_FLAG_MIKEY_DISPLAY) && (masks[TRACE_MIKEY_DISPLAY] & TRACE_MIKEY_DISPLAY_FILTER_MISSED_VBLANK))
+    {
+        char address[8];
+        snprintf(address, sizeof(address), "%04X", config_debug.trace_vblank_watch_address);
+        result["vblank_watch_address"] = address;
+        result["vblank_watch_operation"] = k_vblank_watch_operations[config_debug.trace_vblank_watch_operation];
+    }
     if (output == gui_TraceOutput_Disk)
         result["output_path"] = gui_debug_trace_logger_get_output_path();
     return result;

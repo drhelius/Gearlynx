@@ -123,6 +123,12 @@ public:
     void ResetDebuggerExecutionState();
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
     void CheckMemoryBreakpoints(u16 address, bool read);
+    bool HasMemoryHooks(bool read) const;
+    void CheckCpuAddressHooks(u16 address, bool read);
+    void SetVBlankWatch(bool read, bool write, u16 address);
+    u32 UpdateVBlankWatch();
+    u16 GetVBlankWatchAddress() const;
+    bool GetVBlankWatchAccess(bool read) const;
     void SetPageModeEnabled(bool enabled);
     void SetTraceLogger(TraceLogger* trace_logger);
     void SetProfiler(Profiler* profiler);
@@ -151,6 +157,14 @@ private:
     M6502_State m_s;
     bool m_breakpoints_enabled;
     u8 m_breakpoints_irq_enabled;
+    bool m_memory_hooks_read;
+    bool m_memory_hooks_write;
+    bool m_vblank_watch_read;
+    bool m_vblank_watch_write;
+    u16 m_vblank_watch_address;
+    bool m_vblank_watch_hit;
+    bool m_vblank_watch_armed;
+    u32 m_vblank_watch_misses;
     bool m_cpu_breakpoint_hit;
     bool m_memory_breakpoint_hit;
     bool m_debug_brk_breakpoint_hit;
@@ -183,6 +197,8 @@ private:
     void LogIRQEvent(u16 pc, u16 vector);
 
     void CheckBreakpoints();
+    void RefreshMemoryHooks();
+    void ResetVBlankWatch();
     void PushCallStack(u16 src, u16 dest, u16 back, bool irq);
     void PopCallStack(u8 stack_bytes);
     NO_INLINE void ProfilerEnter(u16 address, bool irq);

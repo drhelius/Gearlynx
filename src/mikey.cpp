@@ -38,6 +38,7 @@ Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
     InitPointer(m_memory);
     InitPointer(m_lcd_screen);
     InitPointer(m_trace_logger);
+    InitPointer(m_profiler);
     m_debug_output_enabled = false;
     m_cpu_read_cycles = 0;
     m_comlynx_publish_callback = NULL;
@@ -100,6 +101,11 @@ void Mikey::SetAudio(Audio* audio)
 void Mikey::SetTraceLogger(TraceLogger* trace_logger)
 {
     m_trace_logger = trace_logger;
+}
+
+void Mikey::SetProfiler(Profiler* profiler)
+{
+    m_profiler = profiler;
 }
 
 void Mikey::SetDebugOutputEnabled(bool enabled)
@@ -228,6 +234,27 @@ void Mikey::LogDisplayEvent(u8 event, u8 reg, u8 raw, int line)
     UNUSED(reg);
     UNUSED(raw);
     UNUSED(line);
+#endif
+}
+
+void Mikey::LogMissedVBlank()
+{
+#if !defined(GLYNX_DISABLE_DISASSEMBLER)
+    u32 misses = m_m6502->UpdateVBlankWatch();
+
+    if (misses == 0)
+        return;
+
+    GLYNX_Trace_Entry entry = {};
+    entry.type = TRACE_MIKEY_DISPLAY;
+    entry.display.event = TRACE_MIKEY_DISPLAY_MISSED_VBLANK;
+    entry.display.address = m_m6502->GetVBlankWatchAddress();
+    entry.display.raw = (m_m6502->GetVBlankWatchAccess(true) ? 0x01 : 0x00) |
+        (m_m6502->GetVBlankWatchAccess(false) ? 0x02 : 0x00);
+    entry.display.auxiliary = (u16)MIN(misses, 0xFFFFU);
+    entry.display.control = m_state.DISPCTL;
+    entry.display.line = (u8)m_lcd_screen->GetState()->current_line;
+    m_trace_logger->TraceLog(entry);
 #endif
 }
 

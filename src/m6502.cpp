@@ -52,6 +52,11 @@ M6502::M6502(Bus* bus, Random* random)
     m_s.total_ticks = 0;
     m_breakpoints_enabled = false;
     m_breakpoints_irq_enabled = 0;
+    m_vblank_watch_read = false;
+    m_vblank_watch_write = false;
+    m_vblank_watch_address = 0;
+    ResetVBlankWatch();
+    RefreshMemoryHooks();
     m_cpu_breakpoint_hit = false;
     m_memory_breakpoint_hit = false;
     m_debug_brk_breakpoint_hit = false;
@@ -197,6 +202,7 @@ void M6502::Reset(bool is_lynx2)
     m_page_mode_tick_discount = 0;
     m_irq_sample_after_opcode = false;
     ClearDisassemblerCallStack();
+    ResetVBlankWatch();
 }
 
 M6502::M6502_State* M6502::GetState()
@@ -226,6 +232,7 @@ void M6502::EnableBreakpoints(bool enable, u8 irqs)
 {
     m_breakpoints_enabled = enable;
     m_breakpoints_irq_enabled = irqs;
+    RefreshMemoryHooks();
 }
 
 bool M6502::BreakpointHit()
@@ -245,6 +252,45 @@ bool M6502::GetBreakpointHitAddress(u16* address)
 void M6502::ResetBreakpoints()
 {
     m_breakpoints.clear();
+}
+
+void M6502::SetVBlankWatch(bool read, bool write, u16 address)
+{
+    if ((m_vblank_watch_read == read) && (m_vblank_watch_write == write) &&
+        (m_vblank_watch_address == address))
+        return;
+
+    m_vblank_watch_read = read;
+    m_vblank_watch_write = write;
+    m_vblank_watch_address = address;
+    ResetVBlankWatch();
+    RefreshMemoryHooks();
+}
+
+u32 M6502::UpdateVBlankWatch()
+{
+    if (!m_vblank_watch_read && !m_vblank_watch_write)
+        return 0;
+
+    bool missed = m_vblank_watch_armed && !m_vblank_watch_hit;
+    m_vblank_watch_armed = true;
+    m_vblank_watch_hit = false;
+    m_vblank_watch_misses = missed ? m_vblank_watch_misses + 1 : 0;
+
+    return m_vblank_watch_misses;
+}
+
+void M6502::RefreshMemoryHooks()
+{
+    m_memory_hooks_read = m_vblank_watch_read || m_breakpoints_enabled;
+    m_memory_hooks_write = m_vblank_watch_write || m_breakpoints_enabled;
+}
+
+void M6502::ResetVBlankWatch()
+{
+    m_vblank_watch_hit = false;
+    m_vblank_watch_armed = false;
+    m_vblank_watch_misses = 0;
 }
 
 bool M6502::AddBreakpoint(char* text, bool read, bool write, bool execute)
@@ -472,6 +518,8 @@ void M6502::LoadState(std::istream& stream)
 
     StateSerializer serializer(stream);
     Serialize(serializer);
+
+    ResetVBlankWatch();
 }
 
 void M6502::Serialize(StateSerializer& s)

@@ -1715,6 +1715,15 @@ json McpServer::BuildToolList()
                     {"type", "string"},
                     {"description", "Directory for the automatically named disk trace file."}
                 }},
+                {"vblank_watch_address", {
+                    {"type", "string"},
+                    {"description", "CPU address hex watched by mikey.display.missed_vblank: '0200', '0x0200', or '$0200'. Omit to keep current."}
+                }},
+                {"vblank_watch_operation", {
+                    {"type", "string"},
+                    {"description", "Access that marks a frame as on time for mikey.display.missed_vblank. Omit to keep current."},
+                    {"enum", json::array({"read", "write", "read_write"})}
+                }},
                 {"filters", {
                     {"type", "array"},
                     {"description", "Unique exact filters; omission selects CPU instructions and IRQs."},
@@ -1731,7 +1740,7 @@ json McpServer::BuildToolList()
                             "suzy.input.reads", "mikey.timers.registers",
                             "mikey.timers.underflows", "mikey.timers.irqs", "mikey.timers.links",
                             "mikey.interrupts", "mikey.display.registers", "mikey.display.palette",
-                            "mikey.display.dma", "mikey.display.timing", "mikey.audio.channels",
+                            "mikey.display.dma", "mikey.display.timing", "mikey.display.missed_vblank", "mikey.audio.channels",
                             "mikey.audio.mixer", "mikey.audio.clocks", "mikey.uart.registers",
                             "mikey.uart.transfers", "mikey.uart.irqs", "mikey.uart.problems",
                             "mikey.uart.breaks", "mikey.uart.comlynx", "redeye.packets",

@@ -278,6 +278,8 @@ struct config_Debug
     int trace_mikey_audio_events;
     int trace_cartridge_events;
     int trace_debug_events;
+    int trace_vblank_watch_address;
+    int trace_vblank_watch_operation;
     bool debug_output_enabled;
     int trace_output;
     int trace_capacity;

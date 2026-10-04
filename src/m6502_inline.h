@@ -421,6 +421,30 @@ INLINE std::vector<M6502::GLYNX_Breakpoint>* M6502::GetBreakpoints()
     return &m_breakpoints;
 }
 
+INLINE bool M6502::HasMemoryHooks(bool read) const
+{
+    return read ? m_memory_hooks_read : m_memory_hooks_write;
+}
+
+INLINE void M6502::CheckCpuAddressHooks(u16 address, bool read)
+{
+    if ((read ? m_vblank_watch_read : m_vblank_watch_write) && (address == m_vblank_watch_address))
+        m_vblank_watch_hit = true;
+
+    if (m_breakpoints_enabled)
+        CheckMemoryBreakpoints(address, read);
+}
+
+INLINE u16 M6502::GetVBlankWatchAddress() const
+{
+    return m_vblank_watch_address;
+}
+
+INLINE bool M6502::GetVBlankWatchAccess(bool read) const
+{
+    return read ? m_vblank_watch_read : m_vblank_watch_write;
+}
+
 INLINE std::stack<M6502::GLYNX_CallStackEntry>* M6502::GetDisassemblerCallStack()
 {
     return &m_disassembler_call_stack;
