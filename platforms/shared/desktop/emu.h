@@ -46,6 +46,15 @@ enum Directory_Location
     Directory_Location_Custom = 2
 };
 
+enum Debug_SCB_Status
+{
+    Debug_SCB_Status_Drawn,
+    Debug_SCB_Status_Skipped,
+    Debug_SCB_Status_Offscreen,
+    Debug_SCB_Status_NoPixels,
+    Debug_SCB_Status_Invalid
+};
+
 struct GLYNX_Debug_SCB_Info
 {
     u16 scb_address;
@@ -69,6 +78,7 @@ struct GLYNX_Debug_SCB_Info
     u16 tilt;
     u8 pen_map[16];
     bool skipped;
+    Debug_SCB_Status status;
     s32 bbox_x;
     s32 bbox_y;
     int bbox_w;

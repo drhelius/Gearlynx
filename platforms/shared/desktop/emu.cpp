@@ -1509,7 +1509,6 @@ static const int k_sprite_buf_h = 512;
 static const u32 k_sprite_sreg_eof = 0xFFFFFFFFu;
 static const u8 k_sprite_max_line_size = 200;
 static const int k_sprite_max_lines = 512;
-static const s16 k_sprite_max_pos = 1024;
 
 static const int k_sprite_quad_seq[4][4] = {
     { 0, 2, 3, 1 },
@@ -1589,7 +1588,12 @@ static void render_debug_sprites(int count)
         emu_debug_sprite_heights[s] = 0;
 
         if (info.skipped)
+        {
+            info.status = Debug_SCB_Status_Skipped;
             continue;
+        }
+
+        info.status = Debug_SCB_Status_NoPixels;
 
         int bpp = info.bpp;
         bool literal_only = info.literal_only;
@@ -1603,14 +1607,11 @@ static void render_debug_sprites(int count)
         bool start_left = IS_SET_BIT(info.sprctl1, 0);
         int start_quad = (start_left ? 1 : 0) | (start_up ? 2 : 0);
 
-        s16 screen_x = (s16)(u16)(info.hpos - info.hoff);
-        s16 screen_y = (s16)(u16)(info.vpos - info.voff);
-
         if (ram[sprdline] > k_sprite_max_line_size)
+        {
+            info.status = Debug_SCB_Status_Invalid;
             continue;
-        if (screen_x > k_sprite_max_pos || screen_x < -k_sprite_max_pos ||
-            screen_y > k_sprite_max_pos || screen_y < -k_sprite_max_pos)
-            continue;
+        }
 
         // First pass: compute bounding box
         s32 min_x = 0x7FFF, max_x = -0x7FFF;
@@ -1806,6 +1807,13 @@ static void render_debug_sprites(int count)
         info.bbox_y = min_y;
         info.bbox_w = (int)(max_x - min_x + 1);
         info.bbox_h = (int)(max_y - min_y + 1);
+
+        s32 screen_x = (s16)(u16)(info.hpos - info.hoff);
+        s32 screen_y = (s16)(u16)(info.vpos - info.voff);
+        bool on_screen = (screen_x + max_x >= 0) && (screen_x + min_x < GLYNX_SCREEN_WIDTH) &&
+                         (screen_y + max_y >= 0) && (screen_y + min_y < GLYNX_SCREEN_HEIGHT);
+
+        info.status = on_screen ? Debug_SCB_Status_Drawn : Debug_SCB_Status_Offscreen;
 
         s32 ox = -min_x;
         s32 oy = -min_y;

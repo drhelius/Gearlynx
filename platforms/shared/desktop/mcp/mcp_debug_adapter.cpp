@@ -55,6 +55,23 @@ static const char* cart_bank_type_name(GLYNX_Cartridge_Bank_Type type)
     }
 }
 
+static const char* scb_status_name(Debug_SCB_Status status)
+{
+    switch (status)
+    {
+        case Debug_SCB_Status_Drawn:
+            return "drawn";
+        case Debug_SCB_Status_Skipped:
+            return "skipped";
+        case Debug_SCB_Status_Offscreen:
+            return "offscreen";
+        case Debug_SCB_Status_NoPixels:
+            return "no_pixels";
+        default:
+            return "invalid";
+    }
+}
+
 static bool cart_bank_available(Media* media, int bank)
 {
     return media->GetCartBankData(bank) != NULL && media->GetCartBankSize(bank) > 0;
@@ -1726,6 +1743,7 @@ json DebugAdapter::GetSprite(int index, const std::string& format)
         result["collision_id"] = info.sprcoll & 0x0F;
         result["collision_disabled"] = IS_SET_BIT(info.sprcoll, 5);
         result["skipped"] = info.skipped;
+        result["status"] = scb_status_name(info.status);
         result["bbox_x"] = info.bbox_x;
         result["bbox_y"] = info.bbox_y;
         result["hoff"] = info.hoff;
