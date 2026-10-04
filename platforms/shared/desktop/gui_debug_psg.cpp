@@ -179,12 +179,15 @@ void gui_debug_window_psg(void)
 
                     ImPlotAxisFlags flags = ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickMarks;
 
+                    ImPlotSpec spec;
+                    spec.LineColor = red;
+                    spec.LineWeight = 1.0f;
+
                     if (ImPlot::BeginPlot("Left wave", ImVec2(90, 50), ImPlotFlags_CanvasOnly))
                     {
                         ImPlot::SetupAxes("x", "y", flags, flags);
                         ImPlot::SetupAxesLimits(x_min_left, x_max_left, -1.0f, 1.0f, ImPlotCond_Always);
-                        ImPlot::SetNextLineStyle(red, 1.0f);
-                        ImPlot::PlotLine("Wave", wave_buffer_left, data_size);
+                        ImPlot::PlotLine("Wave", wave_buffer_left, data_size, 1.0, 0.0, spec);
                         ImPlot::EndPlot();
                     }
 
@@ -197,8 +200,7 @@ void gui_debug_window_psg(void)
                     {
                         ImPlot::SetupAxes("x", "y", flags, flags);
                         ImPlot::SetupAxesLimits(x_min_right, x_max_right, -1.0f, 1.0f, ImPlotCond_Always);
-                        ImPlot::SetNextLineStyle(red, 1.0f);
-                        ImPlot::PlotLine("Wave", wave_buffer_right, data_size);
+                        ImPlot::PlotLine("Wave", wave_buffer_right, data_size, 1.0, 0.0, spec);
                         ImPlot::EndPlot();
                     }
 
