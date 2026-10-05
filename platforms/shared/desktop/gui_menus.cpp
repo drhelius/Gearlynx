@@ -23,6 +23,7 @@
 #include "gui_filedialogs.h"
 #include "gui_popups.h"
 #include "gui_actions.h"
+#include "gui_colors.h"
 #include "gui_debug_disassembler.h"
 #include "gui_debug_widgets.h"
 #include "config.h"
@@ -56,10 +57,10 @@ static bool open_bios = false;
 static bool open_bios_warning = false;
 static bool save_debug_settings = false;
 static bool load_debug_settings = false;
-static const ImVec4 service_comlynx_color(0.39f, 0.58f, 0.93f, 1.0f);
-static const ImVec4 service_mcp_http_color(0.10f, 0.90f, 0.10f, 1.0f);
-static const ImVec4 service_mcp_stdio_color(0.90f, 0.70f, 0.10f, 1.0f);
-static const ImVec4 service_debug_monitor_color(0.20f, 0.70f, 1.0f, 1.0f);
+static const GuiColor& service_comlynx_color = cornflower;
+static const GuiColor& service_mcp_http_color = green;
+static const GuiColor& service_mcp_stdio_color = amber;
+static const GuiColor& service_debug_monitor_color = cyan;
 static ShaderPresetInfo shader_presets[SHADER_PRESET_MAX_DISCOVERED];
 static int shader_preset_count = 0;
 
@@ -482,8 +483,8 @@ static void menu_emulator(void)
             }
             else
             {
-                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "BIOS not loaded or invalid!");
-                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "lynxboot.img recommended for most games.");
+                ImGui::TextColored(red, "BIOS not loaded or invalid!");
+                ImGui::TextColored(red, "lynxboot.img recommended for most games.");
             }
 
             ImGui::EndMenu();
@@ -987,7 +988,7 @@ static void menu_shader(void)
     else if (ogl_shader_chain_get_last_error()[0] != '\0')
     {
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "%s", ogl_shader_chain_get_last_error());
+        ImGui::TextColored(red, "%s", ogl_shader_chain_get_last_error());
     }
 
     ImGui::EndMenu();
@@ -1352,7 +1353,7 @@ static void menu_debug(void)
                 ImGui::TextColored(service_mcp_http_color, "Listening on %s:%d",
                     emu_mcp_get_http_address(), emu_mcp_get_http_port());
             else
-                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "Stopped");
+                ImGui::TextColored(red, "Stopped");
 
             ImGui::Separator();
 
@@ -1531,7 +1532,6 @@ static void menu_comlynx(void)
     gui_in_use = true;
     ComLynxStatus status = emu_comlynx_get_status();
     bool active = emu_comlynx_is_active();
-    const ImVec4 error_red(0.98f, 0.15f, 0.45f, 1.0f);
 
 #if defined(__APPLE__)
     if (ImGui::MenuItem("New " GLYNX_TITLE " Window", "", false, application_can_launch_new_instance()))
@@ -1553,10 +1553,10 @@ static void menu_comlynx(void)
             ImGui::TextDisabled("Peer %d of %d", status.local_peer_id, status.peer_count);
             break;
         case ComLynxModeFault:
-            ImGui::TextColored(error_red, "%s", status.last_error);
+            ImGui::TextColored(red, "%s", status.last_error);
             break;
         default:
-            ImGui::TextColored(error_red, "Disconnected");
+            ImGui::TextColored(red, "Disconnected");
             break;
     }
 
@@ -1912,9 +1912,9 @@ static void draw_savestate_slot_info(int slot)
     {
         if (emu_savestates[slot].version != GLYNX_SAVESTATE_VERSION)
         {
-            ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "This savestate is from an older version and will not work" );
+            ImGui::TextColored(red, "This savestate is from an older version and will not work" );
             if (emu_savestates[slot].emu_build[0] != 0)
-                ImGui::TextColored(ImVec4(0.98f, 0.15f, 0.45f, 1.0f), "Use %s - %s", GLYNX_TITLE, emu_savestates[slot].emu_build);
+                ImGui::TextColored(red, "Use %s - %s", GLYNX_TITLE, emu_savestates[slot].emu_build);
             ImGui::Separator();
         }
 
@@ -1932,6 +1932,6 @@ static void draw_savestate_slot_info(int slot)
     }
     else
     {
-        ImGui::TextColored(ImVec4(0.50f, 0.50f, 0.50f, 1.0f), "Slot %d is empty", slot + 1);
+        ImGui::TextColored(gray, "Slot %d is empty", slot + 1);
     }
 }

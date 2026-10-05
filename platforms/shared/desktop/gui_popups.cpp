@@ -23,7 +23,7 @@
 #include "gui_popups.h"
 #include "gui.h"
 #include "gui_actions.h"
-#include "gui_debug_constants.h"
+#include "gui_colors.h"
 #include "config.h"
 #include "application.h"
 #include "gamepad.h"
@@ -385,7 +385,7 @@ void gui_show_info(void)
     emu_get_info(info, 512);
 
     ImGui::PushFont(gui_default_font);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f,0.502f,0.957f,1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, magenta);
     ImGui::SetCursorPosX(5.0f);
     ImGui::Text("%s", info);
     ImGui::PopStyleColor();

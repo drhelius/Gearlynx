@@ -396,7 +396,7 @@ void gui_debug_window_scb_viewer(void)
                     if (x0 < x1 && y0 < y1)
                     {
                         float t = (float)(0.5 + 0.5 * sin(ImGui::GetTime() * 4.0));
-                        ImVec4 pulse_color = gui_debug_lerp_color(red, white, t);
+                        ImVec4 pulse_color = gui_lerp_color(red, white, t);
                         dl->AddRect(
                             ImVec2(origin.x + x0, origin.y + y0),
                             ImVec2(origin.x + x1, origin.y + y1),
