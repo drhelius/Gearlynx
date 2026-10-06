@@ -46,7 +46,6 @@
 
 static GearlynxCore* core;
 static s16* audio_buffer;
-static bool audio_enabled;
 static McpManager* mcp_manager;
 static ComLynxManager* comlynx_manager;
 static bool comlynx_cable_applied;
@@ -138,7 +137,6 @@ bool emu_init(void)
     for (int i = 0; i < 5; i++)
         InitPointer(emu_savestates_screenshots[i].data);
 
-    audio_enabled = true;
     emu_audio_sync = true;
     emu_debug_disable_breakpoints = false;
     emu_debug_command = Debug_Command_None;
@@ -717,7 +715,6 @@ void emu_set_debug_output(bool enabled)
 
 void emu_audio_mute(bool mute)
 {
-    audio_enabled = !mute;
     core->GetAudio()->Mute(mute);
 }
 
@@ -740,11 +737,6 @@ void emu_audio_reset(void)
 {
     sound_queue_stop();
     sound_queue_start(GLYNX_AUDIO_SAMPLE_RATE, 2, GLYNX_AUDIO_QUEUE_SIZE, config_audio.buffer_count);
-}
-
-bool emu_is_audio_enabled(void)
-{
-    return audio_enabled;
 }
 
 bool emu_is_audio_open(void)
@@ -2335,14 +2327,6 @@ void emu_debug_monitor_start(int port)
             SafeDelete(fb_server);
         }
     }
-}
-
-void emu_debug_monitor_stop(void)
-{
-    if (fb_server)
-        fb_server->Stop();
-    if (debug_monitor)
-        debug_monitor->Stop();
 }
 
 bool emu_debug_monitor_is_running(void)

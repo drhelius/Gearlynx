@@ -58,7 +58,6 @@ public:
         EightBitRegister S;
         EightBitRegister P;
         u32 cycles;
-        u32 memory_accesses;
         bool irq_asserted;
         bool irq_pending;
         s32 debug_next_irq;
@@ -97,13 +96,11 @@ public:
     void AssertIRQ(bool asserted, u8 irq_mask);
     void Halt(bool halted);
     bool IsHalted();
-    void InjectCycles(unsigned int cycles);
     u32 GetInstructionTicks();
     M6502_State* GetState();
     void DisassembleNextOPCode();
     void DisassembleAhead(int count);
     void DisassembleAhead(u16 start_address, int count, int depth);
-    void SetResetValue(int value);
     void EnableBreakpoints(bool enable, u8 irqs);
     void SetDebugBRK(bool enable, u8 value, bool trigger_irq);
     void SetSkipIRQOnStep(bool skip);
@@ -118,7 +115,6 @@ public:
     bool IsBreakpoint(u16 address);
     std::vector<GLYNX_Breakpoint>* GetBreakpoints();
     void SetDisassemblerSyntax(GLYNX_Disassembler_Syntax syntax);
-    GLYNX_Disassembler_Syntax GetDisassemblerSyntax() const;
     void ClearDisassemblerCallStack();
     void ResetDebuggerExecutionState();
     std::stack<GLYNX_CallStackEntry>* GetDisassemblerCallStack();
@@ -133,7 +129,7 @@ public:
     void SetTraceLogger(TraceLogger* trace_logger);
     void SetProfiler(Profiler* profiler);
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
     typedef void (M6502::*opcode_member_ptr) (void);
@@ -181,7 +177,6 @@ private:
     std::stack<GLYNX_CallStackEntry> m_disassembler_call_stack;
     int m_disassembler_call_stack_size;
     GLYNX_Disassembler_Syntax m_disassembler_syntax;
-    int m_reset_value;
     bool m_stream_open;
     u16 m_prev_opcode_address;
     u8 m_page_mode_tick_discount;
@@ -206,17 +201,14 @@ private:
     u8 FetchOpcode8();
     u8 FetchOperand8();
     u16 FetchOperand16();
-    void NotifyBusBreak();
     u8 MemRead8(u16 address);
     void MemWrite8(u16 address, u8 value);
     u16 Address16(u8 high, u8 low);
     bool PageCrossed(u16 old_address, u16 new_address);
-    u16 ZeroPageX();
 
     void CreateZNFlagsTable();
     void SetOrClearZNFlags(u8 result);
     void SetZNFlags(u8 result);
-    void SetOverflowFlag(u8 result);
     void SetFlag(u8 flag);
     void ClearFlag(u8 flag);
     bool IsSetFlag(u8 flag);
@@ -231,7 +223,6 @@ private:
     u16 ZeroPageAddressing();
     u16 ZeroPageAddressing(EightBitRegister* reg);
     u16 ZeroPageIndirectAddressing();
-    u16 ZeroPageRelativeAddressing();
     u16 ZeroPageIndexedIndirectAddressing();
     u16 ZeroPageIndirectIndexedAddressing();
     s8 RelativeAddressing();
@@ -246,7 +237,7 @@ private:
     void FormatDisassemblerDataBytes(char* text, size_t text_size, const u8* bytes, u8 size);
     void InvalidateOverlappingRecords(u16 address, u8 opcode_size);
 
-    void Serialize(StateSerializer& s);
+    void Serialize(StateSerializer& s, int version);
 
     void UnofficialOPCode();
     void OPCodes_ADC(u8 value);
@@ -348,9 +339,6 @@ private:
     void OPCode0xF8(); void OPCode0xF9(); void OPCode0xFA(); void OPCode0xFB();
     void OPCode0xFC(); void OPCode0xFD(); void OPCode0xFE(); void OPCode0xFF();
 };
-
-static const int k_m6502_speed_divisor[2] = { 12, 3 };
-static const int k_m6502_timer_divisor = (1024 * 3);
 
 #include "m6502_inline.h"
 #include "m6502_opcodes_inline.h"

@@ -166,11 +166,6 @@ INLINE void Media::AutoDetectEEPROM()
     m_eeprom_forced = false;
 }
 
-INLINE bool Media::IsEEPROMForced()
-{
-    return m_eeprom_forced;
-}
-
 INLINE GLYNX_EEPROM Media::GetEEPROM()
 {
     return m_active_eeprom;
@@ -414,8 +409,6 @@ INLINE void Media::WriteCartBank(int bank, u8 value)
     }
 
     m_cart_bank_data[bank][GetCartBankAddress(bank)] = value;
-    if (IsCartBankPersistent(bank))
-        m_save_memory_dirty = true;
     AdvanceCounter();
 }
 

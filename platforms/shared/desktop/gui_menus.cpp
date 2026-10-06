@@ -113,12 +113,9 @@ void gui_main_menu(void)
     open_bios_warning = false;
     save_debug_settings = false;
     load_debug_settings = false;
-    gui_main_menu_hovered = false;
 
     if (application_show_menu && ImGui::BeginMainMenuBar())
     {
-        gui_main_menu_hovered = ImGui::IsWindowHovered();
-
         menu_gearlynx();
         menu_emulator();
         menu_video();

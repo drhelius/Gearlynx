@@ -91,7 +91,6 @@ public:
     bool IsPoweredOn();
     Mikey_State* GetState();
     LcdScreen* GetLcdScreen();
-    bool SwitchAudInValue();
     void SetSuzyDone();
     void SetTraceLogger(TraceLogger* trace_logger);
     void SetProfiler(Profiler* profiler);
@@ -105,7 +104,6 @@ public:
     void SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_callback,
         GLYNX_ComLynx_Turbo_Sync_Callback sync_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
-    bool IsComLynxCableConnected() const;
     bool IsUartTurbo() const;
     u32 GetUartBitCycles() const;
     u32 GetComLynxSyncCycles() const;

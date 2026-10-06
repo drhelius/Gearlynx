@@ -121,11 +121,6 @@ INLINE u32* LcdScreen::GetRGBA8888Palette()
     return m_rgba8888_palette;
 }
 
-INLINE u16* LcdScreen::GetRGB565Palette()
-{
-    return m_rgb565_palette;
-}
-
 INLINE GLYNX_Pixel_Format LcdScreen::GetPixelFormat()
 {
     return m_pixel_format;

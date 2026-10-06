@@ -63,7 +63,6 @@ INLINE void GameDrive::WriteByte(u8 value)
     if (m_command == NO_COMMAND && value == WAKE_BYTE)
     {
         m_awake = true;
-        m_low_power = false;
         m_input.clear();
         m_output.clear();
         m_output_offset = 0;

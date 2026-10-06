@@ -40,7 +40,6 @@ M6502::M6502(Bus* bus, Random* random)
     m_opcode_cycles = k_m6502_opcode_cycles_lynx2;
     m_opcode_sizes = k_m6502_opcode_sizes_lynx2;
     m_s.cycles = 0;
-    m_s.memory_accesses = 0;
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_s.debug_next_irq = 0;
@@ -70,7 +69,6 @@ M6502::M6502(Bus* bus, Random* random)
     m_skip_irq_on_step = false;
     m_disassembler_call_stack_size = 0;
     m_disassembler_syntax = GLYNX_Disassembler_Syntax_Gearlynx;
-    m_reset_value = -1;
     m_prev_opcode_address = 0xFFFF;
     m_stream_open = false;
     m_page_mode_tick_discount = 0;
@@ -156,29 +154,17 @@ void M6502::Reset(bool is_lynx2)
     m_s.debug_next_irq = 1;
     DisassembleNextOPCode();
 
-    if (m_reset_value < 0)
-    {
-        u32 rnd = m_random->Next();
-        m_s.A.SetValue((u8)rnd);
-        m_s.X.SetValue((u8)(rnd >> 8));
-        m_s.Y.SetValue((u8)(rnd >> 16));
-        m_s.S.SetValue((u8)(rnd >> 24));
-        m_s.P.SetValue(m_random->Next8Bit());
-    }
-    else
-    {
-        m_s.A.SetValue(m_reset_value & 0xFF);
-        m_s.X.SetValue(m_reset_value & 0xFF);
-        m_s.Y.SetValue(m_reset_value & 0xFF);
-        m_s.S.SetValue(m_reset_value & 0xFF);
-        m_s.P.SetValue(m_reset_value & 0xFF);
-    }
+    u32 rnd = m_random->Next();
+    m_s.A.SetValue((u8)rnd);
+    m_s.X.SetValue((u8)(rnd >> 8));
+    m_s.Y.SetValue((u8)(rnd >> 16));
+    m_s.S.SetValue((u8)(rnd >> 24));
+    m_s.P.SetValue(m_random->Next8Bit());
 
     SetFlag(FLAG_UNUSED | FLAG_INTERRUPT | FLAG_BREAK);
     ClearFlag(FLAG_DECIMAL);
 
     m_s.cycles = 0;
-    m_s.memory_accesses = 0;
     m_s.irq_asserted = false;
     m_s.irq_pending = 0;
     m_s.debug_irq_mask = 0;
@@ -210,22 +196,12 @@ M6502::M6502_State* M6502::GetState()
     return &m_s;
 }
 
-void M6502::SetResetValue(int value)
-{
-    m_reset_value = value;
-}
-
 void M6502::SetDisassemblerSyntax(GLYNX_Disassembler_Syntax syntax)
 {
     if (syntax < GLYNX_Disassembler_Syntax_Gearlynx || syntax >= GLYNX_Disassembler_Syntax_Count)
         syntax = GLYNX_Disassembler_Syntax_Gearlynx;
 
     m_disassembler_syntax = syntax;
-}
-
-GLYNX_Disassembler_Syntax M6502::GetDisassemblerSyntax() const
-{
-    return m_disassembler_syntax;
 }
 
 void M6502::EnableBreakpoints(bool enable, u8 irqs)
@@ -504,10 +480,10 @@ void M6502::SaveState(std::ostream& stream)
     m_s.P.SaveState(stream);
 
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
 }
 
-void M6502::LoadState(std::istream& stream)
+void M6502::LoadState(std::istream& stream, int version)
 {
     m_s.PC.LoadState(stream);
     m_s.A.LoadState(stream);
@@ -517,15 +493,19 @@ void M6502::LoadState(std::istream& stream)
     m_s.P.LoadState(stream);
 
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, version);
 
     ResetVBlankWatch();
 }
 
-void M6502::Serialize(StateSerializer& s)
+void M6502::Serialize(StateSerializer& s, int version)
 {
     G_SERIALIZE(s, m_s.cycles);
-    G_SERIALIZE(s, m_s.memory_accesses);
+    if (version < 29)
+    {
+        u32 legacy_memory_accesses = 0;
+        G_SERIALIZE(s, legacy_memory_accesses);
+    }
     G_SERIALIZE(s, m_s.irq_asserted);
     G_SERIALIZE(s, m_s.irq_pending);
     G_SERIALIZE(s, m_s.debug_next_irq);

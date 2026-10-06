@@ -180,9 +180,6 @@ public:
     json GetRewindStatus();
     json RewindSeek(int snapshot);
 
-    // Core access
-    GearlynxCore* GetCore() { return m_core; }
-
 private:
     GearlynxCore* m_core;
 

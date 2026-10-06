@@ -367,11 +367,6 @@ void GearlynxCore::SetComLynxCableConnected(bool connected)
     m_mikey->SetComLynxCableConnected(connected);
 }
 
-bool GearlynxCore::IsComLynxCableConnected() const
-{
-    return m_mikey->IsComLynxCableConnected();
-}
-
 void GearlynxCore::KeyPressed(GLYNX_Keys key)
 {
     m_input->KeyPressed(key);
@@ -423,12 +418,6 @@ void GearlynxCore::ResetROM(bool preserve_ram)
         stream.seekg(0, stream.beg);
         m_media->LoadRam(stream, size);
     }
-}
-
-void GearlynxCore::ResetSound()
-{
-    bool is_lynx2 = (m_media->GetConsoleType() != GLYNX_CONSOLE_MODEL_I);
-    m_audio->Reset(is_lynx2);
 }
 
 void GearlynxCore::SaveRam()
@@ -917,7 +906,7 @@ bool GearlynxCore::LoadState(std::istream& stream)
 
     Debug("Unserializing save state...");
 
-    m_m6502->LoadState(stream);
+    m_m6502->LoadState(stream, header.version);
     if (!stream.good())
         return false;
     m_memory->LoadState(stream, header.version);

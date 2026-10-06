@@ -204,7 +204,6 @@ public:
 #endif
 
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
     void LoadState(std::istream& stream, int version);
 
 private:

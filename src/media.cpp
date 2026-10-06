@@ -25,9 +25,6 @@
 #include "eeprom.h"
 #include "game_drive.h"
 #include "el_cheapo_sd.h"
-#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "miniz.h"
-#undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "crc.h"
 #include "ips_patch.h"
 #include "game_db.h"
@@ -141,7 +138,6 @@ void Media::HardReset()
     m_nvram_enabled = false;
     m_is_lnx2 = false;
     m_missing_header = false;
-    m_save_memory_dirty = false;
     m_rotation = GLYNX_ROTATION_AUTO;
     m_console_type = GLYNX_CONSOLE_AUTO;
     m_eeprom = GLYNX_EEPROM_NONE;
@@ -1364,7 +1360,7 @@ void Media::LoadState(std::istream& stream, int version)
     if (m_game_drive_instance->IsAvailable())
     {
         if (version >= 17)
-            m_game_drive_instance->LoadState(stream);
+            m_game_drive_instance->LoadState(stream, version);
         else
             m_game_drive_instance->Reset(false);
     }
@@ -1377,10 +1373,6 @@ void Media::LoadState(std::istream& stream, int version)
         else
             m_el_cheapo_sd_instance->Reset(false);
     }
-    if (!stream.good())
-        return;
-    if (m_persistent_ram_size > 0)
-        m_save_memory_dirty = true;
 }
 
 void Media::Serialize(StateSerializer& s, int version)
@@ -1596,7 +1588,6 @@ void Media::ClearSaveMemoryDirty()
 {
     if (m_eeprom_instance && m_eeprom_instance->IsAvailable())
         m_eeprom_instance->ClearDirty();
-    m_save_memory_dirty = false;
 }
 
 bool Media::SaveRam(std::ostream& file)

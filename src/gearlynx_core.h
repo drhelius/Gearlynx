@@ -82,7 +82,6 @@ public:
     bool LoadState(const u8* buffer, size_t size);
     bool GetSaveStateHeader(int index, const char* path, GLYNX_SaveState_Header* header);
     bool GetSaveStateScreenshot(int index, const char* path, GLYNX_SaveState_Screenshot* screenshot);
-    void ResetSound();
     bool GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info);
     Memory* GetMemory();
     Media* GetMedia();
@@ -91,7 +90,6 @@ public:
     M6502* GetM6502();
     Suzy* GetSuzy();
     Mikey* GetMikey();
-    Bus* GetBus();
     u64 GetTotalCycles();
     TraceLogger* GetTraceLogger();
     Profiler* GetProfiler();
@@ -102,7 +100,6 @@ public:
     void SetComLynxTurboCallbacks(GLYNX_ComLynx_Turbo_Sample_Callback sample_callback,
         GLYNX_ComLynx_Turbo_Sync_Callback sync_callback, void* user_data);
     void SetComLynxCableConnected(bool connected);
-    bool IsComLynxCableConnected() const;
     u64 GetComLynxCycle() const;
     void RenderFrameBuffer(u8* frame_buffer);
 

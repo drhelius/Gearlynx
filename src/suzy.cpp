@@ -185,7 +185,6 @@ void Suzy::LogSpriteEvent(u8 event, u8 reason)
     entry.sprite.suzybusen = m_state.SUZYBUSEN;
     entry.sprite.bpp = (u8)(((m_state.SPRCTL0 >> 6) & 3) + 1);
     entry.sprite.type = m_state.SPRCTL0 & 7;
-    entry.sprite.is_start = event == TRACE_SUZY_SPRITE_ENGINE_START;
     entry.sprite.is_end = event == TRACE_SUZY_SPRITE_ENGINE_END;
     entry.sprite.skipped = event == TRACE_SUZY_SPRITE_SKIP;
     entry.sprite.total_cycles = m_sprite_total_cycles;
@@ -459,11 +458,6 @@ void Suzy::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer, GLYNX_SAVESTATE_VERSION);
-}
-
-void Suzy::LoadState(std::istream& stream)
-{
-    LoadState(stream, GLYNX_SAVESTATE_VERSION);
 }
 
 void Suzy::LoadState(std::istream& stream, int version)

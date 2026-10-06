@@ -145,11 +145,6 @@ bool FramebufferServer::IsRunning() const
     return m_running.load();
 }
 
-int FramebufferServer::GetPort() const
-{
-    return m_port;
-}
-
 void FramebufferServer::PushFrame(const u8* framebuffer, int width, int height, int stride_pixels)
 {
     if (!m_running.load() || !m_client_connected.load())

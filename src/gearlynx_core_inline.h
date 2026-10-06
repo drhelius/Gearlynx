@@ -105,11 +105,6 @@ INLINE Mikey* GearlynxCore::GetMikey()
     return m_mikey;
 }
 
-INLINE Bus* GearlynxCore::GetBus()
-{
-    return m_bus;
-}
-
 INLINE u64 GearlynxCore::GetComLynxCycle() const
 {
     return m_mikey->GetComLynxCycle();

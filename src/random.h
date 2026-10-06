@@ -71,16 +71,6 @@ public:
         return (u8)(Next() >> 24);
     }
 
-    INLINE u16 Next16Bit()
-    {
-        return (u16)(Next() >> 16);
-    }
-
-    INLINE u32 NextMask(u32 mask)
-    {
-        return Next() & mask;
-    }
-
 private:
     void SetState(u32 state)
     {

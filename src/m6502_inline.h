@@ -39,7 +39,6 @@ INLINE u32 M6502::RunInstruction()
 #endif
 
     m_s.cycles = 0;
-    m_s.memory_accesses = 0;
     m_s.onebyte_un_nop = false;
     m_s.page_mode_discounts = 0;
     m_irq_sample_after_opcode = false;
@@ -148,11 +147,6 @@ INLINE bool M6502::IsHalted()
     return m_s.halted;
 }
 
-INLINE void M6502::InjectCycles(unsigned int cycles)
-{
-    m_s.cycles += cycles;
-}
-
 INLINE u32 M6502::GetInstructionTicks()
 {
     return (m_s.cycles * k_bus_cycles_int_tick_factor) - (u32)m_s.page_mode_discounts;
@@ -235,11 +229,6 @@ INLINE u16 M6502::FetchOperand16()
     return (static_cast<u16>(h) << 8) | l;
 }
 
-INLINE void M6502::NotifyBusBreak()
-{
-    m_stream_open = false;
-}
-
 INLINE u8 M6502::MemRead8(u16 address)
 {
     m_stream_open = false;
@@ -262,11 +251,6 @@ INLINE bool M6502::PageCrossed(u16 old_address, u16 new_address)
     return (old_address ^ new_address) > 0x00FF;
 }
 
-INLINE u16 M6502::ZeroPageX()
-{
-    return ZERO_PAGE_ADDR | m_s.X.GetValue();
-}
-
 INLINE void M6502::SetOrClearZNFlags(u8 result)
 {
     ClearFlag(FLAG_ZERO | FLAG_NEGATIVE);
@@ -276,11 +260,6 @@ INLINE void M6502::SetOrClearZNFlags(u8 result)
 INLINE void M6502::SetZNFlags(u8 result)
 {
     m_s.P.SetValue(m_s.P.GetValue() | m_zn_flags_lut[result]);
-}
-
-INLINE void M6502::SetOverflowFlag(u8 result)
-{
-    m_s.P.SetValue((m_s.P.GetValue() & 0xBF) | (result & 0x40));
 }
 
 INLINE void M6502::SetFlag(u8 flag)
@@ -345,13 +324,6 @@ INLINE u16 M6502::ZeroPageAddressing()
 INLINE u16 M6502::ZeroPageAddressing(EightBitRegister* reg)
 {
     return ZERO_PAGE_ADDR | ((FetchOperand8() + reg->GetValue()) & 0xFF);
-}
-
-INLINE u16 M6502::ZeroPageRelativeAddressing()
-{
-    u16 address = ZeroPageAddressing();
-    s8 offset = static_cast<s8>(FetchOperand8());
-    return address + offset;
 }
 
 INLINE u16 M6502::ZeroPageIndirectAddressing()
@@ -684,7 +656,6 @@ INLINE void M6502::PopulateDisassemblerRecord(GLYNX_Disassembler_Record* record,
     record->size = opcode_size;
     record->jump = false;
     record->jump_address = 0;
-    record->jump_bank = 0;
     record->subroutine = false;
     record->irq = 0;
     record->has_operand_address = false;

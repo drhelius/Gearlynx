@@ -113,11 +113,6 @@ u32 TraceLogger::GetEventFilter(GLYNX_Trace_Type type) const
     return 0;
 }
 
-const GLYNX_Trace_Entry* TraceLogger::GetBuffer() const
-{
-    return m_buffer;
-}
-
 u32 TraceLogger::GetCount() const
 {
     return m_count;
@@ -126,11 +121,6 @@ u32 TraceLogger::GetCount() const
 u32 TraceLogger::GetCapacity() const
 {
     return m_capacity;
-}
-
-u32 TraceLogger::GetPosition() const
-{
-    return m_position;
 }
 
 u64 TraceLogger::GetTotalLogged() const

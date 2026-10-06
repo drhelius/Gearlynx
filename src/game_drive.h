@@ -44,7 +44,7 @@ public:
     u8 PeekByte() const;
     u8 ReadProgrammedByte(u32 address) const;
     void SaveState(std::ostream& stream);
-    void LoadState(std::istream& stream);
+    void LoadState(std::istream& stream, int version);
 
 private:
     enum Command
@@ -113,12 +113,11 @@ private:
     bool WriteFileData(const u8* data, u32 size);
     u16 InputWord(u32 offset) const;
     u32 InputDword(u32 offset) const;
-    void Serialize(StateSerializer& serializer);
+    void Serialize(StateSerializer& serializer, int version);
 
 private:
     bool m_available;
     bool m_awake;
-    bool m_low_power;
     bool m_programmed;
     bool m_file_open;
     bool m_file_writable;

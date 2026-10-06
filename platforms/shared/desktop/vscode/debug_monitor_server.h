@@ -172,7 +172,6 @@ public:
     // Called from emu thread to notify state changes
     void NotifyStopped(DebugMonitorStopReason reason, u16 pc);
     void NotifyResumed();
-    void NotifyTerminated();
 
 private:
     void AcceptLoop();

@@ -69,13 +69,6 @@ enum GLYNX_Bios_State
     BIOS_LOAD_INVALID_CRC
 };
 
-struct GLYNX_Color
-{
-    u8 red;
-    u8 green;
-    u8 blue;
-};
-
 enum GLYNX_Pixel_Format
 {
     GLYNX_PIXEL_RGB565,
@@ -231,7 +224,6 @@ struct GLYNX_Disassembler_Record
     int size;
     bool jump;
     u16 jump_address;
-    u8 jump_bank;
     bool subroutine;
     int irq;
     bool has_operand_address;

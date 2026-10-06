@@ -39,7 +39,6 @@ public:
     bool Start();
     void Stop();
     bool IsRunning() const;
-    int GetPort() const;
 
     // Called from emu thread after each frame
     void PushFrame(const u8* framebuffer, int width, int height, int stride_pixels);

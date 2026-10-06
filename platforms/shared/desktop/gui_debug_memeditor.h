@@ -94,7 +94,6 @@ public:
     void WatchPopup();
     void DrawFindBytesWindow();
     void SaveSettings(std::ostream& stream);
-    void LoadSettings(std::istream& stream);
     Options GetOptions() const;
     void SetOptions(const Options& options);
     void StepFrame();

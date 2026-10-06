@@ -55,12 +55,8 @@ enum GLYNX_Trace_Type : u8
 #define TRACE_FLAG_MIKEY_AUDIO  (1U << TRACE_MIKEY_AUDIO)
 #define TRACE_FLAG_CARTRIDGE    (1U << TRACE_CARTRIDGE)
 #define TRACE_FLAG_DEBUG_MSG    (1U << TRACE_DEBUG_MESSAGE)
-#define TRACE_FLAG_ALL          ((1U << TRACE_TYPE_COUNT) - 1)
 
 static_assert(TRACE_TYPE_COUNT < 32, "Trace category flags exceed u32 width");
-
-#define TRACE_CART_SHIFT        TRACE_CARTRIDGE
-#define TRACE_FLAG_CART_SHIFT   TRACE_FLAG_CARTRIDGE
 
 #define TRACE_EVENT_FLAG(event) (1U << (event))
 
@@ -378,7 +374,6 @@ struct GLYNX_Trace_Entry
             u8 collision_id;
             u8 depository;
             bool skipped;
-            bool is_start;
             bool is_end;
             bool everon;
             u32 total_cycles;
@@ -523,10 +518,8 @@ public:
     void SetEventFilter(GLYNX_Trace_Type type, u32 filter);
     u32 GetEnabledFlags() const;
     u32 GetEventFilter(GLYNX_Trace_Type type) const;
-    const GLYNX_Trace_Entry* GetBuffer() const;
     u32 GetCount() const;
     u32 GetCapacity() const;
-    u32 GetPosition() const;
     u64 GetTotalLogged() const;
     u64 GetSequence() const;
     const GLYNX_Trace_Entry& GetEntry(u32 index) const;

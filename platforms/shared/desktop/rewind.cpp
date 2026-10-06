@@ -171,11 +171,6 @@ int rewind_get_snapshot_count(void)
     return count;
 }
 
-size_t rewind_get_memory_usage(void)
-{
-    return IsValidPointer(buffer) ? REWIND_MAX_MEMORY_SIZE : 0;
-}
-
 bool rewind_seek(int age)
 {
     if (emu_comlynx_is_active() || age < 0 || age >= count)

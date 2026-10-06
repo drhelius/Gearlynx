@@ -635,7 +635,6 @@ static void main_window(void)
 
     gui_main_window_width = image_logical_width;
     gui_main_window_height = image_logical_height;
-    gui_scale_multiplier = scale_multiplier;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
@@ -672,8 +671,6 @@ static void main_window(void)
     }
 
     OglRendererScreenGeometry screen_geometry;
-    screen_geometry.logical_width = image_logical_width;
-    screen_geometry.logical_height = image_logical_height;
     screen_geometry.physical_width = image_physical_width;
     screen_geometry.physical_height = image_physical_height;
     screen_geometry.framebuffer_scale_x = framebuffer_scale_x;

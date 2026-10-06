@@ -35,7 +35,6 @@ public:
     StateSerializer(std::ostream& stream) : m_output_stream(&stream), m_input_stream(NULL), m_is_saving(true) {}
     StateSerializer(std::istream& stream) : m_output_stream(NULL), m_input_stream(&stream), m_is_saving(false) {}
 
-    inline bool IsSaving() const { return m_is_saving; }
     inline bool IsLoading() const { return !m_is_saving; }
     inline bool IsValid() const { return m_is_saving ? m_output_stream->good() : m_input_stream->good(); }
 
@@ -89,9 +88,6 @@ public:
         if (size > 0)
             SerializeArray(&value[0], size);
     }
-
-    std::ostream* GetOutputStream() { return m_output_stream; }
-    std::istream* GetInputStream() { return m_input_stream; }
 
 private:
     bool CheckReadSize(size_t count, size_t max_count, size_t element_size)

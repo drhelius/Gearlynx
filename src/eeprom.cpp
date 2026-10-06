@@ -421,15 +421,6 @@ void EEPROM::Erase()
     Debug("EEPROM erased");
 }
 
-void EEPROM::SetData(u8* data, s32 size)
-{
-    if (data != NULL && size > 0)
-    {
-        s32 copy_size = (size < (s32)sizeof(m_rom_data)) ? size : (s32)sizeof(m_rom_data);
-        memcpy(m_rom_data, data, copy_size);
-    }
-}
-
 void EEPROM::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);

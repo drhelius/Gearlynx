@@ -75,7 +75,6 @@ public:
     GLYNX_Console_Type GetConsoleType();
     void ForceEEPROM(GLYNX_EEPROM type);
     void AutoDetectEEPROM();
-    bool IsEEPROMForced();
     GLYNX_EEPROM GetEEPROM();
     void ForceCartridgeHardware(GLYNX_Cartridge_Hardware type);
     void AutoDetectCartridgeHardware();
@@ -221,7 +220,6 @@ private:
     bool m_nvram_enabled;
     bool m_is_lnx2;
     bool m_missing_header;
-    bool m_save_memory_dirty;
     u8* m_nvram;
     GLYNX_Rotation m_rotation;
     GLYNX_Rotation m_forced_rotation;

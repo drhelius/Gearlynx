@@ -470,15 +470,6 @@ void DebugMonitorServer::NotifyResumed()
     EnqueueEvent("resumed", {{"seq", m_event_seq}});
 }
 
-void DebugMonitorServer::NotifyTerminated()
-{
-    if (!m_running.load() || !m_client_connected.load())
-        return;
-
-    m_event_seq++;
-    EnqueueEvent("terminated", {{"seq", m_event_seq}});
-}
-
 void DebugMonitorServer::EnqueueResponse(int64_t id, bool success, const json& data)
 {
     DebugMonitorMessage* msg = new DebugMonitorMessage();

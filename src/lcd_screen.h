@@ -68,7 +68,6 @@ public:
     void SetBuffer(u8* frame_buffer);
     u8* GetBuffer();
     u32* GetRGBA8888Palette();
-    u16* GetRGB565Palette();
     GLYNX_Pixel_Format GetPixelFormat();
     void RenderNoBiosScreen(u8* frame_buffer);
     void RenderNoPowerScreen(u8* frame_buffer);

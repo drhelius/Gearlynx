@@ -114,7 +114,6 @@ void GameDrive::Reset(bool hard)
 {
     CloseFile();
     m_awake = true;
-    m_low_power = false;
     m_command = NO_COMMAND;
     m_expected_input = 0;
     m_file_offset = 0;
@@ -312,7 +311,6 @@ void GameDrive::ExecuteCommand()
             break;
         }
         case CMD_LOW_POWER:
-            m_low_power = true;
             m_awake = false;
             break;
         default:
@@ -536,20 +534,24 @@ bool GameDrive::WriteFileData(const u8* data, u32 size)
 void GameDrive::SaveState(std::ostream& stream)
 {
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, GLYNX_SAVESTATE_VERSION);
 }
 
-void GameDrive::LoadState(std::istream& stream)
+void GameDrive::LoadState(std::istream& stream, int version)
 {
     CloseFile();
     StateSerializer serializer(stream);
-    Serialize(serializer);
+    Serialize(serializer, version);
 }
 
-void GameDrive::Serialize(StateSerializer& serializer)
+void GameDrive::Serialize(StateSerializer& serializer, int version)
 {
     G_SERIALIZE(serializer, m_awake);
-    G_SERIALIZE(serializer, m_low_power);
+    if (version < 29)
+    {
+        bool legacy_low_power = false;
+        G_SERIALIZE(serializer, legacy_low_power);
+    }
     G_SERIALIZE(serializer, m_programmed);
     G_SERIALIZE(serializer, m_file_open);
     G_SERIALIZE(serializer, m_command);

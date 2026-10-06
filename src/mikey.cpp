@@ -900,11 +900,6 @@ void Mikey::HorizontalBlank()
     m_lcd_screen->ResetLine(m_video_line_remainder);
 }
 
-bool Mikey::SwitchAudInValue()
-{
-    return IS_SET_BIT(m_state.IODIR, 4) && IS_SET_BIT(m_state.IODAT, 4);
-}
-
 void Mikey::SetComLynxCallbacks(GLYNX_ComLynx_Publish_Callback publish_callback,
     GLYNX_ComLynx_Sample_Callback sample_callback, GLYNX_ComLynx_Break_Callback break_callback,
     GLYNX_ComLynx_Sync_Callback sync_callback, void* user_data)
@@ -940,11 +935,6 @@ void Mikey::SetComLynxCableConnected(bool connected)
 #else
     UNUSED(changed);
 #endif
-}
-
-bool Mikey::IsComLynxCableConnected() const
-{
-    return m_comlynx_cable_connected;
 }
 
 u64 Mikey::GetComLynxCycle() const

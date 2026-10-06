@@ -48,7 +48,6 @@ public:
     bool IsDirty();
     void ClearDirty();
     void Erase();
-    void SetData(u8* data, s32 size);
     void SaveState(std::ostream& stream);
     void LoadState(std::istream& stream);
 
