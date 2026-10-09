@@ -168,7 +168,7 @@ static inline void process(config_Operation operation)
     CONFIG_STRING("Emulator", "LastOpenPath", config_emulator.last_open_path, "");
     CONFIG_INT("Emulator", "WindowWidth", config_emulator.window_width, 770);
     CONFIG_INT("Emulator", "WindowHeight", config_emulator.window_height, 600);
-    CONFIG_BOOL("Emulator", "StatusMessages", config_emulator.status_messages, false);
+    CONFIG_BOOL("Emulator", "ShowNotifications", config_emulator.show_notifications, true);
     CONFIG_BOOL("Emulator", "AllowScreenSaver", config_emulator.allow_screensaver, false);
 
     // Services and hardware

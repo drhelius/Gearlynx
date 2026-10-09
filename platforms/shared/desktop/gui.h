@@ -127,7 +127,6 @@ EXTERN bool gui_is_rom_loading(void);
 EXTERN bool gui_finish_loading_rom(void);
 EXTERN void gui_load_bios(const char* path);
 EXTERN void gui_set_style(void);
-EXTERN void gui_set_status_message(const char* message, Uint64 milliseconds);
 EXTERN void gui_set_error_message(const char* message);
 
 #undef GUI_IMPORT

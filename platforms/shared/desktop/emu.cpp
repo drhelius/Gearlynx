@@ -763,49 +763,56 @@ void emu_load_ram(const char* file_path)
     }
 }
 
-void emu_save_state_slot(int index)
+bool emu_save_state_slot(int index)
 {
-    if (!emu_is_empty())
-    {
-        const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
-        core->SaveState(dir, index, true);
-        update_savestates_data();
-    }
+    if (emu_is_empty())
+        return false;
+
+    const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
+    bool saved = core->SaveState(dir, index, true);
+    update_savestates_data();
+    return saved;
 }
 
-void emu_load_state_slot(int index)
+bool emu_load_state_slot(int index)
 {
-    if (!emu_is_empty())
-    {
-        emu_comlynx_stop();
-        const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
-        if (core->LoadState(dir, index))
-        {
-            emu_debug_state_restored();
-            events_sync_input();
-            rewind_reset();
-        }
-    }
+    if (emu_is_empty())
+        return false;
+
+    emu_comlynx_stop();
+    const char* dir = get_configurated_dir(config_emulator.savestates_dir_option, config_emulator.savestates_path.c_str());
+
+    if (!core->LoadState(dir, index))
+        return false;
+
+    emu_debug_state_restored();
+    events_sync_input();
+    rewind_reset();
+    return true;
 }
 
-void emu_save_state_file(const char* file_path)
+bool emu_save_state_file(const char* file_path)
 {
-    if (!emu_is_empty())
-        core->SaveState(file_path, -1, true);
+    if (emu_is_empty())
+        return false;
+
+    return core->SaveState(file_path, -1, true);
 }
 
-void emu_load_state_file(const char* file_path)
+bool emu_load_state_file(const char* file_path)
 {
-    if (!emu_is_empty())
-    {
-        emu_comlynx_stop();
-        if (core->LoadState(file_path))
-        {
-            emu_debug_state_restored();
-            events_sync_input();
-            rewind_reset();
-        }
-    }
+    if (emu_is_empty())
+        return false;
+
+    emu_comlynx_stop();
+
+    if (!core->LoadState(file_path))
+        return false;
+
+    emu_debug_state_restored();
+    events_sync_input();
+    rewind_reset();
+    return true;
 }
 
 void update_savestates_data(void)
@@ -1047,34 +1054,39 @@ void emu_set_disassembler_syntax(int syntax)
 #endif
 }
 
-void emu_save_screenshot(const char* file_path)
+bool emu_save_screenshot(const char* file_path)
 {
     if (!core->GetMedia()->IsReady())
-        return;
+        return false;
 
     GLYNX_Runtime_Info runtime;
     emu_get_runtime(runtime);
 
-    stbi_write_png(file_path, runtime.screen_width, runtime.screen_height, 4, emu_frame_buffer, runtime.screen_width * 4);
+    if (!stbi_write_png(file_path, runtime.screen_width, runtime.screen_height, 4, emu_frame_buffer,
+        runtime.screen_width * 4))
+        return false;
 
     Log("Screenshot saved to %s", file_path);
+    return true;
 }
 
-void emu_save_sprite(const char* file_path, int index)
+bool emu_save_sprite(const char* file_path, int index)
 {
     if (index < 0 || index >= DEBUG_MAX_SPRITES)
-        return;
+        return false;
 
     int width = emu_debug_sprite_widths[index];
     int height = emu_debug_sprite_heights[index];
     u8* buffer = emu_debug_sprite_buffers[index];
 
     if (!buffer || width <= 0 || height <= 0)
-        return;
+        return false;
 
-    stbi_write_png(file_path, width, height, 4, buffer, 512 * 4);
+    if (!stbi_write_png(file_path, width, height, 4, buffer, 512 * 4))
+        return false;
 
     Log("Sprite saved to %s", file_path);
+    return true;
 }
 
 int emu_get_screenshot_png(unsigned char** out_buffer)
@@ -2035,10 +2047,10 @@ static void render_debug_sprites(int count)
     }
 }
 
-void emu_start_vgm_recording(const char* file_path)
+bool emu_start_vgm_recording(const char* file_path)
 {
     if (!core->GetMedia()->IsReady())
-        return;
+        return false;
 
     if (core->GetAudio()->IsVgmRecording())
     {
@@ -2053,10 +2065,11 @@ void emu_start_vgm_recording(const char* file_path)
     metadata.system_name = "Atari Lynx";
     metadata.comment = "Created with " GLYNX_TITLE " " GLYNX_VERSION;
 
-    if (core->GetAudio()->StartVgmRecording(file_path, clock_rate, metadata))
-    {
-        Log("VGM recording started: %s", file_path);
-    }
+    if (!core->GetAudio()->StartVgmRecording(file_path, clock_rate, metadata))
+        return false;
+
+    Log("VGM recording started: %s", file_path);
+    return true;
 }
 
 void emu_stop_vgm_recording(void)

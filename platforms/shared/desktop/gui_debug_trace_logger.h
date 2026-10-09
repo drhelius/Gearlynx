@@ -52,7 +52,7 @@ EXTERN bool gui_debug_trace_logger_stop(void);
 EXTERN bool gui_debug_trace_logger_is_enabled(void);
 EXTERN void gui_debug_trace_logger_sync_vblank_watch(void);
 EXTERN const char* gui_debug_trace_logger_get_output_path(void);
-EXTERN void gui_debug_save_log(const char* file_path);
+EXTERN bool gui_debug_save_log(const char* file_path);
 
 #undef GUI_DEBUG_TRACE_LOGGER_IMPORT
 #undef EXTERN

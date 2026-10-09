@@ -22,6 +22,7 @@
 #include "config.h"
 #include "gui.h"
 #include "gui_actions.h"
+#include "gui_notifications.h"
 #include "utils.h"
 
 #define GAMEPAD_IMPORT
@@ -30,6 +31,7 @@
 static bool gamepad_shortcut_prev[config_HotkeyIndex_COUNT] = { };
 
 static bool gamepad_get_button(SDL_Gamepad* controller, int mapping);
+static void notify_gamepad(SDL_Gamepad* controller, bool connected);
 
 bool gamepad_init(void)
 {
@@ -158,6 +160,7 @@ void gamepad_add(void)
 
             gamepad_controller = controller;
             Debug("Game controller %d assigned to Player 1", gamepads[i]);
+            notify_gamepad(controller, true);
             break;
         }
         SDL_free(gamepads);
@@ -171,6 +174,7 @@ void gamepad_remove(SDL_JoystickID instance_id)
         SDL_JoystickID current_id = SDL_GetJoystickID(SDL_GetGamepadJoystick(gamepad_controller));
         if (current_id == instance_id)
         {
+            notify_gamepad(gamepad_controller, false);
             SDL_CloseGamepad(gamepad_controller);
             gamepad_controller = NULL;
             Debug("Game controller %d disconnected", instance_id);
@@ -317,4 +321,11 @@ static bool gamepad_get_button(SDL_Gamepad* controller, int mapping)
     }
 
     return false;
+}
+
+static void notify_gamepad(SDL_Gamepad* controller, bool connected)
+{
+    const char* name = SDL_GetGamepadName(controller);
+    gui_notify(gui_NotificationInfo, ICON_MD_GAMEPAD, connected ? "Gamepad connected" : "Gamepad disconnected",
+        IsValidPointer(name) ? name : "Unknown");
 }

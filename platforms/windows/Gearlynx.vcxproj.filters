@@ -75,6 +75,9 @@
     <ClInclude Include="..\shared\desktop\gui_actions.h">
       <Filter>desktop</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\desktop\gui_notifications.h">
+      <Filter>desktop</Filter>
+    </ClInclude>
     <ClInclude Include="..\shared\desktop\rewind.h">
       <Filter>desktop</Filter>
     </ClInclude>
@@ -401,6 +404,9 @@
       <Filter>desktop</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\gui_actions.cpp">
+      <Filter>desktop</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\desktop\gui_notifications.cpp">
       <Filter>desktop</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\desktop\rewind.cpp">
