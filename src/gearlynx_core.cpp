@@ -85,7 +85,7 @@ void GearlynxCore::Init(GLYNX_Pixel_Format pixel_format)
     m_m6502 = new M6502(m_bus, m_random);
     m_input = new Input(m_media);
     m_suzy = new Suzy(m_media, m_m6502, m_input, m_bus);
-    m_mikey = new Mikey(m_suzy, m_media, m_m6502, m_bus, m_random);
+    m_mikey = new Mikey(m_suzy, m_input, m_media, m_m6502, m_bus, m_random);
     m_memory = new Memory(m_media, m_input, m_suzy, m_mikey, m_m6502, m_bus, m_random);
     m_audio = new Audio(m_mikey);
 
@@ -122,6 +122,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
     int* sample_count, GLYNX_Debug_Run* debug, bool render)
 {
     m_mikey->GetLcdScreen()->SetBuffer(frame_buffer);
+    m_input->BeginFrame();
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
     m_suzy->BeginSpriteBoundingBoxFrame();
 #endif
@@ -251,6 +252,7 @@ bool GearlynxCore::RunToVBlank(u8* frame_buffer, s16* sample_buffer,
 void GearlynxCore::EndFrame(s16* sample_buffer, int* sample_count)
 {
     m_audio->EndFrame(sample_buffer, sample_count);
+    m_input->ApplyPendingState();
 }
 
 void GearlynxCore::RenderFrameBuffer(u8* frame_buffer)

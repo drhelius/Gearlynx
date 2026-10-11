@@ -26,6 +26,7 @@ Input::Input(Media* media)
     m_media = media;
     InitPointer(m_suzy);
     m_state = 0x0000;
+    m_pending_state = 0x0000;
 }
 
 void Input::Init(Suzy* suzy)
@@ -37,6 +38,7 @@ void Input::Init(Suzy* suzy)
 void Input::Reset()
 {
     m_state = 0x0000;
+    m_pending_state = 0x0000;
 }
 
 void Input::SaveState(std::ostream& stream)
@@ -49,6 +51,7 @@ void Input::LoadState(std::istream& stream)
 {
     StateSerializer serializer(stream);
     Serialize(serializer);
+    m_pending_state = m_state;
 }
 
 void Input::Serialize(StateSerializer& s)

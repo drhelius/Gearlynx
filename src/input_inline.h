@@ -94,7 +94,7 @@ INLINE void Input::KeyPressed(GLYNX_Keys key)
     if (is_dpad)
         mapped = MapDirectional(key);
 
-    m_state |= mapped;
+    m_pending_state |= mapped;
 }
 
 INLINE void Input::KeyReleased(GLYNX_Keys key)
@@ -106,14 +106,25 @@ INLINE void Input::KeyReleased(GLYNX_Keys key)
     if (is_dpad)
         mapped = MapDirectional(key);
 
-    m_state &= ~mapped;
+    m_pending_state &= ~mapped;
 }
 
 INLINE bool Input::IsKeyPressed(GLYNX_Keys key) const
 {
     bool is_dpad = (key == GLYNX_KEY_UP) || (key == GLYNX_KEY_DOWN) || (key == GLYNX_KEY_LEFT) || (key == GLYNX_KEY_RIGHT);
     GLYNX_Keys mapped = is_dpad ? MapDirectional(key) : key;
-    return (m_state & mapped) != 0;
+    return (m_pending_state & mapped) != 0;
+}
+
+INLINE void Input::BeginFrame()
+{
+    if (m_pending_state & ~m_state)
+        m_state = m_pending_state;
+}
+
+INLINE void Input::ApplyPendingState()
+{
+    m_state = m_pending_state;
 }
 
 INLINE u8 Input::ReadJoystick()
@@ -129,11 +140,13 @@ INLINE u8 Input::ReadSwitches()
 INLINE void Input::WriteJoystick(u8 value)
 {
     m_state = (m_state & 0xFF00) | value;
+    m_pending_state = (m_pending_state & 0xFF00) | value;
 }
 
 INLINE void Input::WriteSwitches(u8 value)
 {
     m_state = (m_state & 0x00FF) | ((u16)value << 8);
+    m_pending_state = (m_pending_state & 0x00FF) | ((u16)value << 8);
 }
 
 #endif /* INPUT_INLINE_H */

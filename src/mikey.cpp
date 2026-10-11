@@ -26,10 +26,12 @@
 #include "state_serializer.h"
 #include "lcd_screen.h"
 #include "trace_logger.h"
+#include "input.h"
 
-Mikey::Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random)
+Mikey::Mikey(Suzy* suzy, Input* input, Media* media, M6502* m6502, Bus* bus, Random* random)
 {
     m_suzy = suzy;
+    m_input = input;
     m_media = media;
     m_m6502 = m6502;
     m_bus = bus;
@@ -858,6 +860,8 @@ void Mikey::HorizontalBlank()
                 m_lcd_screen->ClearLine(line);
             }
         }
+
+        m_state.frame_ready = true;
     }
     // Start of vblank 1
     else if (counter == backup)
@@ -882,7 +886,7 @@ void Mikey::HorizontalBlank()
 #endif
             m_lcd_screen->FirstDMA();
             m_lcd_screen->SetVBlank(false);
-            m_state.frame_ready = true;
+            m_input->ApplyPendingState();
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
             TraceDisplayEvent(TRACE_MIKEY_DISPLAY_VBLANK, 0, 0, visible_line);
             TraceDisplayEvent(TRACE_MIKEY_DISPLAY_FRAME, 0, 0, visible_line);

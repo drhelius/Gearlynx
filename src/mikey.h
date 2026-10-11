@@ -31,6 +31,7 @@ class Media;
 class Memory;
 class M6502;
 class Suzy;
+class Input;
 class Audio;
 class Bus;
 class LcdScreen;
@@ -80,7 +81,7 @@ public:
     };
 
 public:
-    Mikey(Suzy* suzy, Media* media, M6502* m6502, Bus* bus, Random* random);
+    Mikey(Suzy* suzy, Input* input, Media* media, M6502* m6502, Bus* bus, Random* random);
     ~Mikey();
     void Init(Memory* memory, GLYNX_Pixel_Format pixel_format);
     void SetAudio(Audio* audio);
@@ -206,6 +207,7 @@ private:
     Media* m_media;
     Memory* m_memory;
     Suzy* m_suzy;
+    Input* m_input;
     M6502* m_m6502;
     Audio* m_audio;
     Bus* m_bus;

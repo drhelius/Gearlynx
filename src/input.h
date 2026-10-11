@@ -37,6 +37,8 @@ public:
     void KeyPressed(GLYNX_Keys key);
     void KeyReleased(GLYNX_Keys key);
     bool IsKeyPressed(GLYNX_Keys key) const;
+    void BeginFrame();
+    void ApplyPendingState();
     u8 ReadJoystick();
     u8 ReadSwitches();
     void WriteJoystick(u8 value);
@@ -52,6 +54,7 @@ private:
     Media* m_media;
     Suzy* m_suzy;
     u16 m_state;
+    u16 m_pending_state;
 };
 
 #include "input_inline.h"
