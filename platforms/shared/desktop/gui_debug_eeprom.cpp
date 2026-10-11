@@ -162,6 +162,8 @@ void gui_debug_window_eeprom(void)
         ImGui::OpenPopup("Erase EEPROM?");
     }
 
+    gui_center_next_window();
+
     if (ImGui::BeginPopupModal("Erase EEPROM?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::Text("This will erase all EEPROM contents.\nThis operation cannot be undone.\n\n");
