@@ -89,3 +89,6 @@ platforms/libretro/libs/
 
 #Value Change Dump files
 *.vcd
+
+#GitHub Agentic Workflows
+.github/agents/agentic-workflows.md
