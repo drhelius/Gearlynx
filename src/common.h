@@ -31,6 +31,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
+#if !defined(__LIBRETRO__)
+#include <dirent.h>
+#include <unistd.h>
+#endif
 #endif
 #include "defines.h"
 #include "types.h"
@@ -387,6 +391,80 @@ inline FILE* fopen_utf8(const char* path, const char* mode)
 }
 #endif
 
+#if !defined(__LIBRETRO__)
+inline bool remove_directory_and_contents(const char* path)
+{
+#if defined(_WIN32)
+    std::wstring wpath = utf8_to_wstring(path);
+    DWORD attributes = GetFileAttributesW(wpath.c_str());
+
+    if (attributes == INVALID_FILE_ATTRIBUTES)
+    {
+        DWORD error = GetLastError();
+        return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
+    }
+
+    if (!(attributes & FILE_ATTRIBUTE_DIRECTORY))
+        return DeleteFileW(wpath.c_str()) != 0;
+
+    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT)
+        return RemoveDirectoryW(wpath.c_str()) != 0;
+
+    std::wstring search = utf8_to_wstring((std::string(path) + "\\*").c_str());
+    WIN32_FIND_DATAW fd;
+    HANDLE find = FindFirstFileW(search.c_str(), &fd);
+    bool ok = true;
+
+    if (find != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if (wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
+            {
+                std::string item = std::string(path) + "\\" + wstring_to_utf8(fd.cFileName);
+                ok = remove_directory_and_contents(item.c_str()) && ok;
+            }
+        }
+        while (FindNextFileW(find, &fd));
+
+        FindClose(find);
+    }
+
+    return ok && (RemoveDirectoryW(wpath.c_str()) != 0);
+#else
+    struct stat st;
+
+    if (lstat(path, &st) != 0)
+        return errno == ENOENT;
+
+    if (!S_ISDIR(st.st_mode))
+        return unlink(path) == 0;
+
+    DIR* dir = opendir(path);
+
+    if (!dir)
+        return false;
+
+    bool ok = true;
+    struct dirent* entry;
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        const char* name = entry->d_name;
+
+        if (strcmp(name, ".") && strcmp(name, ".."))
+        {
+            std::string item = std::string(path) + "/" + name;
+            ok = remove_directory_and_contents(item.c_str()) && ok;
+        }
+    }
+
+    closedir(dir);
+    return ok && (rmdir(path) == 0);
+#endif
+}
+#endif
+
 inline bool is_safe_zip_entry_name(const char* name)
 {
     if (name[0] == '\0' || name[0] == '/' || name[0] == '\\' || name[1] == ':')
@@ -442,7 +520,8 @@ inline bool extract_zip_to_folder(const char* zip_path, const char* out_folder)
         if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
         {
             Error("mz_zip_reader_file_stat failed for file %d", i);
-            continue;
+            mz_zip_reader_end(&zip_archive);
+            return false;
         }
 
         if (!is_safe_zip_entry_name(file_stat.m_filename))
@@ -452,19 +531,36 @@ inline bool extract_zip_to_folder(const char* zip_path, const char* out_folder)
             return false;
         }
 
+        string name(file_stat.m_filename);
+        size_t separator = name.find('/');
+
+        while (separator != string::npos)
+        {
+            string directory = out_dir + "/" + name.substr(0, separator);
+
+            if (!create_directory_if_not_exists(directory.c_str()))
+            {
+                Error("Failed to create directory %s", directory.c_str());
+                mz_zip_reader_end(&zip_archive);
+                return false;
+            }
+
+            separator = name.find('/', separator + 1);
+        }
+
         if (file_stat.m_is_directory)
             continue;
 
-        string out_path = out_dir + "/" + file_stat.m_filename;
+        string out_path = out_dir + "/" + name;
 
         if (!mz_zip_reader_extract_to_file(&zip_archive, i, out_path.c_str(), 0))
         {
             Error("Failed to extract %s", out_path.c_str());
+            mz_zip_reader_end(&zip_archive);
+            return false;
         }
-        else
-        {
-            Debug("Extracted: %s", out_path.c_str());
-        }
+
+        Debug("Extracted: %s", out_path.c_str());
     }
 
     mz_zip_reader_end(&zip_archive);
