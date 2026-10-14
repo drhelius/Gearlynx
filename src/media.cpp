@@ -365,6 +365,15 @@ bool Media::LoadFromFile(const char* path, bool softpatching)
 
     GatherDataFromPath(path);
 
+    const char* dot = strrchr(m_file_name, '.');
+
+    if (!IsValidPointer(dot) || (dot[1] == 0))
+    {
+        Error("Media file has no extension: %s", path);
+        HardReset();
+        return false;
+    }
+
     ifstream file;
     open_ifstream_utf8(file, path, ios::in | ios::binary | ios::ate);
 
