@@ -600,6 +600,6 @@
     <ResourceCompile Include="version.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Gearlynx.ico" />
+    <Image Include="iconfile.ico" />
   </ItemGroup>
 </Project>

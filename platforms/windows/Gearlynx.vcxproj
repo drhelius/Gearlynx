@@ -250,7 +250,7 @@
     <ClCompile Include="..\shared\desktop\single_instance.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Gearlynx.ico" />
+    <Image Include="iconfile.ico" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Gearlynx.rc" />
