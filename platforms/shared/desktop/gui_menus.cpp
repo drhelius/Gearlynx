@@ -63,6 +63,7 @@ static const GuiColor& service_mcp_http_color = green;
 static const GuiColor& service_mcp_stdio_color = amber;
 static const GuiColor& service_debug_monitor_color = cyan;
 static const GuiColor& video_recording_color = red;
+static const GuiColor& vgm_recording_color = red;
 static ShaderPresetInfo shader_presets[SHADER_PRESET_MAX_DISCOVERED];
 static int shader_preset_count = 0;
 
@@ -82,6 +83,7 @@ static void menu_debug(void);
 static void menu_about(void);
 static void draw_background_color_menu(const char* label, int theme);
 static void draw_server_status(void);
+static void draw_recording_status(const char* status, ImVec4 color, float dot_radius, float dot_width);
 static void file_dialogs(void);
 static void keyboard_configuration_item(const char* text, SDL_Scancode* key);
 static void gamepad_configuration_item(const char* text, int* button);
@@ -1644,15 +1646,17 @@ static void menu_about(void)
 static void draw_server_status(void)
 {
     bool video_recording = emu_is_video_recording();
+    bool vgm_recording = emu_is_vgm_recording();
     bool mcp_running = emu_mcp_is_running();
     bool debug_monitor_running = emu_debug_monitor_is_running();
     ComLynxStatus comlynx = emu_comlynx_get_status();
     bool comlynx_active = comlynx.mode == ComLynxModeConnected;
 
-    if (!video_recording && !mcp_running && !debug_monitor_running && !comlynx_active)
+    if (!video_recording && !vgm_recording && !mcp_running && !debug_monitor_running && !comlynx_active)
         return;
 
-    const char* video_recording_status = "RECORDING";
+    const char* video_recording_status = "REC VIDEO";
+    const char* vgm_recording_status = "REC VGM";
     char comlynx_status[64];
     char mcp_status[128];
     char debug_monitor_status[64];
@@ -1698,6 +1702,12 @@ static void draw_server_status(void)
 
     if (video_recording)
         text_width += dot_width + ImGui::CalcTextSize(video_recording_status).x;
+    if (vgm_recording)
+    {
+        if (text_width > 0.0f)
+            text_width += spacing;
+        text_width += dot_width + ImGui::CalcTextSize(vgm_recording_status).x;
+    }
     if (show_comlynx_status)
     {
         if (text_width > 0.0f)
@@ -1727,36 +1737,46 @@ static void draw_server_status(void)
     ImGui::AlignTextToFramePadding();
 
     if (video_recording)
-    {
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + dot_width);
-        ImGui::TextColored(video_recording_color, "%s", video_recording_status);
+        draw_recording_status(video_recording_status, video_recording_color, dot_radius, dot_width);
 
-        ImVec2 text_min = ImGui::GetItemRectMin();
-        ImVec2 text_max = ImGui::GetItemRectMax();
-        ImVec2 dot_center = ImVec2(text_min.x - dot_width + dot_radius, (text_min.y + text_max.y) * 0.5f);
-        ImGui::GetWindowDrawList()->AddCircleFilled(dot_center, dot_radius, ImGui::GetColorU32(video_recording_color));
+    if (vgm_recording)
+    {
+        if (video_recording)
+            ImGui::SameLine(0.0f, spacing);
+        draw_recording_status(vgm_recording_status, vgm_recording_color, dot_radius, dot_width);
     }
 
     if (show_comlynx_status)
     {
-        if (video_recording)
+        if (video_recording || vgm_recording)
             ImGui::SameLine(0.0f, spacing);
         ImGui::TextColored(service_comlynx_color, "%s", comlynx_status);
     }
 
     if (show_mcp_status)
     {
-        if (video_recording || show_comlynx_status)
+        if (video_recording || vgm_recording || show_comlynx_status)
             ImGui::SameLine(0.0f, spacing);
         ImGui::TextColored(mcp_color, "%s", mcp_status);
     }
 
     if (show_debug_monitor_status)
     {
-        if (video_recording || show_comlynx_status || show_mcp_status)
+        if (video_recording || vgm_recording || show_comlynx_status || show_mcp_status)
             ImGui::SameLine(0.0f, spacing);
         ImGui::TextColored(service_debug_monitor_color, "%s", debug_monitor_status);
     }
+}
+
+static void draw_recording_status(const char* status, ImVec4 color, float dot_radius, float dot_width)
+{
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + dot_width);
+    ImGui::TextColored(color, "%s", status);
+
+    ImVec2 text_min = ImGui::GetItemRectMin();
+    ImVec2 text_max = ImGui::GetItemRectMax();
+    ImVec2 dot_center = ImVec2(text_min.x - dot_width + dot_radius, (text_min.y + text_max.y) * 0.5f);
+    ImGui::GetWindowDrawList()->AddCircleFilled(dot_center, dot_radius, ImGui::GetColorU32(color));
 }
 
 static void file_dialogs(void)
