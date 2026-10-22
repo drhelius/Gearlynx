@@ -84,6 +84,13 @@ public:
             return false;
         std::cout << jsonLine << "\n";
         std::cout.flush();
+
+        if (!std::cout.good())
+        {
+            m_closed.store(true);
+            return false;
+        }
+
         return true;
     }
 
