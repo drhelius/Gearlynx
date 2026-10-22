@@ -26,6 +26,7 @@
 #include "ogl_renderer.h"
 #include "emu.h"
 #include "application.h"
+#include "rewind.h"
 
 #define DISPLAY_IMPORT
 #include "display.h"
@@ -170,6 +171,12 @@ bool display_should_use_vsync(void)
 
 void display_use_vsync_if_enabled(void)
 {
+    if (config_emulator.ffwd && !rewind_is_active())
+    {
+        display_disable_vsync();
+        return;
+    }
+
     display_update_frame_pacing();
     display_set_swap_interval(display_should_use_vsync());
 }
