@@ -41,6 +41,7 @@ EXTERN void gui_action_save_sprite(const char* path, int index);
 EXTERN void gui_action_save_all_sprites(const char* folder_path);
 EXTERN void gui_action_save_state(const char* path);
 EXTERN void gui_action_load_state(const char* path);
+EXTERN void gui_action_load_state_slot(int slot);
 
 #undef GUI_ACTIONS_IMPORT
 #undef EXTERN
