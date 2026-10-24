@@ -24,6 +24,8 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <string>
+#include <vector>
 #include "libretro.h"
 #include "gearlynx.h"
 #include "game_drive.h"
@@ -98,6 +100,7 @@ static int link_audio = 0;
 static bool link_subsystem = false;
 static bool game_loaded = false;
 static const retro_vfs_interface* vfs_interface = NULL;
+static std::vector<std::string> libretro_cheats;
 
 static void set_controller_info(void);
 static void clear_input_state(void);
@@ -105,6 +108,8 @@ static void reset_controller_devices(void);
 static void apply_controller_device(unsigned port, unsigned device, bool log_device);
 static void update_input(void);
 static void check_variables(void);
+static void apply_cheats(void);
+static void clear_cheats(void);
 static void apply_variables(GearlynxCore* core);
 static bool load_game(const struct retro_game_info* info, unsigned count, bool subsystem);
 
@@ -629,6 +634,7 @@ void retro_unload_game(void)
     if (game_loaded && link_cable && !link_subsystem)
         link_cable->PersistentMemory(true, vfs_interface);
 
+    clear_cheats();
     SafeDelete(link_cable);
     for (unsigned i = 0; i < instance_count; i++)
     {
@@ -736,15 +742,48 @@ size_t retro_get_memory_size(unsigned id)
     return 0;
 }
 
+static void apply_cheats(void)
+{
+    for (unsigned i = 0; i < instance_count; i++)
+    {
+        instances[i].core->ClearCheats();
+
+        for (size_t j = 0; j < libretro_cheats.size(); j++)
+        {
+            if (!libretro_cheats[j].empty() && !instances[i].core->SetCheat(libretro_cheats[j].c_str()) && (i == 0))
+                log_cb(RETRO_LOG_WARN, "Invalid cheat code: %s\n", libretro_cheats[j].c_str());
+        }
+    }
+}
+
+static void clear_cheats(void)
+{
+    libretro_cheats.clear();
+
+    for (unsigned i = 0; i < instance_count; i++)
+        instances[i].core->ClearCheats();
+}
+
 void retro_cheat_reset(void)
 {
+    clear_cheats();
 }
 
 void retro_cheat_set(unsigned index, bool enabled, const char *code)
 {
-    UNUSED(index);
-    UNUSED(enabled);
-    UNUSED(code);
+    if (enabled)
+    {
+        if (index >= libretro_cheats.size())
+            libretro_cheats.resize(index + 1);
+
+        libretro_cheats[index] = code ? code : "";
+    }
+    else if (index < libretro_cheats.size())
+    {
+        libretro_cheats[index].clear();
+    }
+
+    apply_cheats();
 }
 
 static void set_controller_info(void)

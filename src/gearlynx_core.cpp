@@ -143,6 +143,7 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
             debug_enable && debug->brk_trigger_irq);
 
         bool stop = false;
+        bool frame_ready = false;
         u32 failsafe_cycle_count = 0;
 
         do
@@ -162,6 +163,9 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
                 stop = true;
             }
 
+            if (stop)
+                frame_ready = true;
+
             if (debug_enable)
             {
                 if (debug->step_debugger && !m_m6502->IsHalted())
@@ -175,6 +179,9 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
             }
         }
         while (!stop);
+
+        if (frame_ready)
+            m_memory->ApplyCheats();
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
         m_suzy->EndSpriteBoundingBoxFrame();
@@ -205,6 +212,8 @@ bool GearlynxCore::RunToVBlankTemplate(u8* frame_buffer, s16* sample_buffer,
             }
         }
         while (!stop);
+
+        m_memory->ApplyCheats();
 
 #if !defined(GLYNX_DISABLE_DISASSEMBLER)
         m_suzy->EndSpriteBoundingBoxFrame();
@@ -263,6 +272,8 @@ void GearlynxCore::RenderFrameBuffer(u8* frame_buffer)
 
 bool GearlynxCore::LoadROM(const char* file_path, bool softpatching)
 {
+    ClearCheats();
+
     if (m_media->LoadFromFile(file_path, softpatching))
     {
         m_memory->ResetDisassemblerRecords();
@@ -275,6 +286,8 @@ bool GearlynxCore::LoadROM(const char* file_path, bool softpatching)
 
 bool GearlynxCore::LoadROMFromBuffer(const u8* buffer, int size, const char* file_path)
 {
+    ClearCheats();
+
     if (m_media->LoadFromBuffer(buffer, size, file_path))
     {
         m_memory->ResetDisassemblerRecords();
@@ -328,6 +341,138 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
         runtime_info.frame_time = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
 
     return m_media->IsReady();
+}
+
+bool GearlynxCore::SetCheat(const char* cheat)
+{
+    if (!m_media->IsReady())
+        return false;
+
+    GLYNX_Cheat cheats[GLYNX_MAX_CHEATS];
+    int count = ParseCheat(cheat, cheats, GLYNX_MAX_CHEATS);
+
+    if ((count <= 0) || !m_memory->CanAddCheats(count))
+        return false;
+
+    for (int i = 0; i < count; i++)
+        m_memory->AddCheat(cheats[i]);
+
+    return true;
+}
+
+void GearlynxCore::ClearCheats()
+{
+    m_memory->ClearCheats();
+}
+
+bool GearlynxCore::IsValidCheat(const char* cheat)
+{
+    GLYNX_Cheat cheats[GLYNX_MAX_CHEATS];
+    return ParseCheat(cheat, cheats, GLYNX_MAX_CHEATS) > 0;
+}
+
+int GearlynxCore::ParseCheat(const char* cheat, GLYNX_Cheat* cheats, int max_cheats)
+{
+    if (!IsValidPointer(cheat))
+        return 0;
+
+    int count = 0;
+    const char* p = cheat;
+
+    while (*p != 0)
+    {
+        while (IsCheatSeparator(*p))
+            p++;
+
+        if (*p == 0)
+            break;
+
+        const char* code = p;
+
+        while ((*p != 0) && !IsCheatSeparator(*p))
+            p++;
+
+        int parsed = ParseCheatCode(code, (int)(p - code), cheats + count, max_cheats - count);
+
+        if (parsed <= 0)
+            return 0;
+
+        count += parsed;
+    }
+
+    return count;
+}
+
+int GearlynxCore::ParseCheatCode(const char* code, int length, GLYNX_Cheat* cheats, int max_cheats)
+{
+    u16 address = 0;
+    u8 compare = 0;
+    bool has_compare = false;
+    int pos = 4;
+
+    if ((length < 6) || !parse_hex_string(code, 4, &address))
+        return 0;
+
+    if (code[pos] == '?')
+    {
+        if ((length < 9) || !parse_hex_string(code + 5, 2, &compare))
+            return 0;
+
+        has_compare = true;
+        pos = 7;
+    }
+
+    if (code[pos] != ':')
+        return 0;
+
+    pos++;
+
+    const char* value_str = code + pos;
+    int digits = length - pos;
+    u16 value = 0;
+
+    if (digits == 3)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            if ((value_str[i] < '0') || (value_str[i] > '9'))
+                return 0;
+
+            value = (value * 10) + (value_str[i] - '0');
+        }
+
+        if (value > 0xFF)
+            return 0;
+    }
+    else if (((digits < 1) || (digits > 4)) || !parse_hex_string(value_str, digits, &value))
+        return 0;
+
+    if (digits == 4)
+    {
+        if (has_compare || (max_cheats < 2))
+            return 0;
+
+        cheats[0].address = address;
+        cheats[0].compare = -1;
+        cheats[0].value = value & 0xFF;
+        cheats[1].address = (address + 1) & 0xFFFF;
+        cheats[1].compare = -1;
+        cheats[1].value = value >> 8;
+        return 2;
+    }
+
+    if (max_cheats < 1)
+        return 0;
+
+    cheats[0].address = address;
+    cheats[0].compare = has_compare ? compare : -1;
+    cheats[0].value = value & 0xFF;
+    return 1;
+}
+
+bool GearlynxCore::IsCheatSeparator(char c)
+{
+    return (c == '+') || (c == ',') || (c == ';') || (c == ' ') || (c == '\t') || (c == '\r') || (c == '\n');
 }
 
 u64 GearlynxCore::GetTotalCycles()
@@ -716,7 +861,9 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
     if (screenshot)
     {
         GLYNX_Runtime_Info runtime_info;
-        if (!GetRuntimeInfo(runtime_info))
+        u8* frame_buffer = m_mikey->GetLcdScreen()->GetBuffer();
+
+        if (!IsValidPointer(frame_buffer) || !GetRuntimeInfo(runtime_info))
         {
             header.screenshot_size = 0;
             header.screenshot_width = 0;
@@ -730,8 +877,6 @@ bool GearlynxCore::SaveState(std::ostream& stream, size_t& size, bool screenshot
             int bytes_per_pixel = 2;
             if (m_mikey->GetLcdScreen()->GetPixelFormat() == GLYNX_PIXEL_RGBA8888)
                 bytes_per_pixel = 4;
-
-            u8* frame_buffer = m_mikey->GetLcdScreen()->GetBuffer();
 
             header.screenshot_size = header.screenshot_width * header.screenshot_height * bytes_per_pixel;
             stream.write(reinterpret_cast<const char*>(frame_buffer), header.screenshot_size);

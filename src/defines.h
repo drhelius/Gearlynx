@@ -55,6 +55,8 @@
 
 #define GLYNX_DEBUG_MSG_MAX_SIZE 80
 
+#define GLYNX_MAX_CHEATS 256
+
 #if !defined(NULL)
     #define NULL 0
 #endif

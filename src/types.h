@@ -322,4 +322,11 @@ struct GLYNX_Uart
     u32 rx_age_cycles;
 };
 
+struct GLYNX_Cheat
+{
+    u16 address;
+    s16 compare;
+    u8 value;
+};
+
 #endif /* TYPES_H */

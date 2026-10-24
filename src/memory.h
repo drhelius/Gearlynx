@@ -51,6 +51,10 @@ public:
     u8* GetRAM();
     template<bool debug = false> u8 Read(u16 address);
     template<bool debug = false> void Write(u16 address, u8 value);
+    bool CanAddCheats(int count);
+    void AddCheat(const GLYNX_Cheat& cheat);
+    void ClearCheats();
+    void ApplyCheats();
     Memory_State* GetState();
     GLYNX_Disassembler_Record* GetDisassemblerRecord(u16 address);
     GLYNX_Disassembler_Record* GetOrCreateDisassemblerRecord(u16 address);
@@ -95,6 +99,8 @@ private:
     PageReadFn m_read_fn_debug[4];
     PageWriteFn m_write_fn_debug[4];
     bool m_is_lynx2;
+    GLYNX_Cheat m_cheats[GLYNX_MAX_CHEATS];
+    int m_cheat_count;
 };
 
 #include "memory_inline.h"

@@ -83,6 +83,9 @@ public:
     bool GetSaveStateHeader(int index, const char* path, GLYNX_SaveState_Header* header);
     bool GetSaveStateScreenshot(int index, const char* path, GLYNX_SaveState_Screenshot* screenshot);
     bool GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info);
+    bool SetCheat(const char* cheat);
+    void ClearCheats();
+    static bool IsValidCheat(const char* cheat);
     Memory* GetMemory();
     Media* GetMedia();
     Audio* GetAudio();
@@ -112,6 +115,9 @@ private:
     bool LoadState(std::istream& stream);
     std::string GetSaveStatePath(const char* path, int index);
     void SynchronizeComLynx();
+    static int ParseCheat(const char* cheat, GLYNX_Cheat* cheats, int max_cheats);
+    static int ParseCheatCode(const char* code, int length, GLYNX_Cheat* cheats, int max_cheats);
+    static bool IsCheatSeparator(char c);
 
 private:
     Memory* m_memory;

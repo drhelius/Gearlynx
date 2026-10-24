@@ -454,6 +454,11 @@ CPU entries are captured before opcode fetch. Hardware events emitted while Suzy
 - `get_rewind_status` - Get rewind buffer status (snapshot count, capacity, buffered seconds, configuration)
 - `rewind_seek` - Seek to a specific rewind snapshot by number (1 = oldest, snapshot_count = newest). Non-destructive — can seek repeatedly
 
+### Cheats
+- `list_cheats` - List cheats with index, code, description, enabled, valid and active state
+- `add_cheat` - Add an enabled cheat: `AAAA:VV` or `AAAA?CC:VV` at a 16-bit RAM address (e.g. `0050:05`), join codes with `+`
+- `remove_cheat` - Remove a cheat by index
+
 ### Controller Input
 - `controller_button` - Control a button on the Lynx controller. Use action 'press' to hold, 'release' to let go, or 'press_and_release' for a quick tap. Buttons: up, down, left, right, a, b, option1, option2, pause
 - `controller_macro` - Run an ordered input macro. Supported commands are `tap`, `press`, `release`, and `wait`; timing is explicit through `wait` frame counts

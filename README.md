@@ -110,6 +110,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - Internal database for automatic ROM detection and hardware selection if `Auto` options are selected.
 - Bank switching (BANK1 + AUDIN) and EEPROM.
 - Save files (EEPROM and NVRAM).
+- Cheat support for `AAAA:VV` codes.
 - GameDrive and ElCheapoSD cartridge APIs.
 - Supported platforms (standalone): Windows, Linux, BSD and macOS.
 - Supported platforms (libretro): Windows, Linux, macOS, Raspberry Pi, Android, iOS, tvOS, webOS, PlayStation Vita, PlayStation 3, Nintendo 3DS, Nintendo GameCube, Nintendo Wii, Nintendo WiiU, Nintendo Switch, Emscripten, Classic Mini systems (NES, SNES, C64, ...), OpenDingux, RetroFW and QNX.
@@ -127,6 +128,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 - **BIOS**: Gearlynx requires a BIOS to work. It is possible to load any BIOS but the original with md5 `fcd403db69f54290b51035d82f835e7b` is recommended.
 - **Mouse Cursor**: Automatically hides when hovering over the main output window or when Main Menu is disabled.
 - **Portable Mode**: Run with `--portable`, or create an empty file named `portable.ini` in the same directory as the application binary. On macOS, place the file next to the `.app` bundle.
+- **Cheats**: Open **Emulator → Cheats...** to enter codes or import a RetroArch `.cht` file. Codes use the `AAAA:VV` format with a RAM address, for example `0050:05` writes `$05` to RAM `$0050`. Join several codes with `+`.
 
 ### Debugging Features
 - **Docking Windows**: In debug mode, you can dock windows together by pressing SHIFT and dragging a window onto another.

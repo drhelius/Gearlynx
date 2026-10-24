@@ -42,6 +42,7 @@ Memory::Memory(Media* media, Input* input, Suzy* suzy, Mikey* mikey, M6502* m650
     InitPointer(m_state.ram);
     m_state.MAPCTL = 0;
     m_is_lynx2 = true;
+    m_cheat_count = 0;
 
     for (int i = 0; i < 4; i++)
     {
@@ -134,6 +135,25 @@ GLYNX_Disassembler_Record* Memory::GetOrCreateDisassemblerRecord(u16 address)
     }
 
     return record;
+}
+
+bool Memory::CanAddCheats(int count)
+{
+    return (m_cheat_count + count) <= GLYNX_MAX_CHEATS;
+}
+
+void Memory::AddCheat(const GLYNX_Cheat& cheat)
+{
+    if (m_cheat_count >= GLYNX_MAX_CHEATS)
+        return;
+
+    m_cheats[m_cheat_count] = cheat;
+    m_cheat_count++;
+}
+
+void Memory::ClearCheats()
+{
+    m_cheat_count = 0;
 }
 
 void Memory::ResetDisassemblerRecords()

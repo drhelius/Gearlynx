@@ -220,9 +220,20 @@ Reference the Sprite/Collision hardware docs ([references/lynx6_sprite_collision
 2. Set a write breakpoint: set_breakpoint (type: write) on the address
 3. debug_continue → when it hits, get_disassembly to see the decrement code
 4. Note the instruction (e.g., DEC $0042 or STA $0042)
-5. Option A: Periodically write_memory to reset the value (simple poke cheat)
-6. Option B: Identify the decrement routine for a NOP patch
+5. Option A: add_cheat with a RAM code, rewritten every frame (e.g. 0042:09)
+6. Option B: Identify the decrement routine and add_cheat with codes that NOP it in RAM (e.g. DEC $42 at $2A10: 2A10?C6:EA+2A11?42:EA)
 ```
+
+### Cheat Codes
+
+Cheats use the `AAAA:VV` format:
+
+- `AAAA` is a 16-bit RAM address. Cheats write the 64 KB RAM directly, not through the Suzy, Mikey or ROM overlays.
+- Lynx games run from RAM, so code patches are RAM codes too. Use `AAAA?CC:VV` to write only when the current byte is `CC`, which avoids patching code that has been swapped out.
+- `VV`: 1-2 hex digits, 3 decimal digits (`231`), or 4 hex digits for a 16-bit little-endian value (`270F` writes `0F` then `27`).
+- Join several codes with `+`.
+
+Use `add_cheat`, `remove_cheat` and `list_cheats` to apply and test cheats; they appear in the emulator's Cheats window and are rewritten every frame.
 
 ### Watching Values in Real-Time
 
@@ -310,3 +321,5 @@ Use `list_memory_bookmarks`, `list_memory_watches`, `list_symbols`, `list_disass
 ## Persisting Changes
 
 Changes made via `write_memory` to ROM bank areas are applied to the emulator's in-memory copy only — they are **not** persisted to the ROM file on disk. To create a permanent patch, use command-line tools (e.g., a binary patch script) to apply the discovered modifications to the actual ROM file.
+
+Cheats added with `add_cheat` are not saved either: they are cleared when another ROM is loaded. Give the user the final `AAAA:VV` codes so they can enter them in the Cheats window or a RetroArch `.cht` file.

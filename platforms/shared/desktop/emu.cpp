@@ -868,6 +868,22 @@ void update_savestates_data(void)
 }
 
 
+bool emu_add_cheat(const char* cheat)
+{
+    if (emu_is_rom_loading())
+        return false;
+
+    return core->SetCheat(cheat);
+}
+
+void emu_clear_cheats(void)
+{
+    if (emu_is_rom_loading())
+        return;
+
+    core->ClearCheats();
+}
+
 void emu_get_runtime(GLYNX_Runtime_Info& runtime)
 {
     core->GetRuntimeInfo(runtime);

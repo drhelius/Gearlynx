@@ -215,6 +215,7 @@ static const McpToolCategory kMcpToolCategories[] =
     {"input", "Input", "Inspect, press, release, tap, or macro Atari Lynx input."},
     {"trace", "Trace", "Read trace log entries and configure CPU, IRQ, Suzy, Mikey, UART, audio, cart, and debug-message tracing."},
     {"profiler", "Profiler", "Start, stop, or reset the function profiler and read per-function call counts and cycle statistics."},
+    {"cheats", "Cheats", "List, add, and remove cheat codes in AAAA:VV RAM address format."},
     {"tools", "Other Tools", "Additional emulator/debugger tools that do not fit another category."}
 };
 
@@ -317,6 +318,11 @@ static const char* const kMcpProfilerTools[] =
     "set_profiler", "get_profiler_data"
 };
 
+static const char* const kMcpCheatTools[] =
+{
+    "list_cheats", "add_cheat", "remove_cheat"
+};
+
 static const McpToolCategoryTools kMcpToolCategoryTools[] =
 {
     {"execution", kMcpExecutionTools, MCP_ARRAY_COUNT(kMcpExecutionTools)},
@@ -336,7 +342,8 @@ static const McpToolCategoryTools kMcpToolCategoryTools[] =
     {"rewind", kMcpRewindTools, MCP_ARRAY_COUNT(kMcpRewindTools)},
     {"input", kMcpInputTools, MCP_ARRAY_COUNT(kMcpInputTools)},
     {"trace", kMcpTraceTools, MCP_ARRAY_COUNT(kMcpTraceTools)},
-    {"profiler", kMcpProfilerTools, MCP_ARRAY_COUNT(kMcpProfilerTools)}
+    {"profiler", kMcpProfilerTools, MCP_ARRAY_COUNT(kMcpProfilerTools)},
+    {"cheats", kMcpCheatTools, MCP_ARRAY_COUNT(kMcpCheatTools)}
 };
 
 const size_t kMcpSearchToolLimit = 20;

@@ -30,6 +30,19 @@ INLINE u8* Memory::GetRAM()
     return m_state.ram;
 }
 
+INLINE void Memory::ApplyCheats()
+{
+    for (int i = 0; i < m_cheat_count; i++)
+    {
+        GLYNX_Cheat* cheat = &m_cheats[i];
+
+        if ((cheat->compare >= 0) && (m_state.ram[cheat->address] != cheat->compare))
+            continue;
+
+        m_state.ram[cheat->address] = cheat->value;
+    }
+}
+
 template<bool debug>
 INLINE u8 Memory::Read(u16 address)
 {
