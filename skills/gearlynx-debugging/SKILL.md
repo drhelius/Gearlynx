@@ -46,16 +46,13 @@ Alternatively, download from [GitHub Releases](https://github.com/drhelius/Gearl
 
 ### Connecting as MCP Server
 
-Configure your AI client to run Gearlynx as an MCP server via STDIO transport. Example for Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "gearlynx": {
-      "command": "/path/to/gearlynx",
-      "args": ["--mcp-stdio"]
-    }
-  }
-}
+Configure your AI client to run Gearlynx as an MCP server via STDIO transport. For Claude Code:
+```bash
+claude mcp add --transport stdio --scope user gearlynx -- /path/to/gearlynx --mcp-stdio
+```
+For Codex:
+```bash
+codex mcp add gearlynx -- /path/to/gearlynx --mcp-stdio
 ```
 Replace `/path/to/gearlynx` with the actual binary path from the install script. Add `--headless` before `--mcp-stdio` on headless machines.
 
