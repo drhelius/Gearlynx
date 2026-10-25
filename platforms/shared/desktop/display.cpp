@@ -33,6 +33,7 @@
 #include "display.h"
 
 static const double k_display_max_rate_skew = 0.01;
+static const double k_display_min_divided_rate = 45.0;
 
 static Uint64 frame_time_start = 0;
 static Uint64 frame_time_end = 0;
@@ -183,11 +184,7 @@ bool display_should_use_vsync(void)
         return true;
 
     display_update_content_frame_rate();
-    if (!display_fixed_vsync_supported())
-        return false;
-
-    int emu_fps = (int)content_frame_rate;
-    return emu_fps >= 58 && emu_fps <= 62;
+    return display_fixed_vsync_supported();
 }
 
 void display_use_vsync_if_enabled(void)
@@ -447,7 +444,7 @@ static int display_get_swap_divider(void)
 
     int interval = (int)((monitor_refresh_rate / content_frame_rate) + 0.5);
 
-    if (interval < 2)
+    if ((interval < 2) || (monitor_refresh_rate / interval < k_display_min_divided_rate))
         return 1;
 
     if (display_is_near_content_rate(monitor_refresh_rate / interval))
