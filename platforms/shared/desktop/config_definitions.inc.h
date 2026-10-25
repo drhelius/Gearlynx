@@ -165,11 +165,20 @@ static inline void process(config_Operation operation)
     CONFIG_STRING_NOT_EMPTY("Emulator", "ScreenshotPath", config_emulator.screenshots_path, config_root_path);
     CONFIG_INT("Emulator", "VideoRecordingDirOption", config_emulator.video_recordings_dir_option, 0);
     CONFIG_STRING_NOT_EMPTY("Emulator", "VideoRecordingPath", config_emulator.video_recordings_path, config_root_path);
-    CONFIG_STRING("Emulator", "LastOpenPath", config_emulator.last_open_path, "");
     CONFIG_INT("Emulator", "WindowWidth", config_emulator.window_width, 770);
     CONFIG_INT("Emulator", "WindowHeight", config_emulator.window_height, 600);
     CONFIG_BOOL("Emulator", "ShowNotifications", config_emulator.show_notifications, true);
     CONFIG_BOOL("Emulator", "AllowScreenSaver", config_emulator.allow_screensaver, false);
+
+    // File dialogs
+    CONFIG_STRING("FileDialogs", "ROM", config_file_dialogs.rom, "");
+    CONFIG_STRING("FileDialogs", "RAM", config_file_dialogs.ram, "");
+    CONFIG_STRING("FileDialogs", "States", config_file_dialogs.states, "");
+    CONFIG_STRING("FileDialogs", "Screenshots", config_file_dialogs.screenshots, "");
+    CONFIG_STRING("FileDialogs", "Recordings", config_file_dialogs.recordings, "");
+    CONFIG_STRING("FileDialogs", "Debug", config_file_dialogs.debug, "");
+    CONFIG_STRING("FileDialogs", "BIOS", config_file_dialogs.bios, "");
+    CONFIG_STRING("FileDialogs", "Cheats", config_file_dialogs.cheats, "");
 
     // Services and hardware
     CONFIG_INT("Emulator", "MCPTCPPort", config_emulator.mcp_tcp_port, 7777);
@@ -459,6 +468,14 @@ static void migrate(int file_version)
     int scale = 0;
     if (get_setting("Video", "Scale", &stored) && parse_int_string(stored, &scale) && scale > 3)
         write_int("Video", "Scale", scale - 2);
+
+    if (file_version < 7)
+    {
+        if (get_setting("Emulator", "LastOpenPath", &stored))
+            write_string("FileDialogs", "ROM", stored);
+
+        config_ini_data["Emulator"].remove("LastOpenPath");
+    }
 }
 
 static void sync_shader_preset_parameter_defaults(void)
