@@ -141,6 +141,7 @@ bool emu_init(void)
 
     emu_audio_sync = true;
     emu_audio_rate_control = false;
+    emu_audio_ratio = 1.0f;
     emu_debug_disable_breakpoints = false;
     emu_debug_command = Debug_Command_None;
     emu_debug_pc_changed = false;
@@ -427,7 +428,7 @@ void emu_update(void)
     {
         bool sync_audio = emu_audio_sync &&
             (!emu_comlynx_is_active() || comlynx_manager->IsPacingPeer());
-        sound_queue_write(audio_buffer, sampleCount, sync_audio, emu_audio_rate_control);
+        sound_queue_write(audio_buffer, sampleCount, sync_audio, emu_audio_rate_control, emu_audio_ratio);
     }
     else if (core->IsPaused())
     {
