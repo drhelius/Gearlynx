@@ -22,6 +22,6 @@
 
 struct retro_vfs_interface;
 
-void sd_card_set_vfs_interface(const retro_vfs_interface* vfs_interface);
+void sd_card_set_vfs_interface(const retro_vfs_interface* vfs_interface, unsigned vfs_version);
 
 #endif /* SD_CARD_FILESYSTEM_LIBRETRO_H */

@@ -305,12 +305,12 @@ void retro_init(void)
     if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info) && vfs_interface_info.iface)
     {
         vfs_interface = vfs_interface_info.iface;
-        sd_card_set_vfs_interface(vfs_interface);
+        sd_card_set_vfs_interface(vfs_interface, vfs_interface_info.required_interface_version);
     }
     else
     {
         vfs_interface = NULL;
-        sd_card_set_vfs_interface(NULL);
+        sd_card_set_vfs_interface(NULL, 0);
     }
 
     clear_input_state();
@@ -325,7 +325,7 @@ void retro_deinit(void)
 {
     retro_unload_game();
     vfs_interface = NULL;
-    sd_card_set_vfs_interface(NULL);
+    sd_card_set_vfs_interface(NULL, 0);
 
     current_screen_width = 0;
     current_screen_height = 0;

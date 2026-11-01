@@ -23,6 +23,7 @@
 #include "common.h"
 
 static const retro_vfs_interface* s_vfs_interface = NULL;
+static unsigned s_vfs_version = 0;
 
 class SdCardFileSystemLibretro : public SdCardFileSystem
 {
@@ -43,12 +44,14 @@ public:
 private:
     const retro_vfs_interface* m_vfs_interface;
     retro_vfs_file_handle* m_file;
+    unsigned m_open_hints;
 };
 
 SdCardFileSystemLibretro::SdCardFileSystemLibretro()
 {
     m_vfs_interface = s_vfs_interface;
     m_file = NULL;
+    m_open_hints = (s_vfs_version >= 4) ? RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS : RETRO_VFS_FILE_ACCESS_HINT_NONE;
 }
 
 SdCardFileSystemLibretro::~SdCardFileSystemLibretro()
@@ -115,12 +118,12 @@ bool SdCardFileSystemLibretro::OpenFile(const char* path, bool& writable, u32& s
     if (m_vfs_interface->write && m_vfs_interface->flush)
     {
         unsigned mode = RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING;
-        m_file = m_vfs_interface->open(path, mode, RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS);
+        m_file = m_vfs_interface->open(path, mode, m_open_hints);
         writable = m_file != NULL;
     }
 
     if (!m_file)
-        m_file = m_vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS);
+        m_file = m_vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, m_open_hints);
 
     if (!m_file)
         return false;
@@ -220,9 +223,10 @@ bool SdCardFileSystemLibretro::ReadDirectory(const char* path, std::vector<SdCar
     return true;
 }
 
-void sd_card_set_vfs_interface(const retro_vfs_interface* vfs_interface)
+void sd_card_set_vfs_interface(const retro_vfs_interface* vfs_interface, unsigned vfs_version)
 {
     s_vfs_interface = vfs_interface;
+    s_vfs_version = vfs_interface ? vfs_version : 0;
 }
 
 SdCardFileSystem* CreateSdCardFileSystem()
