@@ -1290,7 +1290,10 @@ static void update_debug(void)
 static void update_debug_framebuffers(void)
 {
     u16 vidbas = core->GetSuzy()->GetState()->VIDBAS.value;
-    u16 dispadr = core->GetMikey()->GetState()->DISPADR.value;
+    u16 dispadr = core->GetMikey()->GetState()->DISPADR.value & 0xFFFC;
+    bool dispadr_flip = IS_SET_BIT(core->GetMikey()->GetState()->DISPCTL, 1);
+    if (dispadr_flip)
+        dispadr |= 0x0003;
     u16 collbas = core->GetSuzy()->GetState()->COLLBAS.value;
     u16 custom_addr = (u16)config_debug.frame_buffer_custom_address;
     u8* ram = core->GetMemory()->GetRAM();
@@ -1309,12 +1312,13 @@ static void update_debug_framebuffers(void)
     for (int i = 0; i < count; i++)
     {
         u16 src_vidbas = (u16)(vidbas + (i >> 1));
-        u16 src_dispadr = (u16)(dispadr + (i >> 1));
+        u16 src_dispadr = dispadr_flip ? (u16)(dispadr - (i >> 1)) : (u16)(dispadr + (i >> 1));
         u16 src_collbas = (u16)(collbas + (i >> 1));
         u16 src_custom = (u16)(custom_addr + (i >> 1));
 
         int color_idx_vidbas = i & 1 ? (ram[src_vidbas] & 0x0F) : (ram[src_vidbas] >> 4);
-        int color_idx_dispadr = i & 1 ? (ram[src_dispadr] & 0x0F) : (ram[src_dispadr] >> 4);
+        int nibble_dispadr = (i & 1) ^ (dispadr_flip ? 1 : 0);
+        int color_idx_dispadr = nibble_dispadr ? (ram[src_dispadr] & 0x0F) : (ram[src_dispadr] >> 4);
         int color_idx_collbas = i & 1 ? (ram[src_collbas] & 0x0F) : (ram[src_collbas] >> 4);
         int color_idx_custom = i & 1 ? (ram[src_custom] & 0x0F) : (ram[src_custom] >> 4);
 

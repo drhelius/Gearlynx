@@ -85,8 +85,16 @@ INLINE void LcdScreen::FinishLine()
 
 INLINE void LcdScreen::FirstDMA()
 {
-    m_state.dma_current_src_addr = m_mikey->GetState()->dispadr_latch;
+    Mikey::Mikey_State* mikey_state = m_mikey->GetState();
+
+    m_state.dma_current_src_addr = mikey_state->dispadr_latch;
+
+    // FLIP bit
+    if (IS_SET_BIT(mikey_state->DISPCTL, 1))
+        m_state.dma_current_src_addr |= 0x0003;
+
     m_state.dma_buffer_half = 0;
+
     DoDMA();
 }
 
@@ -139,16 +147,31 @@ INLINE LcdScreen::LcdScreen_State* LcdScreen::GetState()
 INLINE void LcdScreen::DoDMA()
 {
     u8* dst = &m_state.dma_buffer[m_state.dma_buffer_half];
-    bool enabled = IS_SET_BIT(m_mikey->GetState()->DISPCTL, 0);
+    u8 dispctl = m_mikey->GetState()->DISPCTL;
+    bool enabled = IS_SET_BIT(dispctl, 0);
+    bool flip = IS_SET_BIT(dispctl, 1);
 
     if (likely(enabled))
     {
         u8 src_byte;
-        for (int i = 0; i < 8; i++)
+
+        if (unlikely(flip))
         {
-            src_byte = m_ram[(m_state.dma_current_src_addr + i) & 0xFFFF];
-            dst[i * 2] = src_byte >> 4;
-            dst[i * 2 + 1] = src_byte & 0x0F;
+            for (int i = 0; i < 8; i++)
+            {
+                src_byte = m_ram[(m_state.dma_current_src_addr - i) & 0xFFFF];
+                dst[i * 2] = src_byte & 0x0F;
+                dst[i * 2 + 1] = src_byte >> 4;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                src_byte = m_ram[(m_state.dma_current_src_addr + i) & 0xFFFF];
+                dst[i * 2] = src_byte >> 4;
+                dst[i * 2 + 1] = src_byte & 0x0F;
+            }
         }
 
         m_bus->InjectSuzyStolenCycles(k_dma_burst_cycles);
@@ -158,7 +181,11 @@ INLINE void LcdScreen::DoDMA()
         memset(dst, 0, 16);
     }
 
-    m_state.dma_current_src_addr += 8;
+    if (unlikely(flip))
+        m_state.dma_current_src_addr -= 8;
+    else
+        m_state.dma_current_src_addr += 8;
+
     m_state.dma_buffer_half ^= 16;
 }
 

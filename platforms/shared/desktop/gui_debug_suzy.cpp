@@ -256,7 +256,11 @@ void gui_debug_window_frame_buffers(void)
             {
                 ImVec2 img_max = ImVec2(img_pos.x + GLYNX_SCREEN_WIDTH * scale, img_pos.y + GLYNX_SCREEN_HEIGHT * scale);
                 ImU32 overlay_col = IM_COL32(255, 255, 255, (int)(collision_overlay_alpha * 255));
-                ImGui::GetWindowDrawList()->AddImage((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[4], img_pos, img_max, ImVec2(0, 0), ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f), overlay_col);
+                bool flip = IS_SET_BIT(mikey_state->DISPCTL, 1);
+                ImVec2 uv_max = ImVec2(GLYNX_SCREEN_WIDTH / 256.0f, GLYNX_SCREEN_HEIGHT / 128.0f);
+                ImVec2 uv0 = flip ? uv_max : ImVec2(0, 0);
+                ImVec2 uv1 = flip ? ImVec2(0, 0) : uv_max;
+                ImGui::GetWindowDrawList()->AddImage((ImTextureID)(intptr_t)ogl_renderer_emu_debug_framebuffer[4], img_pos, img_max, uv0, uv1, overlay_col);
             }
 
             ImGui::PopFont();
