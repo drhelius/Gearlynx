@@ -1,5 +1,5 @@
 # Software Information
-display_name = "Atari - Lynx (GearLynx)"
+display_name = "Atari - Lynx (Gearlynx)"
 authors = "Ignacio Sanchez"
 supported_extensions = "lnx|lyx|o|bin"
 corename = "Gearlynx"
