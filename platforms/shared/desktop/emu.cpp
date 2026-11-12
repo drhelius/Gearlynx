@@ -428,7 +428,7 @@ void emu_update(void)
     {
         bool sync_audio = emu_audio_sync &&
             (!emu_comlynx_is_active() || comlynx_manager->IsPacingPeer());
-        sound_queue_write(audio_buffer, sampleCount, sync_audio, emu_audio_rate_control, emu_audio_ratio);
+        sound_queue_write(audio_buffer, sampleCount, sync_audio, emu_audio_rate_control, emu_audio_ratio, !emu_audio_sync);
     }
     else if (core->IsPaused())
     {
