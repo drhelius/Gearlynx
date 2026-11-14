@@ -1778,21 +1778,27 @@ static void gamepad_device_selector(void)
     items.reserve(4096);
     items.append("<None>");
     items.push_back('\0');
+    float text_width = ImGui::CalcTextSize("<None>").x;
 
     for (int i = 0; i < info.count; i++)
     {
         items.append(info.labels[i]);
         items.push_back('\0');
+        text_width = MAX(text_width, ImGui::CalcTextSize(info.labels[i]).x);
     }
     items.push_back('\0');
 
     int selected = (info.current_index >= 0) ? info.current_index + 1 : 0;
+
+    ImGui::PushItemWidth(text_width + (ImGui::GetStyle().FramePadding.x * 2.0f) + ImGui::GetFrameHeight());
 
     if (ImGui::Combo("##device_player", &selected, items.c_str()))
     {
         SDL_JoystickID instance_id = (selected > 0) ? info.ids[selected - 1] : 0;
         gamepad_assign(instance_id);
     }
+
+    ImGui::PopItemWidth();
 }
 
 static void draw_savestate_slot_info(int slot)
