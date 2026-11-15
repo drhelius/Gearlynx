@@ -230,7 +230,7 @@ void gui_debug_window_scb_viewer(void)
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRect(ImVec2(p.x, p.y), ImVec2(p.x + fw, p.y + fh),
-                             ImColor(cyan), 2.0f, ImDrawFlags_RoundCornersAll, 3.0f);
+                             ImColor(cyan), 2.0f, 3.0f, ImDrawFlags_StrokeCenterBiased);
         }
     }
 
@@ -379,7 +379,7 @@ void gui_debug_window_scb_viewer(void)
                     ImVec2(0, 0), ImVec2(tex_u, tex_v));
 
                 dl->AddRect(origin, ImVec2(origin.x + scr_w, origin.y + scr_h),
-                    ImColor(orange), 0.0f, 0, 1.0f);
+                    ImColor(orange), 0.0f, 1.0f);
 
                 if (!entry.skipped && w > 0 && h > 0)
                 {
@@ -400,7 +400,7 @@ void gui_debug_window_scb_viewer(void)
                         dl->AddRect(
                             ImVec2(origin.x + x0, origin.y + y0),
                             ImVec2(origin.x + x1, origin.y + y1),
-                            ImColor(pulse_color), 0.0f, 0, 2.0f);
+                            ImColor(pulse_color), 0.0f, 2.0f, ImDrawFlags_StrokeCenterBiased);
                     }
                 }
 

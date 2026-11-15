@@ -818,7 +818,7 @@ static void draw_sprite_bounding_boxes(const ImVec2& image_pos, const ImVec2& im
 
         ImVec2 rect_min(image_pos.x + x0 * scale_x, image_pos.y + y0 * scale_y);
         ImVec2 rect_max(image_pos.x + x1 * scale_x, image_pos.y + y1 * scale_y);
-        draw_list->AddRect(rect_min, rect_max, color, 0.0f, 0, 1.0f);
+        draw_list->AddRect(rect_min, rect_max, color, 0.0f, 1.0f);
     }
 }
 #endif
