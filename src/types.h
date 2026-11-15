@@ -52,6 +52,8 @@ struct GLYNX_Runtime_Info
     int screen_width;
     int screen_height;
     float frame_time;
+    int rotation;
+    int active_region[4];
 };
 
 enum GLYNX_Console_Type

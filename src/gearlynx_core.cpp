@@ -340,6 +340,42 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
     else
         runtime_info.frame_time = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
 
+    int visible_lines = (int)mikey_state->timers[2].backup - 2;
+    if (visible_lines < 1 || visible_lines > GLYNX_SCREEN_HEIGHT)
+        visible_lines = GLYNX_SCREEN_HEIGHT;
+
+    switch (rotation)
+    {
+        case GLYNX_ROTATION_LEFT:
+            runtime_info.rotation = 1;
+            runtime_info.active_region[0] = 0;
+            runtime_info.active_region[1] = 0;
+            runtime_info.active_region[2] = visible_lines;
+            runtime_info.active_region[3] = GLYNX_SCREEN_WIDTH;
+            break;
+        case GLYNX_ROTATION_180:
+            runtime_info.rotation = 2;
+            runtime_info.active_region[0] = 0;
+            runtime_info.active_region[1] = GLYNX_SCREEN_HEIGHT - visible_lines;
+            runtime_info.active_region[2] = GLYNX_SCREEN_WIDTH;
+            runtime_info.active_region[3] = visible_lines;
+            break;
+        case GLYNX_ROTATION_RIGHT:
+            runtime_info.rotation = 3;
+            runtime_info.active_region[0] = GLYNX_SCREEN_HEIGHT - visible_lines;
+            runtime_info.active_region[1] = 0;
+            runtime_info.active_region[2] = visible_lines;
+            runtime_info.active_region[3] = GLYNX_SCREEN_WIDTH;
+            break;
+        default:
+            runtime_info.rotation = 0;
+            runtime_info.active_region[0] = 0;
+            runtime_info.active_region[1] = 0;
+            runtime_info.active_region[2] = GLYNX_SCREEN_WIDTH;
+            runtime_info.active_region[3] = visible_lines;
+            break;
+    }
+
     return m_media->IsReady();
 }
 
