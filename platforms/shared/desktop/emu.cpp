@@ -2450,6 +2450,12 @@ void emu_render_current_frame(void)
         return;
     }
 
+    if (!core->GetMikey()->IsPoweredOn())
+    {
+        lcd_screen->RenderNoPowerScreen(emu_frame_buffer);
+        return;
+    }
+
     lcd_screen->SetBuffer(emu_frame_buffer);
     lcd_screen->EndFrame(core->GetMedia()->GetRotation());
 

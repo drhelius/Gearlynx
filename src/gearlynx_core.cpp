@@ -315,7 +315,8 @@ void GearlynxCore::UnloadBios()
 
 bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
 {
-    GLYNX_Rotation rotation = m_media->GetRotation();
+    bool status_screen = !m_media->IsBiosLoaded() || !m_mikey->IsPoweredOn();
+    GLYNX_Rotation rotation = status_screen ? GLYNX_ROTATION_DISABLED : m_media->GetRotation();
 
     if (rotation == GLYNX_ROTATION_LEFT || rotation == GLYNX_ROTATION_RIGHT)
     {
@@ -341,7 +342,7 @@ bool GearlynxCore::GetRuntimeInfo(GLYNX_Runtime_Info& runtime_info)
         runtime_info.frame_time = ((t0_backup + 1.0f) * tick_T0_us * (t2_backup + 1.0f)) / 1000.0f;
 
     int visible_lines = (int)mikey_state->timers[2].backup - 2;
-    if (visible_lines < 1 || visible_lines > GLYNX_SCREEN_HEIGHT)
+    if (status_screen || visible_lines < 1 || visible_lines > GLYNX_SCREEN_HEIGHT)
         visible_lines = GLYNX_SCREEN_HEIGHT;
 
     switch (rotation)
