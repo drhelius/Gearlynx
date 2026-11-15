@@ -147,6 +147,7 @@ bool emu_init(void)
     emu_debug_pc_changed = false;
     emu_debug_step_frames_pending = 0;
     emu_frame_counter = 0;
+    emu_video_frame_counter = 0;
     for (int i = 0; i < 8; i++)
         emu_debug_irq_breakpoints[i] = false;
 
@@ -305,6 +306,7 @@ void emu_update(void)
             if (!rewind_pop())
                 break;
 
+            emu_video_frame_counter++;
             rewound = true;
         }
 
@@ -405,7 +407,10 @@ void emu_update(void)
     if (frame_executed)
     {
         if (frame_completed)
+        {
             emu_frame_counter++;
+            emu_video_frame_counter++;
+        }
         rewind_push();
         if (video_recorder_is_recording())
         {
