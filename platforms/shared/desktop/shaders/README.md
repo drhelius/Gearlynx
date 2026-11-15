@@ -1,6 +1,6 @@
 # Gearlynx Shaders
 
-Gearlynx desktop shader presets use `.gshader` files. A preset is an INI-style file that describes one or more GLSL fragment shader passes. Presets placed in this `shaders` directory are discovered once when the desktop app starts and appear in the `Video > Shader` menu after `Pixel Perfect`.
+Gearlynx desktop shader presets use `.gshader` files. A preset is an INI-style file that describes one or more GLSL fragment shader passes. Presets placed in this `shaders` directory, up to 64, are discovered once when the desktop app starts and appear in the `Video > Shader` menu after `Pixel Perfect`. Shader presets are not applied while the debugger is enabled.
 
 GLSL files are normal fragment shaders. Gearlynx supplies a fullscreen vertex shader and prepends the correct GLSL version, so shader files should not include a `#version` line.
 
@@ -8,18 +8,18 @@ GLSL files are normal fragment shaders. Gearlynx supplies a fullscreen vertex sh
 
 ```ini
 [Preset]
-Name=Scanlines Bilinear
+Name=Grid + Bilinear
 Passes=1
 
 [Pass0]
-Path=scanlines.glsl
+Path=grid.glsl
 ScaleType=Viewport
 Filter=Linear
 
 [Parameters]
-ScanlineIntensity=0.10
+GridIntensity=0.10
 
-[Parameter.ScanlineIntensity]
+[Parameter.GridIntensity]
 Label=Intensity
 Min=0.0
 Max=1.0
@@ -30,7 +30,7 @@ Step=0.01
 
 `[Preset]`
 
-- `Name`: display name shown in the menu. If omitted, the filename is used.
+- `Name`: display name shown in the menu. If omitted, the filename without its extension is used.
 - `Group`: optional submenu name. Presets with the same group are listed together in that submenu.
 - `Passes`: number of passes, from 1 to 32.
 - `Variants`: optional number of `[VariantN]` sections, up to 16.
@@ -43,10 +43,10 @@ Step=0.01
 - `Filter`: `Nearest` by default. Use `Linear` or `Bilinear` for bilinear sampling on that pass input/output texture.
 - `Feedback`: `true` when the pass needs the previous frame through `PassFeedback0`.
 - `History`: `true` when the pass needs previous inputs to the same pass through `SourceHistory0` through `SourceHistory7`.
-- `ScaleType`: sets both axes. Values are:
+- `ScaleType`: sets both axes. Defaults to `Viewport`. Values are:
   - `Source` (or `Original`): relative to the original emulator frame, at native core resolution.
   - `Previous`: relative to the previous pass output. This is RetroArch's `source` scale type.
-  - `Viewport`: relative to the final display viewport.
+  - `Viewport` (or `FinalViewport`): relative to the final display viewport.
   - `Absolute`: fixed size from `AbsoluteWidth` and `AbsoluteHeight`.
 - `ScaleTypeX`, `ScaleTypeY`: optional per-axis scale type overrides.
 - `Scale`: output scale for both axes. Defaults to `1.0`.
@@ -76,9 +76,14 @@ Max=1.0
 Step=0.01
 ```
 
-A parameter with `Min=0.0`, `Max=1.0`, and `Step=1.0` is displayed as a checkbox. Other parameters with `Step=1.0` or higher are displayed as integer sliders.
+`Label` defaults to the parameter name. `Min`, `Max` and `Step` default to `0.0`, `1.0` and `0.01`, and the `[Parameters]`
+value is clamped to the `Min` to `Max` range.
 
-Optional `Group` puts the parameter in a collapsible section of the Shader Parameters window:
+A parameter with `Min=0.0`, `Max=1.0` and a `Step` of `1.0` or higher is displayed as a checkbox. Other parameters with
+a `Step` of `1.0` or higher are displayed as integer sliders.
+
+Optional `Group` puts the parameter in a collapsible section of the Shader Parameters window, which opens from
+`Video > Shader > Parameters...`:
 
 ```ini
 [Parameter.Amount]
@@ -129,16 +134,42 @@ Available size uniforms are `vec4(width, height, 1.0 / width, 1.0 / height)`:
 - `FinalViewportSize`: final display viewport size.
 - `PassFeedback0Size`: feedback texture size.
 - `SourceHistorySize`: source history texture size.
-- `PassOutputSizeN`: previous pass output texture sizes.
+- `PassOutputSizeN` (or `PassOutputNSize`): previous pass output texture sizes.
 - `<Alias>Size`: output size of the pass with that `Alias`.
 
 Other uniforms:
 
-- `FrameCount`: increments once per rendered preset frame.
-- `FrameDirection`: currently `1`.
+- `FrameCount`: increments once per new emulated frame. It starts at `0` when a preset is loaded.
+- `FrameDirection`: `1` normally, `-1` while rewinding.
 - `SourceHistoryCount`: number of valid source history textures, from `0` to `8`.
-- `OriginalAspect`: intended emulator image aspect ratio.
+- `OriginalAspect`: aspect ratio of `Original`, `160 / 102` (`1.569`), or `102 / 160` (`0.6375`) when the image is
+  rotated a quarter turn. It does not follow `Video > Aspect Ratio`.
+- `FramebufferScale`: display pixel density, as the rounded ratio between framebuffer pixels and window points, at
+  least `1.0`. Use it to keep masks and grids at a fixed physical size on high-density displays.
 - `BackgroundColor`: configured normal desktop background color as `vec4(r, g, b, 1)`.
+
+Lynx video uniforms, updated every frame:
+
+- `float OriginalFPS`: refresh rate in Hz that the running game has programmed into the Mikey timers (timer 0 for the
+  line time, timer 2 for the number of lines), about `59.9` with the standard timer setup. It is `60.0` while the
+  timers are not programmed yet.
+- `int Rotation`: number of 90 degree counter-clockwise turns already applied to `Original`. It is `0` when the image
+  is not rotated, `1` for `Rotate LEFT`, `2` for `Rotate 180` and `3` for `Rotate RIGHT`, whether the rotation comes
+  from the ROM header (`Auto`) or from `Video > Rotation`. `OriginalSize` is `102 x 160` for `1` and `3`, and
+  `160 x 102` otherwise. The screen flip that a game can request for left-handed play is not part of `Rotation`.
+  The LCD subpixel shaders (`lcd3x` and `lcd_grid_v2`) use it to keep the red, green and blue subpixels along the
+  axis that is horizontal on the physical LCD: they swap the subpixel axis for `1` and `3`, and reverse the RGB order
+  for `1` and `2`. Shaders that do not care about the screen orientation can ignore it.
+- `vec4 ActiveRegion`: picture area inside `Original` as `vec4(x, y, width, height)` in texels, already rotated like
+  `Original`. A game can shorten the frame by programming fewer than 104 lines in Mikey timer 2: only the first `n`
+  lines are drawn, with `n` the timer 2 backup value minus 2, and the lines below them are blank LCD rows that the core
+  clears to black. `ActiveRegion` leaves those rows out. With `Rotation` `0` it is `vec4(0, 0, 160, n)`, with `1`
+  `vec4(0, 0, n, 160)`, with `2` `vec4(0, 102 - n, 160, n)` and with `3` `vec4(102 - n, 0, n, 160)`. When all `102`
+  lines are drawn, which is the normal case, it is the whole frame.
+
+`FrameCount`, `SourceHistory`, `PassFeedback0` and `<Alias>Feedback` only advance when the emulator produces a new
+frame, or when rewinding steps back one. Redraws while paused, after a window resize or after a parameter change
+render the same frame again with the same state.
 
 Any parameter declared in `[Parameters]` is also available as a `float` uniform.
 
@@ -160,11 +191,11 @@ void main()
 
 ```ini
 [Preset]
-Name=Ghosting
+Name=Feedback Blend
 Passes=1
 
 [Pass0]
-Path=ghosting.glsl
+Path=feedback_blend.glsl
 ScaleType=Viewport
 Filter=Nearest
 Feedback=true
@@ -173,7 +204,7 @@ Feedback=true
 FeedbackAmount=0.5
 ```
 
-A feedback shader can sample the previous final frame:
+A feedback shader can sample the previous final frame. Save this one as `feedback_blend.glsl` next to the preset:
 
 ```glsl
 in vec2 vTexCoord;
