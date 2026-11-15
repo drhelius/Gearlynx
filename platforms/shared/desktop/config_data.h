@@ -316,6 +316,7 @@ struct config_Debug
     bool pause_on_brk;
     int pause_on_brk_value;
     bool pause_on_brk_trigger_irq;
+    int font_type;
     int font_size;
     int scale;
     bool multi_viewport;
