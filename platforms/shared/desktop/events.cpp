@@ -73,19 +73,19 @@ void events_shortcuts(const SDL_Event* event)
     int key = event->key.scancode;
     SDL_Keymod mods = event->key.mod;
 
-    if (event->key.repeat == 0 && key == SDL_SCANCODE_A && (mods & SDL_KMOD_CTRL))
+    if (event->key.repeat == 0 && key == SDL_SCANCODE_A && (mods & CONFIG_PRIMARY_KMOD))
     {
         gui_shortcut(gui_ShortcutDebugSelectAll);
         return;
     }
 
-    if (event->key.repeat == 0 && key == SDL_SCANCODE_C && (mods & SDL_KMOD_CTRL))
+    if (event->key.repeat == 0 && key == SDL_SCANCODE_C && (mods & CONFIG_PRIMARY_KMOD))
     {
         gui_shortcut(gui_ShortcutDebugCopy);
         return;
     }
 
-    if (event->key.repeat == 0 && key == SDL_SCANCODE_V && (mods & SDL_KMOD_CTRL))
+    if (event->key.repeat == 0 && key == SDL_SCANCODE_V && (mods & CONFIG_PRIMARY_KMOD))
     {
         gui_shortcut(gui_ShortcutDebugPaste);
         return;
@@ -249,7 +249,7 @@ void events_emu(const SDL_Event* event)
             if (event->key.repeat != 0)
                 break;
 
-            if (event->key.mod & SDL_KMOD_CTRL)
+            if (event->key.mod & (SDL_KMOD_CTRL | SDL_KMOD_GUI))
                 break;
             if (event->key.mod & SDL_KMOD_SHIFT)
                 break;
@@ -335,7 +335,7 @@ static void sync_directional_input(void)
 {
     int keyboard_state_count = 0;
     const bool* keyboard_state = SDL_GetKeyboardState(&keyboard_state_count);
-    bool keyboard = (SDL_GetModState() & (SDL_KMOD_CTRL | SDL_KMOD_SHIFT)) == 0;
+    bool keyboard = (SDL_GetModState() & (SDL_KMOD_CTRL | SDL_KMOD_SHIFT | SDL_KMOD_GUI)) == 0;
 
     bool up = keyboard && keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_up);
     bool down = keyboard && keyboard_pressed(keyboard_state, keyboard_state_count, config_input.key_down);
