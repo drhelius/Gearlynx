@@ -1157,11 +1157,21 @@ void Mikey::LogDebugMessageEvent(u16 address, u8 value)
             }
             break;
         case MIKEY_DBGSTRL:
-            m_state.debug_str_addr.low = value;
-            break;
         case MIKEY_DBGSTRH:
         {
-            m_state.debug_str_addr.high = value;
+            if (address == MIKEY_DBGSTRL)
+            {
+                m_state.debug_str_addr.low = value;
+                m_state.debug_str_written |= 0x01;
+            }
+            else
+            {
+                m_state.debug_str_addr.high = value;
+                m_state.debug_str_written |= 0x02;
+            }
+            if (m_state.debug_str_written != 0x03)
+                break;
+            m_state.debug_str_written = 0;
             u16 string_address = m_state.debug_str_addr.value;
             int max_copy = (GLYNX_DEBUG_MSG_MAX_SIZE - 1) - m_state.debug_msg_pos;
             for (int i = 0; i < max_copy; i++)

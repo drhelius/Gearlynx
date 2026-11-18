@@ -78,6 +78,7 @@ public:
         char debug_msg_buffer[GLYNX_DEBUG_MSG_MAX_SIZE];
         int debug_msg_pos;
         u16_union debug_str_addr;
+        u8 debug_str_written;
     };
 
 public:

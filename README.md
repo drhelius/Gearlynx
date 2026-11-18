@@ -144,7 +144,7 @@ Don't hesitate to report bugs or ask for new features by [opening an issue](http
 | `$FDC1` | Append byte as ASCII character |
 | `$FDC2` | Append byte as two hex digits |
 | `$FDC3` | Set string pointer low byte |
-| `$FDC4` | Set string pointer high byte (writing this triggers the copy) |
+| `$FDC4` | Set string pointer high byte (once both bytes are written, in any order, the string is copied) |
 
 ### Command Line Usage
 ```
