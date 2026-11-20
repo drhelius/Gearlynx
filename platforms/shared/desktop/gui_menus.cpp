@@ -191,16 +191,21 @@ static void menu_gearlynx(void)
 
         bool comlynx_active = emu_comlynx_is_active();
 
-        if (ImGui::MenuItem("Fast Forward", config_hotkeys[config_HotkeyIndex_FFWD].str, &config_emulator.ffwd, media_actions_enabled && !comlynx_active))
+        if (ImGui::BeginMenu("Fast Forward", !comlynx_active))
         {
-            gui_action_ffwd();
-        }
+            if (ImGui::MenuItem("Enabled", config_hotkeys[config_HotkeyIndex_FFWD].str, &config_emulator.ffwd, media_actions_enabled))
+            {
+                gui_action_ffwd();
+            }
 
-        if (ImGui::BeginMenu("Fast Forward Speed", !comlynx_active))
-        {
-            ImGui::PushItemWidth(100.0f);
-            ImGui::Combo("##fwd", &config_emulator.ffwd_speed, "X 1.5\0X 2\0X 2.5\0X 3\0Unlimited\0\0");
-            ImGui::PopItemWidth();
+            if (ImGui::BeginMenu("Speed"))
+            {
+                ImGui::PushItemWidth(100.0f);
+                ImGui::Combo("##fwd", &config_emulator.ffwd_speed, "X 1.5\0X 2\0X 2.5\0X 3\0Unlimited\0\0");
+                ImGui::PopItemWidth();
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
 
@@ -397,91 +402,6 @@ static void menu_emulator(void)
     {
         gui_in_use = true;
 
-        if (ImGui::BeginMenu("Console Type"))
-        {
-            ImGui::PushItemWidth(100.0f);
-            if (ImGui::Combo("##console_type", &config_emulator.console_type, "Auto\0Lynx I\0Lynx II\0\0"))
-            {
-                emu_force_console_type(config_emulator.console_type);
-            }
-            ImGui::PopItemWidth();
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("EEPROM"))
-        {
-            ImGui::PushItemWidth(180.0f);
-            if (ImGui::Combo("##eeprom", &config_emulator.eeprom,
-                "Auto\0None\093C46 - 128 B - 16-bit\093C46 - 128 B - 8-bit\0"
-                "93C56 - 256 B - 16-bit\093C56 - 256 B - 8-bit\0"
-                "93C66 - 512 B - 16-bit\093C66 - 512 B - 8-bit\0"
-                "93C76 - 1 KB - 16-bit\093C76 - 1 KB - 8-bit\0"
-                "93C86 - 2 KB - 16-bit\093C86 - 2 KB - 8-bit\0\0"))
-            {
-                emu_force_eeprom(config_emulator.eeprom);
-            }
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("It is recommended to leave this option on Auto.");
-                ImGui::Text("Reload the game to apply changes.");
-                ImGui::EndTooltip();
-            }
-            ImGui::PopItemWidth();
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Cartridge Hardware"))
-        {
-            ImGui::PushItemWidth(130.0f);
-            if (ImGui::Combo("##cartridge_hardware", &config_emulator.cartridge_hardware,
-                "Auto\0Standard\0GameDrive\0ElCheapoSD\0\0"))
-            {
-                emu_force_cartridge_hardware(config_emulator.cartridge_hardware);
-            }
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                ImGui::Text("It is recommended to leave this option on Auto.");
-                ImGui::Text("Reload the game to apply changes.");
-                ImGui::EndTooltip();
-            }
-            ImGui::PopItemWidth();
-            ImGui::EndMenu();
-        }
-
-        ImGui::Separator();
-
-        if (ImGui::BeginMenu("BIOS"))
-        {
-            if (ImGui::MenuItem("Load BIOS..."))
-            {
-                open_bios = true;
-            }
-            ImGui::PushItemWidth(350);
-            if (ImGui::InputText("##bios_path", gui_bios_path, IM_ARRAYSIZE(gui_bios_path), ImGuiInputTextFlags_AutoSelectAll))
-            {
-                config_emulator.bios_path.assign(gui_bios_path);
-                gui_load_bios(gui_bios_path);
-            }
-            ImGui::PopItemWidth();
-
-            ImGui::Separator();
-            if (emu_get_core()->GetMedia()->IsBiosValid())
-            {
-                ImGui::TextColored(service_mcp_http_color, "Valid BIOS");
-            }
-            else
-            {
-                ImGui::TextColored(red, "BIOS not loaded or invalid!");
-                ImGui::TextColored(red, "lynxboot.img recommended for most games.");
-            }
-
-            ImGui::EndMenu();
-        }
-
-        ImGui::Separator();
-
         if (ImGui::BeginMenu("Directories"))
         {
             if (ImGui::BeginMenu("Save States"))
@@ -645,8 +565,105 @@ static void menu_emulator(void)
 
         ImGui::Separator();
 
+        if (ImGui::BeginMenu("Console Type"))
+        {
+            ImGui::PushItemWidth(100.0f);
+            if (ImGui::Combo("##console_type", &config_emulator.console_type, "Auto\0Lynx I\0Lynx II\0\0"))
+            {
+                emu_force_console_type(config_emulator.console_type);
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("EEPROM"))
+        {
+            ImGui::PushItemWidth(180.0f);
+            if (ImGui::Combo("##eeprom", &config_emulator.eeprom,
+                "Auto\0None\093C46 - 128 B - 16-bit\093C46 - 128 B - 8-bit\0"
+                "93C56 - 256 B - 16-bit\093C56 - 256 B - 8-bit\0"
+                "93C66 - 512 B - 16-bit\093C66 - 512 B - 8-bit\0"
+                "93C76 - 1 KB - 16-bit\093C76 - 1 KB - 8-bit\0"
+                "93C86 - 2 KB - 16-bit\093C86 - 2 KB - 8-bit\0\0"))
+            {
+                emu_force_eeprom(config_emulator.eeprom);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("It is recommended to leave this option on Auto.");
+                ImGui::Text("Reload the game to apply changes.");
+                ImGui::EndTooltip();
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Cartridge Hardware"))
+        {
+            ImGui::PushItemWidth(130.0f);
+            if (ImGui::Combo("##cartridge_hardware", &config_emulator.cartridge_hardware,
+                "Auto\0Standard\0GameDrive\0ElCheapoSD\0\0"))
+            {
+                emu_force_cartridge_hardware(config_emulator.cartridge_hardware);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::Text("It is recommended to leave this option on Auto.");
+                ImGui::Text("Reload the game to apply changes.");
+                ImGui::EndTooltip();
+            }
+            ImGui::PopItemWidth();
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("BIOS"))
+        {
+            if (ImGui::MenuItem("Load BIOS..."))
+            {
+                open_bios = true;
+            }
+            ImGui::PushItemWidth(350);
+            if (ImGui::InputText("##bios_path", gui_bios_path, IM_ARRAYSIZE(gui_bios_path), ImGuiInputTextFlags_AutoSelectAll))
+            {
+                config_emulator.bios_path.assign(gui_bios_path);
+                gui_load_bios(gui_bios_path);
+            }
+            ImGui::PopItemWidth();
+
+            ImGui::Separator();
+            if (emu_get_core()->GetMedia()->IsBiosValid())
+            {
+                ImGui::TextColored(service_mcp_http_color, "Valid BIOS");
+            }
+            else
+            {
+                ImGui::TextColored(red, "BIOS not loaded or invalid!");
+                ImGui::TextColored(red, "lynxboot.img recommended for most games.");
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
         if (ImGui::MenuItem("Cheats...", "", false, !emu_is_empty()))
             gui_cheats_show();
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Start Paused", "", &config_emulator.start_paused);
+        ImGui::MenuItem("Pause When Inactive", "", &config_emulator.pause_when_inactive);
+        if (ImGui::MenuItem("Allow Screen Saver", "", &config_emulator.allow_screensaver))
+        {
+            if (config_emulator.allow_screensaver)
+                SDL_EnableScreenSaver();
+            else
+                SDL_DisableScreenSaver();
+        }
 
         ImGui::Separator();
 
@@ -664,18 +681,6 @@ static void menu_emulator(void)
             }
 
             ImGui::EndMenu();
-        }
-
-        ImGui::Separator();
-
-        ImGui::MenuItem("Start Paused", "", &config_emulator.start_paused);
-        ImGui::MenuItem("Pause When Inactive", "", &config_emulator.pause_when_inactive);
-        if (ImGui::MenuItem("Allow Screen Saver", "", &config_emulator.allow_screensaver))
-        {
-            if (config_emulator.allow_screensaver)
-                SDL_EnableScreenSaver();
-            else
-                SDL_DisableScreenSaver();
         }
 
         ImGui::Separator();
@@ -722,20 +727,6 @@ static void menu_emulator(void)
             gui_popup_modal_hotkey();
 
             ImGui::EndMenu();
-        }
-
-        ImGui::Separator();
-
-        ImGui::MenuItem("Legacy Sprite Renderer", "", &config_emulator.fast_sprite_rendering);
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::BeginTooltip();
-            ImGui::Text("NOT RECOMMENDED");
-            ImGui::Text("RESET REQUIRED");
-            ImGui::NewLine();
-            ImGui::Text("Use a simpler Suzy sprite renderer.");
-            ImGui::Text("It is faster but it is less accurate.");
-            ImGui::EndTooltip();
         }
 
         ImGui::Separator();
@@ -834,8 +825,6 @@ static void menu_video(void)
 
         ImGui::Separator();
 
-        ImGui::MenuItem("Show FPS", "", &config_video.fps);
-
         if (ImGui::BeginMenu("Vertical Sync"))
         {
 #if defined(_WIN32)
@@ -871,9 +860,25 @@ static void menu_video(void)
             ImGui::EndMenu();
         }
 
+        ImGui::MenuItem("Show FPS", "", &config_video.fps);
+
         ImGui::Separator();
 
         gui_shader_menu();
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Legacy Sprite Renderer", "", &config_emulator.fast_sprite_rendering);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("NOT RECOMMENDED");
+            ImGui::Text("RESET REQUIRED");
+            ImGui::NewLine();
+            ImGui::Text("Use a simpler Suzy sprite renderer.");
+            ImGui::Text("It is faster but it is less accurate.");
+            ImGui::EndTooltip();
+        }
 
         ImGui::Separator();
 
@@ -1084,7 +1089,7 @@ static void menu_audio(void)
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("Low-pass Filter", config_audio.enable))
+        if (ImGui::BeginMenu("Low Pass Filter", config_audio.enable))
         {
             ImGui::PushItemWidth(200.0f);
             if (SliderIntWithSteps("##psg_filter", &config_audio.lowpass_cutoff, 100, 5000, 10, "Cutoff = %d Hz"))
@@ -1235,13 +1240,18 @@ static void menu_debug(void)
 
         ImGui::Separator();
 
-        ImGui::MenuItem("Show Output Screen", "", &config_debug.show_screen, config_debug.debug);
-
-        if (ImGui::BeginMenu("Output Scale", config_debug.debug))
+        if (ImGui::BeginMenu("Debug Output Screen", config_debug.debug))
         {
-            ImGui::PushItemWidth(200.0f);
-            ImGui::SliderInt("##debug_scale", &config_debug.scale, 1, 20);
-            ImGui::PopItemWidth();
+            ImGui::MenuItem("Show Output Screen", "", &config_debug.show_screen, config_debug.debug);
+
+            if (ImGui::BeginMenu("Scale", config_debug.debug))
+            {
+                ImGui::PushItemWidth(200.0f);
+                ImGui::SliderInt("##debug_scale", &config_debug.scale, 1, 20);
+                ImGui::PopItemWidth();
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
 
@@ -1249,6 +1259,17 @@ static void menu_debug(void)
 
         ImGui::MenuItem("Show Disassembler", "", &config_debug.show_disassembler, config_debug.debug);
         ImGui::MenuItem("Show Memory Editor", "", &config_debug.show_memory, config_debug.debug);
+        ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
+
+        if (ImGui::MenuItem("Debug Output", "", &config_debug.debug_output_enabled))
+            emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Enable debug output registers ($FDC0-$FDC4).");
+            ImGui::Text("Games can send text to the Trace Logger.");
+            ImGui::EndTooltip();
+        }
 
         ImGui::Separator();
 
@@ -1330,20 +1351,6 @@ static void menu_debug(void)
 
         ImGui::MenuItem("Show EEPROM", "", &config_debug.show_eeprom, config_debug.debug);
         ImGui::MenuItem("Show Cartridge", "", &config_debug.show_cart, config_debug.debug);
-
-        ImGui::Separator();
-
-        ImGui::MenuItem("Show Trace Logger", "", &config_debug.show_trace_logger, config_debug.debug);
-
-        if (ImGui::MenuItem("Debug Output", "", &config_debug.debug_output_enabled))
-            emu_set_debug_output(config_debug.debug && config_debug.debug_output_enabled);
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::BeginTooltip();
-            ImGui::Text("Enable debug output registers ($FDC0-$FDC4).");
-            ImGui::Text("Games can send text to the Trace Logger.");
-            ImGui::EndTooltip();
-        }
 
         ImGui::Separator();
 
