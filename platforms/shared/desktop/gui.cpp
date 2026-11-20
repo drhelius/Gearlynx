@@ -219,7 +219,7 @@ void gui_shortcut(gui_ShortCutEvent event)
         config_audio.enable = !config_audio.enable;
         emu_audio_mute(!config_audio.enable);
         gui_notify(gui_NotificationInfo, config_audio.enable ? ICON_MD_VOLUME_UP : ICON_MD_VOLUME_OFF,
-            config_audio.enable ? "Audio unmuted" : "Audio muted", NULL, "mute", 1500);
+            config_audio.enable ? "Audio unmuted" : "Audio muted", NULL, "mute", gui_NotificationDurationShort);
         break;
     case gui_ShortcutSaveState:
         gui_action_save_state(NULL);
@@ -880,7 +880,7 @@ static void select_save_slot(int slot)
 
     char message[32];
     snprintf(message, sizeof(message), "Save slot %d selected", slot + 1);
-    gui_notify(gui_NotificationInfo, ICON_MD_SAVE, message, NULL, "slot", 1500);
+    gui_notify(gui_NotificationInfo, ICON_MD_SAVE, message, NULL, "slot", gui_NotificationDurationShort);
 }
 
 static void load_pending_state(void)
