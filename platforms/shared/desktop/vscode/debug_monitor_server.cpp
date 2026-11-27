@@ -875,7 +875,7 @@ json DebugMonitorServer::HandleStepFrame()
 
 json DebugMonitorServer::HandleReset()
 {
-    m_debug_adapter->Reset();
+    m_debug_adapter->Reset(json());
     return {{"ok", true}};
 }
 

@@ -95,7 +95,7 @@ void gui_action_reset(void)
     emu_set_fast_sprite_rendering(config_emulator.fast_sprite_rendering);
     emu_reset();
 
-    if (config_emulator.start_paused)
+    if (config_emulator.start_paused && !config_debug.debug)
     {
         emu_pause();
 

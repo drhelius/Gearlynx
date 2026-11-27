@@ -88,6 +88,10 @@ A save state can be loaded at launch too, with `--load-state 1` for slot 1 or `-
 
 While the MCP server is running, the emulator keeps running when its window loses focus, even with **Pause When Inactive** enabled in the **Emulator** menu. The setting keeps its value and applies again once the server stops.
 
+### Start Paused
+
+`--mcp-stdio` and `--mcp-http` turn the debugger on. Loads and resets then follow **Start Paused** in the **Emulator** menu, as outside the debugger: with it off (the default) the game runs, with it on the debugger stops before the first instruction. `load_media` and `debug_reset` take an optional `stop_at_start` to choose for one call, and their answers say whether emulation is `paused`. While the debug monitor runs (`--debug-monitor`), every load and reset stops in the debugger, so a VS Code client can set its breakpoints first; `stop_at_start: false` still runs.
+
 ### Concurrent Clients
 
 The HTTP server accepts repeated valid MCP initialization requests. All connected clients control the same Gearlynx instance. Individual HTTP requests are serialized, but multi-request debugging workflows are not atomic. Concurrent agents can interfere with each other through pauses, resets, breakpoints, memory writes, media loads, and save states.
@@ -339,7 +343,7 @@ The server exposes tools organized in the following categories:
 - `debug_step_out` - Step out of current subroutine (continues until RTS/RTI)
 - `debug_step_frame` - Step one or more video frames. Optional `frames` is 1-1000 (default 1). Optional `mode` is `async` (default, returns after scheduling) or `sync` (returns after all requested frames complete at VBlank). Use `mode: "sync"` when issuing dependent tool calls.
 - `debug_run_to_cursor` - Continue execution until reaching specified address
-- `debug_reset` - Reset the Atari Lynx emulated system
+- `debug_reset` - Reset the Atari Lynx emulated system. Optional `stop_at_start` stops the debugger before the first instruction (default: the Start Paused setting); the answer has `paused`
 - `debug_get_status` - Get debugger status (paused, at_breakpoint, pc address)
 
 ### CPU & Registers
@@ -426,7 +430,7 @@ CPU entries are captured before opcode fetch. Hardware events emitted while Suzy
 ### Media & State Management
 - `get_media_info` - Get loaded ROM info (file path, type, size, CRC, rotation, EEPROM, BIOS status)
 - `list_recent_media` - List the 10 most recent ROM files opened by Gearlynx
-- `load_media` - Load ROM file (.lnx, .lyx, .o, .zip). Automatically loads symbol file if present (.sym, .elf, .lbl, .noi)
+- `load_media` - Load ROM file (.lnx, .lyx, .o, .zip). Automatically loads symbol file if present (.sym, .elf, .lbl, .noi). Optional `stop_at_start` as in `debug_reset`
 - `load_bios` - Load BIOS file (must be exactly 512 bytes).
 - `list_save_state_slots` - List all 5 save state slots with information (rom name, timestamp, screenshot availability)
 - `select_save_state_slot` - Select active save state slot (1-5) for save/load operations
